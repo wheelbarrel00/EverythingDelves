@@ -1,0 +1,23 @@
+# Midnight 12.0 Season 1 — update to 120005 after Patch 12.0.5 drops (April 21)
+## Interface: 120001
+## Title: |cFFFF2222Everything Delves|r
+## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
+## Author: Built with Claude Opus 4.6
+## Version: 1.0.0
+## SavedVariables: EverythingDelvesDB
+## IconTexture: Interface\Icons\INV_Misc_Key_15
+## OptionalDeps: LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0
+
+# Core modules (load first — namespace and data)
+EverythingDelves.lua
+Core\Constants.lua
+Core\Utils.lua
+Core\Data.lua
+
+# UI (main frame, then each tab)
+UI\MainFrame.lua
+UI\TabDelveLocations.lua
+UI\TabCurrentBountiful.lua
+UI\TabTierGuide.lua
+UI\TabShardTracker.lua
+UI\TabOptions.lua

@@ -1,0 +1,24 @@
+name: Package and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for changelog generation
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          # Uncomment these if you publish to other platforms later:
+          # WOWI_API_KEY: ${{ secrets.WOWI_API_KEY }}
+          # WAGO_API_KEY: ${{ secrets.WAGO_API_KEY }}
