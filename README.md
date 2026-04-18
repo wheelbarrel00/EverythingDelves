@@ -32,15 +32,15 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 
 ## Features
 
-### 🗺️ Delve Locations
+### Delve Locations
 
 All 10 Midnight delves across 6 zones in a searchable, sortable list. Filter by zone, search by name, and set Blizzard map pins or TomTom waypoints with one click. Bountiful delves are highlighted with a gold star. Per-delve run history tracks your completions over time.
 
-### ⭐ Current Bountiful Delves
+### Current Bountiful Delves
 
 Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Undercoins, Delver's Journey stage, and a live weekly reset countdown. Right-click any delve to mark it complete. Quick-launch buttons for the Great Vault and Group Finder. Story variants and overcharged status are displayed per delve.
 
-### 📊 Tier Guide
+### Tier Guide
 
 Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl. Your equipped iLvl is read automatically and the recommended tier is highlighted. This tab also includes:
 
@@ -52,7 +52,7 @@ Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and 
 - **Gilded Stash** — 4× T11 Bountiful weekly reward progress
 - **Midnight Faction Renown** — Silvermoon Court, Amani Tribe, Hara'ti, The Singularity
 
-### 💎 Shard Tracker
+### Shard Tracker
 
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 9 known shard sources (Haradar's Legend Relics, Saltheril's Haven, Prey Quests, rares, treasures, satchels, and more) with live quest completion tracking. Also includes:
 
@@ -62,7 +62,7 @@ Your shard economy dashboard. Currency overview with progress bars for next key 
 - **World Quest Scanner** — all 6 Midnight zones scanned for shard-rewarding WQs
 - **Low Shard Warning** — configurable threshold alert
 
-### ⚙️ Options
+### Options
 
 UI scale, accent color theme (red / gold / purple), default tab, minimap button toggle, session tracking, completed item display, low shard warning threshold, bountiful rotation alerts, and Special Assignment alerts.
 
