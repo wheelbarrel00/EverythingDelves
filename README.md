@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/wheelbarrel00/EverythingDelves/releases/latest"><img src="https://img.shields.io/github/v/release/YOUR_USERNAME/EverythingDelves?style=flat-square&color=8B0000&label=Version" alt="Latest Release" /></a>
+  <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
   <img src="https://img.shields.io/badge/Interface-120001-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
