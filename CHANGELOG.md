@@ -5,6 +5,22 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-04-18
+
+### Fixed
+
+- Replaced remaining `✓` (U+2713) characters that rendered as rectangles in WoW fonts
+- Completed Special Assignments now display in bright green instead of muted gray
+- Progress bar no longer shows 0/100 when shards are an exact multiple of 100
+- "Progress toward next key" label now dynamically shows shards remaining
+
+### Changed
+
+- Suppressed 22 LuaLS false positive diagnostic warnings with proper annotations
+- Marked optional callback parameters in TabOptions.lua factory functions
+- Added nil guard for dbKey in CreateCheckbox
+- Added .gitignore to exclude .vscode/ editor folder
+
 ## [1.0.0] - 2026-04-18
 
 ### Added
