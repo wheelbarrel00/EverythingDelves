@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR_USERNAME/EverythingDelves/releases/latest"><img src="https://img.shields.io/github/v/release/YOUR_USERNAME/EverythingDelves?style=flat-square&color=8B0000&label=Version" alt="Latest Release" /></a>
+  <a href="https://github.com/wheelbarrel00/EverythingDelves/releases/latest"><img src="https://img.shields.io/github/v/release/YOUR_USERNAME/EverythingDelves?style=flat-square&color=8B0000&label=Version" alt="Latest Release" /></a>
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
   <img src="https://img.shields.io/badge/Interface-120001-333333?style=flat-square" alt="Interface" />
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/YOUR_USERNAME/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
   <img src="https://img.shields.io/badge/Memory-~419kb-333333?style=flat-square" alt="Memory" />
 </p>
 
@@ -77,7 +77,7 @@ UI scale, accent color theme (red / gold / purple), default tab, minimap button 
 
 ### Manual Install
 
-1. Download the latest release from the [Releases](https://github.com/YOUR_USERNAME/EverythingDelves/releases) page
+1. Download the latest release from the [Releases](https://github.com/wheelbarrel00/EverythingDelves/releases) page
 2. Extract the `EverythingDelves` folder into:
    ```
    World of Warcraft/_retail_/Interface/AddOns/
@@ -174,7 +174,7 @@ Contributions are welcome! If you'd like to help:
 
 ### Reporting Bugs
 
-Please use the [GitHub Issues](https://github.com/YOUR_USERNAME/EverythingDelves/issues) tab. Include:
+Please use the [GitHub Issues](https://github.com/wheelbarrel00/EverythingDelves/issues) tab. Include:
 - Your WoW client version and region
 - Steps to reproduce
 - Any error messages from `/console scriptErrors 1`
