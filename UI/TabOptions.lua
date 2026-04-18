@@ -17,8 +17,8 @@ local E = EverythingDelves
 --- @param x          number  X offset from parent TOPLEFT
 --- @param y          number  Y offset from parent TOPLEFT
 --- @param labelText  string
---- @param dbKey      string   Key in E.db
---- @param onChange   function Optional callback(newValue)
+--- @param dbKey      string?  Key in E.db (nil when overridden manually)
+--- @param onChange   function? Optional callback(newValue)
 --- @return CheckButton
 local function CreateCheckbox(parent, x, y, labelText, dbKey, onChange)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
@@ -35,7 +35,7 @@ local function CreateCheckbox(parent, x, y, labelText, dbKey, onChange)
 
     cb:SetScript("OnClick", function(self)
         local checked = self:GetChecked()
-        E.db[dbKey] = checked
+        if dbKey then E.db[dbKey] = checked end
         if onChange then onChange(checked) end
     end)
 
@@ -51,8 +51,8 @@ end
 --- @param maxVal    number
 --- @param step      number
 --- @param dbKey     string
---- @param formatter function(value)->string  Optional display formatter
---- @param onChange  function(value)          Optional callback
+--- @param formatter function?  Optional display formatter (value)->string
+--- @param onChange  function?  Optional callback(value)
 --- @return Slider
 local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey, formatter, onChange)
     -- Label
@@ -105,7 +105,7 @@ end
 --- @param labelText string
 --- @param dbKey     string
 --- @param options   table   { { value=string, label=string }, ... }
---- @param onChange  function(value) Optional callback
+--- @param onChange  function? Optional callback(value)
 --- @return table    Array of CheckButtons (so caller can position them)
 local function CreateRadioGroup(parent, x, y, labelText, dbKey, options, onChange)
     local header = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")

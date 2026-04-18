@@ -2,6 +2,7 @@
 -- Core/Utils.lua
 -- Shared utility functions used across multiple tabs
 ------------------------------------------------------------------------
+---@diagnostic disable: undefined-global, undefined-field
 local E = EverythingDelves
 
 ------------------------------------------------------------------------

@@ -593,7 +593,9 @@ E:RegisterModule(function()
             else
                 ShowUIPanel(WeeklyRewardsFrame)
             end
+        ---@diagnostic disable-next-line: undefined-global
         elseif ToggleGreatVaultUI then
+            ---@diagnostic disable-next-line: undefined-global
             ToggleGreatVaultUI()
         else
             print(E.CC.header .. "Everything Delves|r: Great Vault UI unavailable.")

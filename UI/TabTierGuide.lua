@@ -740,6 +740,7 @@ E:RegisterModule(function()
                 and C_UIWidgetManager.GetSpellDisplayVisualizationInfo then
             local info = C_UIWidgetManager
                 .GetSpellDisplayVisualizationInfo(GILDED_WIDGET)
+            ---@diagnostic disable-next-line: undefined-field
             if info and info.shownState == 1 then
                 progress = info.spellInfo
                         and info.spellInfo.tooltip
