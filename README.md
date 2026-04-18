@@ -28,8 +28,6 @@ Everything Delves is a display-only companion addon for WoW: Midnight (12.0 Seas
 
 Open with **`/ed`** or the minimap button. Right-click the minimap button to jump to Options.
 
-> **Built with Claude Opus 4.6** — 5,265 lines of hand-reviewed Lua across 10 modules.
-
 ---
 
 ## Features
