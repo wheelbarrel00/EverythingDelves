@@ -5,6 +5,13 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local pairs, ipairs = pairs, ipairs
+local math_floor = math.floor
+local string_format = string.format
+
+------------------------------------------------------------------------
 -- MAIN FRAME
 ------------------------------------------------------------------------
 function E:InitMainFrame()
@@ -297,21 +304,19 @@ local function AddLiveStats(tip)
                       E.CC.gold .. uc .. E.CC.close)
 
     -- Bountiful count from shared table
-    if E.currentBountifulNames then
-        local count = 0
-        for _ in pairs(E.currentBountifulNames) do count = count + 1 end
+    if E.currentBountifulCount and E.currentBountifulCount > 0 then
         tip:AddLine(" ")
         tip:AddDoubleLine(E.CC.muted .. "Active Bountiful:" .. E.CC.close,
-                          E.CC.gold .. count .. E.CC.close)
+                          E.CC.gold .. E.currentBountifulCount .. E.CC.close)
     end
 
     -- Weekly reset timer
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
         local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
         if secs and secs > 0 then
-            local d = math.floor(secs / 86400)
-            local h = math.floor((secs % 86400) / 3600)
-            local m = math.floor((secs % 3600) / 60)
+            local d = math_floor(secs / 86400)
+            local h = math_floor((secs % 86400) / 3600)
+            local m = math_floor((secs % 3600) / 60)
             tip:AddLine(" ")
             tip:AddDoubleLine(E.CC.muted .. "Weekly Reset:" .. E.CC.close,
                               E.CC.gold .. d .. "d " .. h .. "h " .. m .. "m" .. E.CC.close)

@@ -9,6 +9,11 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local math_floor, math_max, math_min = math.floor, math.max, math.min
+
+------------------------------------------------------------------------
 -- Widget factories (local to this file)
 ------------------------------------------------------------------------
 
@@ -89,7 +94,7 @@ local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey
     UpdateText(slider:GetValue())
 
     slider:SetScript("OnValueChanged", function(self, val)
-        val = math.floor(val / step + 0.5) * step  -- snap to step
+        val = math_floor(val / step + 0.5) * step  -- snap to step
         E.db[dbKey] = val
         UpdateText(val)
         if onChange then onChange(val) end
@@ -214,7 +219,7 @@ E:RegisterModule(function()
     scaleInput:SetAutoFocus(false)
     scaleInput:SetMaxLetters(3)
     scaleInput:SetNumeric(true)
-    scaleInput:SetNumber(math.floor((E.db.uiScale or 1.0) * 100))
+    scaleInput:SetNumber(math_floor((E.db.uiScale or 1.0) * 100))
 
     local pctLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pctLabel:SetPoint("LEFT", scaleInput, "RIGHT", 3, 0)
@@ -236,9 +241,9 @@ E:RegisterModule(function()
     -- Apply scale from the input box
     local function ApplyFromInput()
         local raw = scaleInput:GetNumber()
-        local pct = math.max(80, math.min(150, raw))
+        local pct = math_max(80, math_min(150, raw))
         -- Snap to nearest step of 5
-        pct = math.floor(pct / 5 + 0.5) * 5
+        pct = math_floor(pct / 5 + 0.5) * 5
         local scale = pct / 100
         E.db.uiScale = scale
         scaleSlider:SetValue(pct)
@@ -250,12 +255,12 @@ E:RegisterModule(function()
     scaleInput:SetScript("OnEnterPressed", ApplyFromInput)
     scaleInput:SetScript("OnTabPressed", ApplyFromInput)
     scaleInput:SetScript("OnEscapePressed", function(self)
-        self:SetNumber(math.floor((E.db.uiScale or 1.0) * 100))
+        self:SetNumber(math_floor((E.db.uiScale or 1.0) * 100))
         self:ClearFocus()
     end)
 
     scaleSlider:SetScript("OnValueChanged", function(self, value)
-        local pct = math.floor(value)
+        local pct = math_floor(value)
         local scale = pct / 100
         E.db.uiScale = scale
         scaleInput:SetNumber(pct)

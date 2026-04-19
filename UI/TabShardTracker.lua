@@ -9,6 +9,14 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local pairs, ipairs, type, time = pairs, ipairs, type, time
+local math_floor, math_max, math_min = math.floor, math.max, math.min
+local string_format = string.format
+local table_insert, table_sort, wipe = table.insert, table.sort, wipe
+
+------------------------------------------------------------------------
 -- Local helpers
 ------------------------------------------------------------------------
 
@@ -82,7 +90,7 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    sc:SetHeight(1400)
+    sc:SetHeight(950)
 
     -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
@@ -110,15 +118,15 @@ E:RegisterModule(function()
     end)
 
     scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math.max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math.max(0, math.min(
+        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
+        local newVal = math_max(0, math_min(
             self:GetVerticalScroll() - delta * 30, maxScroll))
         self:SetVerticalScroll(newVal)
         tabScrollBar:SetValue(newVal)
     end)
 
     local function UpdateScrollRange()
-        local maxScroll = math.max(0, sc:GetHeight() - scrollFrame:GetHeight())
+        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
         tabScrollBar:SetMinMaxValues(0, maxScroll)
         if maxScroll <= 0 then
             tabScrollBar:Hide()
@@ -390,7 +398,8 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- SECTION 3c: Weekly Delve Quests
-    -- Tracks key weekly quests related to delves.
+    -- Quest 93595 "A Call to Delves" — weekly from Archmage Aethas
+    -- Sunreaver, requires completing 5 Midnight Delves.
     --------------------------------------------------------------------
     local WEEKLY_DELVE_QUESTS = {
         { questID = 93595, title = "A Call to Delves" },
@@ -449,6 +458,22 @@ E:RegisterModule(function()
     local wqCountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqCountFS:SetPoint("LEFT", wqHeader, "RIGHT", 12, 0)
     wqCountFS:SetFont(wqCountFS:GetFont(), 11)
+
+    -- Refresh button for WQ section
+    local wqRefreshBtn = E:CreateButton(sc, 60, 18, "Refresh")
+    wqRefreshBtn.label:SetFont(wqRefreshBtn.label:GetFont(), 9)
+    wqRefreshBtn:SetPoint("LEFT", wqCountFS, "RIGHT", 12, 0)
+    wqRefreshBtn:SetScript("OnEnter", function(self)
+        local hc = E.Colors.buttonHover
+        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+        E:ShowTooltip(self, "Refresh WQs",
+            "Force rescan all Midnight zones for\nCoffer Key Shard world quests.")
+    end)
+    wqRefreshBtn:SetScript("OnLeave", function(self)
+        local bc = E.Colors.buttonBg
+        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+        E:HideTooltip()
+    end)
 
     local wqNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -2)
@@ -523,36 +548,71 @@ E:RegisterModule(function()
     wqEmptyFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, wqColY - 14)
     wqEmptyFS:SetFont(wqEmptyFS:GetFont(), 10)
     wqEmptyFS:SetText(
-        E.CC.yellow .. "No active WQs with Coffer Key Shards found. "
-        .. "Wait for daily refresh." .. E.CC.close
+        E.CC.yellow .. "No Coffer Key Shard WQs found. Click Refresh to rescan.\n"
+        .. E.CC.close .. E.CC.muted
+        .. "Tip: Open your World Map to each Midnight zone first to load quest data."
+        .. E.CC.close
     )
     wqEmptyFS:Hide()
 
     --- Scan all Midnight zones for WQs rewarding shard currency.
     --- Results are cached and only rescanned when forced or stale (>60s).
-    local wqCache      = nil   -- cached results table
+    --- Primes map data before querying. Auto-retries once after 3s on
+    --- empty results (map data may not be loaded for unvisited zones).
+    local wqCache      = {}    -- reusable results table
     local wqCacheTime  = 0     -- epoch when cache was last populated
     local WQ_CACHE_TTL = 60    -- seconds before cache is considered stale
+    local wqRetryPending = false
+    local mapsPrimed   = {}    -- [mapID] = true after first prime this session
+
+    -- Cache zone names once (resolved lazily on first scan)
+    local zoneNameCache = {}   -- [mapID] = "Zone Name"
+
+    --- Forward declaration so retry can call RefreshAll
+    local RefreshAll  -- defined below
+
+    -- Reusable sort comparator (avoids creating a closure each scan)
+    local function wqSortFunc(a, b)
+        if a.zone == b.zone then return a.title < b.title end
+        return a.zone < b.zone
+    end
 
     local function ScanCofferShardWQs(forceRescan)
         -- Return cached results if fresh enough
-        if not forceRescan and wqCache
+        if not forceRescan and #wqCache > 0
                 and (time() - wqCacheTime) < WQ_CACHE_TTL then
             return wqCache
         end
 
-        local results = {}
+        wipe(wqCache)
         if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap
                 and C_QuestLog and C_QuestLog.GetQuestRewardCurrencies) then
-            return results
+            return wqCache
         end
 
         for _, zoneID in ipairs(WQ_ZONES) do
+            -- Prime map data once per session so the client loads zone WQs
+            if not mapsPrimed[zoneID] then
+                if C_Map and C_Map.GetMapInfo then
+                    C_Map.GetMapInfo(zoneID)
+                end
+                if C_MapExplorationInfo
+                        and C_MapExplorationInfo.GetExploredMapTextures then
+                    C_MapExplorationInfo.GetExploredMapTextures(zoneID)
+                end
+                mapsPrimed[zoneID] = true
+            end
+
             local quests = C_TaskQuest.GetQuestsOnMap(zoneID)
-            local mapInfo = C_Map and C_Map.GetMapInfo
-                            and C_Map.GetMapInfo(zoneID)
-            local zoneName = mapInfo and mapInfo.name
-                             or ("Zone " .. zoneID)
+
+            -- Resolve zone name (cached after first lookup)
+            if not zoneNameCache[zoneID] then
+                local mapInfo = C_Map and C_Map.GetMapInfo
+                                and C_Map.GetMapInfo(zoneID)
+                zoneNameCache[zoneID] = (mapInfo and mapInfo.name)
+                                        or ("Zone " .. zoneID)
+            end
+            local zoneName = zoneNameCache[zoneID]
 
             if quests then
                 for _, qData in ipairs(quests) do
@@ -560,7 +620,6 @@ E:RegisterModule(function()
                     if qid and qid > 0
                             and C_QuestLog.IsWorldQuest
                             and C_QuestLog.IsWorldQuest(qid)
-                            and zoneID == qData.mapID
                             and not (C_QuestLog.IsQuestFlaggedCompleted
                                      and C_QuestLog.IsQuestFlaggedCompleted(qid))
                     then
@@ -575,7 +634,7 @@ E:RegisterModule(function()
                                             .GetQuestInfoByQuestID(qid)
                                             or title
                                     end
-                                    table.insert(results, {
+                                    table_insert(wqCache, {
                                         questID = qid,
                                         title   = title,
                                         zone    = zoneName,
@@ -591,17 +650,20 @@ E:RegisterModule(function()
             end
         end
 
-        -- Sort by zone then name
-        table.sort(results, function(a, b)
-            if a.zone == b.zone then
-                return a.title < b.title
-            end
-            return a.zone < b.zone
-        end)
-
-        -- Cache the results
-        wqCache     = results
+        table_sort(wqCache, wqSortFunc)
         wqCacheTime = time()
+
+        -- If scan returned 0 results, schedule one retry after 3s
+        if #wqCache == 0 and not wqRetryPending then
+            wqRetryPending = true
+            C_Timer.After(3, function()
+                wqRetryPending = false
+                wqCacheTime = 0  -- invalidate cache
+                if RefreshAll and frame:IsShown() then
+                    RefreshAll(true)
+                end
+            end)
+        end
 
         return results
     end
@@ -641,32 +703,32 @@ E:RegisterModule(function()
         local sessTime   = time() - sessionBaseline.time
 
         -- Format elapsed time as HH:MM:SS
-        local hours   = math.floor(sessTime / 3600)
-        local minutes = math.floor((sessTime % 3600) / 60)
+        local hours   = math_floor(sessTime / 3600)
+        local minutes = math_floor((sessTime % 3600) / 60)
         local seconds = sessTime % 60
-        local elapsed = string.format("%d:%02d:%02d", hours, minutes, seconds)
+        local elapsed = string_format("%d:%02d:%02d", hours, minutes, seconds)
 
         sessShardsFS:SetText(
             sessShards >= 0
-                and string.format("|cFF999999Shards earned: |r|cFFFFD700+%s|r", FormatNumber(sessShards))
-                or  string.format("|cFF999999Shards earned: |r|cFFFF3333%s|r", FormatNumber(sessShards))
+                and string_format("|cFF999999Shards earned: |r|cFFFFD700+%s|r", FormatNumber(sessShards))
+                or  string_format("|cFF999999Shards earned: |r|cFFFF3333%s|r", FormatNumber(sessShards))
         )
 
         sessKeysFS:SetText(
             sessKeys >= 0
-                and string.format("|cFF999999Keys earned: |r|cFFFFD700+%d|r", sessKeys)
-                or  string.format("|cFF999999Keys earned: |r|cFFFF3333%d|r", sessKeys)
+                and string_format("|cFF999999Keys earned: |r|cFFFFD700+%d|r", sessKeys)
+                or  string_format("|cFF999999Keys earned: |r|cFFFF3333%d|r", sessKeys)
         )
 
         sessTimeFS:SetText(
-            string.format("|cFF999999Session time: |r|cFFE0E0E0%s|r", elapsed)
+            string_format("|cFF999999Session time: |r|cFFE0E0E0%s|r", elapsed)
         )
 
         -- Shards per hour rate
         if sessTime >= 60 and sessShards > 0 then
-            local perHour = math.floor(sessShards / (sessTime / 3600))
+            local perHour = math_floor(sessShards / (sessTime / 3600))
             sessRateFS:SetText(
-                string.format("|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r", FormatNumber(perHour))
+                string_format("|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r", FormatNumber(perHour))
             )
             sessRateFS:Show()
         else
@@ -678,7 +740,7 @@ E:RegisterModule(function()
     -- Full refresh: updates all sections. Called on OnShow, events,
     -- and manual Refresh button click — NOT on a timer.
     -- forceWQRescan: if true, bypasses the WQ scan cache.
-    local function RefreshAll(forceWQRescan)
+    RefreshAll = function(forceWQRescan)
 
         ----------------------------------------------------------------
         -- Section 1: Currency overview
@@ -690,7 +752,7 @@ E:RegisterModule(function()
 
         -- Weekly cap data from the currency API
         local _, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
-        local weeklyRemaining = math.max(0, weeklyCap - weeklyEarned)
+        local weeklyRemaining = math_max(0, weeklyCap - weeklyEarned)
 
         -- Set currency icons via modern API
         shardIcon:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
@@ -908,10 +970,10 @@ E:RegisterModule(function()
                 local active = (not done) and C_QuestLog and C_QuestLog.IsOnQuest
                                and C_QuestLog.IsOnQuest(row.questID)
                 if active then
-                    table.insert(currentActiveSAs, row.questID)
+                    table_insert(currentActiveSAs, row.questID)
                 end
             end
-            table.sort(currentActiveSAs)
+            table_sort(currentActiveSAs)
 
             local storedSAs = E.db.lastKnownActiveSAs or {}
             local storedLookup = {}
@@ -941,7 +1003,7 @@ E:RegisterModule(function()
             end
             if done then
                 row.fs:SetText(
-                    E.CC.muted .. "  [Done] " .. row.title
+                    "|cFF33FF33" .. "  [Done] " .. row.title
                     .. " — completed" .. E.CC.close
                 )
             else
@@ -1024,6 +1086,13 @@ E:RegisterModule(function()
             end
         end
     end
+
+    -- Wire up Refresh button now that RefreshAll is defined
+    wqRefreshBtn:SetScript("OnClick", function()
+        wqCacheTime = 0  -- invalidate cache
+        RefreshAll(true)
+        E:FlashButtonConfirm(wqRefreshBtn)
+    end)
 
     --------------------------------------------------------------------
     -- OnShow: refresh everything when the tab becomes visible

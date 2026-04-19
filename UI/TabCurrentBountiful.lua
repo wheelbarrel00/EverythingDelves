@@ -7,6 +7,15 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local pairs, ipairs = pairs, ipairs
+local math_floor, math_max = math.floor, math.max
+local string_format = string.format
+local table_insert, table_sort, wipe = table.insert, table.sort, wipe
+local strtrim = strtrim
+
+------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
@@ -63,7 +72,7 @@ local function GetBountifulDelvesLive()
                     end
                 end
 
-                table.insert(result, {
+                table_insert(result, {
                     name         = poi.name or delve.name,
                     zone         = delve.zone,
                     x            = delve.x,
@@ -110,7 +119,7 @@ end
 
 --- Compute how many full keys can be crafted from current shards.
 local function KeysFromShards(shards)
-    return math.floor(shards / E.SHARDS_PER_KEY)
+    return math_floor(shards / E.SHARDS_PER_KEY)
 end
 
 ------------------------------------------------------------------------
@@ -139,10 +148,10 @@ local function GetResetTimeString()
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
         local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
         if secs and secs > 0 then
-            local days  = math.floor(secs / 86400)
-            local hours = math.floor((secs % 86400) / 3600)
-            local mins  = math.floor((secs % 3600) / 60)
-            return string.format("Resets in %dd %dh %dm", days, hours, mins)
+            local days  = math_floor(secs / 86400)
+            local hours = math_floor((secs % 86400) / 3600)
+            local mins  = math_floor((secs % 3600) / 60)
+            return string_format("Resets in %dd %dh %dm", days, hours, mins)
         end
     end
     return "Reset timer unavailable"
@@ -174,7 +183,7 @@ end
 -- Sort bountiful list: completed at bottom, then alphabetical
 ------------------------------------------------------------------------
 local function SortBountifulList()
-    table.sort(bountifulList, function(a, b)
+    table_sort(bountifulList, function(a, b)
         if a.completed ~= b.completed then
             return not a.completed  -- false (incomplete) sorts first
         end
@@ -213,8 +222,11 @@ local function RefreshBountifulData(force)
         end
     end
     -- Build lookup tables so other tabs can check bountiful status
-    E.currentBountifulNames = {}   -- [name] = true (exact API name)
-    E.currentBountifulPOIs  = {}   -- [poiID] = true (reliable fallback)
+    if not E.currentBountifulNames then E.currentBountifulNames = {} end
+    if not E.currentBountifulPOIs  then E.currentBountifulPOIs  = {} end
+    wipe(E.currentBountifulNames)
+    wipe(E.currentBountifulPOIs)
+    E.currentBountifulCount = #bountifulList  -- actual count (not doubled)
     for _, delve in ipairs(bountifulList) do
         E.currentBountifulNames[delve.name] = true
         -- Also store normalized name for fuzzy matching
@@ -229,9 +241,9 @@ local function RefreshBountifulData(force)
     if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
         local currentIDs = {}
         for _, delve in ipairs(bountifulList) do
-            table.insert(currentIDs, delve.poiID)
+            table_insert(currentIDs, delve.poiID)
         end
-        table.sort(currentIDs)
+        table_sort(currentIDs)
 
         local storedIDs = E.db.lastKnownBountifulIDs or {}
         local changed = (#currentIDs ~= #storedIDs)
@@ -504,7 +516,7 @@ local function CreateRow(parent, index)
                 for _, d in ipairs(bountifulList) do
                     if d.completed then done = done + 1 end
                 end
-                parent.progressBar:SetProgress(done, math.max(1, #bountifulList))
+                parent.progressBar:SetProgress(done, math_max(1, #bountifulList))
             end
         end
     end)
@@ -718,7 +730,7 @@ E:RegisterModule(function()
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
         end
-        progressBar:SetProgress(done, math.max(1, #bountifulList))
+        progressBar:SetProgress(done, math_max(1, #bountifulList))
     end)
     refreshBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
@@ -787,7 +799,7 @@ E:RegisterModule(function()
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
         end
-        progressBar:SetProgress(done, math.max(1, #bountifulList))
+        progressBar:SetProgress(done, math_max(1, #bountifulList))
 
         UpdateRows(listFrame)
     end)
@@ -829,7 +841,7 @@ E:RegisterModule(function()
             for _, d in ipairs(bountifulList) do
                 if d.completed then done = done + 1 end
             end
-            progressBar:SetProgress(done, math.max(1, #bountifulList))
+            progressBar:SetProgress(done, math_max(1, #bountifulList))
             UpdateRows(listFrame)
         end
     end)

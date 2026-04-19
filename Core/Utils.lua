@@ -6,6 +6,14 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local math_floor, math_max, math_min = math.floor, math.max, math.min
+local string_format = string.format
+local table_insert, table_remove = table.insert, table.remove
+local tostring = tostring
+
+------------------------------------------------------------------------
 -- UI factory: flat dark-red button with hover highlight
 ------------------------------------------------------------------------
 --- Create a styled button that matches the addon's visual theme.
@@ -175,10 +183,10 @@ function E:CreateProgressBar(parent, width, height)
     --- Update the bar to show current / max progress.
     function bar:SetProgress(current, max)
         local pct = (max > 0) and (current / max) or 0
-        pct = math.min(pct, 1)
-        self.fill:SetWidth(math.max(1, (self:GetWidth() - 2) * pct))
+        pct = math_min(pct, 1)
+        self.fill:SetWidth(math_max(1, (self:GetWidth() - 2) * pct))
         self.label:SetText(
-            string.format("|cFFFFFFFF%d / %d  (%d%%)|r", current, max, math.floor(pct * 100))
+            string_format("|cFFFFFFFF%d / %d  (%d%%)|r", current, max, math_floor(pct * 100))
         )
     end
 
@@ -210,12 +218,12 @@ function E:RecordDelveCompletion(delveName)
 
     local today = date("%Y-%m-%d")
     local weekNum = tonumber(date("%W")) or 0
-    table.insert(entry.completions, { date = today, week = weekNum })
+    table_insert(entry.completions, { date = today, week = weekNum })
     entry.totalRuns = entry.totalRuns + 1
 
     -- Cap history to 50 most recent entries per delve
     while #entry.completions > 50 do
-        table.remove(entry.completions, 1)
+        table_remove(entry.completions, 1)
     end
 end
 

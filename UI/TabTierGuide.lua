@@ -9,6 +9,12 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local math_floor, math_max, math_min = math.floor, math.max, math.min
+local table_insert = table.insert
+
+------------------------------------------------------------------------
 -- Local helpers
 ------------------------------------------------------------------------
 
@@ -17,7 +23,7 @@ local E = EverythingDelves
 --- matters inside a delve.
 local function GetPlayerIlvl()
     local equipped, overall = GetAverageItemLevel()
-    local ilvl = math.floor(equipped or overall or 0)
+    local ilvl = math_floor(equipped or overall or 0)
     return ilvl
 end
 
@@ -122,14 +128,14 @@ E:RegisterModule(function()
         hitBox:SetScript("OnEnter", function(self)
             local tipLines = {}
             if td.tier <= 4 then
-                table.insert(tipLines, "Entry-level delves. Good for gearing up alts.")
+                table_insert(tipLines, "Entry-level delves. Good for gearing up alts.")
             elseif td.tier <= 8 then
-                table.insert(tipLines, "Mid-tier delves. Solid upgrades for mains early in the season.")
+                table_insert(tipLines, "Mid-tier delves. Solid upgrades for mains early in the season.")
             else
-                table.insert(tipLines, "Endgame delves. Best loot, toughest challenge.")
+                table_insert(tipLines, "Endgame delves. Best loot, toughest challenge.")
             end
-            table.insert(tipLines, "")
-            table.insert(tipLines, E.CC.muted .. "Recommended iLvl: " .. E.CC.close
+            table_insert(tipLines, "")
+            table_insert(tipLines, E.CC.muted .. "Recommended iLvl: " .. E.CC.close
                 .. E.CC.gold .. td.recGear .. "+" .. E.CC.close)
             E:ShowTooltip(self, "Tier " .. td.tier, unpack(tipLines))
         end)
@@ -212,7 +218,7 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    sc:SetHeight(700)
+    sc:SetHeight(550)
 
     -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
@@ -240,15 +246,15 @@ E:RegisterModule(function()
     end)
 
     scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math.max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math.max(0, math.min(
+        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
+        local newVal = math_max(0, math_min(
             self:GetVerticalScroll() - delta * 30, maxScroll))
         self:SetVerticalScroll(newVal)
         tabScrollBar:SetValue(newVal)
     end)
 
     local function UpdateScrollRange()
-        local maxScroll = math.max(0, sc:GetHeight() - scrollFrame:GetHeight())
+        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
         tabScrollBar:SetMinMaxValues(0, maxScroll)
         if maxScroll <= 0 then
             tabScrollBar:Hide()
@@ -414,8 +420,8 @@ E:RegisterModule(function()
             if not progress[act.type] then
                 progress[act.type] = { completed = 0, total = 0 }
             end
-            progress[act.type].total = math.max(progress[act.type].total, act.threshold or 0)
-            progress[act.type].completed = math.max(progress[act.type].completed, act.progress or 0)
+            progress[act.type].total = math_max(progress[act.type].total, act.threshold or 0)
+            progress[act.type].completed = math_max(progress[act.type].completed, act.progress or 0)
         end
 
         for _, cfg in ipairs(GV_ROWS) do
@@ -423,7 +429,7 @@ E:RegisterModule(function()
             if bar then
                 local data = progress[cfg.type]
                 if data then
-                    local current = math.min(data.completed, data.total)
+                    local current = math_min(data.completed, data.total)
                     bar:SetProgress(current, data.total)
                     -- Gold for complete, red for incomplete
                     if current >= data.total then

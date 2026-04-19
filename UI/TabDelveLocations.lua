@@ -6,6 +6,12 @@
 local E = EverythingDelves
 
 ------------------------------------------------------------------------
+-- Local references for frequently accessed globals
+------------------------------------------------------------------------
+local math_floor, math_max, math_min = math.floor, math.max, math.min
+local table_insert, table_sort = table.insert, table.sort
+
+------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
 local filteredData   = {}  -- currently visible rows after filter/sort
@@ -40,12 +46,12 @@ local function RefreshFilteredData()
     wipe(filteredData)
     for _, delve in ipairs(E.DelveData) do
         if MatchesFilter(delve) then
-            table.insert(filteredData, delve)
+            table_insert(filteredData, delve)
         end
     end
 
     -- Sort
-    table.sort(filteredData, function(a, b)
+    table_sort(filteredData, function(a, b)
         local va, vb
         if sortField == "name" then
             va, vb = a.name:lower(), b.name:lower()
@@ -115,8 +121,8 @@ end
 -- Scroll handling
 ------------------------------------------------------------------------
 local function OnMouseWheel(self, delta)
-    local maxOffset = math.max(0, #filteredData - VISIBLE_ROWS)
-    scrollOffset = math.max(0, math.min(scrollOffset - delta, maxOffset))
+    local maxOffset = math_max(0, #filteredData - VISIBLE_ROWS)
+    scrollOffset = math_max(0, math_min(scrollOffset - delta, maxOffset))
     -- Move the scroll bar thumb to match
     if self.scrollBar then
         self.scrollBar:SetValue(scrollOffset)
@@ -152,7 +158,7 @@ local function CreateZoneDropdown(parent)
     -- Build option list: "All Zones" + each zone
     local options = { { name = "All Zones", value = nil } }
     for _, z in ipairs(E.Zones) do
-        table.insert(options, { name = z.name, value = z.name })
+        table_insert(options, { name = z.name, value = z.name })
     end
 
     local optionButtons = {}
@@ -360,7 +366,7 @@ local function CreateColumnHeaders(parent, yOffset)
             UpdateRows(parent)
         end)
 
-        table.insert(headers, { field = col.field, btn = btn })
+        table_insert(headers, { field = col.field, btn = btn })
     end
 
     -- Static labels for the two action columns (not sortable)
@@ -478,10 +484,10 @@ local function CreateRow(parent, index)
             local tipLines = {}
             -- Bountiful notice at the top, in gold
             if self.isBountiful then
-                table.insert(tipLines, E.CC.gold .. "* This delve is a Bountiful Delve this week!" .. E.CC.close)
-                table.insert(tipLines, "")
+                table_insert(tipLines, E.CC.gold .. "* This delve is a Bountiful Delve this week!" .. E.CC.close)
+                table_insert(tipLines, "")
             end
-            table.insert(tipLines,
+            table_insert(tipLines,
                 E.CC.muted .. "Zone: " .. E.CC.close
                     .. E.CC.body .. self.delve.zone .. E.CC.close)
             E:ShowTooltip(self, self.delve.name, unpack(tipLines))
@@ -529,7 +535,7 @@ local function CreateScrollBar(parent, listFrame)
     bar:SetObeyStepOnDrag(true)
 
     bar:SetScript("OnValueChanged", function(self, value)
-        scrollOffset = math.floor(value + 0.5)
+        scrollOffset = math_floor(value + 0.5)
         UpdateRows(parent)
     end)
 
@@ -620,7 +626,7 @@ E:RegisterModule(function()
     -- Whenever the list frame shows, refresh data and recalc scrollbar
     listFrame:SetScript("OnShow", function(self)
         RefreshFilteredData()
-        local maxOffset = math.max(0, #filteredData - VISIBLE_ROWS)
+        local maxOffset = math_max(0, #filteredData - VISIBLE_ROWS)
         scrollBar:SetMinMaxValues(0, maxOffset)
         scrollBar:SetValue(scrollOffset)
         UpdateRows(self)
