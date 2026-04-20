@@ -1,7 +1,7 @@
 package-as: EverythingDelves
 
 # Replace with your actual CurseForge project ID after creating the project
-curse-id: REPLACE_WITH_YOUR_PROJECT_ID
+curse-id: 1519355
 
 enable-nolib-creation: no
 

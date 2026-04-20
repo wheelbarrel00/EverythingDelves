@@ -665,7 +665,7 @@ E:RegisterModule(function()
             end)
         end
 
-        return results
+        return wqCache
     end
 
     --------------------------------------------------------------------
