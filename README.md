@@ -19,11 +19,16 @@
 <p align="center">
   Track bountiful delves, shard income, tier rewards, faction renown, and more — in a single dark-red themed window.
 </p>
+<details>
+<summary>Screenshots</summary>
+
 <img width="1265" height="916" alt="Delve Locations" src="https://github.com/user-attachments/assets/95c4c29c-028a-40ba-aec5-b4d5d6ce8ccf" />
 <img width="1265" height="912" alt="Bountiful Delves" src="https://github.com/user-attachments/assets/27dc373f-479a-4571-9e4f-24a501958f2b" />
 <img width="1269" height="917" alt="Tier Gude" src="https://github.com/user-attachments/assets/242a10f3-80a9-4cf8-a9c1-0af622787015" />
 <img width="1268" height="916" alt="Shard Tracker" src="https://github.com/user-attachments/assets/df555bea-774c-4c8b-ad6f-c30ea18bee79" />
 <img width="1271" height="921" alt="Options" src="https://github.com/user-attachments/assets/daf7b38c-af87-4bf2-8949-5b93a137f208" />
+
+</details>
 
 ---
 
