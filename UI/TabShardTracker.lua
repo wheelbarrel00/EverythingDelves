@@ -568,6 +568,9 @@ E:RegisterModule(function()
     -- Cache zone names once (resolved lazily on first scan)
     local zoneNameCache = {}   -- [mapID] = "Zone Name"
 
+    -- Reusable dedupe set (wiped each scan)
+    local seenQuestIDs = {}
+
     --- Forward declaration so retry can call RefreshAll
     local RefreshAll  -- defined below
 
@@ -585,6 +588,7 @@ E:RegisterModule(function()
         end
 
         wipe(wqCache)
+        wipe(seenQuestIDs)
         if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap
                 and C_QuestLog and C_QuestLog.GetQuestRewardCurrencies) then
             return wqCache
@@ -605,19 +609,13 @@ E:RegisterModule(function()
 
             local quests = C_TaskQuest.GetQuestsOnMap(zoneID)
 
-            -- Resolve zone name (cached after first lookup)
-            if not zoneNameCache[zoneID] then
-                local mapInfo = C_Map and C_Map.GetMapInfo
-                                and C_Map.GetMapInfo(zoneID)
-                zoneNameCache[zoneID] = (mapInfo and mapInfo.name)
-                                        or ("Zone " .. zoneID)
-            end
-            local zoneName = zoneNameCache[zoneID]
-
             if quests then
                 for _, qData in ipairs(quests) do
                     local qid = qData.questID
-                    if qid and qid > 0
+                    -- Dedupe: C_TaskQuest.GetQuestsOnMap returns subzone
+                    -- quests too, so the same quest may appear under
+                    -- multiple parent scans.
+                    if qid and qid > 0 and not seenQuestIDs[qid]
                             and C_QuestLog.IsWorldQuest
                             and C_QuestLog.IsWorldQuest(qid)
                             and not (C_QuestLog.IsQuestFlaggedCompleted
@@ -634,11 +632,24 @@ E:RegisterModule(function()
                                             .GetQuestInfoByQuestID(qid)
                                             or title
                                     end
+                                    -- Resolve zone name from the quest's
+                                    -- OWN mapID (its actual location), not
+                                    -- the parent map being scanned. Falls
+                                    -- back to the scanned zone if absent.
+                                    local questMapID = qData.mapID or zoneID
+                                    if not zoneNameCache[questMapID] then
+                                        local mi = C_Map and C_Map.GetMapInfo
+                                                   and C_Map.GetMapInfo(questMapID)
+                                        zoneNameCache[questMapID] =
+                                            (mi and mi.name)
+                                            or ("Zone " .. questMapID)
+                                    end
+                                    seenQuestIDs[qid] = true
                                     table_insert(wqCache, {
                                         questID = qid,
                                         title   = title,
-                                        zone    = zoneName,
-                                        zoneID  = zoneID,
+                                        zone    = zoneNameCache[questMapID],
+                                        zoneID  = questMapID,
                                         amount  = ci.totalRewardAmount or 0,
                                     })
                                     break

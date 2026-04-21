@@ -5,6 +5,9 @@ curse-id: 1519355
 
 enable-nolib-creation: no
 
+changelog-title: Everything Delves
+changelog-file: CHANGELOG.md
+
 ignore:
   - .pkgmeta
   - .github
