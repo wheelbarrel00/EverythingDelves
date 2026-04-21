@@ -1,9 +1,9 @@
-# Midnight 12.0 Season 1 — update to 120005 after Patch 12.0.5 drops (April 21)
-## Interface: 120001
+# Midnight 12.0 Season 1 — updated to 120005 for Patch 12.0.5
+## Interface: 120005
 ## Title: |cFFFF2222Everything Delves|r
 ## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
 ## Author: Built with Claude Opus 4.6
-## Version: 1.0.4
+## Version: 1.0.5
 ## SavedVariables: EverythingDelvesDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0
