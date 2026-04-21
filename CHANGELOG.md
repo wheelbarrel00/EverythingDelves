@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated TOC Interface version to `120005` for WoW patch 12.0.5.
+- Updated release workflow (`.github/workflows/release.yml`): added `GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}` so the packager creates a proper GitHub Release and attaches the zip artifact (`EverythingDelves-vX.Y.Z.zip`) and `release.json`; added `workflow_dispatch` trigger for manual runs.
 
 ## [1.0.4] - 2026-04-20
 
