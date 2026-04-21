@@ -431,28 +431,30 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- BOTTOM BAR: Reset Defaults + Version
     --------------------------------------------------------------------
+    -- Define the confirmation popup once at module init, not on every
+    -- click, to avoid repeatedly rebuilding the table.
+    StaticPopupDialogs["EVERYTHINGDELVES_RESET"] = {
+        text = "Reset all Everything Delves settings to defaults?",
+        button1 = "Yes",
+        button2 = "Cancel",
+        OnAccept = function()
+            E:ResetDB()
+            -- Reload the options tab to reflect defaults
+            if frame:IsShown() then
+                frame:Hide()
+                frame:Show()
+            end
+            print(E.CC.header .. "Everything Delves|r: All settings reset.")
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+
     local resetBtn = E:CreateButton(content, 130, 24, "Reset All Settings")
     resetBtn:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     resetBtn:SetScript("OnClick", function()
-        -- Confirmation via a simple StaticPopup
-        StaticPopupDialogs["EVERYTHINGDELVES_RESET"] = {
-            text = "Reset all Everything Delves settings to defaults?",
-            button1 = "Yes",
-            button2 = "Cancel",
-            OnAccept = function()
-                E:ResetDB()
-                -- Reload the options tab to reflect defaults
-                if frame:IsShown() then
-                    frame:Hide()
-                    frame:Show()
-                end
-                print(E.CC.header .. "Everything Delves|r: All settings reset.")
-            end,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-        }
         StaticPopup_Show("EVERYTHINGDELVES_RESET")
     end)
     resetBtn:SetScript("OnEnter", function(self)

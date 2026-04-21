@@ -208,16 +208,17 @@ local function RefreshBountifulData(force)
     -- Only honour marks from the current weekly reset period
     if E.db and E.db.manualComplete then
         local lastReset = GetLastWeeklyResetTime()
+        -- Sweep: drop every stale entry (any delve, not just ones in
+        -- this week's bountiful list) so the table never grows
+        -- unbounded across seasons.
+        for name, stamp in pairs(E.db.manualComplete) do
+            if type(stamp) ~= "number" or stamp < lastReset then
+                E.db.manualComplete[name] = nil
+            end
+        end
         for _, delve in ipairs(bountifulList) do
-            local stamp = E.db.manualComplete[delve.name]
-            if stamp then
-                -- Legacy boolean values (true) are treated as expired
-                if type(stamp) == "number" and stamp >= lastReset then
-                    delve.completed = true
-                else
-                    -- Stale mark from a previous week — clear it
-                    E.db.manualComplete[delve.name] = nil
-                end
+            if E.db.manualComplete[delve.name] then
+                delve.completed = true
             end
         end
     end

@@ -5,6 +5,18 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-04-20
+
+### Fixed
+
+- Scroll clipping in `TabTierGuide.lua` and `TabShardTracker.lua` — scroll child had hardcoded heights (550px / 950px) that clipped content when all sections were expanded (Midnight faction renown rows and WQ list were unreachable). Raised initial fallback to 1200/1400 and added a dynamic `UpdateContentHeight()` that measures actual content extent and calls `UpdateScrollRange()`. Invoked via `C_Timer.After(0, UpdateContentHeight)` in each tab's `OnShow` so recalculation runs after layout completes.
+
+### Changed
+
+- `TabShardTracker.lua`: replaced per-row closure allocation in the WQ button `OnClick` with a single shared closure set at row creation; the current WQ is stored as `row.wpBtn.wq` so refreshes no longer allocate a closure per row per event.
+- `TabOptions.lua`: moved `StaticPopupDialogs["EVERYTHINGDELVES_RESET"]` table definition out of the Reset button's `OnClick` into a one-time module init, eliminating table rebuilds on every click.
+- `TabCurrentBountiful.lua`: `E.db.manualComplete` now sweeps the entire table against the last weekly reset timestamp instead of only clearing keys for delves in the current rotation, preventing unbounded growth across seasons.
+
 ## [1.0.3] - 2026-04-20
 
 ### Fixed

@@ -218,7 +218,11 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    sc:SetHeight(550)
+    -- Initial height is a safe oversize; UpdateContentHeight() recomputes
+    -- the exact content height after layout (see OnShow below). This
+    -- prevents the faction renown list from being clipped when the
+    -- scroll child's fixed height is smaller than the actual content.
+    sc:SetHeight(1200)
 
     -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
@@ -880,6 +884,20 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- OnShow: refresh all sections when the tab becomes visible
     --------------------------------------------------------------------
+    -- Dynamically recompute scroll child height based on the last
+    -- rendered element. Must run after layout, so we defer one frame
+    -- via C_Timer.After(0).
+    local function UpdateContentHeight()
+        local lastRow = factionRows[#factionRows]
+        if not (lastRow and lastRow.bar) then return end
+        local scTop   = sc:GetTop()
+        local lastBot = lastRow.bar:GetBottom()
+        if scTop and lastBot and scTop > lastBot then
+            sc:SetHeight((scTop - lastBot) + 20)
+        end
+        UpdateScrollRange()
+    end
+
     frame:SetScript("OnShow", function()
         RefreshRecommendation()
         RefreshGreatVault()
@@ -888,6 +906,9 @@ E:RegisterModule(function()
         RefreshBeacon()
         RefreshGildedStash()
         RefreshRenown()
+        -- Recompute content height after frames are laid out so the
+        -- scrollbar matches the actual content extent.
+        C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)

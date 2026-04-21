@@ -90,7 +90,9 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    sc:SetHeight(950)
+    -- Initial oversize; UpdateContentHeight() recomputes after layout so
+    -- the WQ list at the bottom is never clipped regardless of row count.
+    sc:SetHeight(1400)
 
     -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
@@ -528,6 +530,19 @@ E:RegisterModule(function()
         wpBtn:SetScript("OnLeave", function(self)
             local bc = E.Colors.buttonBg
             self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+        end)
+        -- Single shared OnClick closure; reads the current wq from the
+        -- button's .wq field (set on each refresh) so we don't allocate
+        -- a new closure per-row per-refresh.
+        wpBtn:SetScript("OnClick", function(self)
+            local wq = self.wq
+            if wq and C_TaskQuest and C_TaskQuest.GetQuestLocation then
+                local x, y = C_TaskQuest.GetQuestLocation(wq.questID, wq.zoneID)
+                if x and y then
+                    E:SetWaypoint(wq.zoneID, x * 100, y * 100)
+                    E:FlashButtonConfirm(self)
+                end
+            end
         end)
 
         wqRows[i] = {
@@ -1072,18 +1087,9 @@ E:RegisterModule(function()
                     row.zoneFS:SetText(E.CC.body .. wq.zone .. E.CC.close)
                     row.nameFS:SetText(E.CC.purple .. wq.title .. E.CC.close)
                     row.amountFS:SetText(E.CC.gold .. wq.amount .. E.CC.close)
-                    row.wpBtn:SetScript("OnClick", function()
-                        -- Get quest location and set waypoint
-                        if C_TaskQuest and C_TaskQuest.GetQuestLocation then
-                            local x, y = C_TaskQuest.GetQuestLocation(
-                                             wq.questID, wq.zoneID)
-                            if x and y then
-                                E:SetWaypoint(wq.zoneID,
-                                              x * 100, y * 100)
-                                E:FlashButtonConfirm(row.wpBtn)
-                            end
-                        end
-                    end)
+                    -- Attach current wq to the button; shared OnClick
+                    -- closure (set at row creation) reads from self.wq.
+                    row.wpBtn.wq = wq
                     row.zoneFS:Show()
                     row.nameFS:Show()
                     row.amountFS:Show()
@@ -1108,9 +1114,34 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- OnShow: refresh everything when the tab becomes visible
     --------------------------------------------------------------------
+    -- Recompute the scroll child's real content height after layout so
+    -- the scroll range matches the visible extent.
+    local function UpdateContentHeight()
+        -- Find the bottom of the last actually-visible element. The WQ
+        -- rows may be hidden; fall back through candidates until we
+        -- find one whose frame is laid out.
+        local candidates = { wqEmptyFS }
+        for i = #wqRows, 1, -1 do
+            candidates[#candidates + 1] = wqRows[i].wpBtn
+        end
+        local scTop = sc:GetTop()
+        local lowest
+        for _, fr in ipairs(candidates) do
+            if fr and fr:IsShown() then
+                local b = fr:GetBottom()
+                if b and (not lowest or b < lowest) then lowest = b end
+            end
+        end
+        if scTop and lowest and scTop > lowest then
+            sc:SetHeight((scTop - lowest) + 24)
+        end
+        UpdateScrollRange()
+    end
+
     frame:SetScript("OnShow", function()
         EnsureBaseline()
         RefreshAll()
+        C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)
