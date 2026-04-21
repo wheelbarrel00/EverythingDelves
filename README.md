@@ -68,7 +68,7 @@ Your shard economy dashboard. Currency overview with progress bars for next key 
 
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — all 8 tracked with unlock, active, and completed status
-- **Weekly Delve Quests** — "A Call to Delves" completion status
+- **Weekly Delve Quests** — "Midnight: Delves" completion status
 - **World Quest Scanner** — all 6 Midnight zones scanned for shard-rewarding WQs
 - **Low Shard Warning** — configurable threshold alert
 

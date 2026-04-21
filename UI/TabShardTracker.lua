@@ -400,11 +400,11 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- SECTION 3c: Weekly Delve Quests
-    -- Quest 93595 "A Call to Delves" — weekly from Archmage Aethas
-    -- Sunreaver, requires completing 5 Midnight Delves.
+    -- Quest 93909 "Midnight: Delves" — weekly from Archmage Aethas
+    -- Sunreaver, requires completing Midnight Delves.
     --------------------------------------------------------------------
     local WEEKLY_DELVE_QUESTS = {
-        { questID = 93595, title = "A Call to Delves" },
+        { questID = 93909, title = "Midnight: Delves" },
     }
 
     local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
