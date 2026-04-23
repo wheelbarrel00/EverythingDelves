@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-04-22
+
+### Fixed
+
+- **Memory leak / GC churn (root cause):** the Coffer Shard World Quest scanner in `TabShardTracker.lua` had an unbounded retry loop. When a character had no shard-rewarding WQs available (the common case outside of active gameplay), the empty-result retry rescheduled `RefreshAll(true)` via `C_Timer.After(3, ...)` every 3 seconds forever, generating ~300-500 short-lived strings plus `C_TaskQuest`/`C_QuestLog` API table churn on every tick. This produced the characteristic 2.66 MB → 6-7 MB sawtooth pattern players reported. The retry is now capped at one attempt; the budget resets on user-initiated refresh, on tab `OnShow`, and whenever a scan returns >0 quests. Memory now stays flat in steady state.
+
 ## [1.0.6] - 2026-04-21
 
 ### Fixed

@@ -1,5 +1,5 @@
-------------------------------------------------------------------------
--- UI/TabDelveLocations.lua — Tab 1: Delve Locations
+﻿------------------------------------------------------------------------
+-- UI/TabDelveLocations.lua â€” Tab 1: Delve Locations
 -- Complete directory of all Midnight delves with filtering, sorting,
 -- waypoints, and TomTom integration.
 ------------------------------------------------------------------------
@@ -78,7 +78,7 @@ local function UpdateRows(scrollFrame)
             local delve = filteredData[dataIndex]
             row.delve = delve
 
-            -- Delve name — gold star prefix if bountiful this week
+            -- Delve name â€” gold star prefix if bountiful this week
             local isBountiful = false
             if E.currentBountifulNames then
                 -- Try exact name, then normalized name, then POI ID fallback
@@ -225,7 +225,7 @@ local function CreateZoneDropdown(parent)
     menu:SetSize(170, totalHeight)
     menu:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
 
-    -- Fullscreen invisible overlay — click-outside-to-close behavior
+    -- Fullscreen invisible overlay â€” click-outside-to-close behavior
     local overlay = CreateFrame("Button", nil, UIParent)
     overlay:SetAllPoints(UIParent)
     overlay:SetFrameStrata("TOOLTIP")
@@ -387,7 +387,7 @@ local function CreateColumnHeaders(parent, yOffset)
 end
 
 ------------------------------------------------------------------------
--- Create a single row frame (recycled — created once, reused on scroll)
+-- Create a single row frame (recycled â€” created once, reused on scroll)
 ------------------------------------------------------------------------
 local function CreateRow(parent, index)
     local row = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -543,7 +543,7 @@ local function CreateScrollBar(parent, listFrame)
 end
 
 ------------------------------------------------------------------------
--- MODULE INIT — called via RegisterModule after the main frame exists
+-- MODULE INIT â€” called via RegisterModule after the main frame exists
 ------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")

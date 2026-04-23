@@ -1,5 +1,5 @@
-------------------------------------------------------------------------
--- UI/TabTierGuide.lua — Tab 3: Tier Guide
+﻿------------------------------------------------------------------------
+-- UI/TabTierGuide.lua â€” Tab 3: Tier Guide
 -- Tier iLvl reference table, player recommendation, Seasonal Nemesis,
 -- Trovehunter's Bounty, and Beacon of Hope sections.
 --
@@ -76,7 +76,7 @@ E:RegisterModule(function()
         fs:SetText(info.cc .. info.text .. E.CC.close)
     end
 
-    -- Column data cells — one per tier (1-11)
+    -- Column data cells â€” one per tier (1-11)
     local tierCells = {}  -- [tier] = { tierFS, gearFS, bountFS, vaultFS, bgTexture }
 
     for _, td in ipairs(E.TierData) do
@@ -181,7 +181,7 @@ E:RegisterModule(function()
         recLabel:SetText(
             E.CC.muted .. "Recommended Tier: " .. E.CC.close
             .. E:GetTierCC(recTier) .. "T" .. recTier .. E.CC.close
-            .. E.CC.body .. " — running this tier gives you the best gear upgrade chance" .. E.CC.close
+            .. E.CC.body .. " â€” running this tier gives you the best gear upgrade chance" .. E.CC.close
         )
 
         -- Highlight only the recommended tier column
@@ -282,7 +282,7 @@ E:RegisterModule(function()
     gvFallbackFS:SetFont(gvFallbackFS:GetFont(), 10)
     gvFallbackFS:Hide()
 
-    -- Activity type → display config
+    -- Activity type â†’ display config
     -- Enum.WeeklyRewardChestThresholdType: World = 1, Activities = 2, RankedPvP = 3
     local GV_ROWS = {
         { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Delves / Dungeons", max = 8 },
@@ -320,7 +320,7 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- SEASONAL NEMESIS
-    -- Quest 93525 "Nulling Nullaeus" — boss Nullaeus in Voidstorm
+    -- Quest 93525 "Nulling Nullaeus" â€” boss Nullaeus in Voidstorm
     -- at Torment's Rise (61.2, 71.6). Percentage-based coordinates.
     --------------------------------------------------------------------
 
@@ -349,7 +349,7 @@ E:RegisterModule(function()
     nemNameFS:SetText(
         E.CC.gold .. NEMESIS_NAME .. E.CC.close
         .. E.CC.muted .. "  (" .. NEMESIS_ZONE
-        .. " — " .. NEMESIS_LOC .. ")" .. E.CC.close
+        .. " â€” " .. NEMESIS_LOC .. ")" .. E.CC.close
     )
 
     local nemStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -408,7 +408,7 @@ E:RegisterModule(function()
 
         if not ok or not activities or #activities == 0 then
             gvFallbackFS:SetText(
-                E.CC.muted .. "Great Vault data not available yet — enter a dungeon, raid or delve first" .. E.CC.close)
+                E.CC.muted .. "Great Vault data not available yet â€” enter a dungeon, raid or delve first" .. E.CC.close)
             gvFallbackFS:Show()
             gvNoteFS:Hide()
             for _, bar in pairs(gvBars) do bar:Hide() end
@@ -467,19 +467,19 @@ E:RegisterModule(function()
             )
         elseif inProgress then
             nemStatusFS:SetText(
-                E.CC.yellow .. "\"Nulling Nullaeus\" in progress — check your quest log" .. E.CC.close
+                E.CC.yellow .. "\"Nulling Nullaeus\" in progress â€” check your quest log" .. E.CC.close
             )
         else
             nemStatusFS:SetText(
                 E.CC.red .. "Quest available" .. E.CC.close
-                .. E.CC.muted .. " — pick up at Delvers HQ in Silvermoon"
+                .. E.CC.muted .. " â€” pick up at Delvers HQ in Silvermoon"
                 .. " (if eligible)" .. E.CC.close
             )
         end
     end
 
     --------------------------------------------------------------------
-    -- VALEERA — COMPANION BUTTON
+    -- VALEERA â€” COMPANION BUTTON
     -- Opens the Delve Companion UI (Blizzard_DelvesCompanionConfiguration).
     -- The companion config is a load-on-demand Blizzard addon that provides
     -- DelvesCompanionConfigurationFrame once loaded.
@@ -496,13 +496,13 @@ E:RegisterModule(function()
             ToggleFrame(DelvesCompanionConfigurationFrame)
         else
             print(E.CC.header .. "Everything Delves|r: "
-                .. "Companion UI not available — visit Valeera at Delvers HQ.")
+                .. "Companion UI not available â€” visit Valeera at Delvers HQ.")
         end
     end)
     valeeraBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Valeera — Companion",
+        E:ShowTooltip(self, "Valeera â€” Companion",
                       "Open Valeera's companion menu to manage",
                       "her role and curios.")
     end)
@@ -581,7 +581,7 @@ E:RegisterModule(function()
                 )
             else
                 troveStatusFS:SetText(
-                    E.CC.yellow .. "Bounty looted — not yet used this week."
+                    E.CC.yellow .. "Bounty looted â€” not yet used this week."
                     .. E.CC.close
                 )
             end
@@ -595,7 +595,7 @@ E:RegisterModule(function()
         -- Secondary detail line
         if inBag > 0 and not auraActive then
             troveDetailFS:SetText(
-                E.CC.yellow .. "You have a Trovehunter's Bounty in your bag — "
+                E.CC.yellow .. "You have a Trovehunter's Bounty in your bag â€” "
                 .. "don't forget to use it!" .. E.CC.close
             )
             troveDetailFS:Show()
@@ -659,7 +659,7 @@ E:RegisterModule(function()
             beaconStatusFS:SetText(
                 E.CC.green .. "[Done] Beacon of Hope in inventory ("
                 .. inBags .. ")" .. E.CC.close
-                .. E.CC.muted .. " — go get that Nemesis!" .. E.CC.close
+                .. E.CC.muted .. " â€” go get that Nemesis!" .. E.CC.close
             )
         else
             beaconStatusFS:SetText(
@@ -786,7 +786,7 @@ E:RegisterModule(function()
         else
             gildedStatusFS:SetText(
                 E.CC.red .. "0 / " .. GILDED_MAX
-                .. " — no T11 runs yet this week" .. E.CC.close
+                .. " â€” no T11 runs yet this week" .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.muted

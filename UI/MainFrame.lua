@@ -1,4 +1,4 @@
-------------------------------------------------------------------------
+﻿------------------------------------------------------------------------
 -- UI/MainFrame.lua
 -- Main window, tab buttons, tab switching, minimap button
 ------------------------------------------------------------------------
@@ -70,7 +70,7 @@ function E:InitMainFrame()
     -- automatically hide when the player presses Escape.
     table.insert(UISpecialFrames, "EverythingDelvesFrame")
 
-    -- Hidden by default — player toggles with /ed or minimap button
+    -- Hidden by default â€” player toggles with /ed or minimap button
     frame:Hide()
 
     -- Build child components
@@ -112,7 +112,7 @@ function E:CreateTitleBar(parent)
 end
 
 ------------------------------------------------------------------------
--- CLOSE BUTTON (custom flat "X" — no Blizzard chrome)
+-- CLOSE BUTTON (custom flat "X" â€” no Blizzard chrome)
 ------------------------------------------------------------------------
 function E:CreateCloseButton(parent)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -276,7 +276,7 @@ function E:SelectTab(index)
 end
 
 ------------------------------------------------------------------------
--- MINIMAP BUTTON — LibDBIcon (preferred) or manual fallback
+-- MINIMAP BUTTON â€” LibDBIcon (preferred) or manual fallback
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

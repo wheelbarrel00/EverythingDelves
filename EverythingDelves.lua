@@ -188,32 +188,47 @@ local function FireCallbacks(eventName)
     end
 end
 
-E:RegisterEvent("CURRENCY_DISPLAY_UPDATE", function()
-    FireCallbacks("CurrencyUpdate")
-end)
-
-E:RegisterEvent("QUEST_LOG_UPDATE", function()
-    FireCallbacks("QuestLogUpdate")
-end)
-
-E:RegisterEvent("AREA_POIS_UPDATED", function()
-    FireCallbacks("AreaPoisUpdated")
-end)
-
-E:RegisterEvent("BAG_UPDATE_DELAYED", function()
-    FireCallbacks("BagUpdate")
-end)
-
-E:RegisterEvent("UNIT_INVENTORY_CHANGED", function(self, _, unit)
-    if unit == "player" then
-        FireCallbacks("InventoryChanged")
+-- Debouncer: Blizzard events like QUEST_LOG_UPDATE and
+-- CURRENCY_DISPLAY_UPDATE can fire dozens of times per second
+-- (e.g. during zone changes or quest turn-ins). Without coalescing,
+-- each event triggers a full tab refresh — tens of SetText calls and
+-- many short-lived intermediate strings per burst. We batch via a
+-- 0.25s trailing-edge timer: imperceptible to the player, but reduces
+-- refresh work (and GC pressure) by orders of magnitude during bursts.
+--
+-- The `tick` closure is persistent (one per event), so no per-event
+-- closure allocation in steady state.
+local function Debounce(delay, eventName)
+    local pending = false
+    local function tick()
+        pending = false
+        FireCallbacks(eventName)
     end
+    return function()
+        if pending then return end
+        pending = true
+        C_Timer.After(delay, tick)
+    end
+end
+
+local fireCurrency       = Debounce(0.25, "CurrencyUpdate")
+local fireQuestLog       = Debounce(0.25, "QuestLogUpdate")
+local fireAreaPois       = Debounce(0.25, "AreaPoisUpdated")
+local fireBagUpdate      = Debounce(0.25, "BagUpdate")
+local fireInventory      = Debounce(0.25, "InventoryChanged")
+local fireWorldQuestDone = Debounce(0.25, "WorldQuestCompleted")
+
+E:RegisterEvent("CURRENCY_DISPLAY_UPDATE", fireCurrency)
+E:RegisterEvent("QUEST_LOG_UPDATE",        fireQuestLog)
+E:RegisterEvent("AREA_POIS_UPDATED",       fireAreaPois)
+E:RegisterEvent("BAG_UPDATE_DELAYED",      fireBagUpdate)
+
+E:RegisterEvent("UNIT_INVENTORY_CHANGED", function(_, _, unit)
+    if unit == "player" then fireInventory() end
 end)
 
 -- WORLD_QUEST_COMPLETED fires when a world quest objective is turned in.
 -- Wrap in pcall in case the event is renamed in a future patch.
 pcall(function()
-    E:RegisterEvent("WORLD_QUEST_COMPLETED", function()
-        FireCallbacks("WorldQuestCompleted")
-    end)
+    E:RegisterEvent("WORLD_QUEST_COMPLETED", fireWorldQuestDone)
 end)

@@ -1,5 +1,5 @@
-------------------------------------------------------------------------
--- UI/TabCurrentBountiful.lua — Tab 2: Current Bountiful Delves
+﻿------------------------------------------------------------------------
+-- UI/TabCurrentBountiful.lua â€” Tab 2: Current Bountiful Delves
 -- Tracks the player's live bountiful delve status for the week:
 -- currency stats, weekly reset timer, quick-action buttons, and a
 -- scrollable list of this week's bountiful delves.
@@ -21,20 +21,43 @@ local strtrim = strtrim
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
 local VISIBLE_ROWS   = 10
 local rows           = {}
-local bountifulList  = {}   -- current week's bountiful delves
+local bountifulList  = {}   -- current week's bountiful delves (reused)
 -- Bountiful count is derived dynamically from #bountifulList (no hardcoded constant)
+
+-- Entry pool: recycled delve entry tables to avoid allocating 6-8
+-- fresh tables every time the bountiful list is rebuilt (on OnShow,
+-- area POI updates, and refresh button clicks).
+local bountifulEntryPool = {}
+
+local function AcquireBountifulEntry()
+    local n = #bountifulEntryPool
+    if n == 0 then return {} end
+    local e = bountifulEntryPool[n]
+    bountifulEntryPool[n] = nil
+    return e
+end
+
+local function ReleaseBountifulList(list)
+    for i = #list, 1, -1 do
+        local e = list[i]
+        list[i] = nil
+        wipe(e)
+        bountifulEntryPool[#bountifulEntryPool + 1] = e
+    end
+end
 
 ------------------------------------------------------------------------
 -- Bountiful delve live detection
 -- Uses C_AreaPoiInfo.GetAreaPOIInfo() to check each known delve's POI.
 -- If atlasName == "delves-bountiful", the delve is bountiful this week.
 -- Also detects "overcharged" bountiful via iconWidgetSet widget count.
--- Falls back to an empty list if the API is unavailable.
+-- Populates `out` in place (reusing entries from the pool) so this
+-- function allocates nothing on the steady path.
 ------------------------------------------------------------------------
-local function GetBountifulDelvesLive()
-    local result = {}
+local function PopulateBountifulDelvesLive(out)
+    ReleaseBountifulList(out)
     if not (C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then
-        return result
+        return
     end
 
     for _, delve in ipairs(E.DelveData) do
@@ -72,23 +95,21 @@ local function GetBountifulDelvesLive()
                     end
                 end
 
-                table_insert(result, {
-                    name         = poi.name or delve.name,
-                    zone         = delve.zone,
-                    x            = delve.x,
-                    y            = delve.y,
-                    mapID        = delve.mapID,
-                    poiID        = delve.poiID,
-                    normalPoiID  = delve.normalPoiID,
-                    storyVariant = storyVariant,
-                    overcharged  = isOvercharged,
-                    completed    = false,
-                })
+                local entry        = AcquireBountifulEntry()
+                entry.name         = poi.name or delve.name
+                entry.zone         = delve.zone
+                entry.x            = delve.x
+                entry.y            = delve.y
+                entry.mapID        = delve.mapID
+                entry.poiID        = delve.poiID
+                entry.normalPoiID  = delve.normalPoiID
+                entry.storyVariant = storyVariant
+                entry.overcharged  = isOvercharged
+                entry.completed    = false
+                table_insert(out, entry)
             end
         end
     end
-
-    return result
 end
 
 ------------------------------------------------------------------------
@@ -201,8 +222,9 @@ local function RefreshBountifulData(force)
     if not force and (now - lastBountifulRefresh < 2) then return end
     lastBountifulRefresh = now
 
-    -- Live detection via C_AreaPoiInfo
-    bountifulList = GetBountifulDelvesLive()
+    -- Live detection via C_AreaPoiInfo (populates bountifulList in-place
+    -- using the entry pool â€” no table churn on the hot path).
+    PopulateBountifulDelvesLive(bountifulList)
 
     -- Merge manual completions from SavedVariables
     -- Only honour marks from the current weekly reset period
@@ -240,7 +262,11 @@ local function RefreshBountifulData(force)
 
     -- Bountiful rotation change alert (F6)
     if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
-        local currentIDs = {}
+        -- Reusable scratch buffer â€” avoids allocating a fresh table
+        -- every refresh just to detect a once-per-week rotation change.
+        if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
+        local currentIDs = E._bountifulIDBuf
+        wipe(currentIDs)
         for _, delve in ipairs(bountifulList) do
             table_insert(currentIDs, delve.poiID)
         end
@@ -260,7 +286,13 @@ local function RefreshBountifulData(force)
         if changed and #storedIDs > 0 then
             print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available this week! Open Everything Delves to see them.")
         end
-        E.db.lastKnownBountifulIDs = currentIDs
+        -- Mutate the SavedVariables table in place instead of replacing
+        -- the reference each refresh (keeps the DB table stable).
+        if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
+        wipe(E.db.lastKnownBountifulIDs)
+        for i = 1, #currentIDs do
+            E.db.lastKnownBountifulIDs[i] = currentIDs[i]
+        end
     end
 
     SortBountifulList()
@@ -362,7 +394,7 @@ local function CreateRow(parent, index)
     row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
     row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
     row:EnableMouse(true)
-    -- RegisterForClicks on a non-Button frame isn't needed — we use
+    -- RegisterForClicks on a non-Button frame isn't needed â€” we use
     -- OnMouseUp to detect right-clicks for manual-complete.
 
     -- Delve name (top line)
@@ -574,7 +606,7 @@ E:RegisterModule(function()
         )
         statValues.journey:SetText(
             E.CC.gold .. "Stage " .. stage .. E.CC.close
-            .. E.CC.muted .. " — " .. cur .. " / " .. stageMax .. E.CC.close
+            .. E.CC.muted .. " â€” " .. cur .. " / " .. stageMax .. E.CC.close
         )
         statValues.resetTimer:SetText(E.CC.gold .. GetResetTimeString() .. E.CC.close)
         statValues.sessionCount:SetText(E.CC.gold .. sessionDone .. E.CC.close)
@@ -593,13 +625,13 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local ACTIONS_Y = STAT_Y - 84
 
-    -- [Great Vault] — ToggleGreatVaultUI() opens the Great Vault panel.
+    -- [Great Vault] â€” ToggleGreatVaultUI() opens the Great Vault panel.
     -- This is a protected function that Blizzard exposes specifically for
     -- addon use; it is NOT tainted.
     local gvBtn = E:CreateButton(frame, 90, 24, "Great Vault")
     gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
     gvBtn:SetScript("OnClick", function()
-        -- WeeklyRewardsFrame confirmed in 12.0 — same pattern as TWW.
+        -- WeeklyRewardsFrame confirmed in 12.0 â€” same pattern as TWW.
         if WeeklyRewardsFrame then
             if WeeklyRewardsFrame:IsShown() then
                 HideUIPanel(WeeklyRewardsFrame)
@@ -625,7 +657,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- [Start LFG] — Opens the Group Finder directly to the Delves
+    -- [Start LFG] â€” Opens the Group Finder directly to the Delves
     -- category (121) and clicks "Start Group".
     local lfgStartBtn = E:CreateButton(frame, 90, 24, "Start LFG")
     lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
@@ -759,7 +791,7 @@ E:RegisterModule(function()
         fs:SetText(E.CC.header .. col.label .. E.CC.close)
     end
 
-    -- List frame (static — no scroll needed for live bountiful list)
+    -- List frame (static â€” no scroll needed for live bountiful list)
     local listFrame = CreateFrame("Frame", nil, frame)
     listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4, COL_Y - 16)
     listFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)

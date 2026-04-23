@@ -1,5 +1,5 @@
-------------------------------------------------------------------------
--- UI/TabShardTracker.lua — Tab 4: Shard Tracker
+﻿------------------------------------------------------------------------
+-- UI/TabShardTracker.lua â€” Tab 4: Shard Tracker
 -- Tracks Coffer Key Shards, Bountiful Keys, weekly shard income from
 -- every known source, and session-level earnings.
 --
@@ -46,7 +46,7 @@ local function GetCurrencyFull(currencyID)
     return 0, 0, 0
 end
 
---- Format a number with commas (e.g. 1234 → "1,234")
+--- Format a number with commas (e.g. 1234 â†’ "1,234")
 local function FormatNumber(n)
     if n < 1000 then return tostring(n) end
     local s = tostring(n)
@@ -60,16 +60,21 @@ local function FormatNumber(n)
 end
 
 ------------------------------------------------------------------------
--- Cached currency values — updated by RefreshAll on currency events,
+-- Cached currency values â€” updated by RefreshAll on currency events,
 -- read by RefreshSessionTimer to avoid per-second API table churn.
 local cachedShards = 0
 local cachedKeys   = 0
 
--- Cached quest line results — these don't change mid-session.
+-- Cached quest line results â€” these don't change mid-session.
 local questLineCache = {}
 
--- Cached undercoins icon — resolved once, never changes.
+-- Cached undercoins icon â€” resolved once, never changes.
 local cachedUcIcon = nil
+
+-- Reusable scratch buffers for the Special Assignment alert detection.
+-- These would otherwise be allocated fresh on every RefreshAll.
+local saActiveBuf  = nil
+local saLookupBuf  = nil
 
 -- MODULE INIT
 ------------------------------------------------------------------------
@@ -312,7 +317,7 @@ E:RegisterModule(function()
     local footnoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     footnoteFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 2)
     footnoteFS:SetFont(footnoteFS:GetFont(), 9)
-    footnoteFS:SetText(E.CC.muted .. "* Value unconfirmed — may differ in game" .. E.CC.close)
+    footnoteFS:SetText(E.CC.muted .. "* Value unconfirmed â€” may differ in game" .. E.CC.close)
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
@@ -400,7 +405,7 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- SECTION 3c: Weekly Delve Quests
-    -- Quest 93909 "Midnight: Delves" — weekly from Archmage Aethas
+    -- Quest 93909 "Midnight: Delves" â€” weekly from Archmage Aethas
     -- Sunreaver, requires completing Midnight Delves.
     --------------------------------------------------------------------
     local WEEKLY_DELVE_QUESTS = {
@@ -481,7 +486,7 @@ E:RegisterModule(function()
     wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -2)
     wqNoteFS:SetFont(wqNoteFS:GetFont(), 9)
     wqNoteFS:SetText(
-        E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate — "
+        E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate â€” "
         .. "click Refresh to update." .. E.CC.close
     )
 
@@ -575,9 +580,12 @@ E:RegisterModule(function()
     --- Primes map data before querying. Auto-retries once after 3s on
     --- empty results (map data may not be loaded for unvisited zones).
     local wqCache      = {}    -- reusable results table
+    local wqEntryPool  = {}    -- recycled WQ entry tables
     local wqCacheTime  = 0     -- epoch when cache was last populated
     local WQ_CACHE_TTL = 60    -- seconds before cache is considered stale
     local wqRetryPending = false
+    local wqRetriesUsed  = 0   -- caps the empty-result retry loop
+    local WQ_MAX_RETRIES = 1   -- one retry, then stop trying forever
     local mapsPrimed   = {}    -- [mapID] = true after first prime this session
 
     -- Cache zone names once (resolved lazily on first scan)
@@ -602,7 +610,14 @@ E:RegisterModule(function()
             return wqCache
         end
 
-        wipe(wqCache)
+        -- Recycle existing entries into the pool instead of throwing
+        -- them to the GC, then empty the cache.
+        for i = #wqCache, 1, -1 do
+            local e = wqCache[i]
+            wqCache[i] = nil
+            wipe(e)
+            wqEntryPool[#wqEntryPool + 1] = e
+        end
         wipe(seenQuestIDs)
         if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap
                 and C_QuestLog and C_QuestLog.GetQuestRewardCurrencies) then
@@ -660,13 +675,20 @@ E:RegisterModule(function()
                                             or ("Zone " .. questMapID)
                                     end
                                     seenQuestIDs[qid] = true
-                                    table_insert(wqCache, {
-                                        questID = qid,
-                                        title   = title,
-                                        zone    = zoneNameCache[questMapID],
-                                        zoneID  = questMapID,
-                                        amount  = ci.totalRewardAmount or 0,
-                                    })
+                                    local n = #wqEntryPool
+                                    local entry
+                                    if n > 0 then
+                                        entry = wqEntryPool[n]
+                                        wqEntryPool[n] = nil
+                                    else
+                                        entry = {}
+                                    end
+                                    entry.questID = qid
+                                    entry.title   = title
+                                    entry.zone    = zoneNameCache[questMapID]
+                                    entry.zoneID  = questMapID
+                                    entry.amount  = ci.totalRewardAmount or 0
+                                    table_insert(wqCache, entry)
                                     break
                                 end
                             end
@@ -679,9 +701,16 @@ E:RegisterModule(function()
         table_sort(wqCache, wqSortFunc)
         wqCacheTime = time()
 
-        -- If scan returned 0 results, schedule one retry after 3s
-        if #wqCache == 0 and not wqRetryPending then
+        -- If scan returned 0 results, schedule ONE retry after 3s.
+        -- Without the retry cap, an empty result would reschedule
+        -- itself forever, calling RefreshAll every 3 seconds and
+        -- generating massive GC churn for characters with no
+        -- shard-rewarding WQs available.
+        if #wqCache == 0
+                and not wqRetryPending
+                and wqRetriesUsed < WQ_MAX_RETRIES then
             wqRetryPending = true
+            wqRetriesUsed  = wqRetriesUsed + 1
             C_Timer.After(3, function()
                 wqRetryPending = false
                 wqCacheTime = 0  -- invalidate cache
@@ -689,13 +718,17 @@ E:RegisterModule(function()
                     RefreshAll(true)
                 end
             end)
+        elseif #wqCache > 0 then
+            -- Reset the retry budget once we successfully see WQs;
+            -- next time the cache empties, we'll get one retry again.
+            wqRetriesUsed = 0
         end
 
         return wqCache
     end
 
     --------------------------------------------------------------------
-    -- Session baseline — snapshot currencies at first refresh so we
+    -- Session baseline â€” snapshot currencies at first refresh so we
     -- can compute session deltas.
     --------------------------------------------------------------------
     local sessionBaseline = nil  -- { shards = N, keys = N, time = epoch }
@@ -764,7 +797,7 @@ E:RegisterModule(function()
     end
 
     -- Full refresh: updates all sections. Called on OnShow, events,
-    -- and manual Refresh button click — NOT on a timer.
+    -- and manual Refresh button click â€” NOT on a timer.
     -- forceWQRescan: if true, bypasses the WQ scan cache.
     RefreshAll = function(forceWQRescan)
 
@@ -806,7 +839,7 @@ E:RegisterModule(function()
         nextKeyBar:SetProgress(partial, E.SHARDS_PER_KEY)
         local remaining = E.SHARDS_PER_KEY - partial
         nextKeyNote:SetText(
-            E.CC.muted .. "Progress toward next key — "
+            E.CC.muted .. "Progress toward next key â€” "
             .. E.CC.close .. E.CC.gold .. remaining
             .. E.CC.close .. E.CC.muted .. " shards remaining"
             .. E.CC.close
@@ -816,7 +849,7 @@ E:RegisterModule(function()
         if weeklyCap > 0 then
             weeklyCapBar:SetProgress(weeklyEarned, weeklyCap)
             weeklyCapNote:SetText(
-                E.CC.muted .. "Weekly shard cap — "
+                E.CC.muted .. "Weekly shard cap â€” "
                 .. E.CC.close .. E.CC.gold .. weeklyRemaining
                 .. E.CC.close .. E.CC.muted .. " shards remaining this week"
                 .. E.CC.close
@@ -871,10 +904,10 @@ E:RegisterModule(function()
                     weeklyTotal = weeklyTotal + maxShards
                 end
             else
-                row.capFS:SetText(E.CC.muted .. "—" .. E.CC.close)
+                row.capFS:SetText(E.CC.muted .. "â€”" .. E.CC.close)
             end
 
-            -- Status — live tracking for sources with questLineID or questIDs
+            -- Status â€” live tracking for sources with questLineID or questIDs
             if src.trackable then
                 local done, total = 0, 0
 
@@ -946,7 +979,7 @@ E:RegisterModule(function()
             if not unlocked then
                 row.fs:SetText(
                     E.CC.red .. "  SA: " .. row.title
-                    .. " — Locked" .. E.CC.close
+                    .. " â€” Locked" .. E.CC.close
                 )
             else
                 local done = false
@@ -967,7 +1000,7 @@ E:RegisterModule(function()
                     saActive = saActive + 1
                     row.fs:SetText(
                         E.CC.green .. "  > SA: " .. row.title
-                        .. " — active" .. E.CC.close
+                        .. " â€” active" .. E.CC.close
                     )
                 else
                     row.fs:SetText(
@@ -981,7 +1014,7 @@ E:RegisterModule(function()
             E.CC.gold .. saCompleted .. E.CC.close
             .. E.CC.muted .. " / " .. SA_WEEKLY_MAX .. " completed"
             .. (saActive > 0
-                and (" — " .. E.CC.green .. saActive
+                and (" â€” " .. E.CC.green .. saActive
                      .. " active" .. E.CC.close)
                 or "")
             .. E.CC.close
@@ -989,25 +1022,31 @@ E:RegisterModule(function()
 
         -- Special Assignment alert (F7)
         if E.db and E.db.alertSpecialAssignment then
-            local currentActiveSAs = {}
+            -- Reusable scratch tables â€” avoids allocating two fresh
+            -- tables per RefreshAll just to detect the rare transition
+            -- from "no SA active" â†’ "SA active".
+            if not saActiveBuf  then saActiveBuf  = {} end
+            if not saLookupBuf then saLookupBuf = {} end
+            wipe(saActiveBuf)
+            wipe(saLookupBuf)
+
             for _, row in ipairs(saRows) do
                 local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
                              and C_QuestLog.IsQuestFlaggedCompleted(row.questID)
                 local active = (not done) and C_QuestLog and C_QuestLog.IsOnQuest
                                and C_QuestLog.IsOnQuest(row.questID)
                 if active then
-                    table_insert(currentActiveSAs, row.questID)
+                    table_insert(saActiveBuf, row.questID)
                 end
             end
-            table_sort(currentActiveSAs)
+            table_sort(saActiveBuf)
 
             local storedSAs = E.db.lastKnownActiveSAs or {}
-            local storedLookup = {}
-            for _, id in ipairs(storedSAs) do storedLookup[id] = true end
+            for _, id in ipairs(storedSAs) do saLookupBuf[id] = true end
 
             local hasNew = false
-            for _, id in ipairs(currentActiveSAs) do
-                if not storedLookup[id] then
+            for _, id in ipairs(saActiveBuf) do
+                if not saLookupBuf[id] then
                     hasNew = true
                     break
                 end
@@ -1016,7 +1055,13 @@ E:RegisterModule(function()
             if hasNew then
                 print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
             end
-            E.db.lastKnownActiveSAs = currentActiveSAs
+            -- Mutate the DB table in place so we don't replace the
+            -- reference (and create garbage) every refresh.
+            if not E.db.lastKnownActiveSAs then E.db.lastKnownActiveSAs = {} end
+            wipe(E.db.lastKnownActiveSAs)
+            for i = 1, #saActiveBuf do
+                E.db.lastKnownActiveSAs[i] = saActiveBuf[i]
+            end
         end
 
         ----------------------------------------------------------------
@@ -1030,12 +1075,12 @@ E:RegisterModule(function()
             if done then
                 row.fs:SetText(
                     "|cFF33FF33" .. "  [Done] " .. row.title
-                    .. " — completed" .. E.CC.close
+                    .. " â€” completed" .. E.CC.close
                 )
             else
                 row.fs:SetText(
                     E.CC.green .. "  - " .. row.title
-                    .. " — not yet done" .. E.CC.close
+                    .. " â€” not yet done" .. E.CC.close
                 )
             end
         end
@@ -1106,7 +1151,8 @@ E:RegisterModule(function()
 
     -- Wire up Refresh button now that RefreshAll is defined
     wqRefreshBtn:SetScript("OnClick", function()
-        wqCacheTime = 0  -- invalidate cache
+        wqCacheTime   = 0   -- invalidate cache
+        wqRetriesUsed = 0   -- give the retry budget back on user request
         RefreshAll(true)
         E:FlashButtonConfirm(wqRefreshBtn)
     end)
@@ -1140,6 +1186,7 @@ E:RegisterModule(function()
 
     frame:SetScript("OnShow", function()
         EnsureBaseline()
+        wqRetriesUsed = 0   -- fresh retry budget each time tab is opened
         RefreshAll()
         C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
