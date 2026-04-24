@@ -2,8 +2,8 @@
 ## Interface: 120005
 ## Title: Everything Delves
 ## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
-## Author: Built with Claude Opus 4.6
-## Version: 1.0.7
+## Author: Wheelbarrel00
+## Version: 1.1.0
 ## SavedVariables: EverythingDelvesDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0
@@ -21,4 +21,5 @@ UI\TabDelveLocations.lua
 UI\TabCurrentBountiful.lua
 UI\TabTierGuide.lua
 UI\TabShardTracker.lua
+UI\TabDelveHistory.lua
 UI\TabOptions.lua

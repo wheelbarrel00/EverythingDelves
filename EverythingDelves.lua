@@ -232,3 +232,377 @@ end)
 pcall(function()
     E:RegisterEvent("WORLD_QUEST_COMPLETED", fireWorldQuestDone)
 end)
+
+------------------------------------------------------------------------
+-- DELVE HISTORY TRACKER
+-- Detects completed Midnight delves (SCENARIO_COMPLETED) and appends
+-- a record to EverythingDelvesDB.delveHistory.
+--
+-- Uses its own CreateFrame so it doesn't conflict with the single-
+-- handler-per-event dispatcher above.
+--
+-- Memory: single persistent `runState` table wiped in-place on entry.
+-- Saved recentRuns capped at 20 per delve; lifetime = fixed numbers.
+------------------------------------------------------------------------
+
+local COFFER_KEY_CURRENCY = 2915  -- Restored Coffer Key
+local MAX_RECENT_RUNS     = 20
+
+-- Single reusable scratch table for the active run — never replaced.
+E.delveRunState = {
+    inDelve        = false,
+    delveName      = nil,
+    delveKind      = nil,   -- "regular" | "nemesis"
+    startTime      = 0,
+    deaths         = 0,
+    startKeyCount  = 0,
+    tier           = 0,     -- captured at entry via C_DelvesUI
+}
+
+local runState = E.delveRunState
+
+--- Safely read the quantity of a currency.
+local function GetCurrencyQty(id)
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(id)
+        if info then return info.quantity or 0 end
+    end
+    return 0
+end
+
+--- Auto-detect the current delve tier (1-11) or return nil if unknown.
+--- The tier is not exposed through any reliable Blizzard API at the
+--- moments we care about, so we try three strategies in order:
+---   1. Parse a number out of GetInstanceInfo()'s difficultyName.
+---   2. Parse a number out of C_Scenario.GetInfo()/GetStepInfo() names.
+---   3. Scrape the ObjectiveTrackerFrame UI for "Tier N" text or the
+---      standalone number immediately after the "Delves" header.
+local function AutoDetectDelveTier()
+    -- Method 1: difficulty name
+    local _, _, _, difficultyName = GetInstanceInfo()
+    if difficultyName and difficultyName ~= "" then
+        local m = difficultyName:match("(%d+)")
+        local n = m and tonumber(m)
+        if n and n >= 1 and n <= 11 then return n end
+    end
+
+    -- Method 2: scenario / step name
+    local m2
+    pcall(function()
+        if C_Scenario and C_Scenario.GetInfo then
+            local scenarioName = C_Scenario.GetInfo() or ""
+            local m = scenarioName:match("(%d+)")
+            local n = m and tonumber(m)
+            if n and n >= 1 and n <= 11 then m2 = n; return end
+        end
+        if C_Scenario and C_Scenario.GetStepInfo then
+            local stepName = C_Scenario.GetStepInfo()
+            if stepName and stepName ~= "" then
+                local m = stepName:match("(%d+)")
+                local n = m and tonumber(m)
+                if n and n >= 1 and n <= 11 then m2 = n; return end
+            end
+        end
+    end)
+    if m2 then return m2 end
+
+    -- Method 3: scrape the ObjectiveTrackerFrame for tier text.
+    local tracker = _G["ObjectiveTrackerFrame"] or _G["ScenarioObjectiveTracker"]
+    if tracker then
+        local foundDelveHeader = false
+        local foundTier
+        local zoneName = GetRealZoneText() or ""
+
+        local function SearchForTier(frame)
+            if foundTier then return end
+            if not frame or frame:IsForbidden() then return end
+            for _, r in ipairs({ frame:GetRegions() }) do
+                if r:GetObjectType() == "FontString" and r:IsShown() then
+                    local txt = r:GetText()
+                    if txt and txt ~= "" then
+                        local clean = txt
+                            :gsub("|c%x%x%x%x%x%x%x%x", "")
+                            :gsub("|r", "")
+                            :gsub("^%s+", "")
+                            :gsub("%s+$", "")
+                        local m = clean:match("Tier%s*:?%s*(%d+)")
+                            or clean:match("Difficulty%s*:?%s*(%d+)")
+                        if m then
+                            local n = tonumber(m)
+                            if n and n >= 1 and n <= 11 then
+                                foundTier = n
+                                return
+                            end
+                        end
+                        if clean == "Delves" or clean == zoneName then
+                            foundDelveHeader = true
+                        elseif foundDelveHeader and clean:match("^%d+$") then
+                            local n = tonumber(clean)
+                            if n and n >= 1 and n <= 11 then
+                                foundTier = n
+                                return
+                            end
+                        end
+                    end
+                end
+            end
+            for _, child in ipairs({ frame:GetChildren() }) do
+                SearchForTier(child)
+                if foundTier then return end
+            end
+        end
+
+        pcall(SearchForTier, tracker)
+        if foundTier then return foundTier end
+    end
+
+    return nil
+end
+
+--- Resolve the current delve name from the most reliable sources.
+--- Priority: GetRealZoneText() → C_Map map ID lookup → GetInstanceInfo.
+local function ResolveDelveName()
+    local zoneName = GetRealZoneText()
+    if zoneName and zoneName ~= "" and E.LoggableDelveNames[zoneName] then
+        return zoneName
+    end
+    if C_Map and C_Map.GetBestMapForUnit then
+        local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+        if ok and mapID and E.DelveZoneIDs and E.DelveZoneIDs[mapID] then
+            return E.DelveZoneIDs[mapID]
+        end
+    end
+    local instName = GetInstanceInfo()
+    return instName
+end
+
+--- Match a scenario name against our Midnight delve directory.
+--- Returns (canonicalName, kind) on match, or nil.
+--- Tries exact, then case-insensitive, then "contains" match so minor
+--- variations ("The Grudge Pit" vs "Grudge Pit") still work.
+local function MatchDelveName(scenarioName)
+    if not scenarioName or scenarioName == "" then return nil end
+    local nameMap = E.LoggableDelveNames
+    if not nameMap then return nil end
+
+    -- Exact
+    local kind = nameMap[scenarioName]
+    if kind then return scenarioName, kind end
+
+    -- Case-insensitive
+    local lowered = scenarioName:lower()
+    for k, v in pairs(nameMap) do
+        if k:lower() == lowered then return k, v end
+    end
+
+    -- Substring either direction (handles "The Grudge Pit" ↔ "Grudge Pit")
+    for k, v in pairs(nameMap) do
+        local kl = k:lower()
+        if lowered:find(kl, 1, true) or kl:find(lowered, 1, true) then
+            return k, v
+        end
+    end
+    return nil
+end
+
+--- Try to capture the active delve tier into runState.tier.
+--- No-op if already captured. Called on every SCENARIO_UPDATE while
+--- inside a delve — the ObjectiveTracker UI may not populate on the
+--- first fire, so we keep retrying until we get a value.
+local function TryCaptureTier(source)
+    if runState.tier and runState.tier > 0 then return end
+    local t = AutoDetectDelveTier()
+    if t and t > 0 then
+        runState.tier = t
+    end
+end
+
+--- Reset the active-run state for a newly-entered delve.
+local function BeginDelveRun(name, kind)
+    runState.inDelve       = true
+    runState.delveName     = name
+    runState.delveKind     = kind
+    runState.startTime     = GetTime()
+    runState.deaths        = 0
+    runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
+    runState.tier          = 0
+    TryCaptureTier("BeginDelveRun")
+end
+
+local function EndDelveRun()
+    runState.inDelve       = false
+    runState.delveName     = nil
+    runState.delveKind     = nil
+    runState.startTime     = 0
+    runState.deaths        = 0
+    runState.startKeyCount = 0
+    runState.tier          = 0
+end
+
+--- Append a completed run to the SavedVariables history.
+--- Updates lifetime counters in-place and caps recentRuns at 20.
+function E:LogDelveRun(name, tier, duration, deaths, keyUsed)
+    if not name or not self.db then
+        return
+    end
+    self.db.delveHistory = self.db.delveHistory or {}
+    local entry = self.db.delveHistory[name]
+    if not entry then
+        entry = {
+            lifetime = {
+                totalRuns     = 0,
+                highestTier   = 0,
+                totalDeaths   = 0,
+                totalDuration = 0,
+                fastestTime   = 0,
+                totalKeysUsed = 0,
+                firstRun      = 0,
+                lastRun       = 0,
+            },
+            recentRuns = {},
+        }
+        self.db.delveHistory[name] = entry
+    end
+
+    local now = time()
+    local life = entry.lifetime
+    life.totalRuns     = (life.totalRuns or 0) + 1
+    life.totalDeaths   = (life.totalDeaths or 0) + (deaths or 0)
+    life.totalDuration = (life.totalDuration or 0) + (duration or 0)
+    life.totalKeysUsed = (life.totalKeysUsed or 0) + (keyUsed and 1 or 0)
+    if tier and tier > (life.highestTier or 0) then
+        life.highestTier = tier
+    end
+    if duration and duration > 0 then
+        if not life.fastestTime or life.fastestTime == 0
+                or duration < life.fastestTime then
+            life.fastestTime = duration
+        end
+    end
+    if not life.firstRun or life.firstRun == 0 then
+        life.firstRun = now
+    end
+    life.lastRun = now
+
+    -- Insert newest at position 1; cap at MAX_RECENT_RUNS.
+    local recent = entry.recentRuns
+    table.insert(recent, 1, {
+        tier      = tier or 0,
+        duration  = duration or 0,
+        deaths    = deaths or 0,
+        keyUsed   = keyUsed and true or false,
+        timestamp = now,
+    })
+    while #recent > MAX_RECENT_RUNS do
+        recent[#recent] = nil
+    end
+end
+
+--- Wipe all delve history for this character.
+function E:ClearDelveHistory()
+    if not self.db then return end
+    if self.db.delveHistory then
+        wipe(self.db.delveHistory)
+    end
+    if self.RefreshDelveHistoryTab then
+        self:RefreshDelveHistoryTab()
+    end
+end
+
+------------------------------------------------------------------------
+-- Delve event frame (independent of the shared dispatcher so the
+-- existing single-handler-per-event contract is preserved)
+------------------------------------------------------------------------
+local delveFrame = CreateFrame("Frame")
+delveFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+delveFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+delveFrame:RegisterEvent("SCENARIO_UPDATE")
+delveFrame:RegisterEvent("SCENARIO_COMPLETED")
+delveFrame:RegisterEvent("PLAYER_DEAD")
+
+--- Try to start tracking if we're currently inside a delve.
+local function TryBeginFromCurrentZone(source)
+    local _, _, instanceType = IsInInstance(), nil, select(2, IsInInstance())
+    local _, zoneInstName, diffID = GetInstanceInfo()
+
+    -- Only act on delve difficulty (208) or scenario instance type.
+    local inScenario = (instanceType == "scenario")
+    local isDelve    = (diffID == 208) or inScenario
+
+    if not isDelve then
+        if runState.inDelve then
+            EndDelveRun()
+        end
+        return
+    end
+
+    local resolvedName = ResolveDelveName()
+    local candidate    = resolvedName or zoneInstName
+    local matchedName, kind = MatchDelveName(candidate or "")
+
+    if matchedName then
+        if not runState.inDelve or runState.delveName ~= matchedName then
+            BeginDelveRun(matchedName, kind)
+        else
+            TryCaptureTier(source or "retry")
+        end
+    else
+        -- Start a provisional run so we still track timing / deaths.
+        if not runState.inDelve then
+            runState.inDelve       = true
+            runState.delveName     = candidate
+            runState.delveKind     = nil
+            runState.startTime     = GetTime()
+            runState.deaths        = 0
+            runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
+            runState.tier          = 0
+            TryCaptureTier("provisional")
+        else
+            TryCaptureTier(source or "retry")
+        end
+    end
+end
+
+delveFrame:SetScript("OnEvent", function(_, event, ...)
+    if event == "PLAYER_ENTERING_WORLD"
+            or event == "ZONE_CHANGED_NEW_AREA"
+            or event == "SCENARIO_UPDATE" then
+        TryBeginFromCurrentZone(event)
+
+    elseif event == "PLAYER_DEAD" then
+        if runState.inDelve then
+            runState.deaths = runState.deaths + 1
+        end
+
+    elseif event == "SCENARIO_COMPLETED" then
+        -- Resolve delve name from the most reliable still-available
+        -- source, then fall back to whatever we captured at entry.
+        local candidate = ResolveDelveName()
+        if not candidate or candidate == "" then
+            candidate = runState.delveName
+        end
+        local matchedName = MatchDelveName(candidate or "")
+
+        local duration = (runState.startTime > 0)
+            and math.max(0, math.floor(GetTime() - runState.startTime))
+            or 0
+
+        -- Use the tier captured during the run. Do NOT try to detect
+        -- now — the UI may already be torn down at completion.
+        local tier = runState.tier or 0
+
+        local keyNow  = GetCurrencyQty(COFFER_KEY_CURRENCY)
+        local keyUsed = (runState.startKeyCount > 0)
+            and (keyNow < runState.startKeyCount)
+            or false
+
+        if matchedName then
+            E:LogDelveRun(matchedName, tier, duration, runState.deaths, keyUsed)
+            if E.RefreshDelveHistoryTab then
+                E:RefreshDelveHistoryTab()
+            end
+        end
+
+        EndDelveRun()
+    end
+end)

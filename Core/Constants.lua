@@ -50,6 +50,7 @@ E.TAB_NAMES = {
     "Current Bountiful Delves",
     "Tier Guide",
     "Shard Tracker",
+    "Delve History",
     "Options",
 }
 E.NUM_TABS = #E.TAB_NAMES

@@ -606,7 +606,7 @@ E:RegisterModule(function()
         )
         statValues.journey:SetText(
             E.CC.gold .. "Stage " .. stage .. E.CC.close
-            .. E.CC.muted .. " â€” " .. cur .. " / " .. stageMax .. E.CC.close
+            .. E.CC.muted .. " - " .. cur .. " / " .. stageMax .. E.CC.close
         )
         statValues.resetTimer:SetText(E.CC.gold .. GetResetTimeString() .. E.CC.close)
         statValues.sessionCount:SetText(E.CC.gold .. sessionDone .. E.CC.close)

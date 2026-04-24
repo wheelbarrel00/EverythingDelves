@@ -5,6 +5,32 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-23
+
+### Added
+
+- **Delve History tab** with lifetime stats and recent run history for every Midnight delve.
+- Auto-detects delve tier during runs via `ObjectiveTracker` UI scraping — no manual input needed.
+- Tracks total runs, highest tier, average and fastest completion times, deaths, and Coffer Key usage per delve.
+- Seasonal Nemesis section (Torment's Rise / Nullaeus) displayed separately with a gold header.
+- Last 20 individual runs stored per delve with tier, time, deaths, key used, and date.
+- Lifetime summary stats persist across sessions with minimal memory footprint.
+- Collapsible delve rows — click to expand and see individual run details.
+- Clear History button with confirmation dialog to reset all stats.
+
+### Changed
+
+- Switched delve name detection to `GetRealZoneText()` with a zone ID fallback for reliability.
+- Added zone ID lookup table for all 11 Midnight delves including Torment's Rise.
+
+### Fixed
+
+- Gilded Stash encoding bug (broken em dash character).
+
+### Removed
+
+- Debug output from the Delve History tracker.
+
 ## [1.0.7] - 2026-04-22
 
 ### Fixed
