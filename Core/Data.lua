@@ -112,3 +112,45 @@ E.DelveData = {
 }
 
 E.TOTAL_DELVES = #E.DelveData
+
+------------------------------------------------------------------------
+-- Seasonal Nemesis Delve (Midnight S1)
+-- Torment's Rise — boss: Nullaeus. Only two tiers offered: T8 and T11.
+-- Kept separate from E.DelveData so location/bountiful iterators are
+-- unaffected.
+------------------------------------------------------------------------
+E.NemesisDelve = {
+    name  = "Torment's Rise",
+    boss  = "Nullaeus",
+    tiers = { 8, 11 },
+}
+
+------------------------------------------------------------------------
+-- Loggable delve lookup — scenario name → "regular" | "nemesis".
+-- Used by the SCENARIO_COMPLETED handler to filter out TWW / legacy
+-- scenarios and only log Midnight delves.
+------------------------------------------------------------------------
+E.LoggableDelveNames = {}
+for _, d in ipairs(E.DelveData) do
+    E.LoggableDelveNames[d.name] = "regular"
+end
+E.LoggableDelveNames[E.NemesisDelve.name] = "nemesis"
+
+------------------------------------------------------------------------
+-- Delve uiMapID → canonical delve name. Used as a fallback identifier
+-- when GetRealZoneText()/GetInstanceInfo() don't return a recognizable
+-- delve name at SCENARIO_COMPLETED time.
+------------------------------------------------------------------------
+E.DelveZoneIDs = {
+    [2933] = "Collegiate Calamity",
+    [2952] = "The Shadow Enclave",
+    [2953] = "Parhelion Plaza",
+    [2961] = "Twilight Crypts",
+    [2962] = "Atal'Aman",
+    [2963] = "The Grudge Pit",
+    [2964] = "The Gulf of Memory",
+    [2965] = "Sunkiller Sanctum",
+    [2966] = "Torment's Rise",
+    [2979] = "Shadowguard Point",
+    [3003] = "The Darkway",
+}

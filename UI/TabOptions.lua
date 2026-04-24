@@ -452,6 +452,24 @@ E:RegisterModule(function()
         preferredIndex = 3,
     }
 
+    -- Clear Delve History confirmation popup
+    StaticPopupDialogs["EVERYTHINGDELVES_CLEAR_HISTORY"] = {
+        text = "Are you sure you want to clear all Delve History?\n\n"
+            .. "This will permanently erase all lifetime stats, run "
+            .. "history, and personal bests for every delve on this "
+            .. "character. This cannot be undone.",
+        button1 = "Yes, Erase Everything",
+        button2 = "Cancel",
+        OnAccept = function()
+            E:ClearDelveHistory()
+            print(E.CC.header .. "Everything Delves|r: Delve history cleared.")
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+
     local resetBtn = E:CreateButton(content, 130, 24, "Reset All Settings")
     resetBtn:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     resetBtn:SetScript("OnClick", function()
@@ -465,6 +483,27 @@ E:RegisterModule(function()
             E.CC.red .. "This cannot be undone." .. E.CC.close)
     end)
     resetBtn:SetScript("OnLeave", function(self)
+        local bc = E.Colors.buttonBg
+        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+        E:HideTooltip()
+    end)
+
+    -- Clear Delve History button (sits to the right of Reset All)
+    local clearHistBtn = E:CreateButton(content, 150, 24, "Clear Delve History")
+    clearHistBtn:SetPoint("LEFT", resetBtn, "RIGHT", 10, 0)
+    clearHistBtn:SetScript("OnClick", function()
+        StaticPopup_Show("EVERYTHINGDELVES_CLEAR_HISTORY")
+    end)
+    clearHistBtn:SetScript("OnEnter", function(self)
+        local hc = E.Colors.buttonHover
+        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+        E:ShowTooltip(self, "Clear Delve History",
+            "Erase all recorded delve runs and lifetime stats",
+            "for this character.",
+            "",
+            E.CC.red .. "This cannot be undone." .. E.CC.close)
+    end)
+    clearHistBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
         E:HideTooltip()
@@ -505,5 +544,5 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- Register with the main frame tab system
     --------------------------------------------------------------------
-    E:RegisterTab(5, frame)
+    E:RegisterTab(6, frame)
 end)

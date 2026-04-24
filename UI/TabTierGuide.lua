@@ -786,7 +786,7 @@ E:RegisterModule(function()
         else
             gildedStatusFS:SetText(
                 E.CC.red .. "0 / " .. GILDED_MAX
-                .. " â€” no T11 runs yet this week" .. E.CC.close
+                .. " - no T11 runs yet this week" .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.muted
