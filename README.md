@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
   <img src="https://img.shields.io/badge/Interface-120005-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
-  <img src="https://img.shields.io/badge/Memory-~450kb-333333?style=flat-square" alt="Memory" />
+  <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
 </p>
 <p align="center">
   Track bountiful delves, shard income, tier rewards, faction renown, delve history, and more — in a single dark-red themed window.
