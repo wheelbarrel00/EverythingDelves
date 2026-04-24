@@ -1,33 +1,27 @@
 <p align="center">
   <img src="https://img.icons8.com/color/96/world-of-warcraft.png" alt="Everything Delves" width="96" />
 </p>
-
 <h1 align="center">Everything Delves</h1>
-
 <p align="center">
   <strong>The all-in-one Delves companion for World of Warcraft: Midnight</strong>
 </p>
-
 <p align="center">
   <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
-  <img src="https://img.shields.io/badge/Interface-120001-333333?style=flat-square" alt="Interface" />
+  <img src="https://img.shields.io/badge/Interface-120005-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
-  <img src="https://img.shields.io/badge/Memory-~419kb-333333?style=flat-square" alt="Memory" />
+  <img src="https://img.shields.io/badge/Memory-~450kb-333333?style=flat-square" alt="Memory" />
 </p>
-
 <p align="center">
-  Track bountiful delves, shard income, tier rewards, faction renown, and more — in a single dark-red themed window.
+  Track bountiful delves, shard income, tier rewards, faction renown, delve history, and more — in a single dark-red themed window.
 </p>
 <details>
 <summary>Screenshots</summary>
-
 <img width="1265" height="916" alt="Delve Locations" src="https://github.com/user-attachments/assets/95c4c29c-028a-40ba-aec5-b4d5d6ce8ccf" />
 <img width="1265" height="912" alt="Bountiful Delves" src="https://github.com/user-attachments/assets/27dc373f-479a-4571-9e4f-24a501958f2b" />
 <img width="1269" height="917" alt="Tier Gude" src="https://github.com/user-attachments/assets/242a10f3-80a9-4cf8-a9c1-0af622787015" />
 <img width="1268" height="916" alt="Shard Tracker" src="https://github.com/user-attachments/assets/df555bea-774c-4c8b-ad6f-c30ea18bee79" />
 <img width="1271" height="921" alt="Options" src="https://github.com/user-attachments/assets/daf7b38c-af87-4bf2-8949-5b93a137f208" />
-
 </details>
 
 ---
@@ -43,17 +37,13 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 ## Features
 
 ### Delve Locations
-
 All 10 Midnight delves across 6 zones in a searchable, sortable list. Filter by zone, search by name, and set Blizzard map pins or TomTom waypoints with one click. Bountiful delves are highlighted with a gold star. Per-delve run history tracks your completions over time.
 
 ### Current Bountiful Delves
-
 Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Undercoins, Delver's Journey stage, and a live weekly reset countdown. Right-click any delve to mark it complete. Quick-launch buttons for the Great Vault and Group Finder. Story variants and overcharged status are displayed per delve.
 
 ### Tier Guide
-
 Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl. Your equipped iLvl is read automatically and the recommended tier is highlighted. This tab also includes:
-
 - **Great Vault Progress** — bars for Delves/Dungeons, World Content, and PvP
 - **Seasonal Nemesis** — Nullaeus quest tracker with waypoints to Torment's Rise
 - **Valeera Companion** — one-click launcher for the companion configuration UI
@@ -63,30 +53,35 @@ Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and 
 - **Midnight Faction Renown** — Silvermoon Court, Amani Tribe, Hara'ti, The Singularity
 
 ### Shard Tracker
-
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 9 known shard sources (Haradar's Legend Relics, Saltheril's Haven, Prey Quests, rares, treasures, satchels, and more) with live quest completion tracking. Also includes:
-
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — all 8 tracked with unlock, active, and completed status
-- **Weekly Delve Quests** — "Midnight: Delves" completion status
+- **Weekly Delve Quest** — "Midnight: Delves" completion status
 - **World Quest Scanner** — all 6 Midnight zones scanned for shard-rewarding WQs
 - **Low Shard Warning** — configurable threshold alert
 
-### Options
+### Delve History
+Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis (Torment's Rise / Nullaeus). Auto-detected via `SCENARIO_COMPLETED` — just play normally and runs are logged automatically. Grouped by delve with collapsible detail rows:
+- **Total runs completed** per delve and overall
+- **Highest tier cleared** per delve
+- **Average and fastest completion times**
+- **Total deaths** across all runs
+- **Coffer Key usage** tracked per run
+- **Last 20 individual runs** per delve with tier, time, deaths, key used, and date
+- Lifetime summary stats persist across sessions with minimal memory cost — older runs are pruned but their data lives on in the lifetime totals
 
-UI scale, accent color theme (red / gold / purple), default tab, minimap button toggle, session tracking, completed item display, low shard warning threshold, bountiful rotation alerts, and Special Assignment alerts.
+### Options
+UI scale, accent color theme (red / gold / purple), default tab, minimap button toggle, session tracking, completed item display, low shard warning threshold, bountiful rotation alerts, Special Assignment alerts, and clear delve history.
 
 ---
 
 ## Installation
 
 ### From CurseForge
-
 1. Install via the [CurseForge app](https://www.curseforge.com/) or download manually
 2. The addon will be placed automatically in your AddOns folder
 
 ### Manual Install
-
 1. Download the latest release from the [Releases](https://github.com/wheelbarrel00/EverythingDelves/releases) page
 2. Extract the `EverythingDelves` folder into:
    ```
@@ -119,7 +114,7 @@ The minimap tooltip shows a live snapshot of your currencies, active bountiful c
 | Isle of Quel'Danas | Parhelion Plaza |
 | Eversong Woods | The Shadow Enclave |
 | Zul'Aman | Atal'Aman, Twilight Crypt |
-| Voidstorm | Shadowguard Point, Sunkiller Sanctum |
+| Voidstorm | Shadowguard Point, Sunkiller Sanctum, Torment's Rise (Seasonal Nemesis) |
 | Harandar | The Gulf of Memory, The Grudge Pit |
 | Silvermoon | Collegiate Calamity, The Darkway |
 
@@ -141,15 +136,13 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 
 | Metric | Value |
 |---|---|
-| Memory footprint | ~419 KB |
-| Source lines | 5,265 |
-| Lua files | 10 |
-| Interface version | 120001 (Midnight 12.0) |
+| Memory footprint | ~450 KB |
+| Lua files | 11 |
+| Interface version | 120005 (Midnight 12.0) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 
 ### Architecture
-
 ```
 EverythingDelves/
 ├── EverythingDelves.lua          # Bootstrap: namespace, events, slash commands
@@ -164,7 +157,8 @@ EverythingDelves/
 │   ├── TabCurrentBountiful.lua   # Tab 2: live bountiful detection + currency dashboard
 │   ├── TabTierGuide.lua          # Tab 3: tier table, nemesis, beacon, renown
 │   ├── TabShardTracker.lua       # Tab 4: shard economy, session tracker, WQ scanner
-│   └── TabOptions.lua            # Tab 5: all user settings
+│   ├── TabDelveHistory.lua       # Tab 5: lifetime stats + recent run history per delve
+│   └── TabOptions.lua            # Tab 6: all user settings
 └── Libs/                         # LibStub, LibDataBroker, LibDBIcon, CallbackHandler
 ```
 
@@ -195,7 +189,6 @@ Please use the [GitHub Issues](https://github.com/wheelbarrel00/EverythingDelves
 ## Roadmap
 
 - [ ] Companion (Valeera) curio recommendations per tier
-- [ ] Delve timer / speed-run tracking
 - [ ] Multi-character shard tracking
 - [ ] Localization support (enUS, deDE, frFR, etc.)
 
