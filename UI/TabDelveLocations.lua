@@ -1,5 +1,5 @@
-﻿------------------------------------------------------------------------
--- UI/TabDelveLocations.lua â€” Tab 1: Delve Locations
+------------------------------------------------------------------------
+-- UI/TabDelveLocations.lua - Tab 1: Delve Locations
 -- Complete directory of all Midnight delves with filtering, sorting,
 -- waypoints, and TomTom integration.
 ------------------------------------------------------------------------
@@ -78,7 +78,7 @@ local function UpdateRows(scrollFrame)
             local delve = filteredData[dataIndex]
             row.delve = delve
 
-            -- Delve name â€” gold star prefix if bountiful this week
+            -- Delve name - gold star prefix if bountiful this week
             local isBountiful = false
             if E.currentBountifulNames then
                 -- Try exact name, then normalized name, then POI ID fallback
@@ -151,7 +151,9 @@ local function CreateZoneDropdown(parent)
         edgeSize = 1,
     })
     menu:SetBackdropColor(0.05, 0.05, 0.05, 0.98)
-    menu:SetBackdropBorderColor(0.55, 0, 0, 1)
+    E:RegisterThemed(function(p)
+        menu:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
+    end)
     menu:Hide()
     dropdownMenu = menu
 
@@ -225,7 +227,7 @@ local function CreateZoneDropdown(parent)
     menu:SetSize(170, totalHeight)
     menu:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
 
-    -- Fullscreen invisible overlay â€” click-outside-to-close behavior
+    -- Fullscreen invisible overlay - click-outside-to-close behavior
     local overlay = CreateFrame("Button", nil, UIParent)
     overlay:SetAllPoints(UIParent)
     overlay:SetFrameStrata("TOOLTIP")
@@ -334,7 +336,7 @@ local function CreateColumnHeaders(parent, yOffset)
         local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         text:SetPoint("LEFT")
         text:SetFont(text:GetFont(), 11, "OUTLINE")
-        text:SetText(E.CC.header .. col.label .. E.CC.close)
+        E:StyleAccentHeader(text, col.label)
         btn.label = text
 
         -- Arrow indicator for active sort column
@@ -377,7 +379,7 @@ local function CreateColumnHeaders(parent, yOffset)
         local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", parent, "TOPLEFT", info.x, yOffset)
         fs:SetFont(fs:GetFont(), 11, "OUTLINE")
-        fs:SetText(E.CC.header .. info.label .. E.CC.close)
+        E:StyleAccentHeader(fs, info.label)
     end
 
     -- Set initial sort arrow
@@ -387,7 +389,7 @@ local function CreateColumnHeaders(parent, yOffset)
 end
 
 ------------------------------------------------------------------------
--- Create a single row frame (recycled â€” created once, reused on scroll)
+-- Create a single row frame (recycled - created once, reused on scroll)
 ------------------------------------------------------------------------
 local function CreateRow(parent, index)
     local row = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -525,7 +527,7 @@ local function CreateScrollBar(parent, listFrame)
     -- Thumb texture
     local thumb = bar:CreateTexture(nil, "OVERLAY")
     thumb:SetSize(12, 40)
-    thumb:SetColorTexture(0.55, 0, 0, 0.80)
+    E:StyleAccentThumb(thumb)
     bar:SetThumbTexture(thumb)
 
     bar:SetOrientation("VERTICAL")
@@ -543,7 +545,7 @@ local function CreateScrollBar(parent, listFrame)
 end
 
 ------------------------------------------------------------------------
--- MODULE INIT â€” called via RegisterModule after the main frame exists
+-- MODULE INIT - called via RegisterModule after the main frame exists
 ------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")

@@ -1,5 +1,5 @@
-﻿------------------------------------------------------------------------
--- UI/TabCurrentBountiful.lua â€” Tab 2: Current Bountiful Delves
+------------------------------------------------------------------------
+-- UI/TabCurrentBountiful.lua - Tab 2: Current Bountiful Delves
 -- Tracks the player's live bountiful delve status for the week:
 -- currency stats, weekly reset timer, quick-action buttons, and a
 -- scrollable list of this week's bountiful delves.
@@ -223,7 +223,7 @@ local function RefreshBountifulData(force)
     lastBountifulRefresh = now
 
     -- Live detection via C_AreaPoiInfo (populates bountifulList in-place
-    -- using the entry pool â€” no table churn on the hot path).
+    -- using the entry pool - no table churn on the hot path).
     PopulateBountifulDelvesLive(bountifulList)
 
     -- Merge manual completions from SavedVariables
@@ -262,7 +262,7 @@ local function RefreshBountifulData(force)
 
     -- Bountiful rotation change alert (F6)
     if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
-        -- Reusable scratch buffer â€” avoids allocating a fresh table
+        -- Reusable scratch buffer - avoids allocating a fresh table
         -- every refresh just to detect a once-per-week rotation change.
         if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
         local currentIDs = E._bountifulIDBuf
@@ -394,7 +394,7 @@ local function CreateRow(parent, index)
     row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
     row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
     row:EnableMouse(true)
-    -- RegisterForClicks on a non-Button frame isn't needed â€” we use
+    -- RegisterForClicks on a non-Button frame isn't needed - we use
     -- OnMouseUp to detect right-clicks for manual-complete.
 
     -- Delve name (top line)
@@ -476,36 +476,6 @@ local function CreateRow(parent, index)
         E:HideTooltip()
     end)
     row.ttBtn = ttBtn
-
-    -- [History] button
-    local histBtn = E:CreateButton(row, 18, 18, "H")
-    histBtn.label:SetFont(histBtn.label:GetFont(), 9)
-    histBtn:SetPoint("LEFT", ttBtn, "RIGHT", 4, 0)
-    histBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        if row.delve then
-            local hist = E:GetDelveHistory(row.delve.name)
-            local total = (hist and hist.totalRuns) or 0
-            local lastRun = "Never"
-            if hist and hist.completions and #hist.completions > 0 then
-                lastRun = hist.completions[#hist.completions].date or "Unknown"
-            end
-            E:ShowTooltip(self, row.delve.name .. " History",
-                          E.CC.muted .. "Total runs: " .. E.CC.close
-                              .. E.CC.gold .. total .. E.CC.close,
-                          E.CC.muted .. "Last run: " .. E.CC.close
-                              .. E.CC.gold .. lastRun .. E.CC.close,
-                          E.CC.muted .. "This season: " .. E.CC.close
-                              .. E.CC.gold .. total .. " runs" .. E.CC.close)
-        end
-    end)
-    histBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-    row.histBtn = histBtn
 
     -- Hover highlight + tooltip
     row:SetScript("OnEnter", function(self)
@@ -625,13 +595,13 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local ACTIONS_Y = STAT_Y - 84
 
-    -- [Great Vault] â€” ToggleGreatVaultUI() opens the Great Vault panel.
+    -- [Great Vault] - ToggleGreatVaultUI() opens the Great Vault panel.
     -- This is a protected function that Blizzard exposes specifically for
     -- addon use; it is NOT tainted.
     local gvBtn = E:CreateButton(frame, 90, 24, "Great Vault")
     gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
     gvBtn:SetScript("OnClick", function()
-        -- WeeklyRewardsFrame confirmed in 12.0 â€” same pattern as TWW.
+        -- WeeklyRewardsFrame confirmed in 12.0 - same pattern as TWW.
         if WeeklyRewardsFrame then
             if WeeklyRewardsFrame:IsShown() then
                 HideUIPanel(WeeklyRewardsFrame)
@@ -657,7 +627,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- [Start LFG] â€” Opens the Group Finder directly to the Delves
+    -- [Start LFG] - Opens the Group Finder directly to the Delves
     -- category (121) and clicks "Start Group".
     local lfgStartBtn = E:CreateButton(frame, 90, 24, "Start LFG")
     lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
@@ -741,7 +711,7 @@ E:RegisterModule(function()
     local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
     listHeader:SetFont(listHeader:GetFont(), 12, "OUTLINE")
-    listHeader:SetText(E.CC.header .. "This Week's Bountiful Delves" .. E.CC.close)
+    E:StyleAccentHeader(listHeader, "This Week's Bountiful Delves")
 
     -- Level 68 unlock warning (shown when player is too low level)
     local unlockWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -788,10 +758,10 @@ E:RegisterModule(function()
         local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", frame, "TOPLEFT", col.x, COL_Y)
         fs:SetFont(fs:GetFont(), 10, "OUTLINE")
-        fs:SetText(E.CC.header .. col.label .. E.CC.close)
+        E:StyleAccentHeader(fs, col.label)
     end
 
-    -- List frame (static â€” no scroll needed for live bountiful list)
+    -- List frame (static - no scroll needed for live bountiful list)
     local listFrame = CreateFrame("Frame", nil, frame)
     listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4, COL_Y - 16)
     listFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)

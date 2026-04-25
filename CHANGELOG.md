@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-25
+
+### Added
+
+- **Full accent color theme system** — every accent-driven UI element (frame border, window title, tab buttons, section headers, divider lines, scrollbar thumbs, progress bar fills, close button, action buttons) now repaints in real-time when the accent color is changed in Options.
+- **Dark Green** accent option added (`#006400`). Total options: Red (default), Gold, Purple, Dark Green.
+- `E:RegisterThemed(fn)` / `E:ApplyAccentColor(name)` architecture in `Core/Constants.lua` — single source of truth for all accent presets, no per-frame polling.
+- `E:StyleAccentHeader`, `E:StyleAccentDivider`, `E:StyleAccentThumb` helper functions in `Core/Utils.lua` for consistent theming across all tabs.
+
+### Fixed
+
+- Fixed 52 mojibake encoding bugs (`â€"` broken em-dash and `â€ â€™` broken arrow sequences) across `MainFrame.lua`, `TabCurrentBountiful.lua`, `TabDelveLocations.lua`, `TabShardTracker.lua`, and `TabTierGuide.lua`.
+
+### Removed
+
+- Removed unused "H" (History) buttons from each bountiful delve row in the Current Bountiful Delves tab.
+
 ## [1.1.0] - 2026-04-23
 
 ### Added

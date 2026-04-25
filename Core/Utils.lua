@@ -30,9 +30,6 @@ function E:CreateButton(parent, width, height, label)
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         edgeSize = 1,
     })
-    local bg = E.Colors.buttonBg
-    btn:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
-    btn:SetBackdropBorderColor(0.55, 0, 0, 1)
 
     local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     text:SetPoint("CENTER")
@@ -47,6 +44,15 @@ function E:CreateButton(parent, width, height, label)
     btn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+    end)
+
+    -- Register for accent-color repaint. Re-applies backdrop + border on
+    -- theme change. Captured in a closure that is invoked immediately so
+    -- the button is themed without a duplicate call here.
+    E:RegisterThemed(function(p)
+        if not btn.SetBackdropColor then return end
+        btn:SetBackdropColor(p.buttonBg.r, p.buttonBg.g, p.buttonBg.b, p.buttonBg.a)
+        btn:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
     end)
 
     return btn
@@ -172,8 +178,17 @@ function E:CreateProgressBar(parent, width, height)
     local fill = bar:CreateTexture(nil, "ARTWORK")
     fill:SetPoint("TOPLEFT", bar, "TOPLEFT", 1, -1)
     fill:SetHeight(height - 2)
-    fill:SetColorTexture(0.55, 0, 0, 0.90)
     bar.fill = fill
+
+    -- Theme: accent-driven fill color. Tabs that need a status-driven
+    -- override (e.g. gold-when-complete) just call fill:SetColorTexture
+    -- directly; the next ApplyAccentColor will re-paint back to accent.
+    E:RegisterThemed(function(p)
+        if fill.SetColorTexture then
+            fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
+                                 p.progressFill.b, p.progressFill.a)
+        end
+    end)
 
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("CENTER")
@@ -191,6 +206,47 @@ function E:CreateProgressBar(parent, width, height)
     end
 
     return bar
+end
+
+------------------------------------------------------------------------
+-- Accent-theme helpers (used widely by tab modules)
+------------------------------------------------------------------------
+
+--- Set a FontString to a section-header style using the active accent
+--- color, and register it for repaint when the accent changes.
+--- Pass the raw text (no color codes); we wrap it.
+function E:StyleAccentHeader(fs, rawText)
+    if not fs or not rawText then return end
+    fs:SetText(self.CC.header .. rawText .. self.CC.close)
+    self:RegisterThemed(function(_)
+        if fs and fs.SetText then
+            fs:SetText(E.CC.header .. rawText .. E.CC.close)
+        end
+    end)
+end
+
+--- Color a thin horizontal divider texture with the accent divider hue
+--- and register it for repaint.
+function E:StyleAccentDivider(tex)
+    if not tex or not tex.SetColorTexture then return end
+    local d = self.Colors.divider
+    tex:SetColorTexture(d.r, d.g, d.b, d.a)
+    self:RegisterThemed(function(p)
+        if tex and tex.SetColorTexture then
+            tex:SetColorTexture(p.divider.r, p.divider.g, p.divider.b, p.divider.a)
+        end
+    end)
+end
+
+--- Color a scrollbar thumb texture and register for repaint.
+function E:StyleAccentThumb(tex)
+    if not tex or not tex.SetColorTexture then return end
+    self:RegisterThemed(function(p)
+        if tex and tex.SetColorTexture then
+            tex:SetColorTexture(p.scrollThumb.r, p.scrollThumb.g,
+                                p.scrollThumb.b, p.scrollThumb.a)
+        end
+    end)
 end
 
 ------------------------------------------------------------------------

@@ -40,7 +40,7 @@ local DEFAULTS = {
     defaultTab       = 1,
     completedDisplay = "dim",     -- "hide" | "dim" | "bottom"
     uiScale          = 1.0,
-    accentColor      = "red",     -- "red" | "gold" | "purple"
+    accentColor      = "red",     -- "red" | "gold" | "purple" | "green"
     showWeeklyResetAlert   = true,
     sessionTracking        = true,
     showCompletedItems     = true,
@@ -146,6 +146,11 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
     -- Build the main window (defined in UI/MainFrame.lua)
     if self.InitMainFrame then
         self:InitMainFrame()
+    end
+
+    -- Apply the saved accent color theme to every registered widget.
+    if self.ApplyAccentColor then
+        self:ApplyAccentColor(self.db.accentColor)
     end
 
     print("|cFFFF2222Everything Delves|r v" .. self.version

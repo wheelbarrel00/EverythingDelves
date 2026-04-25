@@ -38,9 +38,11 @@ function E:InitMainFrame()
         edgeSize = 1,
     })
     local bg = E.Colors.background
-    local bd = E.Colors.border
     frame:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
-    frame:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
+    -- Border picks up the active accent and stays in sync with theme changes
+    E:RegisterThemed(function(p)
+        frame:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
+    end)
 
     -- Restore saved position or default to screen center
     if self.db.framePosition then
@@ -70,7 +72,7 @@ function E:InitMainFrame()
     -- automatically hide when the player presses Escape.
     table.insert(UISpecialFrames, "EverythingDelvesFrame")
 
-    -- Hidden by default â€” player toggles with /ed or minimap button
+    -- Hidden by default - player toggles with /ed or minimap button
     frame:Hide()
 
     -- Build child components
@@ -97,7 +99,7 @@ function E:CreateTitleBar(parent)
     local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -10)
     title:SetFont(title:GetFont(), 16, "OUTLINE")
-    title:SetText(E.CC.header .. "Everything Delves" .. E.CC.close)
+    self:StyleAccentHeader(title, "Everything Delves")
     parent.titleText = title
 
     -- Version label in its own high-strata frame so scrollbars never cover it
@@ -112,7 +114,7 @@ function E:CreateTitleBar(parent)
 end
 
 ------------------------------------------------------------------------
--- CLOSE BUTTON (custom flat "X" â€” no Blizzard chrome)
+-- CLOSE BUTTON (custom flat "X" - no Blizzard chrome)
 ------------------------------------------------------------------------
 function E:CreateCloseButton(parent)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -123,8 +125,6 @@ function E:CreateCloseButton(parent)
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         edgeSize = 1,
     })
-    btn:SetBackdropColor(0.30, 0, 0, 0.80)
-    btn:SetBackdropBorderColor(0.55, 0, 0, 1)
 
     local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("CENTER", 0, 1)
@@ -132,12 +132,21 @@ function E:CreateCloseButton(parent)
     label:SetText("|cFFFFFFFFX|r")
 
     btn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(0.55, 0.05, 0.05, 1)
+        local p = E:GetAccentPreset()
+        self:SetBackdropColor(p.closeHover.r, p.closeHover.g,
+                              p.closeHover.b, p.closeHover.a)
     end)
     btn:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(0.30, 0, 0, 0.80)
+        local p = E:GetAccentPreset()
+        self:SetBackdropColor(p.closeBg.r, p.closeBg.g,
+                              p.closeBg.b, p.closeBg.a)
     end)
     btn:SetScript("OnClick", function() parent:Hide() end)
+
+    E:RegisterThemed(function(p)
+        btn:SetBackdropColor(p.closeBg.r, p.closeBg.g, p.closeBg.b, p.closeBg.a)
+        btn:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
+    end)
 end
 
 ------------------------------------------------------------------------
@@ -197,7 +206,9 @@ function E:CreateTabButtons(parent)
         end)
         tab:SetScript("OnEnter", function(self)
             if E.activeTab ~= self.tabIndex then
-                self:SetBackdropColor(0.30, 0, 0, 0.80)
+                local p = E:GetAccentPreset()
+                self:SetBackdropColor(p.tabHover.r, p.tabHover.g,
+                                      p.tabHover.b, p.tabHover.a)
             end
         end)
         tab:SetScript("OnLeave", function(self)
@@ -210,14 +221,18 @@ function E:CreateTabButtons(parent)
         self.tabButtons[i] = tab
     end
 
-    -- Thin red horizontal divider between tab row and content
+    -- Thin accent horizontal divider between tab row and content
     local divider = parent:CreateTexture(nil, "ARTWORK")
     divider:SetHeight(1)
     divider:SetPoint("TOPLEFT",  parent, "TOPLEFT",  6, TAB_Y - TAB_HEIGHT - 4)
     divider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -6, TAB_Y - TAB_HEIGHT - 4)
-    local dc = E.Colors.divider
-    divider:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    self:StyleAccentDivider(divider)
     parent.divider = divider
+
+    -- When the accent changes, re-stamp the active tab's colors.
+    E:RegisterThemed(function(_)
+        if E.activeTab then E:SelectTab(E.activeTab) end
+    end)
 end
 
 ------------------------------------------------------------------------
@@ -251,11 +266,13 @@ function E:SelectTab(index)
     self.activeTab = index
 
     -- Update button visuals
+    local p = E:GetAccentPreset()
     for i, btn in ipairs(self.tabButtons) do
         if i == index then
             local ac = E.Colors.tabActive
             btn:SetBackdropColor(ac.r, ac.g, ac.b, ac.a)
-            btn:SetBackdropBorderColor(0.70, 0, 0, 1)
+            btn:SetBackdropBorderColor(p.tabBorder.r, p.tabBorder.g,
+                                       p.tabBorder.b, p.tabBorder.a)
             btn.label:SetText(E.CC.white .. E.TAB_NAMES[i] .. E.CC.close)
         else
             local ic = E.Colors.tabInactive
@@ -276,7 +293,7 @@ function E:SelectTab(index)
 end
 
 ------------------------------------------------------------------------
--- MINIMAP BUTTON â€” LibDBIcon (preferred) or manual fallback
+-- MINIMAP BUTTON - LibDBIcon (preferred) or manual fallback
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------

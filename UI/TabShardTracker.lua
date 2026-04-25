@@ -1,5 +1,5 @@
-﻿------------------------------------------------------------------------
--- UI/TabShardTracker.lua â€” Tab 4: Shard Tracker
+------------------------------------------------------------------------
+-- UI/TabShardTracker.lua - Tab 4: Shard Tracker
 -- Tracks Coffer Key Shards, Bountiful Keys, weekly shard income from
 -- every known source, and session-level earnings.
 --
@@ -46,7 +46,7 @@ local function GetCurrencyFull(currencyID)
     return 0, 0, 0
 end
 
---- Format a number with commas (e.g. 1234 â†’ "1,234")
+--- Format a number with commas (e.g. 1234 ->"1,234")
 local function FormatNumber(n)
     if n < 1000 then return tostring(n) end
     local s = tostring(n)
@@ -60,15 +60,15 @@ local function FormatNumber(n)
 end
 
 ------------------------------------------------------------------------
--- Cached currency values â€” updated by RefreshAll on currency events,
+-- Cached currency values - updated by RefreshAll on currency events,
 -- read by RefreshSessionTimer to avoid per-second API table churn.
 local cachedShards = 0
 local cachedKeys   = 0
 
--- Cached quest line results â€” these don't change mid-session.
+-- Cached quest line results - these don't change mid-session.
 local questLineCache = {}
 
--- Cached undercoins icon â€” resolved once, never changes.
+-- Cached undercoins icon - resolved once, never changes.
 local cachedUcIcon = nil
 
 -- Reusable scratch buffers for the Special Assignment alert detection.
@@ -113,7 +113,7 @@ E:RegisterModule(function()
     tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
     local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
     sbThumb:SetSize(12, 40)
-    sbThumb:SetColorTexture(0.55, 0, 0, 0.80)
+    E:StyleAccentThumb(sbThumb)
     tabScrollBar:SetThumbTexture(sbThumb)
     tabScrollBar:SetOrientation("VERTICAL")
     tabScrollBar:SetMinMaxValues(0, 1)
@@ -153,7 +153,7 @@ E:RegisterModule(function()
     local currHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     currHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", SECT_X, SECT_Y)
     currHeader:SetFont(currHeader:GetFont(), 12, "OUTLINE")
-    currHeader:SetText(E.CC.header .. "Currency Overview" .. E.CC.close)
+    E:StyleAccentHeader(currHeader, "Currency Overview")
 
     -- Coffer Key Shards
     local shardIcon = sc:CreateTexture(nil, "ARTWORK")
@@ -223,7 +223,7 @@ E:RegisterModule(function()
     div1:SetHeight(1)
     div1:SetPoint("TOPLEFT", weeklyCapNote, "BOTTOMLEFT", 0, -8)
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div1:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div1)
 
     --------------------------------------------------------------------
     -- SECTION 2: Weekly Shard Sources
@@ -232,7 +232,7 @@ E:RegisterModule(function()
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     srcHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -8)
     srcHeader:SetFont(srcHeader:GetFont(), 12, "OUTLINE")
-    srcHeader:SetText(E.CC.header .. "Weekly Shard Sources" .. E.CC.close)
+    E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
 
     local weeklyTotalFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     weeklyTotalFS:SetPoint("LEFT", srcHeader, "RIGHT", 16, 0)
@@ -317,13 +317,13 @@ E:RegisterModule(function()
     local footnoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     footnoteFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 2)
     footnoteFS:SetFont(footnoteFS:GetFont(), 9)
-    footnoteFS:SetText(E.CC.muted .. "* Value unconfirmed â€” may differ in game" .. E.CC.close)
+    footnoteFS:SetText(E.CC.muted .. "* Value unconfirmed - may differ in game" .. E.CC.close)
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
     div2:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 16)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div2:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div2)
 
     --------------------------------------------------------------------
     -- SECTION 3: Session Tracker
@@ -332,7 +332,7 @@ E:RegisterModule(function()
     local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
     sessHeader:SetFont(sessHeader:GetFont(), 12, "OUTLINE")
-    sessHeader:SetText(E.CC.header .. "Session Tracker" .. E.CC.close)
+    E:StyleAccentHeader(sessHeader, "Session Tracker")
 
     local sessShardsFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessShardsFS:SetPoint("TOPLEFT", sessHeader, "BOTTOMLEFT", 0, -4)
@@ -357,7 +357,7 @@ E:RegisterModule(function()
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -8)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div3:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div3)
 
     --------------------------------------------------------------------
     -- SECTION 3b: Special Assignments
@@ -379,7 +379,7 @@ E:RegisterModule(function()
     local saHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
     saHeader:SetFont(saHeader:GetFont(), 12, "OUTLINE")
-    saHeader:SetText(E.CC.header .. "Special Assignments" .. E.CC.close)
+    E:StyleAccentHeader(saHeader, "Special Assignments")
 
     local saSummaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     saSummaryFS:SetPoint("LEFT", saHeader, "RIGHT", 12, 0)
@@ -401,11 +401,11 @@ E:RegisterModule(function()
     div3b:SetHeight(1)
     div3b:SetPoint("TOPLEFT", saRows[#saRows].fs, "BOTTOMLEFT", 0, -8)
     div3b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div3b:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div3b)
 
     --------------------------------------------------------------------
     -- SECTION 3c: Weekly Delve Quests
-    -- Quest 93909 "Midnight: Delves" â€” weekly from Archmage Aethas
+    -- Quest 93909 "Midnight: Delves" - weekly from Archmage Aethas
     -- Sunreaver, requires completing Midnight Delves.
     --------------------------------------------------------------------
     local WEEKLY_DELVE_QUESTS = {
@@ -415,7 +415,7 @@ E:RegisterModule(function()
     local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -8)
     wdqHeader:SetFont(wdqHeader:GetFont(), 12, "OUTLINE")
-    wdqHeader:SetText(E.CC.header .. "Weekly Delve Quests" .. E.CC.close)
+    E:StyleAccentHeader(wdqHeader, "Weekly Delve Quests")
 
     local wdqRows = {}
     for i, wq in ipairs(WEEKLY_DELVE_QUESTS) do
@@ -432,7 +432,7 @@ E:RegisterModule(function()
     div3c:SetHeight(1)
     div3c:SetPoint("TOPLEFT", wdqRows[#wdqRows].fs, "BOTTOMLEFT", 0, -8)
     div3c:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div3c:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div3c)
 
     --------------------------------------------------------------------
     -- SECTION 4: Low-Shard Warning
@@ -455,12 +455,12 @@ E:RegisterModule(function()
     div4:SetHeight(1)
     div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -8)
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div4:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div4)
 
     local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -8)
     wqHeader:SetFont(wqHeader:GetFont(), 12, "OUTLINE")
-    wqHeader:SetText(E.CC.header .. "Coffer Shard World Quests" .. E.CC.close)
+    E:StyleAccentHeader(wqHeader, "Coffer Shard World Quests")
 
     local wqCountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqCountFS:SetPoint("LEFT", wqHeader, "RIGHT", 12, 0)
@@ -486,7 +486,7 @@ E:RegisterModule(function()
     wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -2)
     wqNoteFS:SetFont(wqNoteFS:GetFont(), 9)
     wqNoteFS:SetText(
-        E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate â€” "
+        E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate - "
         .. "click Refresh to update." .. E.CC.close
     )
 
@@ -728,7 +728,7 @@ E:RegisterModule(function()
     end
 
     --------------------------------------------------------------------
-    -- Session baseline â€” snapshot currencies at first refresh so we
+    -- Session baseline - snapshot currencies at first refresh so we
     -- can compute session deltas.
     --------------------------------------------------------------------
     local sessionBaseline = nil  -- { shards = N, keys = N, time = epoch }
@@ -797,7 +797,7 @@ E:RegisterModule(function()
     end
 
     -- Full refresh: updates all sections. Called on OnShow, events,
-    -- and manual Refresh button click â€” NOT on a timer.
+    -- and manual Refresh button click - NOT on a timer.
     -- forceWQRescan: if true, bypasses the WQ scan cache.
     RefreshAll = function(forceWQRescan)
 
@@ -839,7 +839,7 @@ E:RegisterModule(function()
         nextKeyBar:SetProgress(partial, E.SHARDS_PER_KEY)
         local remaining = E.SHARDS_PER_KEY - partial
         nextKeyNote:SetText(
-            E.CC.muted .. "Progress toward next key â€” "
+            E.CC.muted .. "Progress toward next key - "
             .. E.CC.close .. E.CC.gold .. remaining
             .. E.CC.close .. E.CC.muted .. " shards remaining"
             .. E.CC.close
@@ -849,7 +849,7 @@ E:RegisterModule(function()
         if weeklyCap > 0 then
             weeklyCapBar:SetProgress(weeklyEarned, weeklyCap)
             weeklyCapNote:SetText(
-                E.CC.muted .. "Weekly shard cap â€” "
+                E.CC.muted .. "Weekly shard cap - "
                 .. E.CC.close .. E.CC.gold .. weeklyRemaining
                 .. E.CC.close .. E.CC.muted .. " shards remaining this week"
                 .. E.CC.close
@@ -904,10 +904,10 @@ E:RegisterModule(function()
                     weeklyTotal = weeklyTotal + maxShards
                 end
             else
-                row.capFS:SetText(E.CC.muted .. "â€”" .. E.CC.close)
+                row.capFS:SetText(E.CC.muted .. "-" .. E.CC.close)
             end
 
-            -- Status â€” live tracking for sources with questLineID or questIDs
+            -- Status - live tracking for sources with questLineID or questIDs
             if src.trackable then
                 local done, total = 0, 0
 
@@ -979,7 +979,7 @@ E:RegisterModule(function()
             if not unlocked then
                 row.fs:SetText(
                     E.CC.red .. "  SA: " .. row.title
-                    .. " â€” Locked" .. E.CC.close
+                    .. " - Locked" .. E.CC.close
                 )
             else
                 local done = false
@@ -1000,7 +1000,7 @@ E:RegisterModule(function()
                     saActive = saActive + 1
                     row.fs:SetText(
                         E.CC.green .. "  > SA: " .. row.title
-                        .. " â€” active" .. E.CC.close
+                        .. " - active" .. E.CC.close
                     )
                 else
                     row.fs:SetText(
@@ -1014,7 +1014,7 @@ E:RegisterModule(function()
             E.CC.gold .. saCompleted .. E.CC.close
             .. E.CC.muted .. " / " .. SA_WEEKLY_MAX .. " completed"
             .. (saActive > 0
-                and (" â€” " .. E.CC.green .. saActive
+                and (" - " .. E.CC.green .. saActive
                      .. " active" .. E.CC.close)
                 or "")
             .. E.CC.close
@@ -1022,9 +1022,9 @@ E:RegisterModule(function()
 
         -- Special Assignment alert (F7)
         if E.db and E.db.alertSpecialAssignment then
-            -- Reusable scratch tables â€” avoids allocating two fresh
+            -- Reusable scratch tables - avoids allocating two fresh
             -- tables per RefreshAll just to detect the rare transition
-            -- from "no SA active" â†’ "SA active".
+            -- from "no SA active" ->"SA active".
             if not saActiveBuf  then saActiveBuf  = {} end
             if not saLookupBuf then saLookupBuf = {} end
             wipe(saActiveBuf)
@@ -1075,12 +1075,12 @@ E:RegisterModule(function()
             if done then
                 row.fs:SetText(
                     "|cFF33FF33" .. "  [Done] " .. row.title
-                    .. " â€” completed" .. E.CC.close
+                    .. " - completed" .. E.CC.close
                 )
             else
                 row.fs:SetText(
                     E.CC.green .. "  - " .. row.title
-                    .. " â€” not yet done" .. E.CC.close
+                    .. " - not yet done" .. E.CC.close
                 )
             end
         end

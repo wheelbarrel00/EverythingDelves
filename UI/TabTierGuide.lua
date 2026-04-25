@@ -1,5 +1,5 @@
-﻿------------------------------------------------------------------------
--- UI/TabTierGuide.lua â€” Tab 3: Tier Guide
+------------------------------------------------------------------------
+-- UI/TabTierGuide.lua - Tab 3: Tier Guide
 -- Tier iLvl reference table, player recommendation, Seasonal Nemesis,
 -- Trovehunter's Bounty, and Beacon of Hope sections.
 --
@@ -76,7 +76,7 @@ E:RegisterModule(function()
         fs:SetText(info.cc .. info.text .. E.CC.close)
     end
 
-    -- Column data cells â€” one per tier (1-11)
+    -- Column data cells - one per tier (1-11)
     local tierCells = {}  -- [tier] = { tierFS, gearFS, bountFS, vaultFS, bgTexture }
 
     for _, td in ipairs(E.TierData) do
@@ -144,6 +144,16 @@ E:RegisterModule(function()
         tierCells[td.tier] = cell
     end
 
+    -- Re-tint the recommended-tier highlight backgrounds when accent changes.
+    E:RegisterThemed(function(p)
+        for _, cell in pairs(tierCells) do
+            if cell.bg and cell.bg.SetColorTexture then
+                cell.bg:SetColorTexture(p.progressFill.r, p.progressFill.g,
+                                        p.progressFill.b, 0.20)
+            end
+        end
+    end)
+
     --------------------------------------------------------------------
     -- RECOMMENDATION BOX
     --------------------------------------------------------------------
@@ -159,7 +169,9 @@ E:RegisterModule(function()
         edgeSize = 1,
     })
     recBox:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    recBox:SetBackdropBorderColor(0.55, 0, 0, 0.60)
+    E:RegisterThemed(function(p)
+        recBox:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, 0.60)
+    end)
 
     local ilvlLabel = recBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     ilvlLabel:SetPoint("TOPLEFT", recBox, "TOPLEFT", 8, -6)
@@ -181,7 +193,7 @@ E:RegisterModule(function()
         recLabel:SetText(
             E.CC.muted .. "Recommended Tier: " .. E.CC.close
             .. E:GetTierCC(recTier) .. "T" .. recTier .. E.CC.close
-            .. E.CC.body .. " â€” running this tier gives you the best gear upgrade chance" .. E.CC.close
+            .. E.CC.body .. " - running this tier gives you the best gear upgrade chance" .. E.CC.close
         )
 
         -- Highlight only the recommended tier column
@@ -202,7 +214,7 @@ E:RegisterModule(function()
     div1:SetPoint("TOPLEFT", recBox, "BOTTOMLEFT", 0, -8)
     div1:SetPoint("TOPRIGHT", recBox, "BOTTOMRIGHT", 0, -8)
     local dc = E.Colors.divider
-    div1:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div1)
     --------------------------------------------------------------------
     -- SCROLLABLE AREA
     --------------------------------------------------------------------
@@ -238,7 +250,7 @@ E:RegisterModule(function()
     tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
     local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
     sbThumb:SetSize(12, 40)
-    sbThumb:SetColorTexture(0.55, 0, 0, 0.80)
+    E:StyleAccentThumb(sbThumb)
     tabScrollBar:SetThumbTexture(sbThumb)
     tabScrollBar:SetOrientation("VERTICAL")
     tabScrollBar:SetMinMaxValues(0, 1)
@@ -275,14 +287,14 @@ E:RegisterModule(function()
     local gvHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     gvHeader:SetFont(gvHeader:GetFont(), 12, "OUTLINE")
-    gvHeader:SetText(E.CC.header .. "Great Vault Progress" .. E.CC.close)
+    E:StyleAccentHeader(gvHeader, "Great Vault Progress")
 
     local gvFallbackFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvFallbackFS:SetPoint("TOPLEFT", gvHeader, "BOTTOMLEFT", 0, -4)
     gvFallbackFS:SetFont(gvFallbackFS:GetFont(), 10)
     gvFallbackFS:Hide()
 
-    -- Activity type â†’ display config
+    -- Activity type ->display config
     -- Enum.WeeklyRewardChestThresholdType: World = 1, Activities = 2, RankedPvP = 3
     local GV_ROWS = {
         { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Delves / Dungeons", max = 8 },
@@ -316,18 +328,18 @@ E:RegisterModule(function()
     gvDiv:SetHeight(1)
     gvDiv:SetPoint("TOPLEFT", gvNoteFS, "BOTTOMLEFT", 0, -6)
     gvDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    gvDiv:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(gvDiv)
 
     --------------------------------------------------------------------
     -- SEASONAL NEMESIS
-    -- Quest 93525 "Nulling Nullaeus" â€” boss Nullaeus in Voidstorm
+    -- Quest 93525 "Nulling Nullaeus" - boss Nullaeus in Voidstorm
     -- at Torment's Rise (61.2, 71.6). Percentage-based coordinates.
     --------------------------------------------------------------------
 
     local nemHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -6)
     nemHeader:SetFont(nemHeader:GetFont(), 12, "OUTLINE")
-    nemHeader:SetText(E.CC.header .. "Seasonal Nemesis" .. E.CC.close)
+    E:StyleAccentHeader(nemHeader, "Seasonal Nemesis")
 
     local NEMESIS_NAME  = "Nullaeus"
     local NEMESIS_ZONE  = "Voidstorm"
@@ -349,7 +361,7 @@ E:RegisterModule(function()
     nemNameFS:SetText(
         E.CC.gold .. NEMESIS_NAME .. E.CC.close
         .. E.CC.muted .. "  (" .. NEMESIS_ZONE
-        .. " â€” " .. NEMESIS_LOC .. ")" .. E.CC.close
+        .. " - " .. NEMESIS_LOC .. ")" .. E.CC.close
     )
 
     local nemStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -408,7 +420,7 @@ E:RegisterModule(function()
 
         if not ok or not activities or #activities == 0 then
             gvFallbackFS:SetText(
-                E.CC.muted .. "Great Vault data not available yet â€” enter a dungeon, raid or delve first" .. E.CC.close)
+                E.CC.muted .. "Great Vault data not available yet - enter a dungeon, raid or delve first" .. E.CC.close)
             gvFallbackFS:Show()
             gvNoteFS:Hide()
             for _, bar in pairs(gvBars) do bar:Hide() end
@@ -435,11 +447,13 @@ E:RegisterModule(function()
                 if data then
                     local current = math_min(data.completed, data.total)
                     bar:SetProgress(current, data.total)
-                    -- Gold for complete, red for incomplete
+                    -- Gold for complete, accent for incomplete
                     if current >= data.total then
                         bar.fill:SetColorTexture(0.78, 0.61, 0.04, 0.90)
                     else
-                        bar.fill:SetColorTexture(0.55, 0, 0, 0.90)
+                        local p = E:GetAccentPreset()
+                        bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
+                                                 p.progressFill.b, p.progressFill.a)
                     end
                 else
                     bar:SetProgress(0, cfg.max)
@@ -467,19 +481,19 @@ E:RegisterModule(function()
             )
         elseif inProgress then
             nemStatusFS:SetText(
-                E.CC.yellow .. "\"Nulling Nullaeus\" in progress â€” check your quest log" .. E.CC.close
+                E.CC.yellow .. "\"Nulling Nullaeus\" in progress - check your quest log" .. E.CC.close
             )
         else
             nemStatusFS:SetText(
                 E.CC.red .. "Quest available" .. E.CC.close
-                .. E.CC.muted .. " â€” pick up at Delvers HQ in Silvermoon"
+                .. E.CC.muted .. " - pick up at Delvers HQ in Silvermoon"
                 .. " (if eligible)" .. E.CC.close
             )
         end
     end
 
     --------------------------------------------------------------------
-    -- VALEERA â€” COMPANION BUTTON
+    -- VALEERA - COMPANION BUTTON
     -- Opens the Delve Companion UI (Blizzard_DelvesCompanionConfiguration).
     -- The companion config is a load-on-demand Blizzard addon that provides
     -- DelvesCompanionConfigurationFrame once loaded.
@@ -496,13 +510,13 @@ E:RegisterModule(function()
             ToggleFrame(DelvesCompanionConfigurationFrame)
         else
             print(E.CC.header .. "Everything Delves|r: "
-                .. "Companion UI not available â€” visit Valeera at Delvers HQ.")
+                .. "Companion UI not available - visit Valeera at Delvers HQ.")
         end
     end)
     valeeraBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Valeera â€” Companion",
+        E:ShowTooltip(self, "Valeera - Companion",
                       "Open Valeera's companion menu to manage",
                       "her role and curios.")
     end)
@@ -519,7 +533,7 @@ E:RegisterModule(function()
     div2:SetHeight(1)
     div2:SetPoint("TOPLEFT", valeeraBtn, "BOTTOMLEFT", 0, -8)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div2:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div2)
 
     --------------------------------------------------------------------
     -- TROVEHUNTER'S BOUNTY
@@ -532,7 +546,7 @@ E:RegisterModule(function()
     local troveHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
     troveHeader:SetFont(troveHeader:GetFont(), 12, "OUTLINE")
-    troveHeader:SetText(E.CC.header .. "Trovehunter's Bounty" .. E.CC.close)
+    E:StyleAccentHeader(troveHeader, "Trovehunter's Bounty")
 
     local TROVE_QUEST_ID = 86371   -- weekly loot check quest
     local TROVE_USED_ID  = 92887   -- bounty consumed quest
@@ -581,7 +595,7 @@ E:RegisterModule(function()
                 )
             else
                 troveStatusFS:SetText(
-                    E.CC.yellow .. "Bounty looted â€” not yet used this week."
+                    E.CC.yellow .. "Bounty looted - not yet used this week."
                     .. E.CC.close
                 )
             end
@@ -595,7 +609,7 @@ E:RegisterModule(function()
         -- Secondary detail line
         if inBag > 0 and not auraActive then
             troveDetailFS:SetText(
-                E.CC.yellow .. "You have a Trovehunter's Bounty in your bag â€” "
+                E.CC.yellow .. "You have a Trovehunter's Bounty in your bag - "
                 .. "don't forget to use it!" .. E.CC.close
             )
             troveDetailFS:Show()
@@ -617,7 +631,7 @@ E:RegisterModule(function()
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", troveIcon, "BOTTOMLEFT", 0, -24)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div3:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div3)
 
     --------------------------------------------------------------------
     -- BEACON OF HOPE
@@ -629,7 +643,7 @@ E:RegisterModule(function()
     local beaconHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     beaconHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
     beaconHeader:SetFont(beaconHeader:GetFont(), 12, "OUTLINE")
-    beaconHeader:SetText(E.CC.header .. "Beacon of Hope" .. E.CC.close)
+    E:StyleAccentHeader(beaconHeader, "Beacon of Hope")
 
     local beaconStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     beaconStatusFS:SetPoint("TOPLEFT", beaconHeader, "BOTTOMLEFT", 0, -4)
@@ -659,7 +673,7 @@ E:RegisterModule(function()
             beaconStatusFS:SetText(
                 E.CC.green .. "[Done] Beacon of Hope in inventory ("
                 .. inBags .. ")" .. E.CC.close
-                .. E.CC.muted .. " â€” go get that Nemesis!" .. E.CC.close
+                .. E.CC.muted .. " - go get that Nemesis!" .. E.CC.close
             )
         else
             beaconStatusFS:SetText(
@@ -710,12 +724,12 @@ E:RegisterModule(function()
     div4:SetHeight(1)
     div4:SetPoint("TOPLEFT", beaconNoteFS, "BOTTOMLEFT", 0, -8)
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div4:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div4)
 
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -8)
     gildedHeader:SetFont(gildedHeader:GetFont(), 12, "OUTLINE")
-    gildedHeader:SetText(E.CC.header .. "Gilded Stash Progress" .. E.CC.close)
+    E:StyleAccentHeader(gildedHeader, "Gilded Stash Progress")
 
     local gildedStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedStatusFS:SetPoint("TOPLEFT", gildedHeader, "BOTTOMLEFT", 0, -4)
@@ -814,12 +828,12 @@ E:RegisterModule(function()
     div5:SetHeight(1)
     div5:SetPoint("TOPLEFT", gildedNoteFS, "BOTTOMLEFT", 0, -8)
     div5:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    div5:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div5)
 
     local renownHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     renownHeader:SetPoint("TOPLEFT", div5, "BOTTOMLEFT", 0, -8)
     renownHeader:SetFont(renownHeader:GetFont(), 12, "OUTLINE")
-    renownHeader:SetText(E.CC.header .. "Midnight Faction Renown" .. E.CC.close)
+    E:StyleAccentHeader(renownHeader, "Midnight Faction Renown")
 
     -- Create faction rows: label + progress bar + status text
     local factionRows = {}

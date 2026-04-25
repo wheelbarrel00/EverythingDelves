@@ -178,7 +178,7 @@ E:RegisterModule(function()
     local genHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     genHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     genHeader:SetFont(genHeader:GetFont(), 12, "OUTLINE")
-    genHeader:SetText(E.CC.header .. "General" .. E.CC.close)
+    E:StyleAccentHeader(genHeader, "General")
     Y = Y - 20
 
     -- Default Tab
@@ -290,7 +290,7 @@ E:RegisterModule(function()
     div1:SetHeight(1)
     div1:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div1:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-    div1:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div1)
     Y = Y - 10
 
     --------------------------------------------------------------------
@@ -299,14 +299,15 @@ E:RegisterModule(function()
     local dispHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dispHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     dispHeader:SetFont(dispHeader:GetFont(), 12, "OUTLINE")
-    dispHeader:SetText(E.CC.header .. "Display" .. E.CC.close)
+    E:StyleAccentHeader(dispHeader, "Display")
     Y = Y - 20
 
     -- Accent Color (radio group)
     local accentOptions = {
         { value = "red",    label = "|cFFFF2222Red|r (default)" },
-        { value = "gold",   label = "|cFFFFD700Gold|r" },
+        { value = "gold",   label = "|cFFFFD100Gold|r" },
         { value = "purple", label = "|cFFB280FFPurple|r" },
+        { value = "green",  label = "|cFF4CD94CDark Green|r" },
     }
     local accentRadios = CreateRadioGroup(
         content, SECT_X, Y,
@@ -314,14 +315,9 @@ E:RegisterModule(function()
         "accentColor",
         accentOptions,
         function(value)
-            -- Live-apply accent color to the main frame border and header CC
-            local preset = E.AccentPresets[value]
-            if preset and E.MainFrame then
-                local bc = preset.border
-                E.MainFrame:SetBackdropBorderColor(bc.r, bc.g, bc.b, bc.a)
-                E.Colors.border = preset.border
-                E.Colors.header = preset.header
-                E.CC.header     = preset.headerCC
+            -- Live-apply accent across the entire addon
+            if E.ApplyAccentColor then
+                E:ApplyAccentColor(value)
             end
         end
     )
@@ -356,7 +352,7 @@ E:RegisterModule(function()
     div2:SetHeight(1)
     div2:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div2:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-    div2:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div2)
     Y = Y - 10
 
     --------------------------------------------------------------------
@@ -365,7 +361,7 @@ E:RegisterModule(function()
     local alertHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     alertHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     alertHeader:SetFont(alertHeader:GetFont(), 12, "OUTLINE")
-    alertHeader:SetText(E.CC.header .. "Alerts & Tracking" .. E.CC.close)
+    E:StyleAccentHeader(alertHeader, "Alerts & Tracking")
     Y = Y - 20
 
     -- Weekly Reset Alert
@@ -425,7 +421,7 @@ E:RegisterModule(function()
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div3:SetPoint("RIGHT", content, "RIGHT", -8, 0)
-    div3:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+    E:StyleAccentDivider(div3)
     Y = Y - 14
 
     --------------------------------------------------------------------
