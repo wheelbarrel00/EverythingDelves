@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="https://img.icons8.com/color/96/world-of-warcraft.png" alt="Everything Delves" width="96" />
+  <img width="300" height="300" alt="unnamed" src="https://github.com/user-attachments/assets/929c1569-0631-45e5-97ec-ca4f2ebbb550" />
+
 </p>
 <h1 align="center">Everything Delves</h1>
 <p align="center">
