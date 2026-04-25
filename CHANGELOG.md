@@ -5,6 +5,14 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-04-25
+
+### Fixed
+
+- **Great Vault button** now works on stock Blizzard UI. `Blizzard_WeeklyRewards` is a load-on-demand addon that is not in memory until the player opens it for the first time; ElvUI happened to preload it, masking the issue. The button now calls `C_AddOns.LoadAddOn("Blizzard_WeeklyRewards")` before accessing `WeeklyRewardsFrame`, falling back to `ToggleGreatVaultUI` if present.
+- **Start LFG button** applies the same load-on-demand fix for `Blizzard_GroupFinder` and `Blizzard_PVPUI` before accessing `PVEFrame` / `LFGListFrame`. Also added nil guards around frame references so a partial load cannot cause an error.
+- Deduplicated the LFG click handler body (was copy-pasted between initial `OnClick` and `RefreshLFGButton`).
+
 ## [1.2.0] - 2026-04-25
 
 ### Added

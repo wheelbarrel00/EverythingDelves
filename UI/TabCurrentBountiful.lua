@@ -16,6 +16,20 @@ local table_insert, table_sort, wipe = table.insert, table.sort, wipe
 local strtrim = strtrim
 
 ------------------------------------------------------------------------
+-- Load-on-demand helper
+-- Several Blizzard UI frames live inside load-on-demand addons that
+-- aren't in memory until the player opens them for the first time.
+-- ElvUI preloads them, masking the issue. We force-load here.
+------------------------------------------------------------------------
+local function EnsureBlizzardAddon(addonName)
+    ---@diagnostic disable-next-line: undefined-global
+    local loader = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+    if not loader then return false end
+    local ok, loaded = pcall(loader, addonName)
+    return ok and (loaded ~= false)
+end
+
+------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
@@ -601,7 +615,10 @@ E:RegisterModule(function()
     local gvBtn = E:CreateButton(frame, 90, 24, "Great Vault")
     gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
     gvBtn:SetScript("OnClick", function()
-        -- WeeklyRewardsFrame confirmed in 12.0 - same pattern as TWW.
+        -- Blizzard_WeeklyRewards is load-on-demand; force-load before use.
+        if not WeeklyRewardsFrame then
+            EnsureBlizzardAddon("Blizzard_WeeklyRewards")
+        end
         if WeeklyRewardsFrame then
             if WeeklyRewardsFrame:IsShown() then
                 HideUIPanel(WeeklyRewardsFrame)
@@ -613,7 +630,7 @@ E:RegisterModule(function()
             ---@diagnostic disable-next-line: undefined-global
             ToggleGreatVaultUI()
         else
-            print(E.CC.header .. "Everything Delves|r: Great Vault UI unavailable.")
+            print(E.CC.header .. "Everything Delves|r: Great Vault UI could not be loaded.")
         end
     end)
     gvBtn:SetScript("OnEnter", function(self)
@@ -631,27 +648,44 @@ E:RegisterModule(function()
     -- category (121) and clicks "Start Group".
     local lfgStartBtn = E:CreateButton(frame, 90, 24, "Start LFG")
     lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
-    lfgStartBtn:SetScript("OnClick", function()
+
+    -- Shared LFG launcher used by both the initial OnClick and the
+    -- enabled-state refresher below.
+    local function OpenDelveLFG()
+        -- Blizzard_GroupFinder / Blizzard_PVPUI are load-on-demand.
+        if not PVEFrame or not LFGListFrame then
+            EnsureBlizzardAddon("Blizzard_GroupFinder")
+            EnsureBlizzardAddon("Blizzard_PVPUI")
+        end
         if not PVEFrame then
-            print(E.CC.header .. "Everything Delves|r: LFG UI unavailable.")
+            print(E.CC.header .. "Everything Delves|r: LFG UI could not be loaded.")
             return
         end
         if not PVEFrame:IsShown() then
             PVEFrame_ToggleFrame()
         end
         -- Select the Group Finder tab
-        GroupFinderFrameGroupButton3:Click()
+        if GroupFinderFrameGroupButton3 then
+            GroupFinderFrameGroupButton3:Click()
+        end
         -- Select Delves category (121) and click Start Group
-        LFGListCategorySelection_SelectCategory(
-            LFGListFrame.CategorySelection, 121, 0)
-        LFGListFrame.CategorySelection.StartGroupButton:Click()
+        if LFGListFrame and LFGListFrame.CategorySelection
+                and LFGListCategorySelection_SelectCategory then
+            LFGListCategorySelection_SelectCategory(
+                LFGListFrame.CategorySelection, 121, 0)
+            if LFGListFrame.CategorySelection.StartGroupButton then
+                LFGListFrame.CategorySelection.StartGroupButton:Click()
+            end
+        end
         -- Open the group type dropdown for convenience
-        if LFGListFrame.EntryCreation
+        if LFGListFrame and LFGListFrame.EntryCreation
                 and LFGListFrame.EntryCreation.GroupDropdown
                 and LFGListFrame.EntryCreation.GroupDropdown.OpenMenu then
             LFGListFrame.EntryCreation.GroupDropdown:OpenMenu()
         end
-    end)
+    end
+
+    lfgStartBtn:SetScript("OnClick", OpenDelveLFG)
     lfgStartBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
@@ -680,24 +714,7 @@ E:RegisterModule(function()
             lfgStartBtn.disabled = true
         else
             lfgStartBtn:SetAlpha(1.0)
-            lfgStartBtn:SetScript("OnClick", function()
-                if not PVEFrame then
-                    print(E.CC.header .. "Everything Delves|r: LFG UI unavailable.")
-                    return
-                end
-                if not PVEFrame:IsShown() then
-                    PVEFrame_ToggleFrame()
-                end
-                GroupFinderFrameGroupButton3:Click()
-                LFGListCategorySelection_SelectCategory(
-                    LFGListFrame.CategorySelection, 121, 0)
-                LFGListFrame.CategorySelection.StartGroupButton:Click()
-                if LFGListFrame.EntryCreation
-                        and LFGListFrame.EntryCreation.GroupDropdown
-                        and LFGListFrame.EntryCreation.GroupDropdown.OpenMenu then
-                    LFGListFrame.EntryCreation.GroupDropdown:OpenMenu()
-                end
-            end)
+            lfgStartBtn:SetScript("OnClick", OpenDelveLFG)
             lfgStartBtn.disabled = false
         end
     end
