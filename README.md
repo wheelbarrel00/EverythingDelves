@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="300" height="300" alt="unnamed" src="https://github.com/user-attachments/assets/929c1569-0631-45e5-97ec-ca4f2ebbb550" />
+  <img width="200" height="200" alt="unnamed" src="https://github.com/user-attachments/assets/929c1569-0631-45e5-97ec-ca4f2ebbb550" />
 
 </p>
 <h1 align="center">Everything Delves</h1>
