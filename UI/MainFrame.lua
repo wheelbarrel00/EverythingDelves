@@ -313,18 +313,18 @@ local function AddLiveStats(tip)
     local shards = GetCurrencyQty(E.CurrencyIDs.cofferKeyShards)
     local keys   = GetCurrencyQty(E.CurrencyIDs.bountifulKeys)
     local uc     = GetCurrencyQty(E.CurrencyIDs.undercoins)
-    tip:AddDoubleLine(E.CC.muted .. "Coffer Key Shards:" .. E.CC.close,
-                      E.CC.gold .. shards .. E.CC.close)
-    tip:AddDoubleLine(E.CC.muted .. "Bountiful Keys:" .. E.CC.close,
-                      E.CC.gold .. keys .. E.CC.close)
-    tip:AddDoubleLine(E.CC.muted .. "Undercoins:" .. E.CC.close,
-                      E.CC.gold .. uc .. E.CC.close)
+    tip:AddDoubleLine(E.CC.white .. "Coffer Key Shards:" .. E.CC.close,
+                      E.CC.white .. shards .. E.CC.close)
+    tip:AddDoubleLine(E.CC.white .. "Bountiful Keys:" .. E.CC.close,
+                      E.CC.white .. keys .. E.CC.close)
+    tip:AddDoubleLine(E.CC.white .. "Undercoins:" .. E.CC.close,
+                      E.CC.white .. uc .. E.CC.close)
 
     -- Bountiful count from shared table
     if E.currentBountifulCount and E.currentBountifulCount > 0 then
         tip:AddLine(" ")
-        tip:AddDoubleLine(E.CC.muted .. "Active Bountiful:" .. E.CC.close,
-                          E.CC.gold .. E.currentBountifulCount .. E.CC.close)
+        tip:AddDoubleLine(E.CC.white .. "Active Bountiful:" .. E.CC.close,
+                          E.CC.white .. E.currentBountifulCount .. E.CC.close)
     end
 
     -- Weekly reset timer
@@ -335,8 +335,8 @@ local function AddLiveStats(tip)
             local h = math_floor((secs % 86400) / 3600)
             local m = math_floor((secs % 3600) / 60)
             tip:AddLine(" ")
-            tip:AddDoubleLine(E.CC.muted .. "Weekly Reset:" .. E.CC.close,
-                              E.CC.gold .. d .. "d " .. h .. "h " .. m .. "m" .. E.CC.close)
+            tip:AddDoubleLine(E.CC.white .. "Weekly Reset:" .. E.CC.close,
+                              E.CC.white .. d .. "d " .. h .. "h " .. m .. "m" .. E.CC.close)
         end
     end
 end

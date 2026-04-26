@@ -5,6 +5,20 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-25
+
+### Added
+
+- **TomTom buttons on Coffer Shard World Quests** — each WQ row in the Shard Tracker tab now has a "TomTom" button alongside the existing "Pin" button. Clicking it adds an arrow waypoint via TomTom to the quest's map location. The button tooltip indicates when TomTom is not installed (mirrors existing behaviour on the Delve Locations and Current Bountiful tabs).
+
+### Fixed
+
+- **Coffer Shard World Quest list cutoff** — the WQ rows at the bottom of the Shard Tracker tab were clipped when three or more WQs were active because the scroll child had a static height of 1400 px. `UpdateContentHeight()` is now called (deferred one frame via `C_Timer.After`) after every WQ refresh so the scroll child always expands to fit all visible rows.
+
+### Improved
+
+- **Minimap / broker tooltip data lines** — "Coffer Key Shards", "Bountiful Keys", "Undercoins", "Active Bountiful", and "Weekly Reset" labels and values are now white instead of grey, making them easier to read at a glance. Navigation hints (Left-click / Right-click / Drag) remain grey.
+
 ## [1.2.1] - 2026-04-25
 
 ### Fixed

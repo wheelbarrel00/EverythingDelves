@@ -497,6 +497,7 @@ E:RegisterModule(function()
         { label = "Quest",  x = 140 },
         { label = "Shards", x = 380 },
         { label = "Pin",    x = 430 },
+        { label = "TomTom", x = 470 },
     }) do
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", col.x, wqColY)
@@ -550,11 +551,46 @@ E:RegisterModule(function()
             end
         end)
 
+        -- TomTom waypoint button (parallel to Pin). Only useful if the
+        -- TomTom addon is loaded; we display it always and inform the
+        -- user via tooltip when it isn't installed (mirroring the
+        -- Delve Locations / Current Bountiful tabs).
+        local ttBtn = E:CreateButton(sc, 50, 16, "TomTom")
+        ttBtn.label:SetFont(ttBtn.label:GetFont(), 9)
+        ttBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 470, rowY + 2)
+        ttBtn:SetScript("OnEnter", function(self)
+            local hc = E.Colors.buttonHover
+            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+            if E:IsTomTomLoaded() then
+                E:ShowTooltip(self, "TomTom Waypoint",
+                              "Add an arrow waypoint via TomTom.")
+            else
+                E:ShowTooltip(self, "TomTom Not Installed",
+                              "Install the TomTom addon to use arrow waypoints.")
+            end
+        end)
+        ttBtn:SetScript("OnLeave", function(self)
+            local bc = E.Colors.buttonBg
+            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+            E:HideTooltip()
+        end)
+        ttBtn:SetScript("OnClick", function(self)
+            local wq = self.wq
+            if not (wq and C_TaskQuest and C_TaskQuest.GetQuestLocation) then return end
+            if not E:IsTomTomLoaded() then return end
+            local x, y = C_TaskQuest.GetQuestLocation(wq.questID, wq.zoneID)
+            if x and y then
+                E:AddTomTomWaypoint(wq.zoneID, x * 100, y * 100, wq.title)
+                E:FlashButtonConfirm(self)
+            end
+        end)
+
         wqRows[i] = {
             zoneFS   = zoneFS,
             nameFS   = nameFS,
             amountFS = amountFS,
             wpBtn    = wpBtn,
+            ttBtn    = ttBtn,
             visible  = false,
         }
         -- Hide by default
@@ -562,6 +598,7 @@ E:RegisterModule(function()
         nameFS:Hide()
         amountFS:Hide()
         wpBtn:Hide()
+        ttBtn:Hide()
     end
 
     local wqEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -596,6 +633,9 @@ E:RegisterModule(function()
 
     --- Forward declaration so retry can call RefreshAll
     local RefreshAll  -- defined below
+    -- Forward declaration so RefreshAll can recompute scroll height
+    -- after the WQ rows are populated. Assigned in OnShow setup below.
+    local UpdateContentHeight
 
     -- Reusable sort comparator (avoids creating a closure each scan)
     local function wqSortFunc(a, b)
@@ -1123,6 +1163,7 @@ E:RegisterModule(function()
                 row.nameFS:Hide()
                 row.amountFS:Hide()
                 row.wpBtn:Hide()
+                row.ttBtn:Hide()
             end
         else
             wqEmptyFS:Hide()
@@ -1132,20 +1173,29 @@ E:RegisterModule(function()
                     row.zoneFS:SetText(E.CC.body .. wq.zone .. E.CC.close)
                     row.nameFS:SetText(E.CC.purple .. wq.title .. E.CC.close)
                     row.amountFS:SetText(E.CC.gold .. wq.amount .. E.CC.close)
-                    -- Attach current wq to the button; shared OnClick
+                    -- Attach current wq to the buttons; shared OnClick
                     -- closure (set at row creation) reads from self.wq.
                     row.wpBtn.wq = wq
+                    row.ttBtn.wq = wq
                     row.zoneFS:Show()
                     row.nameFS:Show()
                     row.amountFS:Show()
                     row.wpBtn:Show()
+                    row.ttBtn:Show()
                 else
                     row.zoneFS:Hide()
                     row.nameFS:Hide()
                     row.amountFS:Hide()
                     row.wpBtn:Hide()
+                    row.ttBtn:Hide()
                 end
             end
+        end
+
+        -- Recompute scroll content height so the WQ rows are never clipped
+        -- (deferred to next frame so layout is settled before measuring).
+        if UpdateContentHeight then
+            C_Timer.After(0, UpdateContentHeight)
         end
     end
 
@@ -1162,13 +1212,14 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- Recompute the scroll child's real content height after layout so
     -- the scroll range matches the visible extent.
-    local function UpdateContentHeight()
+    UpdateContentHeight = function()
         -- Find the bottom of the last actually-visible element. The WQ
         -- rows may be hidden; fall back through candidates until we
         -- find one whose frame is laid out.
         local candidates = { wqEmptyFS }
         for i = #wqRows, 1, -1 do
             candidates[#candidates + 1] = wqRows[i].wpBtn
+            candidates[#candidates + 1] = wqRows[i].ttBtn
         end
         local scTop = sc:GetTop()
         local lowest
