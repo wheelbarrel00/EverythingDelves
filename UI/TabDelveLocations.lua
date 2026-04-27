@@ -25,6 +25,27 @@ local scrollOffset   = 0
 local scrollBar      = nil  -- forward ref, set during init
 local rows           = {}  -- recycled row frames
 
+-- Cache of lower-cased / trimmed delve names so MatchesFilter,
+-- UpdateRows, and the bountiful lookup never have to allocate
+-- ":lower()" / strtrim() strings inside the scroll/refresh hot path.
+-- Populated lazily on first access; safe because delve.name is static.
+local delveLowerName = {}  -- [delve] = lower(name)
+local delveLowerZone = {}  -- [delve] = lower(zone)
+local function GetLowerName(delve)
+    local v = delveLowerName[delve]
+    if v then return v end
+    v = delve.name:lower()
+    delveLowerName[delve] = v
+    return v
+end
+local function GetLowerZone(delve)
+    local v = delveLowerZone[delve]
+    if v then return v end
+    v = delve.zone:lower()
+    delveLowerZone[delve] = v
+    return v
+end
+
 ------------------------------------------------------------------------
 -- Filtering & sorting
 ------------------------------------------------------------------------
@@ -35,7 +56,7 @@ local function MatchesFilter(delve)
     end
     -- Search filter (case-insensitive substring match on delve name)
     if currentSearch ~= "" then
-        if not delve.name:lower():find(currentSearch, 1, true) then
+        if not GetLowerName(delve):find(currentSearch, 1, true) then
             return false
         end
     end
@@ -54,9 +75,9 @@ local function RefreshFilteredData()
     table_sort(filteredData, function(a, b)
         local va, vb
         if sortField == "name" then
-            va, vb = a.name:lower(), b.name:lower()
+            va, vb = GetLowerName(a), GetLowerName(b)
         elseif sortField == "zone" then
-            va, vb = a.zone:lower(), b.zone:lower()
+            va, vb = GetLowerZone(a), GetLowerZone(b)
         end
         if sortAscending then
             return va < vb
@@ -83,7 +104,7 @@ local function UpdateRows(scrollFrame)
             if E.currentBountifulNames then
                 -- Try exact name, then normalized name, then POI ID fallback
                 isBountiful = E.currentBountifulNames[delve.name]
-                    or E.currentBountifulNames[strtrim(delve.name):lower()]
+                    or E.currentBountifulNames[GetLowerName(delve)]
                     or (E.currentBountifulPOIs and delve.poiID
                         and E.currentBountifulPOIs[delve.poiID])
                     or false

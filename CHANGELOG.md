@@ -5,6 +5,24 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-04-26
+
+### Fixed
+
+- **Shard Tracker scroll auto-reset** — the tab was scrolling back to ~25% from the top every few minutes because `CurrencyUpdate` and `QuestLogUpdate` event callbacks were calling `RefreshAll`, which deferred `UpdateContentHeight` via `C_Timer.After`. When the scroll child shrank, the scroll frame clamped the position. Both callbacks now save and restore the scroll position around the refresh so the view stays stable during background updates.
+- **WQ cap warning placement** — the yellow "Weekly shard cap reached" warning was anchored above the WQ column headers at the top of the section instead of below the last WQ row. It now sits **16 px** below the last WQ row (or the empty-state message), with the grey tip text **12 px** below it, providing the breathing room that had been repeatedly requested.
+- **WQ section header gap** — the grey description line ("WQs rewarding Coffer Key Shards...") was crammed 2 px below the "Coffer Shard World Quests" header. Increased to **14 px** for visible separation.
+- **Pin/TomTom button border colour at cap** — the button borders remained gold/accent-coloured even when the shard cap was reached. Both borders are now set to `(0.35, 0.35, 0.35, 0.80)` grey when `isAtCap` is true and restored to the active accent preset border colour when the cap clears.
+
+### Improved
+
+- **Memory: ObjectiveTracker scraper** (`AutoDetectDelveTier`) no longer allocates `{ frame:GetRegions() }` / `{ frame:GetChildren() }` temporary tables on every recursive call. Switched to numeric `select(i, frame:GetRegions())` iteration and reduced four chained `:gsub()` calls to two, cutting GC pressure during delve entry.
+- **Memory: SCENARIO\_UPDATE early exit** — when already inside a delve with a captured tier, redundant SCENARIO\_UPDATE fires (5–10× per entry) now short-circuit before reaching the ObjectiveTracker scrape.
+- **Memory: widget set cache** (`TabCurrentBountiful`) — `C_UIWidgetManager.GetAllWidgetsBySetID()` results are now cached with a 5-second TTL so bursty `AREA_POIS_UPDATED` events don't each allocate a fresh table per POI.
+- **Memory: delve name cache** (`TabDelveLocations`) — `MatchesFilter`, the sort comparator, and the bountiful name lookup no longer call `:lower()` / `strtrim():lower()` on every scroll repaint. Results are cached lazily per-delve.
+- **Memory: `ApplyAccentColor` short-circuit** — skips the full `ThemedWidgets` repaint walk when the same colour is being re-applied (no-op on redundant calls).
+- Fixed default fallback in `GetAccentPreset` / `GetAccentColor` to `"gold"` (was incorrectly `"red"`).
+
 ## [1.3.0] - 2026-04-25
 
 ### Added

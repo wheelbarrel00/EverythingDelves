@@ -450,15 +450,16 @@ E:RegisterModule(function()
     local WQ_CURRENCY = 3310
     local MAX_WQ_ROWS = 12  -- max rows to pre-create
 
-    -- Divider before WQ section
+    -- Divider before WQ section. Extra top padding (was -8) so the
+    -- WQ heading has visible breathing room from the previous section.
     local div4 = sc:CreateTexture(nil, "ARTWORK")
     div4:SetHeight(1)
-    div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -8)
+    div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -22)
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div4)
 
     local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -8)
+    wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -14)
     wqHeader:SetFont(wqHeader:GetFont(), 12, "OUTLINE")
     E:StyleAccentHeader(wqHeader, "Coffer Shard World Quests")
 
@@ -483,12 +484,23 @@ E:RegisterModule(function()
     end)
 
     local wqNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -2)
+    wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -14)
     wqNoteFS:SetFont(wqNoteFS:GetFont(), 9)
     wqNoteFS:SetText(
         E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate - "
         .. "click Refresh to update." .. E.CC.close
     )
+
+    -- Cap-reached warning (shown when weeklyEarned >= weeklyCap)
+    local wqCapWarningFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    wqCapWarningFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, -2)
+    wqCapWarningFS:SetFont(wqCapWarningFS:GetFont(), 9, "OUTLINE")
+    wqCapWarningFS:SetWidth(540)
+    wqCapWarningFS:SetJustifyH("LEFT")
+    wqCapWarningFS:SetText(
+        E.CC.gold .. "Weekly shard cap reached — shards will not be awarded until reset." .. E.CC.close
+    )
+    wqCapWarningFS:Hide()
 
     -- Column headers for WQ list
     local wqColY = -18
@@ -530,10 +542,12 @@ E:RegisterModule(function()
         wpBtn.label:SetFont(wpBtn.label:GetFont(), 9)
         wpBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 430, rowY + 2)
         wpBtn:SetScript("OnEnter", function(self)
+            if self.dimmed then return end
             local hc = E.Colors.buttonHover
             self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         end)
         wpBtn:SetScript("OnLeave", function(self)
+            if self.dimmed then return end
             local bc = E.Colors.buttonBg
             self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
         end)
@@ -559,8 +573,10 @@ E:RegisterModule(function()
         ttBtn.label:SetFont(ttBtn.label:GetFont(), 9)
         ttBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 470, rowY + 2)
         ttBtn:SetScript("OnEnter", function(self)
-            local hc = E.Colors.buttonHover
-            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+            if not self.dimmed then
+                local hc = E.Colors.buttonHover
+                self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+            end
             if E:IsTomTomLoaded() then
                 E:ShowTooltip(self, "TomTom Waypoint",
                               "Add an arrow waypoint via TomTom.")
@@ -570,8 +586,10 @@ E:RegisterModule(function()
             end
         end)
         ttBtn:SetScript("OnLeave", function(self)
-            local bc = E.Colors.buttonBg
-            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+            if not self.dimmed then
+                local bc = E.Colors.buttonBg
+                self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+            end
             E:HideTooltip()
         end)
         ttBtn:SetScript("OnClick", function(self)
@@ -611,6 +629,16 @@ E:RegisterModule(function()
         .. E.CC.close
     )
     wqEmptyFS:Hide()
+
+    -- Bottom note below the WQ list. Its anchor is updated dynamically in
+    -- RefreshAll so it always sits 14 px below the last visible row/message.
+    -- UpdateContentHeight measures its position to correctly size the scroll child.
+    local wqBottomFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
+    wqBottomFS:SetFont(wqBottomFS:GetFont(), 9)
+    wqBottomFS:SetText(
+        E.CC.muted .. "* Tip: Visit zone maps to load WQ data before refreshing." .. E.CC.close
+    )
 
     --- Scan all Midnight zones for WQs rewarding shard currency.
     --- Results are cached and only rescanned when forced or stale (>60s).
@@ -852,6 +880,8 @@ E:RegisterModule(function()
         -- Weekly cap data from the currency API
         local _, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
         local weeklyRemaining = math_max(0, weeklyCap - weeklyEarned)
+        -- True when the player has earned their full weekly shard cap
+        local isAtCap = weeklyCap > 0 and weeklyEarned >= weeklyCap
 
         -- Set currency icons via modern API
         shardIcon:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
@@ -1156,6 +1186,13 @@ E:RegisterModule(function()
             .. E.CC.muted .. " active" .. E.CC.close
         )
 
+        -- Show cap warning above the list when the weekly cap is reached
+        if isAtCap then
+            wqCapWarningFS:Show()
+        else
+            wqCapWarningFS:Hide()
+        end
+
         if #wqs == 0 then
             wqEmptyFS:Show()
             for _, row in ipairs(wqRows) do
@@ -1165,14 +1202,51 @@ E:RegisterModule(function()
                 row.wpBtn:Hide()
                 row.ttBtn:Hide()
             end
+            -- Anchor cap warning + footer below the empty-state message
+            -- with clear breathing room (16 px above warning, 12 px between).
+            wqCapWarningFS:ClearAllPoints()
+            wqBottomFS:ClearAllPoints()
+            if isAtCap then
+                wqCapWarningFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -16)
+                wqBottomFS:SetPoint("TOPLEFT", wqCapWarningFS, "BOTTOMLEFT", 0, -12)
+            else
+                wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
+            end
         else
             wqEmptyFS:Hide()
             for i, row in ipairs(wqRows) do
                 if i <= #wqs then
                     local wq = wqs[i]
-                    row.zoneFS:SetText(E.CC.body .. wq.zone .. E.CC.close)
-                    row.nameFS:SetText(E.CC.purple .. wq.title .. E.CC.close)
-                    row.amountFS:SetText(E.CC.gold .. wq.amount .. E.CC.close)
+                    -- Use muted colors for all row text when cap is reached
+                    local zoneCC   = isAtCap and E.CC.muted  or E.CC.body
+                    local nameCC   = isAtCap and E.CC.muted  or E.CC.purple
+                    local amountCC = isAtCap and E.CC.muted  or E.CC.gold
+                    row.zoneFS:SetText(zoneCC   .. wq.zone   .. E.CC.close)
+                    row.nameFS:SetText(nameCC   .. wq.title  .. E.CC.close)
+                    row.amountFS:SetText(amountCC .. wq.amount .. E.CC.close)
+                    -- Dim button backdrop + border + label when at cap
+                    -- (still clickable). Border restored to accent on uncap.
+                    if isAtCap then
+                        row.wpBtn.dimmed = true
+                        row.ttBtn.dimmed = true
+                        row.wpBtn:SetBackdropColor(0.15, 0.15, 0.15, 0.80)
+                        row.ttBtn:SetBackdropColor(0.15, 0.15, 0.15, 0.80)
+                        row.wpBtn:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
+                        row.ttBtn:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
+                        row.wpBtn.label:SetTextColor(0.55, 0.55, 0.55, 1)
+                        row.ttBtn.label:SetTextColor(0.55, 0.55, 0.55, 1)
+                    else
+                        row.wpBtn.dimmed = false
+                        row.ttBtn.dimmed = false
+                        local bc = E.Colors.buttonBg
+                        local bd = E:GetAccentPreset().border
+                        row.wpBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+                        row.ttBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+                        row.wpBtn:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
+                        row.ttBtn:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
+                        row.wpBtn.label:SetTextColor(1, 1, 1, 1)
+                        row.ttBtn.label:SetTextColor(1, 1, 1, 1)
+                    end
                     -- Attach current wq to the buttons; shared OnClick
                     -- closure (set at row creation) reads from self.wq.
                     row.wpBtn.wq = wq
@@ -1189,6 +1263,18 @@ E:RegisterModule(function()
                     row.wpBtn:Hide()
                     row.ttBtn:Hide()
                 end
+            end
+            -- Anchor cap warning (if shown) + footer below the last
+            -- visible WQ row with clear breathing room: 16 px gap above
+            -- the yellow warning, 12 px between warning and grey tip.
+            local lastRow = wqRows[#wqs]
+            wqCapWarningFS:ClearAllPoints()
+            wqBottomFS:ClearAllPoints()
+            if isAtCap then
+                wqCapWarningFS:SetPoint("TOPLEFT", lastRow.zoneFS, "BOTTOMLEFT", 0, -16)
+                wqBottomFS:SetPoint("TOPLEFT", wqCapWarningFS, "BOTTOMLEFT", 0, -12)
+            else
+                wqBottomFS:SetPoint("TOPLEFT", lastRow.zoneFS, "BOTTOMLEFT", 0, -14)
             end
         end
 
@@ -1216,7 +1302,7 @@ E:RegisterModule(function()
         -- Find the bottom of the last actually-visible element. The WQ
         -- rows may be hidden; fall back through candidates until we
         -- find one whose frame is laid out.
-        local candidates = { wqEmptyFS }
+        local candidates = { wqEmptyFS, wqBottomFS }
         for i = #wqRows, 1, -1 do
             candidates[#candidates + 1] = wqRows[i].wpBtn
             candidates[#candidates + 1] = wqRows[i].ttBtn
@@ -1230,7 +1316,7 @@ E:RegisterModule(function()
             end
         end
         if scTop and lowest and scTop > lowest then
-            sc:SetHeight((scTop - lowest) + 24)
+            sc:SetHeight((scTop - lowest) + 40)
         end
         UpdateScrollRange()
     end
@@ -1263,17 +1349,27 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- Register for currency and quest log events via callback list
     --------------------------------------------------------------------
-    E:RegisterCallback("CurrencyUpdate", function()
-        if frame:IsShown() then
-            RefreshAll()
-        end
-    end)
+    -- Background refreshes (currency/quest events) must NOT reset the
+    -- user's scroll position. UpdateContentHeight resizes the scroll
+    -- child, which can clamp the current scroll if the new content is
+    -- shorter; we save and restore the scroll value around the refresh.
+    local function RefreshPreservingScroll()
+        if not frame:IsShown() then return end
+        local prevScroll = scrollFrame:GetVerticalScroll()
+        RefreshAll()
+        -- UpdateContentHeight runs deferred; restore on the same frame.
+        C_Timer.After(0, function()
+            if scrollFrame and scrollFrame.SetVerticalScroll then
+                scrollFrame:SetVerticalScroll(prevScroll)
+                if tabScrollBar and tabScrollBar.SetValue then
+                    tabScrollBar:SetValue(prevScroll)
+                end
+            end
+        end)
+    end
 
-    E:RegisterCallback("QuestLogUpdate", function()
-        if frame:IsShown() then
-            RefreshAll()  -- let WQ cache TTL handle freshness
-        end
-    end)
+    E:RegisterCallback("CurrencyUpdate", RefreshPreservingScroll)
+    E:RegisterCallback("QuestLogUpdate", RefreshPreservingScroll)
 
     --------------------------------------------------------------------
     -- Register with the main frame tab system

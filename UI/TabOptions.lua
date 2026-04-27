@@ -153,11 +153,12 @@ E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab5Content")
 
     -- Scrollable container so options aren't cut off
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -26, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 4)
+    scrollFrame:EnableMouseWheel(true)
 
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    local scrollChild = CreateFrame("Frame")
     scrollChild:SetWidth(scrollFrame:GetWidth() or 580)
     scrollFrame:SetScrollChild(scrollChild)
 
@@ -165,6 +166,49 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
         scrollChild:SetWidth(w)
     end)
+
+    -- Custom themed scrollbar (matches Delve Locations, Tier Guide, Shard Tracker)
+    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
+    tabScrollBar:SetWidth(14)
+    tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
+    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
+    tabScrollBar:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
+    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
+    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
+    sbThumb:SetSize(12, 40)
+    E:StyleAccentThumb(sbThumb)
+    tabScrollBar:SetThumbTexture(sbThumb)
+    tabScrollBar:SetOrientation("VERTICAL")
+    tabScrollBar:SetMinMaxValues(0, 1)
+    tabScrollBar:SetValue(0)
+    tabScrollBar:SetValueStep(1)
+    tabScrollBar:SetObeyStepOnDrag(true)
+    tabScrollBar:SetScript("OnValueChanged", function(_, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
+
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math_max(0, scrollChild:GetHeight() - self:GetHeight())
+        local newVal = math_max(0, math_min(
+            self:GetVerticalScroll() - delta * 30, maxScroll))
+        self:SetVerticalScroll(newVal)
+        tabScrollBar:SetValue(newVal)
+    end)
+
+    local function UpdateScrollRange()
+        local maxScroll = math_max(0, scrollChild:GetHeight() - scrollFrame:GetHeight())
+        tabScrollBar:SetMinMaxValues(0, maxScroll)
+        if maxScroll <= 0 then
+            tabScrollBar:Hide()
+        else
+            tabScrollBar:Show()
+        end
+    end
 
     -- All content is parented to scrollChild instead of frame
     local content = scrollChild
@@ -304,10 +348,11 @@ E:RegisterModule(function()
 
     -- Accent Color (radio group)
     local accentOptions = {
-        { value = "red",    label = "|cFFFF2222Red|r (default)" },
-        { value = "gold",   label = "|cFFFFD100Gold|r" },
-        { value = "purple", label = "|cFFB280FFPurple|r" },
-        { value = "green",  label = "|cFF4CD94CDark Green|r" },
+        { value = "gold",     label = "|cFFFFD100Gold|r (default)" },
+        { value = "red",      label = "|cFFFF2222Red|r" },
+        { value = "purple",   label = "|cFFB280FFPurple|r" },
+        { value = "green",    label = "|cFF4CD94CDark Green|r" },
+        { value = "darkblue", label = "|cFF3388FFDark Blue|r" },
     }
     local accentRadios = CreateRadioGroup(
         content, SECT_X, Y,
@@ -508,12 +553,18 @@ E:RegisterModule(function()
 
     -- Set the scroll child height to the total content height
     scrollChild:SetHeight(math.abs(Y) + 10)
+    UpdateScrollRange()
 
     --------------------------------------------------------------------
     -- OnShow: sync all widgets with current E.db values
     -- (handles the case where /ed reset was used externally)
     --------------------------------------------------------------------
     frame:SetScript("OnShow", function()
+        -- Reset scroll position and sync the range with current content
+        scrollFrame:SetVerticalScroll(0)
+        tabScrollBar:SetValue(0)
+        UpdateScrollRange()
+
         -- General
         defaultTabSlider:SetValue(E.db.defaultTab or 1)
         scaleSlider:SetValue((E.db.uiScale or 1.0) * 100)

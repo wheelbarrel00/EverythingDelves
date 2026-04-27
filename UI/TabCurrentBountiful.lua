@@ -68,6 +68,35 @@ end
 -- Populates `out` in place (reusing entries from the pool) so this
 -- function allocates nothing on the steady path.
 ------------------------------------------------------------------------
+
+-- C_UIWidgetManager.GetAllWidgetsBySetID() returns a fresh table on
+-- every call. AREA_POIS_UPDATED fires several times during zone
+-- transitions, and each fire calls this twice per bountiful POI
+-- (icon set + tooltip set). Cache the results with a short TTL so
+-- bursty events coalesce into a single API allocation per set.
+local widgetSetCache = {}        -- [setID] = { table, expires }
+local WIDGET_CACHE_TTL = 5       -- seconds
+
+local function GetCachedWidgetsBySetID(setID)
+    if not (setID and C_UIWidgetManager
+            and C_UIWidgetManager.GetAllWidgetsBySetID) then
+        return nil
+    end
+    local now = GetTime()
+    local entry = widgetSetCache[setID]
+    if entry and entry.expires > now then
+        return entry.widgets
+    end
+    local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(setID)
+    if not entry then
+        entry = {}
+        widgetSetCache[setID] = entry
+    end
+    entry.widgets = widgets
+    entry.expires = now + WIDGET_CACHE_TTL
+    return widgets
+end
+
 local function PopulateBountifulDelvesLive(out)
     ReleaseBountifulList(out)
     if not (C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then
@@ -79,10 +108,8 @@ local function PopulateBountifulDelvesLive(out)
             local poi = C_AreaPoiInfo.GetAreaPOIInfo(delve.mapID, delve.poiID)
             if poi and poi.atlasName == "delves-bountiful" then
                 local isOvercharged = false
-                if poi.iconWidgetSet and C_UIWidgetManager
-                        and C_UIWidgetManager.GetAllWidgetsBySetID then
-                    local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(
-                                        poi.iconWidgetSet)
+                if poi.iconWidgetSet then
+                    local widgets = GetCachedWidgetsBySetID(poi.iconWidgetSet)
                     if widgets and #widgets == 2 then
                         isOvercharged = true
                     end
@@ -90,10 +117,8 @@ local function PopulateBountifulDelvesLive(out)
 
                 -- Get story variant from tooltip widget
                 local storyVariant = ""
-                if poi.tooltipWidgetSet and C_UIWidgetManager
-                        and C_UIWidgetManager.GetAllWidgetsBySetID then
-                    local tWidgets = C_UIWidgetManager.GetAllWidgetsBySetID(
-                                         poi.tooltipWidgetSet)
+                if poi.tooltipWidgetSet then
+                    local tWidgets = GetCachedWidgetsBySetID(poi.tooltipWidgetSet)
                     if tWidgets then
                         for _, info in ipairs(tWidgets) do
                             if info.widgetType == Enum.UIWidgetVisualizationType.TextWithState then

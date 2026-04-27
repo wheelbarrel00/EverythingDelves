@@ -208,10 +208,11 @@ E.CachedIcons = {
 -- and walks the registered themed-widget list to repaint everything.
 ------------------------------------------------------------------------
 E.AccentColors = {
-    red    = { r = 0.55, g = 0.00, b = 0.00, hex = "8B0000" },
-    gold   = { r = 1.00, g = 0.82, b = 0.00, hex = "FFD100" },
-    purple = { r = 0.42, g = 0.05, b = 0.68, hex = "6A0DAD" },
-    green  = { r = 0.00, g = 0.39, b = 0.00, hex = "006400" },
+    red      = { r = 0.55, g = 0.00, b = 0.00, hex = "8B0000" },
+    gold     = { r = 1.00, g = 0.82, b = 0.00, hex = "FFD100" },
+    purple   = { r = 0.42, g = 0.05, b = 0.68, hex = "6A0DAD" },
+    green    = { r = 0.00, g = 0.39, b = 0.00, hex = "006400" },
+    darkblue = { r = 0.00, g = 0.19, b = 0.56, hex = "00308F" },
 }
 
 E.AccentPresets = {
@@ -275,6 +276,21 @@ E.AccentPresets = {
         closeBg     = { r = 0.00, g = 0.22, b = 0.00, a = 0.80 },
         closeHover  = { r = 0.05, g = 0.45, b = 0.05, a = 1.00 },
     },
+    darkblue = {
+        border      = { r = 0.00, g = 0.19, b = 0.56, a = 1.00 },
+        divider     = { r = 0.00, g = 0.19, b = 0.56, a = 0.80 },
+        tabActive   = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
+        tabBorder   = { r = 0.10, g = 0.30, b = 0.70, a = 1.00 },
+        tabHover    = { r = 0.00, g = 0.12, b = 0.35, a = 0.80 },
+        header      = { r = 0.20, g = 0.55, b = 1.00, a = 1.00 },
+        headerCC    = "|cFF3388FF",
+        buttonBg    = { r = 0.00, g = 0.15, b = 0.45, a = 1.00 },
+        buttonHover = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
+        progressFill= { r = 0.00, g = 0.22, b = 0.60, a = 0.90 },
+        scrollThumb = { r = 0.00, g = 0.22, b = 0.60, a = 0.80 },
+        closeBg     = { r = 0.00, g = 0.10, b = 0.32, a = 0.80 },
+        closeHover  = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
+    },
 }
 
 ------------------------------------------------------------------------
@@ -296,24 +312,30 @@ end
 
 --- Get the currently-selected accent preset table.
 function E:GetAccentPreset()
-    local key = (self.db and self.db.accentColor) or "red"
-    return self.AccentPresets[key] or self.AccentPresets.red
+    local key = (self.db and self.db.accentColor) or "gold"
+    return self.AccentPresets[key] or self.AccentPresets.gold
 end
 
 --- Get the simple {r,g,b,hex} accent color (per the public AccentColors).
 function E:GetAccentColor()
-    local key = (self.db and self.db.accentColor) or "red"
-    return self.AccentColors[key] or self.AccentColors.red
+    local key = (self.db and self.db.accentColor) or "gold"
+    return self.AccentColors[key] or self.AccentColors.gold
 end
 
 --- Apply an accent color theme. Mutates E.Colors and E.CC in place
 --- (so any code that read them previously stays consistent) and
 --- invokes every registered repaint callback.
---- @param name string|nil  "red" | "gold" | "purple" | "green"
+--- @param name string|nil  "red" | "gold" | "purple" | "green" | "darkblue"
 function E:ApplyAccentColor(name)
     if name and self.AccentPresets[name] then
         if self.db then self.db.accentColor = name end
     end
+    -- Short-circuit if the requested color is already active. Repainting
+    -- the entire ThemedWidgets list is wasted work in that case.
+    local applied = name or (self.db and self.db.accentColor) or "gold"
+    if self._lastAppliedAccent == applied then return end
+    self._lastAppliedAccent = applied
+
     local p = self:GetAccentPreset()
 
     -- Mutate live color tables in place.

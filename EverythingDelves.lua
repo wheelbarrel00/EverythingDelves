@@ -40,7 +40,7 @@ local DEFAULTS = {
     defaultTab       = 1,
     completedDisplay = "dim",     -- "hide" | "dim" | "bottom"
     uiScale          = 1.0,
-    accentColor      = "red",     -- "red" | "gold" | "purple" | "green"
+    accentColor      = "gold",    -- "red" | "gold" | "purple" | "green" | "darkblue"
     showWeeklyResetAlert   = true,
     sessionTracking        = true,
     showCompletedItems     = true,
@@ -318,18 +318,24 @@ local function AutoDetectDelveTier()
         local foundTier
         local zoneName = GetRealZoneText() or ""
 
+        -- Recursive walker. Uses select() to iterate GetRegions() and
+        -- GetChildren() varargs WITHOUT allocating a temporary table
+        -- per recursive call (the previous `{ frame:GetRegions() }`
+        -- pattern allocated on every visit).
         local function SearchForTier(frame)
             if foundTier then return end
             if not frame or frame:IsForbidden() then return end
-            for _, r in ipairs({ frame:GetRegions() }) do
-                if r:GetObjectType() == "FontString" and r:IsShown() then
+
+            local nRegs = frame:GetNumRegions()
+            for i = 1, nRegs do
+                local r = select(i, frame:GetRegions())
+                if r and r:GetObjectType() == "FontString" and r:IsShown() then
                     local txt = r:GetText()
                     if txt and txt ~= "" then
-                        local clean = txt
-                            :gsub("|c%x%x%x%x%x%x%x%x", "")
-                            :gsub("|r", "")
-                            :gsub("^%s+", "")
-                            :gsub("%s+$", "")
+                        -- Single combined gsub pass so we allocate one
+                        -- intermediate string instead of four.
+                        local clean = txt:gsub("|c%x%x%x%x%x%x%x%x", "")
+                                         :gsub("|r", "")
                         local m = clean:match("Tier%s*:?%s*(%d+)")
                             or clean:match("Difficulty%s*:?%s*(%d+)")
                         if m then
@@ -351,7 +357,10 @@ local function AutoDetectDelveTier()
                     end
                 end
             end
-            for _, child in ipairs({ frame:GetChildren() }) do
+
+            local nChildren = frame:GetNumChildren()
+            for i = 1, nChildren do
+                local child = select(i, frame:GetChildren())
                 SearchForTier(child)
                 if foundTier then return end
             end
@@ -572,6 +581,15 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_ENTERING_WORLD"
             or event == "ZONE_CHANGED_NEW_AREA"
             or event == "SCENARIO_UPDATE" then
+        -- SCENARIO_UPDATE fires 5-10x during delve entry. Once we're in
+        -- a delve and have already captured the tier, there is nothing
+        -- left for TryBeginFromCurrentZone to do; skip the work to
+        -- avoid the recursive ObjectiveTracker scrape.
+        if event == "SCENARIO_UPDATE"
+                and runState.inDelve
+                and runState.tier and runState.tier > 0 then
+            return
+        end
         TryBeginFromCurrentZone(event)
 
     elseif event == "PLAYER_DEAD" then
