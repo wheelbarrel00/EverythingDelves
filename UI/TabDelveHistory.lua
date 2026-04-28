@@ -65,7 +65,7 @@ E:RegisterModule(function()
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", HDR_X, HDR_Y)
-    title:SetFont(title:GetFont(), 13, "OUTLINE")
+    title:SetFont(title:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(title, "Delve History")
 
     local summaryFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -165,8 +165,8 @@ E:RegisterModule(function()
     -- or hidden depending on whether content exists.
     --------------------------------------------------------------------
     local nemesisHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemesisHeader:SetFont(nemesisHeader:GetFont(), 12, "OUTLINE")
-    nemesisHeader:SetText(E.CC.gold .. "Seasonal Nemesis" .. E.CC.close)
+    nemesisHeader:SetFont(nemesisHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+    E:StyleAccentHeader(nemesisHeader, "Seasonal Nemesis")
 
     local nemesisEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemesisEmptyFS:SetFont(nemesisEmptyFS:GetFont(), 10)
@@ -174,7 +174,7 @@ E:RegisterModule(function()
         .. "No nemesis delve runs recorded yet." .. E.CC.close)
 
     local midnightHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    midnightHeader:SetFont(midnightHeader:GetFont(), 12, "OUTLINE")
+    midnightHeader:SetFont(midnightHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(midnightHeader, "Midnight Delves")
 
     local midnightEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -182,6 +182,20 @@ E:RegisterModule(function()
     midnightEmptyFS:SetText(E.CC.muted
         .. "No Midnight delve runs recorded yet. Complete a delve to "
         .. "start tracking!" .. E.CC.close)
+
+    -- Accent-colour divider between Seasonal Nemesis and Midnight Delves
+    -- sections. Parented to `sc` so it scrolls with content; horizontal
+    -- anchors are set in Refresh.
+    local nemesisDivider = sc:CreateTexture(nil, "ARTWORK")
+    nemesisDivider:SetHeight(1)
+    E:StyleAccentDivider(nemesisDivider)
+    nemesisDivider:Hide()
+
+    -- Accent-colour divider directly below the "Midnight Delves" header.
+    local midnightDivider = sc:CreateTexture(nil, "ARTWORK")
+    midnightDivider:SetHeight(1)
+    E:StyleAccentDivider(midnightDivider)
+    midnightDivider:Hide()
 
     --------------------------------------------------------------------
     -- Frame pools
@@ -361,8 +375,8 @@ E:RegisterModule(function()
         -- yCur as its Y offset — no chained sibling anchors, so there
         -- is zero possibility of X-drift between rows.
         local yCur = 4
-        local X_PARENT = LEFT_X           -- parent header / section header X
-        local X_CHILD  = LEFT_X + 16      -- indented child run row X
+        local X_PARENT = 0                -- align section headers with "Delve History"
+        local X_CHILD  = 16               -- indented child run row X
 
         local function PlaceAt(widget, x, h)
             widget:ClearAllPoints()
@@ -446,10 +460,31 @@ E:RegisterModule(function()
         end
 
         ----------------------------------------------------------------
-        -- Spacer + Section: Midnight Delves
+        -- Spacer + accent divider + Section: Midnight Delves
         ----------------------------------------------------------------
-        yCur = yCur + 10  -- spacer
+        yCur = yCur + 12  -- breathing room above the divider
+
+        -- Place + show the accent-colour separator across the FULL UI
+        -- width. Parented to `frame`, vertical anchored to sc so it
+        -- scrolls with content; horizontal anchored to frame edges so
+        -- it matches the divider directly below the tab row.
+        nemesisDivider:ClearAllPoints()
+        nemesisDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   0, -yCur)
+        nemesisDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT",  0, -yCur)
+        nemesisDivider:SetHeight(1)
+        nemesisDivider:Show()
+        yCur = yCur + 14  -- breathing room below the divider
+
         PlaceAt(midnightHeader, X_PARENT, 24)
+
+        -- Third full-width accent divider, directly below the Midnight
+        -- Delves header.
+        midnightDivider:ClearAllPoints()
+        midnightDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   0, -yCur + 4)
+        midnightDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT",  0, -yCur + 4)
+        midnightDivider:SetHeight(1)
+        midnightDivider:Show()
+        yCur = yCur + 8  -- breathing room below the third divider
 
         if #midnightKeys == 0 then
             PlaceAt(midnightEmptyFS, X_PARENT, 16)

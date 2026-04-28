@@ -5,6 +5,58 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-27
+
+### UI Overhaul (global)
+
+- **Buttons** — All buttons across the entire addon are now hardcoded to a red (`#6D0501`) background with yellow (`#EBB706`) text. Buttons are no longer tied to the accent color profile. Greyed-out buttons (e.g., shard cap reached) retain their grey state.
+- **Headers** — All section headers across all 6 tabs have been increased to a uniform larger font size (`E.HEADER_FONT_SIZE = 20`).
+- **Title** — "Everything Delves" title is now font size 25 and centered, with balanced spacing above and below.
+
+### Delve Locations Tab
+
+- Removed scrollbar.
+- Removed "Showing 10 of 10" text.
+- Removed "(asc)" / "(desc)" indicators from the "Delve Name" header.
+- Added permanent grey column-header lines above and below "Delve Name / Zone / Pin / TomTom".
+- Added 20 px spacing below the All Zones / Search bar row.
+- Fixed column header alignment so Pin and TomTom share the same baseline as Zone.
+- Fixed All Zones dropdown — option clicks were being intercepted by the click-outside overlay; the overlay now sits below the menu's strata so zone selections register correctly.
+
+### Current Bountiful Delves Tab
+
+- Added accent-color line under the Great Vault / Start LFG buttons (full UI width).
+- "This Week's Bountiful Delves" styled as a header with a permanent grey line above and below it.
+- Added spacing to reduce crowding between the action buttons and the bountiful list.
+- Removed the red background tint from delve rows; rows now use the same neutral tint as the Delve Locations tab.
+
+### Tier Guide Tab
+
+- Removed the yellow accent line above "Great Vault Progress".
+- World Content progress bar now follows the accent color profile (was hardcoded gold when full).
+- All red status text changed to hardcoded yellow (`#EBB706`) — "Quest available", "No Beacon of Hope in bags or bank", "Insufficient Undercoins", "0 / 4 — no T11 runs yet this week", and the undercoin count.
+- Moved the **Valeera — Companion** button to the right side of the Seasonal Nemesis section, enlarged 2× (now 280×40 with 14 pt label), with a matching 32×32 circular portrait icon. The Nullaeus nemesis icon also receives the same circular alpha mask so the two read as a matched pair.
+
+### Shard Tracker Tab
+
+- Added accent-color line under the "Weekly Shard Sources" header.
+- Added permanent grey column-header lines above and below the Coffer Shard WQ data table.
+- Added breathing room below the bottom column-header line so the Pin / TomTom buttons no longer touch the line.
+- Normalized grey line thickness across the WQ section.
+- Cap-state restore now uses the hardcoded button border / label colour to match the new button system.
+
+### Delve History Tab
+
+- Aligned "Seasonal Nemesis" and "Midnight Delves" headers to match "Delve History" left alignment.
+- Extended all divider lines to full UI width.
+- "Seasonal Nemesis" header now follows the accent color profile.
+- Added a separator line under the Seasonal Nemesis body text (between Nemesis and Midnight sections), plus a third divider directly below the Midnight Delves header.
+- Normalized line thickness across all dividers.
+
+### Options Tab
+
+- Section headers ("General", "Display", "Alerts & Tracking") increased to match the uniform header size.
+
 ## [1.3.1] - 2026-04-26
 
 ### Fixed

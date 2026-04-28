@@ -207,19 +207,10 @@ E:RegisterModule(function()
     end
 
     --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
-    local div1 = frame:CreateTexture(nil, "ARTWORK")
-    div1:SetHeight(1)
-    div1:SetPoint("TOPLEFT", recBox, "BOTTOMLEFT", 0, -8)
-    div1:SetPoint("TOPRIGHT", recBox, "BOTTOMRIGHT", 0, -8)
-    local dc = E.Colors.divider
-    E:StyleAccentDivider(div1)
-    --------------------------------------------------------------------
     -- SCROLLABLE AREA
     --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", -4, -2)
+    scrollFrame:SetPoint("TOPLEFT", recBox, "BOTTOMLEFT", -4, -10)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 4)
     scrollFrame:EnableMouseWheel(true)
 
@@ -286,7 +277,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local gvHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
-    gvHeader:SetFont(gvHeader:GetFont(), 12, "OUTLINE")
+    gvHeader:SetFont(gvHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(gvHeader, "Great Vault Progress")
 
     local gvFallbackFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -338,7 +329,7 @@ E:RegisterModule(function()
 
     local nemHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -6)
-    nemHeader:SetFont(nemHeader:GetFont(), 12, "OUTLINE")
+    nemHeader:SetFont(nemHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(nemHeader, "Seasonal Nemesis")
 
     local NEMESIS_NAME  = "Nullaeus"
@@ -447,14 +438,12 @@ E:RegisterModule(function()
                 if data then
                     local current = math_min(data.completed, data.total)
                     bar:SetProgress(current, data.total)
-                    -- Gold for complete, accent for incomplete
-                    if current >= data.total then
-                        bar.fill:SetColorTexture(0.78, 0.61, 0.04, 0.90)
-                    else
-                        local p = E:GetAccentPreset()
-                        bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
-                                                 p.progressFill.b, p.progressFill.a)
-                    end
+                    -- Always use the accent colour, regardless of whether
+                    -- the bar is full. This keeps World Content / Delves /
+                    -- PvP bars consistent with the rest of the UI.
+                    local p = E:GetAccentPreset()
+                    bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
+                                             p.progressFill.b, p.progressFill.a)
                 else
                     bar:SetProgress(0, cfg.max)
                 end
@@ -485,7 +474,7 @@ E:RegisterModule(function()
             )
         else
             nemStatusFS:SetText(
-                E.CC.red .. "Quest available" .. E.CC.close
+                E.CC.btnText .. "Quest available" .. E.CC.close
                 .. E.CC.muted .. " - pick up at Delvers HQ in Silvermoon"
                 .. " (if eligible)" .. E.CC.close
             )
@@ -497,10 +486,46 @@ E:RegisterModule(function()
     -- Opens the Delve Companion UI (Blizzard_DelvesCompanionConfiguration).
     -- The companion config is a load-on-demand Blizzard addon that provides
     -- DelvesCompanionConfigurationFrame once loaded.
+    --
+    -- Placed at the right edge of the Seasonal Nemesis section
+    -- (mirroring how the Refresh button sits on other tabs). A 32 x 32
+    -- portrait icon - same size as the Nullaeus nemesis icon - sits
+    -- to the LEFT of the button. Both icons get the same circular
+    -- alpha mask so they read as a matched pair.
+    --
+    -- A wrapper frame is used because we need the button right-aligned
+    -- to the scroll-child while ALSO vertically aligned to the nemesis
+    -- icon row. Two perpendicular SetPoints would stretch the button.
     --------------------------------------------------------------------
-    local valeeraBtn = E:CreateButton(sc, 160, 24, "Valeera \226\128\148 Companion")
-    valeeraBtn.label:SetFont(valeeraBtn.label:GetFont(), 11)
-    valeeraBtn:SetPoint("TOPLEFT", nemStatusFS, "BOTTOMLEFT", 0, -10)
+    local VALEERA_ICON  = "Interface\\Icons\\Achievement_Character_BloodElf_Female"
+    local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+    -- Apply the same circular mask to the nemesis icon so the two
+    -- icons read as a matched pair. Wrapped in pcall because SetMask
+    -- can be unavailable on some texture types.
+    if nemIcon.SetMask then
+        pcall(nemIcon.SetMask, nemIcon, PORTRAIT_MASK)
+    end
+
+    -- Wrapper row: stretches horizontally from nemIcon's left edge to
+    -- the scroll-child's right edge, height 40 px (matches button).
+    local valeeraRow = CreateFrame("Frame", nil, sc)
+    valeeraRow:SetHeight(40)
+    valeeraRow:SetPoint("TOPLEFT",  nemIcon, "TOPLEFT", 0, 4)
+    valeeraRow:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -20, 4)
+
+    local valeeraBtn = E:CreateButton(valeeraRow, 280, 40, "Valeera \226\128\148 Companion")
+    valeeraBtn.label:SetFont(valeeraBtn.label:GetFont(), 14)
+    valeeraBtn:SetPoint("RIGHT", valeeraRow, "RIGHT", 0, 0)
+
+    local valeeraIcon = sc:CreateTexture(nil, "ARTWORK")
+    valeeraIcon:SetSize(32, 32)
+    valeeraIcon:SetTexture(VALEERA_ICON)
+    if valeeraIcon.SetMask then
+        pcall(valeeraIcon.SetMask, valeeraIcon, PORTRAIT_MASK)
+    end
+    valeeraIcon:SetPoint("RIGHT", valeeraBtn, "LEFT", -8, 0)
+
     valeeraBtn:SetScript("OnClick", function()
         -- Load the Blizzard companion config addon if not already loaded
         if not C_AddOns.IsAddOnLoaded("Blizzard_DelvesCompanionConfiguration") then
@@ -531,7 +556,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", valeeraBtn, "BOTTOMLEFT", 0, -8)
+    div2:SetPoint("TOPLEFT", nemStatusFS, "BOTTOMLEFT", 0, -8)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
@@ -545,7 +570,7 @@ E:RegisterModule(function()
 
     local troveHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
-    troveHeader:SetFont(troveHeader:GetFont(), 12, "OUTLINE")
+    troveHeader:SetFont(troveHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(troveHeader, "Trovehunter's Bounty")
 
     local TROVE_QUEST_ID = 86371   -- weekly loot check quest
@@ -642,7 +667,7 @@ E:RegisterModule(function()
 
     local beaconHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     beaconHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
-    beaconHeader:SetFont(beaconHeader:GetFont(), 12, "OUTLINE")
+    beaconHeader:SetFont(beaconHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(beaconHeader, "Beacon of Hope")
 
     local beaconStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -677,7 +702,7 @@ E:RegisterModule(function()
             )
         else
             beaconStatusFS:SetText(
-                E.CC.red .. "No Beacon of Hope in bags or bank" .. E.CC.close
+                E.CC.btnText .. "No Beacon of Hope in bags or bank" .. E.CC.close
             )
         end
 
@@ -694,9 +719,9 @@ E:RegisterModule(function()
 
         if undercoins < BEACON_PRICE then
             beaconNoteFS:SetText(
-                E.CC.red .. "Insufficient Undercoins. " .. E.CC.close
+                E.CC.btnText .. "Insufficient Undercoins. " .. E.CC.close
                 .. E.CC.muted .. "(" .. E.CC.close
-                .. E.CC.red .. undercoins .. E.CC.close
+                .. E.CC.btnText .. undercoins .. E.CC.close
                 .. E.CC.muted .. " of " .. E.CC.close
                 .. E.CC.white .. BEACON_PRICE .. E.CC.close
                 .. E.CC.muted .. ")" .. E.CC.close
@@ -728,7 +753,7 @@ E:RegisterModule(function()
 
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -8)
-    gildedHeader:SetFont(gildedHeader:GetFont(), 12, "OUTLINE")
+    gildedHeader:SetFont(gildedHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(gildedHeader, "Gilded Stash Progress")
 
     local gildedStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -799,7 +824,7 @@ E:RegisterModule(function()
             )
         else
             gildedStatusFS:SetText(
-                E.CC.red .. "0 / " .. GILDED_MAX
+                E.CC.btnText .. "0 / " .. GILDED_MAX
                 .. " - no T11 runs yet this week" .. E.CC.close
             )
             gildedNoteFS:SetText(
@@ -832,7 +857,7 @@ E:RegisterModule(function()
 
     local renownHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     renownHeader:SetPoint("TOPLEFT", div5, "BOTTOMLEFT", 0, -8)
-    renownHeader:SetFont(renownHeader:GetFont(), 12, "OUTLINE")
+    renownHeader:SetFont(renownHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(renownHeader, "Midnight Faction Renown")
 
     -- Create faction rows: label + progress bar + status text

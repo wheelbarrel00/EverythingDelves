@@ -97,8 +97,8 @@ end
 ------------------------------------------------------------------------
 function E:CreateTitleBar(parent)
     local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -10)
-    title:SetFont(title:GetFont(), 16, "OUTLINE")
+    title:SetPoint("TOP", parent, "TOP", 0, -18)
+    title:SetFont(title:GetFont(), 25, "OUTLINE")
     self:StyleAccentHeader(title, "Everything Delves")
     parent.titleText = title
 
@@ -157,7 +157,7 @@ function E:CreateTabButtons(parent)
     self.tabFrames  = {}
 
     local TAB_HEIGHT  = 28
-    local TAB_Y       = -32   -- distance from top of the frame
+    local TAB_Y       = -54   -- distance from top of the frame
     local TAB_PADDING = 4     -- gap between tabs
 
     -- Reusable measurement FontString for tab width calculation
@@ -241,7 +241,7 @@ end
 function E:CreateContentArea(parent)
     local content = CreateFrame("Frame", "EverythingDelvesContent", parent)
     -- Sits below the divider line, inside the main frame padding
-    content:SetPoint("TOPLEFT",     parent, "TOPLEFT",      6, -68)
+    content:SetPoint("TOPLEFT",     parent, "TOPLEFT",      6, -90)
     content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT",  -6,   6)
     self.contentFrame = content
 end

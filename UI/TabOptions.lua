@@ -221,7 +221,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local genHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     genHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
-    genHeader:SetFont(genHeader:GetFont(), 12, "OUTLINE")
+    genHeader:SetFont(genHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(genHeader, "General")
     Y = Y - 20
 
@@ -342,7 +342,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local dispHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dispHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
-    dispHeader:SetFont(dispHeader:GetFont(), 12, "OUTLINE")
+    dispHeader:SetFont(dispHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(dispHeader, "Display")
     Y = Y - 20
 
@@ -405,7 +405,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local alertHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     alertHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
-    alertHeader:SetFont(alertHeader:GetFont(), 12, "OUTLINE")
+    alertHeader:SetFont(alertHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(alertHeader, "Alerts & Tracking")
     Y = Y - 20
 

@@ -152,7 +152,7 @@ E:RegisterModule(function()
 
     local currHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     currHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", SECT_X, SECT_Y)
-    currHeader:SetFont(currHeader:GetFont(), 12, "OUTLINE")
+    currHeader:SetFont(currHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(currHeader, "Currency Overview")
 
     -- Coffer Key Shards
@@ -231,8 +231,16 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     srcHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -8)
-    srcHeader:SetFont(srcHeader:GetFont(), 12, "OUTLINE")
+    srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
+
+    -- Accent-colour line directly under the section header, running
+    -- across to the right edge of the "Status" column.
+    local srcHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
+    srcHeaderDiv:SetHeight(1)
+    srcHeaderDiv:SetPoint("TOPLEFT",  srcHeader, "BOTTOMLEFT",  0,  -2)
+    srcHeaderDiv:SetPoint("TOPRIGHT", srcHeader, "BOTTOMLEFT", 445, -2)
+    E:StyleAccentDivider(srcHeaderDiv)
 
     local weeklyTotalFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     weeklyTotalFS:SetPoint("LEFT", srcHeader, "RIGHT", 16, 0)
@@ -331,7 +339,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
-    sessHeader:SetFont(sessHeader:GetFont(), 12, "OUTLINE")
+    sessHeader:SetFont(sessHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(sessHeader, "Session Tracker")
 
     local sessShardsFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -378,7 +386,7 @@ E:RegisterModule(function()
 
     local saHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
-    saHeader:SetFont(saHeader:GetFont(), 12, "OUTLINE")
+    saHeader:SetFont(saHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(saHeader, "Special Assignments")
 
     local saSummaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -414,7 +422,7 @@ E:RegisterModule(function()
 
     local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -8)
-    wdqHeader:SetFont(wdqHeader:GetFont(), 12, "OUTLINE")
+    wdqHeader:SetFont(wdqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(wdqHeader, "Weekly Delve Quests")
 
     local wdqRows = {}
@@ -460,7 +468,7 @@ E:RegisterModule(function()
 
     local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -14)
-    wqHeader:SetFont(wqHeader:GetFont(), 12, "OUTLINE")
+    wqHeader:SetFont(wqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(wqHeader, "Coffer Shard World Quests")
 
     local wqCountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -504,6 +512,17 @@ E:RegisterModule(function()
 
     -- Column headers for WQ list
     local wqColY = -18
+
+    -- Permanent grey line ABOVE the WQ column header row (#4A4A4A,
+    -- not affected by accent colour). Stops at the right edge of TomTom.
+    -- Y offset chosen so the column-header text OUTLINE doesn't bleed
+    -- into this line (which made it look thicker than the bottom line).
+    local wqHdrLineTop = sc:CreateTexture(nil, "ARTWORK")
+    wqHdrLineTop:SetHeight(1)
+    wqHdrLineTop:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY + 10)
+    wqHdrLineTop:SetPoint("TOPRIGHT", wqNoteFS, "BOTTOMLEFT", 520, wqColY + 10)
+    E:StyleGreyLine(wqHdrLineTop)
+
     for _, col in ipairs({
         { label = "Zone",   x = 0   },
         { label = "Quest",  x = 140 },
@@ -517,10 +536,17 @@ E:RegisterModule(function()
         fs:SetText(E.CC.muted .. col.label .. E.CC.close)
     end
 
+    -- Permanent grey line BELOW the WQ column header row.
+    local wqHdrLineBot = sc:CreateTexture(nil, "ARTWORK")
+    wqHdrLineBot:SetHeight(1)
+    wqHdrLineBot:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY - 16)
+    wqHdrLineBot:SetPoint("TOPRIGHT", wqNoteFS, "BOTTOMLEFT", 520, wqColY - 16)
+    E:StyleGreyLine(wqHdrLineBot)
+
     -- Pre-create reusable WQ rows
     local wqRows = {}
     for i = 1, MAX_WQ_ROWS do
-        local rowY = wqColY - 14 - ((i - 1) * 18)
+        local rowY = wqColY - 28 - ((i - 1) * 18)
 
         local zoneFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         zoneFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, rowY)
@@ -1239,13 +1265,14 @@ E:RegisterModule(function()
                         row.wpBtn.dimmed = false
                         row.ttBtn.dimmed = false
                         local bc = E.Colors.buttonBg
-                        local bd = E:GetAccentPreset().border
                         row.wpBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
                         row.ttBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-                        row.wpBtn:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
-                        row.ttBtn:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
-                        row.wpBtn.label:SetTextColor(1, 1, 1, 1)
-                        row.ttBtn.label:SetTextColor(1, 1, 1, 1)
+                        -- Restore the hardcoded dark button border (buttons
+                        -- are not themed by accent colour).
+                        row.wpBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
+                        row.ttBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
+                        row.wpBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
+                        row.ttBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
                     end
                     -- Attach current wq to the buttons; shared OnClick
                     -- closure (set at row creation) reads from self.wq.

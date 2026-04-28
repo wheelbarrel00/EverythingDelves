@@ -130,12 +130,7 @@ local function UpdateRows(scrollFrame)
     end
 
     -- Update row count label
-    if scrollFrame.countLabel then
-        scrollFrame.countLabel:SetText(
-            E.CC.muted .. "Showing " .. totalRows .. " of "
-            .. E.TOTAL_DELVES .. " delves" .. E.CC.close
-        )
-    end
+    -- (Showing N of N text removed by request — nothing scrolls.)
 end
 
 ------------------------------------------------------------------------
@@ -248,11 +243,16 @@ local function CreateZoneDropdown(parent)
     menu:SetSize(170, totalHeight)
     menu:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
 
-    -- Fullscreen invisible overlay - click-outside-to-close behavior
+    -- Fullscreen invisible overlay - click-outside-to-close behaviour.
+    -- Strata is intentionally one notch BELOW the menu (which is on
+    -- TOOLTIP) so option buttons inside the menu always win the click
+    -- hit-test. The previous version put the overlay on the same
+    -- TOOLTIP strata; child frame levels do not always inherit the
+    -- parent's manual SetFrameLevel, so the overlay was stealing
+    -- clicks from the option buttons and selections never registered.
     local overlay = CreateFrame("Button", nil, UIParent)
     overlay:SetAllPoints(UIParent)
-    overlay:SetFrameStrata("TOOLTIP")
-    overlay:SetFrameLevel(99)  -- just below the menu (level 100)
+    overlay:SetFrameStrata("FULLSCREEN_DIALOG")
     overlay:Hide()
     overlay:SetScript("OnClick", function()
         menu:Hide()
@@ -351,20 +351,20 @@ local function CreateColumnHeaders(parent, yOffset)
 
     for _, col in ipairs(cols) do
         local btn = CreateFrame("Button", nil, parent)
-        btn:SetSize(col.width, 18)
+        btn:SetSize(col.width, 22)
         btn:SetPoint("TOPLEFT", parent, "TOPLEFT", col.anchor, yOffset)
 
         local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         text:SetPoint("LEFT")
-        text:SetFont(text:GetFont(), 11, "OUTLINE")
+        if col.field == "name" then
+            -- Delve Name is the section header for the list — apply
+            -- the unified header font size + accent colour.
+            text:SetFont(text:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+        else
+            text:SetFont(text:GetFont(), 11, "OUTLINE")
+        end
         E:StyleAccentHeader(text, col.label)
         btn.label = text
-
-        -- Arrow indicator for active sort column
-        local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        arrow:SetPoint("LEFT", text, "RIGHT", 3, 0)
-        arrow:SetFont(arrow:GetFont(), 10)
-        btn.arrow = arrow
 
         btn:SetScript("OnClick", function()
             if sortField == col.field then
@@ -372,16 +372,6 @@ local function CreateColumnHeaders(parent, yOffset)
             else
                 sortField = col.field
                 sortAscending = true
-            end
-            -- Update arrows on all headers
-            for _, h in ipairs(headers) do
-                if h.field == sortField then
-                    h.btn.arrow:SetText(
-                        E.CC.muted .. (sortAscending and "(asc)" or "(desc)") .. E.CC.close
-                    )
-                else
-                    h.btn.arrow:SetText("")
-                end
             end
             scrollOffset = 0
             if scrollBar then scrollBar:SetValue(0) end
@@ -392,19 +382,20 @@ local function CreateColumnHeaders(parent, yOffset)
         table_insert(headers, { field = col.field, btn = btn })
     end
 
-    -- Static labels for the two action columns (not sortable)
+    -- Static labels for the two action columns (not sortable). Anchor
+    -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
     for _, info in ipairs({
         { label = "Pin",    x = 422 },
         { label = "TomTom", x = 462 },
     }) do
         local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", parent, "TOPLEFT", info.x, yOffset)
+        fs:SetPoint("LEFT", parent, "TOPLEFT", info.x, yOffset - 11)
         fs:SetFont(fs:GetFont(), 11, "OUTLINE")
         E:StyleAccentHeader(fs, info.label)
     end
 
     -- Set initial sort arrow
-    headers[1].btn.arrow:SetText(E.CC.muted .. "(asc)" .. E.CC.close)
+    -- (Arrow indicator removed by request.)
 
     return headers
 end
@@ -571,7 +562,10 @@ end
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")
     local TOOLBAR_Y = -4
-    local LIST_Y    = -58  -- below toolbar + column headers
+    -- LIST_Y previously − 58 (toolbar + 1 line for count + column-header).
+    -- Count line removed and 20 px of breathing room added below the
+    -- toolbar per design request.
+    local LIST_Y    = -78
 
     --------------------------------------------------------------------
     -- Toolbar row: zone dropdown, search box, [Set All Waypoints], count
@@ -613,45 +607,47 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Row count label
-    local countLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    countLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, TOOLBAR_Y - 28)
-    countLabel:SetFont(countLabel:GetFont(), 10)
-    frame.countLabel = countLabel
+    -- Row count label removed by request ("Showing 10 of 10" was redundant).
 
     --------------------------------------------------------------------
     -- Column headers
     --------------------------------------------------------------------
-    CreateColumnHeaders(frame, LIST_Y + 16)
+    -- Permanent grey line ABOVE the column header row (#4A4A4A,
+    -- not affected by accent colour). Stops at the right edge of TomTom.
+    local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
+    headerLineTop:SetHeight(1)
+    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 30)
+    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y + 30)
+    E:StyleGreyLine(headerLineTop)
+
+    CreateColumnHeaders(frame, LIST_Y + 22)
+
+    -- Permanent grey line BELOW the column header row.
+    local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
+    headerLineBot:SetHeight(1)
+    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y - 8)
+    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y - 8)
+    E:StyleGreyLine(headerLineBot)
 
     --------------------------------------------------------------------
     -- Scrollable list area
     --------------------------------------------------------------------
     local listFrame = CreateFrame("Frame", nil, frame)
-    listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,  LIST_Y)
+    listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,  LIST_Y - 16)
     listFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
-    listFrame:EnableMouseWheel(true)
-    listFrame.countLabel = countLabel   -- ref for UpdateRows
+    listFrame:EnableMouseWheel(false)
 
     -- Create recycled rows
     for i = 1, VISIBLE_ROWS do
         rows[i] = CreateRow(listFrame, i)
     end
 
-    -- Scroll bar
-    scrollBar = CreateScrollBar(frame, listFrame)
-    listFrame.scrollBar = scrollBar
+    -- Scrollbar removed by request — the full delve list (10) fits
+    -- within VISIBLE_ROWS, so there is nothing to scroll to.
 
-    listFrame:SetScript("OnMouseWheel", function(self, delta)
-        OnMouseWheel(self, delta)
-    end)
-
-    -- Whenever the list frame shows, refresh data and recalc scrollbar
+    -- Whenever the list frame shows, refresh data and rows
     listFrame:SetScript("OnShow", function(self)
         RefreshFilteredData()
-        local maxOffset = math_max(0, #filteredData - VISIBLE_ROWS)
-        scrollBar:SetMinMaxValues(0, maxOffset)
-        scrollBar:SetValue(scrollOffset)
         UpdateRows(self)
     end)
 

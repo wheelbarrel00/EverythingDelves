@@ -412,8 +412,8 @@ local function UpdateRows(container)
                     E.CC.muted .. delve.storyVariant .. E.CC.close
                     .. normalNote
                 )
-                -- Soft red tint for not-started rows
-                row:SetBackdropColor(0.18, 0.03, 0.03, 0.35)
+                -- Neutral row tint (matches Delve Locations tab).
+                row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
             end
             row:Show()
         else
@@ -519,7 +519,7 @@ local function CreateRow(parent, index)
     -- Hover highlight + tooltip
     row:SetScript("OnEnter", function(self)
         if not (self.delve and self.delve.completed) then
-            self:SetBackdropColor(0.25, 0.04, 0.04, 0.50)
+            self:SetBackdropColor(0.20, 0, 0, 0.50)
         end
         if self.delve then
             E:ShowTooltip(self, self.delve.name,
@@ -534,7 +534,7 @@ local function CreateRow(parent, index)
         if self.delve and self.delve.completed then
             self:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
         else
-            self:SetBackdropColor(0.18, 0.03, 0.03, 0.35)
+            self:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
         end
         E:HideTooltip()
     end)
@@ -747,13 +747,38 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- BOUNTIFUL DELVES LIST
     --------------------------------------------------------------------
-    local LIST_Y = ACTIONS_Y - 34
+    -- Pushed down further from the action button row for breathing room.
+    local LIST_Y = ACTIONS_Y - 70
+
+    -- Accent-colour divider under the Great Vault / Start LFG buttons,
+    -- spanning the full UI width (matches the divider directly below
+    -- the tab row).
+    local actionDiv = frame:CreateTexture(nil, "ARTWORK")
+    actionDiv:SetHeight(1)
+    actionDiv:SetPoint("TOPLEFT",  frame, "TOPLEFT",   8, ACTIONS_Y - 30)
+    actionDiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, ACTIONS_Y - 30)
+    E:StyleAccentDivider(actionDiv)
+
+    -- Permanent grey line ABOVE the section header (#4A4A4A,
+    -- not affected by accent colour). Stops at the right edge of TomTom.
+    local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
+    headerLineTop:SetHeight(1)
+    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y + 8)
+    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y + 8)
+    E:StyleGreyLine(headerLineTop)
 
     -- Section header
     local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
-    listHeader:SetFont(listHeader:GetFont(), 12, "OUTLINE")
+    listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(listHeader, "This Week's Bountiful Delves")
+
+    -- Permanent grey line directly under the section header.
+    local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
+    headerLineBot:SetHeight(1)
+    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y - 26)
+    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y - 26)
+    E:StyleGreyLine(headerLineBot)
 
     -- Level 68 unlock warning (shown when player is too low level)
     local unlockWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -790,7 +815,7 @@ E:RegisterModule(function()
     end)
 
     -- Column headers
-    local COL_Y = LIST_Y - 18
+    local COL_Y = LIST_Y - 32
     for _, col in ipairs({
         { label = "Delve Name",  x = 8   },
         { label = "Zone",        x = 234 },

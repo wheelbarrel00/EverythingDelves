@@ -20,10 +20,20 @@ E.Colors = {
     -- Text
     header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },  -- #FF2222
 
-    -- Buttons
-    buttonBg    = { r = 0.40, g = 0.00, b = 0.00, a = 1.00 },
-    buttonHover = { r = 0.55, g = 0.05, b = 0.05, a = 1.00 },
+    -- Buttons (HARDCODED — not affected by accent color profile).
+    -- bg #6D0501, hover #8A0601 (slightly lighter for OnEnter feedback).
+    buttonBg    = { r = 0.427, g = 0.020, b = 0.004, a = 1.00 },
+    buttonHover = { r = 0.541, g = 0.024, b = 0.004, a = 1.00 },
+
+    -- Permanent grey divider line color (#4A4A4A). Used for column-
+    -- header separators that should NOT change with accent color.
+    greyLine    = { r = 0.290, g = 0.290, b = 0.290, a = 1.00 },
 }
+
+-- Unified header font size used by all section headers via
+-- StyleAccentHeader. Section headers across every tab share this size
+-- so visual hierarchy stays consistent.
+E.HEADER_FONT_SIZE = 20
 
 ------------------------------------------------------------------------
 -- WoW color escape codes for inline string formatting
@@ -39,6 +49,7 @@ E.CC = {
     red    = "|cFFFF3333",
     purple = "|cFFB280FF",
     white  = "|cFFFFFFFF",
+    btnText = "|cFFEBB706",  -- hardcoded button label colour (#EBB706)
     close  = "|r",
 }
 
@@ -346,8 +357,8 @@ function E:ApplyAccentColor(name)
     copy(self.Colors.divider,     p.divider)
     copy(self.Colors.tabActive,   p.tabActive)
     copy(self.Colors.header,      p.header)
-    copy(self.Colors.buttonBg,    p.buttonBg)
-    copy(self.Colors.buttonHover, p.buttonHover)
+    -- Buttons are hardcoded (#6D0501 / #EBB706) and intentionally not
+    -- copied from the accent preset.
     self.CC.header = p.headerCC
 
     -- Repaint every registered widget.

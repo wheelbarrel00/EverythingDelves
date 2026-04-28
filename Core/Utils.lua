@@ -31,28 +31,30 @@ function E:CreateButton(parent, width, height, label)
         edgeSize = 1,
     })
 
+    -- HARDCODED colours: #6D0501 background, #EBB706 label, dark border.
+    -- Buttons intentionally do NOT follow the accent-colour profile.
+    local bg = E.Colors.buttonBg
+    btn:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
+    btn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
+
     local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     text:SetPoint("CENTER")
     text:SetFont(text:GetFont(), 11)
-    text:SetText(E.CC.white .. label .. E.CC.close)
+    text:SetText(label)
+    -- #EBB706 (gold) label colour. SetTextColor (no inline |cFF code) so
+    -- dim states can override the colour reliably.
+    text:SetTextColor(0.922, 0.718, 0.024, 1.0)
     btn.label = text
 
     btn:SetScript("OnEnter", function(self)
+        if self.dimmed then return end
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
     end)
     btn:SetScript("OnLeave", function(self)
+        if self.dimmed then return end
         local bc = E.Colors.buttonBg
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-    end)
-
-    -- Register for accent-color repaint. Re-applies backdrop + border on
-    -- theme change. Captured in a closure that is invoked immediately so
-    -- the button is themed without a duplicate call here.
-    E:RegisterThemed(function(p)
-        if not btn.SetBackdropColor then return end
-        btn:SetBackdropColor(p.buttonBg.r, p.buttonBg.g, p.buttonBg.b, p.buttonBg.a)
-        btn:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
     end)
 
     return btn
@@ -236,6 +238,15 @@ function E:StyleAccentDivider(tex)
             tex:SetColorTexture(p.divider.r, p.divider.g, p.divider.b, p.divider.a)
         end
     end)
+end
+
+--- Color a horizontal line texture with the hardcoded grey (#4A4A4A).
+--- Used for column-header separators that must NEVER change with the
+--- accent colour profile.
+function E:StyleGreyLine(tex)
+    if not tex or not tex.SetColorTexture then return end
+    local g = self.Colors.greyLine
+    tex:SetColorTexture(g.r, g.g, g.b, g.a)
 end
 
 --- Color a scrollbar thumb texture and register for repaint.
