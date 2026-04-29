@@ -5,6 +5,25 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-04-28
+
+### Bug Fixes
+
+- **Gilded Stash Progress** — Bar now correctly tracks Bountiful Tier 11+ delve runs across the week. Previous version compared logged delve names against the live Bountiful POI list, which fails because completed bountifuls drop off the list mid-week. Bountiful status is now snapshotted at delve entry and persisted into each run record (`wasBountiful` flag on `recentRuns` entries).
+- **Delve Locations — All Zones dropdown** — Click handler reworked to use `GLOBAL_MOUSE_DOWN` for reliable open/close behavior. Previously the dropdown could fail to open or close on click.
+
+### Improvements
+
+- **Current Bountiful Delves tab** — Removed red tint on row hover/selection. Hovering a delve row no longer changes its background color.
+- **Delve History tab** — Removed red tint on row hover. Lower section dividers (Nemesis / Midnight) now match the width of the top header divider for visual consistency.
+- **Delve Locations tab** — Removed red tint on row hover. Upper grey divider repositioned and thickness now matches the lower divider.
+- **Shard Tracker tab** — "Weekly Shard Sources" header divider switched from accent-colored to grey, with added vertical spacing below for breathing room.
+- **Bountiful Delve tooltips** — Tooltip now anchors to the right of the TomTom waypoint button instead of following the cursor, so it no longer covers the row while reading.
+
+### Internal
+
+- Run logging now persists `wasBountiful` per recent-run entry to support accurate weekly Gilded Stash tracking.
+
 ## [1.4.0] - 2026-04-27
 
 ### UI Overhaul (global)

@@ -183,16 +183,18 @@ E:RegisterModule(function()
         .. "No Midnight delve runs recorded yet. Complete a delve to "
         .. "start tracking!" .. E.CC.close)
 
-    -- Accent-colour divider between Seasonal Nemesis and Midnight Delves
-    -- sections. Parented to `sc` so it scrolls with content; horizontal
-    -- anchors are set in Refresh.
-    local nemesisDivider = sc:CreateTexture(nil, "ARTWORK")
+    -- Accent-colour dividers for the Seasonal Nemesis / Midnight Delves
+    -- sections. Parented to `frame` (NOT `sc`) so they are not clipped
+    -- to the ScrollFrame viewport — this lets them stretch the full
+    -- frame width to match the top `headerDiv`. They are anchored
+    -- vertically to scrollFrame TOP with offset = yCur in Refresh, and
+    -- horizontally to frame edges to mirror headerDiv exactly.
+    local nemesisDivider = frame:CreateTexture(nil, "ARTWORK")
     nemesisDivider:SetHeight(1)
     E:StyleAccentDivider(nemesisDivider)
     nemesisDivider:Hide()
 
-    -- Accent-colour divider directly below the "Midnight Delves" header.
-    local midnightDivider = sc:CreateTexture(nil, "ARTWORK")
+    local midnightDivider = frame:CreateTexture(nil, "ARTWORK")
     midnightDivider:SetHeight(1)
     E:StyleAccentDivider(midnightDivider)
     midnightDivider:Hide()
@@ -221,13 +223,7 @@ E:RegisterModule(function()
         if Refresh then Refresh() end
     end
 
-    local function HeaderRow_OnEnter(self)
-        self.hoverBg:Show()
-    end
-
-    local function HeaderRow_OnLeave(self)
-        self.hoverBg:Hide()
-    end
+    -- Rows stay neutral on hover/click — no background tint.
 
     --- Create a reusable header row. All textual fields are FontStrings
     --- that are re-populated each refresh; the row is a plain Button
@@ -237,12 +233,6 @@ E:RegisterModule(function()
         row:SetHeight(HEADER_ROW_HEIGHT)
         row:SetPoint("LEFT",  sc, "LEFT",  8,  0)
         row:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-
-        local hoverBg = row:CreateTexture(nil, "BACKGROUND")
-        hoverBg:SetAllPoints()
-        hoverBg:SetColorTexture(0.25, 0.10, 0.10, 0.40)
-        hoverBg:Hide()
-        row.hoverBg = hoverBg
 
         local arrowFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         arrowFS:SetPoint("LEFT", row, "LEFT", 2, 0)
@@ -263,8 +253,6 @@ E:RegisterModule(function()
         row.statsFS = statsFS
 
         row:SetScript("OnClick", HeaderRow_OnClick)
-        row:SetScript("OnEnter", HeaderRow_OnEnter)
-        row:SetScript("OnLeave", HeaderRow_OnLeave)
         return row
     end
 
@@ -469,8 +457,9 @@ E:RegisterModule(function()
         -- scrolls with content; horizontal anchored to frame edges so
         -- it matches the divider directly below the tab row.
         nemesisDivider:ClearAllPoints()
-        nemesisDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   0, -yCur)
-        nemesisDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT",  0, -yCur)
+        nemesisDivider:SetPoint("LEFT",  frame,       "LEFT",   8, 0)
+        nemesisDivider:SetPoint("RIGHT", frame,       "RIGHT", -8, 0)
+        nemesisDivider:SetPoint("TOP",   scrollFrame, "TOP",    0, -yCur)
         nemesisDivider:SetHeight(1)
         nemesisDivider:Show()
         yCur = yCur + 14  -- breathing room below the divider
@@ -480,8 +469,9 @@ E:RegisterModule(function()
         -- Third full-width accent divider, directly below the Midnight
         -- Delves header.
         midnightDivider:ClearAllPoints()
-        midnightDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   0, -yCur + 4)
-        midnightDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT",  0, -yCur + 4)
+        midnightDivider:SetPoint("LEFT",  frame,       "LEFT",   8, 0)
+        midnightDivider:SetPoint("RIGHT", frame,       "RIGHT", -8, 0)
+        midnightDivider:SetPoint("TOP",   scrollFrame, "TOP",    0, -yCur + 4)
         midnightDivider:SetHeight(1)
         midnightDivider:Show()
         yCur = yCur + 8  -- breathing room below the third divider

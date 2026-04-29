@@ -138,7 +138,7 @@ end
 --- @param title    string
 --- @param ...      string  Additional lines
 function E:ShowTooltip(owner, title, ...)
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetOwner(owner, "ANCHOR_CURSOR")
     GameTooltip:AddLine(title, 1, 0.84, 0, true) -- gold
     for i = 1, select("#", ...) do
         local line = select(i, ...)

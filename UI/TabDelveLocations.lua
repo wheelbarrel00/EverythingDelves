@@ -195,6 +195,8 @@ local function CreateZoneDropdown(parent)
     for idx, opt in ipairs(options) do
         local ob = CreateFrame("Button", nil, menu, "BackdropTemplate")
         ob:SetHeight(20)
+        ob:RegisterForClicks("LeftButtonUp")
+        ob:EnableMouse(true)
         ob:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
         })
@@ -225,7 +227,7 @@ local function CreateZoneDropdown(parent)
                 self:SetBackdropColor(0.05, 0.05, 0.05, 1)
             end
         end)
-        ob:SetScript("OnClick", function()
+        ob:SetScript("OnClick", function(self)
             currentZone = opt.value
             btn.label:SetText(E.CC.white .. opt.name .. E.CC.close)
             menu:Hide()
@@ -243,19 +245,17 @@ local function CreateZoneDropdown(parent)
     menu:SetSize(170, totalHeight)
     menu:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
 
-    -- Fullscreen invisible overlay - click-outside-to-close behaviour.
-    -- Strata is intentionally one notch BELOW the menu (which is on
-    -- TOOLTIP) so option buttons inside the menu always win the click
-    -- hit-test. The previous version put the overlay on the same
-    -- TOOLTIP strata; child frame levels do not always inherit the
-    -- parent's manual SetFrameLevel, so the overlay was stealing
-    -- clicks from the option buttons and selections never registered.
-    local overlay = CreateFrame("Button", nil, UIParent)
-    overlay:SetAllPoints(UIParent)
-    overlay:SetFrameStrata("FULLSCREEN_DIALOG")
-    overlay:Hide()
-    overlay:SetScript("OnClick", function()
-        menu:Hide()
+    -- Click-outside-to-close: use GLOBAL_MOUSE_DOWN instead of a
+    -- fullscreen overlay button (which kept stealing clicks from the
+    -- option buttons no matter how the strata/levels were configured).
+    -- The menu listens for any global mouse-down and closes itself if
+    -- the click landed outside both the menu and the toggle button.
+    menu:RegisterEvent("GLOBAL_MOUSE_DOWN")
+    menu:SetScript("OnEvent", function(self, event)
+        if event ~= "GLOBAL_MOUSE_DOWN" then return end
+        if not self:IsShown() then return end
+        if self:IsMouseOver() or btn:IsMouseOver() then return end
+        self:Hide()
     end)
 
     btn:SetScript("OnClick", function()
@@ -266,13 +266,8 @@ local function CreateZoneDropdown(parent)
         end
     end)
 
-    -- Show/hide overlay with the menu
     menu:SetScript("OnShow", function(self)
-        overlay:Show()
         self:SetPropagateKeyboardInput(false)
-    end)
-    menu:SetScript("OnHide", function()
-        overlay:Hide()
     end)
 
     return btn
@@ -491,9 +486,9 @@ local function CreateRow(parent, index)
     end)
     row.ttBtn = ttBtn
 
-    -- Row hover highlight + tooltip
+    -- Row hover tooltip (no background colour change — rows stay
+    -- neutral on hover/click/select).
     row:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(0.20, 0, 0, 0.50)
         if self.delve then
             local tipLines = {}
             -- Bountiful notice at the top, in gold
@@ -508,11 +503,6 @@ local function CreateRow(parent, index)
         end
     end)
     row:SetScript("OnLeave", function(self)
-        if index % 2 == 0 then
-            self:SetBackdropColor(0.08, 0.08, 0.08, 0.50)
-        else
-            self:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-        end
         E:HideTooltip()
     end)
 
@@ -614,10 +604,13 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- Permanent grey line ABOVE the column header row (#4A4A4A,
     -- not affected by accent colour). Stops at the right edge of TomTom.
+    -- Sits a few pixels higher than a tight fit so the OUTLINE glow on
+    -- the "Delve Name" header (20pt OUTLINE) doesn't bleed into the
+    -- line and make it look thicker than the lower line.
     local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
     headerLineTop:SetHeight(1)
-    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 30)
-    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y + 30)
+    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 36)
+    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y + 36)
     E:StyleGreyLine(headerLineTop)
 
     CreateColumnHeaders(frame, LIST_Y + 22)

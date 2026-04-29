@@ -1,4 +1,4 @@
-------------------------------------------------------------------------
+﻿------------------------------------------------------------------------
 -- EverythingDelves.lua
 -- Addon bootstrap: global namespace, SavedVariables, events, slash cmds
 --
@@ -7,7 +7,7 @@
 -- inject gameplay logic or automate player actions.
 ------------------------------------------------------------------------
 
--- Global addon namespace — every other file references this table
+-- Global addon namespace â€” every other file references this table
 EverythingDelves = {}
 local E = EverythingDelves
 
@@ -168,7 +168,7 @@ E:RegisterEvent("PLAYER_ENTERING_WORLD", function(self, _, isLogin, isReload)
     end
 end)
 
--- Data-tracking events — uses a callback list so multiple modules
+-- Data-tracking events â€” uses a callback list so multiple modules
 -- can safely register for the same event without wrapping.
 E.eventCallbacks = {}
 
@@ -196,7 +196,7 @@ end
 -- Debouncer: Blizzard events like QUEST_LOG_UPDATE and
 -- CURRENCY_DISPLAY_UPDATE can fire dozens of times per second
 -- (e.g. during zone changes or quest turn-ins). Without coalescing,
--- each event triggers a full tab refresh — tens of SetText calls and
+-- each event triggers a full tab refresh â€” tens of SetText calls and
 -- many short-lived intermediate strings per burst. We batch via a
 -- 0.25s trailing-edge timer: imperceptible to the player, but reduces
 -- refresh work (and GC pressure) by orders of magnitude during bursts.
@@ -253,7 +253,7 @@ end)
 local COFFER_KEY_CURRENCY = 2915  -- Restored Coffer Key
 local MAX_RECENT_RUNS     = 20
 
--- Single reusable scratch table for the active run — never replaced.
+-- Single reusable scratch table for the active run â€” never replaced.
 E.delveRunState = {
     inDelve        = false,
     delveName      = nil,
@@ -262,6 +262,7 @@ E.delveRunState = {
     deaths         = 0,
     startKeyCount  = 0,
     tier           = 0,     -- captured at entry via C_DelvesUI
+    wasBountiful   = false, -- snapshot at BeginDelveRun
 }
 
 local runState = E.delveRunState
@@ -374,7 +375,7 @@ local function AutoDetectDelveTier()
 end
 
 --- Resolve the current delve name from the most reliable sources.
---- Priority: GetRealZoneText() → C_Map map ID lookup → GetInstanceInfo.
+--- Priority: GetRealZoneText() â†’ C_Map map ID lookup â†’ GetInstanceInfo.
 local function ResolveDelveName()
     local zoneName = GetRealZoneText()
     if zoneName and zoneName ~= "" and E.LoggableDelveNames[zoneName] then
@@ -409,7 +410,7 @@ local function MatchDelveName(scenarioName)
         if k:lower() == lowered then return k, v end
     end
 
-    -- Substring either direction (handles "The Grudge Pit" ↔ "Grudge Pit")
+    -- Substring either direction (handles "The Grudge Pit" â†” "Grudge Pit")
     for k, v in pairs(nameMap) do
         local kl = k:lower()
         if lowered:find(kl, 1, true) or kl:find(lowered, 1, true) then
@@ -421,7 +422,7 @@ end
 
 --- Try to capture the active delve tier into runState.tier.
 --- No-op if already captured. Called on every SCENARIO_UPDATE while
---- inside a delve — the ObjectiveTracker UI may not populate on the
+--- inside a delve â€” the ObjectiveTracker UI may not populate on the
 --- first fire, so we keep retrying until we get a value.
 local function TryCaptureTier(source)
     if runState.tier and runState.tier > 0 then return end
@@ -440,6 +441,16 @@ local function BeginDelveRun(name, kind)
     runState.deaths        = 0
     runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
     runState.tier          = 0
+    -- Snapshot bountiful status NOW, while the delve is still on
+    -- the live bountiful list. Completed bountifuls drop off the
+    -- list mid-week, so we cannot reliably check this at
+    -- SCENARIO_COMPLETED time.
+    runState.wasBountiful  = false
+    if E.currentBountifulNames and name then
+        if E.currentBountifulNames[name] then
+            runState.wasBountiful = true
+        end
+    end
     TryCaptureTier("BeginDelveRun")
 end
 
@@ -451,11 +462,12 @@ local function EndDelveRun()
     runState.deaths        = 0
     runState.startKeyCount = 0
     runState.tier          = 0
+    runState.wasBountiful  = false
 end
 
 --- Append a completed run to the SavedVariables history.
 --- Updates lifetime counters in-place and caps recentRuns at 20.
-function E:LogDelveRun(name, tier, duration, deaths, keyUsed)
+function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful)
     if not name or not self.db then
         return
     end
@@ -501,11 +513,12 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed)
     -- Insert newest at position 1; cap at MAX_RECENT_RUNS.
     local recent = entry.recentRuns
     table.insert(recent, 1, {
-        tier      = tier or 0,
-        duration  = duration or 0,
-        deaths    = deaths or 0,
-        keyUsed   = keyUsed and true or false,
-        timestamp = now,
+        tier         = tier or 0,
+        duration     = duration or 0,
+        deaths       = deaths or 0,
+        keyUsed      = keyUsed and true or false,
+        timestamp    = now,
+        wasBountiful = wasBountiful and true or false,
     })
     while #recent > MAX_RECENT_RUNS do
         recent[#recent] = nil
@@ -611,7 +624,7 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             or 0
 
         -- Use the tier captured during the run. Do NOT try to detect
-        -- now — the UI may already be torn down at completion.
+        -- now â€” the UI may already be torn down at completion.
         local tier = runState.tier or 0
 
         local keyNow  = GetCurrencyQty(COFFER_KEY_CURRENCY)
@@ -620,7 +633,10 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             or false
 
         if matchedName then
-            E:LogDelveRun(matchedName, tier, duration, runState.deaths, keyUsed)
+            E:LogDelveRun(
+                matchedName, tier, duration, runState.deaths,
+                keyUsed, runState.wasBountiful
+            )
             if E.RefreshDelveHistoryTab then
                 E:RefreshDelveHistoryTab()
             end

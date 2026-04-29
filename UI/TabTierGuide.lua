@@ -738,10 +738,10 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- GILDED STASH PROGRESS
-    -- Widget spell 7591 tracks Gilded Stash (4x T11 Bountiful Delves).
-    -- Uses C_UIWidgetManager.GetSpellDisplayVisualizationInfo(7591).
+    -- 4x T11 Bountiful Delves this week. Counted from our own
+    -- delveHistory SavedVariables since Blizzard does not expose the
+    -- live counter via any client API.
     --------------------------------------------------------------------
-    local GILDED_WIDGET  = 7591
     local GILDED_MAX     = 4
 
     -- Thin red divider
@@ -784,18 +784,39 @@ E:RegisterModule(function()
     end)
 
     local function RefreshGildedStash()
+        -- Count Bountiful T11+ delve runs we recorded this week.
+        --
+        -- Blizzard does not expose the live in-progress Gilded Stash
+        -- counter via any client API (no widget, no quest, no
+        -- C_WeeklyRewards activity tracks it during the week — the
+        -- counter is server-side until the 4th run unlocks the chest).
+        --
+        -- We approximate it from our own SavedVariables: each recorded
+        -- run has a timestamp, tier, and wasBountiful flag (snapshotted
+        -- at delve entry, since completed bountifuls drop off the
+        -- live POI list mid-week and can't be checked retroactively).
         local progress = 0
-        if C_UIWidgetManager
-                and C_UIWidgetManager.GetSpellDisplayVisualizationInfo then
-            local info = C_UIWidgetManager
-                .GetSpellDisplayVisualizationInfo(GILDED_WIDGET)
-            ---@diagnostic disable-next-line: undefined-field
-            if info and info.shownState == 1 then
-                progress = info.spellInfo
-                        and info.spellInfo.tooltip
-                        and tonumber(
-                            info.spellInfo.tooltip:match("(%d+)")
-                        ) or 0
+        local lastReset = 0
+        if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+            local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+            if secs and secs > 0 then
+                local now = (GetServerTime and GetServerTime()) or time()
+                lastReset = now + secs - 604800
+            end
+        end
+
+        local history = E.db and E.db.delveHistory
+        if history then
+            for _, entry in pairs(history) do
+                if entry.recentRuns then
+                    for _, run in ipairs(entry.recentRuns) do
+                        if (run.tier or 0) >= 11
+                                and run.wasBountiful
+                                and (run.timestamp or 0) >= lastReset then
+                            progress = progress + 1
+                        end
+                    end
+                end
             end
         end
 

@@ -234,20 +234,22 @@ E:RegisterModule(function()
     srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
 
-    -- Accent-colour line directly under the section header, running
-    -- across to the right edge of the "Status" column.
+    -- Permanent grey line (#4A4A4A) directly under the section header,
+    -- running across to the right edge of the "Status" column. Not tied
+    -- to the accent colour profile.
     local srcHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     srcHeaderDiv:SetHeight(1)
     srcHeaderDiv:SetPoint("TOPLEFT",  srcHeader, "BOTTOMLEFT",  0,  -2)
     srcHeaderDiv:SetPoint("TOPRIGHT", srcHeader, "BOTTOMLEFT", 445, -2)
-    E:StyleAccentDivider(srcHeaderDiv)
+    E:StyleGreyLine(srcHeaderDiv)
 
     local weeklyTotalFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     weeklyTotalFS:SetPoint("LEFT", srcHeader, "RIGHT", 16, 0)
     weeklyTotalFS:SetFont(weeklyTotalFS:GetFont(), 11)
 
-    -- Column headers
-    local COL_HEADERS_Y = -4
+    -- Column headers (extra padding below the grey line so the row
+    -- isn't jammed up against it).
+    local COL_HEADERS_Y = -12
     local colNameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colNameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, COL_HEADERS_Y)
     colNameFS:SetFont(colNameFS:GetFont(), 10, "OUTLINE")

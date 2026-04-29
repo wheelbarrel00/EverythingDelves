@@ -516,26 +516,30 @@ local function CreateRow(parent, index)
     end)
     row.ttBtn = ttBtn
 
-    -- Hover highlight + tooltip
+    -- Hover tooltip (no background colour change — rows stay neutral
+    -- on hover/click/select, matching the Delve Locations tab).
     row:SetScript("OnEnter", function(self)
-        if not (self.delve and self.delve.completed) then
-            self:SetBackdropColor(0.20, 0, 0, 0.50)
-        end
         if self.delve then
-            E:ShowTooltip(self, self.delve.name,
-                          E.CC.muted .. "Story: " .. E.CC.close
-                              .. self.delve.storyVariant,
-                          "",
-                          E.CC.muted .. "Right-click to toggle manual completion."
-                              .. E.CC.close)
+            -- Anchor the tooltip to the right of the TomTom button so it
+            -- sits just outside the action buttons instead of crowding
+            -- the row text or floating off-screen.
+            local anchorTo = self.ttBtn or self
+            GameTooltip:SetOwner(anchorTo, "ANCHOR_NONE")
+            GameTooltip:ClearAllPoints()
+            GameTooltip:SetPoint("TOPLEFT", anchorTo, "TOPRIGHT", 8, 0)
+            GameTooltip:AddLine(self.delve.name, 1, 0.84, 0, true)
+            GameTooltip:AddLine(E.CC.muted .. "Story: " .. E.CC.close
+                                .. self.delve.storyVariant,
+                                0.88, 0.88, 0.88, true)
+            GameTooltip:AddLine(" ", 0.88, 0.88, 0.88, true)
+            GameTooltip:AddLine(E.CC.muted
+                                .. "Right-click to toggle manual completion."
+                                .. E.CC.close,
+                                0.88, 0.88, 0.88, true)
+            GameTooltip:Show()
         end
     end)
     row:SetScript("OnLeave", function(self)
-        if self.delve and self.delve.completed then
-            self:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
-        else
-            self:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-        end
         E:HideTooltip()
     end)
 
