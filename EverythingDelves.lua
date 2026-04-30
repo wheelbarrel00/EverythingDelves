@@ -445,6 +445,15 @@ local function BeginDelveRun(name, kind)
     -- the live bountiful list. Completed bountifuls drop off the
     -- list mid-week, so we cannot reliably check this at
     -- SCENARIO_COMPLETED time.
+    --
+    -- Force a refresh of the bountiful lookup table first — the
+    -- table is normally updated when the Bountiful tab is shown or
+    -- when AreaPoisUpdated fires, but we cannot rely on either
+    -- having happened yet this session. RefreshBountifulData is
+    -- internally debounced so this is cheap.
+    if E.RefreshBountifulData then
+        E:RefreshBountifulData(true)
+    end
     runState.wasBountiful  = false
     if E.currentBountifulNames and name then
         if E.currentBountifulNames[name] then

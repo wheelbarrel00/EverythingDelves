@@ -908,8 +908,11 @@ E:RegisterModule(function()
     -- Register for area POI updates so bountiful list refreshes live
     --------------------------------------------------------------------
     E:RegisterCallback("AreaPoisUpdated", function()
+        -- Always refresh the data so E.currentBountifulNames stays
+        -- current for other systems (Gilded Stash tracking, Delve
+        -- Locations gold asterisks) regardless of which tab is open.
+        RefreshBountifulData()
         if frame:IsShown() then
-            RefreshBountifulData()
             RefreshStats()
             local done = 0
             for _, d in ipairs(bountifulList) do
@@ -928,3 +931,14 @@ E:RegisterModule(function()
     -- Seed initial data
     RefreshBountifulData(true)
 end)
+
+------------------------------------------------------------------------
+-- Public hook: let other modules force a bountiful-data refresh.
+-- Used by BeginDelveRun in EverythingDelves.lua so the bountiful
+-- lookup table is guaranteed current at delve entry, even if the
+-- Bountiful tab has never been opened this session. Internally
+-- debounced (2 s) so this is cheap to call repeatedly.
+------------------------------------------------------------------------
+function E:RefreshBountifulData(force)
+    RefreshBountifulData(force)
+end

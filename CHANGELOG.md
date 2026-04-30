@@ -5,6 +5,18 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-04-29
+
+### Bug Fixes
+
+- **Gilded Stash Progress** — Fixed regression where Bountiful T11+ runs were not being counted unless the Current Bountiful Delves tab had been opened during the play session. The bountiful lookup table (`E.currentBountifulNames`) was only refreshed on `AreaPoisUpdated` events when Tab 2 was visible, so runs entered with a stale/empty table got stamped `wasBountiful = false`.
+
+### Internal
+
+- `AreaPoisUpdated` callback now always refreshes bountiful data; only the UI redraw remains gated on tab visibility.
+- New public hook `E:RefreshBountifulData(force)` exposed so other modules can force a refresh.
+- `BeginDelveRun` now forces a bountiful-data refresh before snapshotting `wasBountiful`, guaranteeing the lookup is current at delve entry regardless of which tab has been opened.
+
 ## [1.4.1] - 2026-04-28
 
 ### Bug Fixes
