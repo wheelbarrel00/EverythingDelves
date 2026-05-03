@@ -52,6 +52,7 @@ local DEFAULTS = {
     lastKnownBountifulIDs  = {},   -- list of POI IDs from last bountiful scan
     lastKnownActiveSAs     = {},   -- list of active SA quest IDs from last scan
     delveHistory           = {},   -- [delveName] = { completions = { {date, week}, ... }, totalRuns = 0 }
+    activeRun              = nil,  -- persisted mid-run state so duration survives /reload and brief disconnects
 }
 
 ------------------------------------------------------------------------
@@ -460,6 +461,19 @@ local function BeginDelveRun(name, kind)
             runState.wasBountiful = true
         end
     end
+    -- Persist run start to SavedVariables so duration survives /reload
+    -- and brief disconnects. GetTime() is continuous across /reload.
+    if E.db then
+        E.db.activeRun = {
+            name          = name,
+            kind          = kind,
+            startTime     = runState.startTime,
+            deaths        = 0,
+            startKeyCount = runState.startKeyCount,
+            tier          = 0,
+            wasBountiful  = runState.wasBountiful,
+        }
+    end
     TryCaptureTier("BeginDelveRun")
 end
 
@@ -472,6 +486,10 @@ local function EndDelveRun()
     runState.startKeyCount = 0
     runState.tier          = 0
     runState.wasBountiful  = false
+    -- Clear the persisted run so stale state never carries over.
+    if E.db then
+        E.db.activeRun = nil
+    end
 end
 
 --- Append a completed run to the SavedVariables history.
@@ -578,7 +596,30 @@ local function TryBeginFromCurrentZone(source)
 
     if matchedName then
         if not runState.inDelve or runState.delveName ~= matchedName then
-            BeginDelveRun(matchedName, kind)
+            -- If we have a persisted active run for this same delve
+            -- (saved across /reload or a brief disconnect), restore
+            -- runState from it rather than starting a fresh timer.
+            -- Edge case: if the WoW client was fully restarted,
+            -- GetTime() resets to near-zero. In that case the saved
+            -- startTime will be greater than the current GetTime();
+            -- discard the saved run and start fresh.
+            local saved = E.db and E.db.activeRun
+            if saved and saved.name == matchedName
+                    and saved.startTime
+                    and saved.startTime <= GetTime() then
+                runState.inDelve       = true
+                runState.delveName     = matchedName
+                runState.delveKind     = saved.kind
+                runState.startTime     = saved.startTime
+                runState.deaths        = saved.deaths or 0
+                runState.startKeyCount = saved.startKeyCount or 0
+                runState.tier          = saved.tier or 0
+                runState.wasBountiful  = saved.wasBountiful or false
+                TryCaptureTier("restored")
+            else
+                if E.db then E.db.activeRun = nil end
+                BeginDelveRun(matchedName, kind)
+            end
         else
             TryCaptureTier(source or "retry")
         end

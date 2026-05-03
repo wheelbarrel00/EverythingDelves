@@ -5,6 +5,17 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-05-03
+
+### Bug Fixes
+
+- **Delve Duration Tracking** — Run timer now survives `/reload` and brief disconnects. `startTime` is persisted to `E.db.activeRun` (SavedVariables) at delve entry and restored when re-entering the same zone, so the elapsed time continues from the original start rather than resetting to zero. Full client restarts still reset the timer (by design — `GetTime()` resets to near-zero on relaunch, making the saved timestamp unrecoverable).
+- **Delve Duration Formatter** — Fixed display of runs lasting 1 hour or longer. Previously the formatter would stop at minutes; runs >= 60 minutes now display correctly as `Xh Ym Zs`.
+
+### Improvements
+
+- **Delve History tab** — Added a small note at the bottom of the tab clarifying that `/reload` is safe for the run timer, but closing the WoW client during a delve will reset that run's timer.
+
 ## [1.4.2] - 2026-04-29
 
 ### Bug Fixes

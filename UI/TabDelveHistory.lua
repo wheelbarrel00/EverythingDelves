@@ -35,14 +35,18 @@ local date, time                 = date, time
 local function FormatDuration(sec)
     sec = sec or 0
     if sec <= 0 then return "--" end
+    if sec < 60 then
+        return string_format("%ds", sec)
+    end
     if sec < 3600 then
         local m = math_floor(sec / 60)
         local s = sec - m * 60
         return string_format("%dm %02ds", m, s)
     end
     local h = math_floor(sec / 3600)
-    local m = math_floor((sec - h * 3600) / 60)
-    return string_format("%dh %dm", h, m)
+    local m = math_floor((sec % 3600) / 60)
+    local s = sec % 60
+    return string_format("%dh %dm %02ds", h, m, s)
 end
 
 --- Return a compact "Apr 22, 2026" date string.
@@ -71,6 +75,18 @@ E:RegisterModule(function()
     local summaryFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     summaryFS:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     summaryFS:SetFont(summaryFS:GetFont(), 11)
+
+    -- Small grey note at the bottom of the tab explaining timer behavior.
+    local noteFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    noteFS:SetPoint("BOTTOM", frame, "BOTTOM", 0, 8)
+    local nf, _, nflags = noteFS:GetFont()
+    noteFS:SetFont(nf, 10, nflags)
+    noteFS:SetJustifyH("CENTER")
+    noteFS:SetText(
+        E.CC.muted
+        .. "Note: Closing the WoW client during a delve will reset that run's timer. /reload is fine."
+        .. E.CC.close
+    )
 
     local dc = E.Colors.divider
     local headerDiv = frame:CreateTexture(nil, "ARTWORK")
