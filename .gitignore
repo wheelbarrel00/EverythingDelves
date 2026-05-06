@@ -1,5 +1,8 @@
 # VS Code
 .vscode/
+
+# Claude Code
+.claude/
 claude.md
 
 # Packager output
