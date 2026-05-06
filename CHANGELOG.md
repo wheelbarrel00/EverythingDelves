@@ -5,6 +5,16 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-05-06
+
+### Bug Fixes
+
+- **Coffer Shard WQ — Empty State Spacing** — "No Coffer Key Shard WQs found" message now renders with proper breathing room below the column header divider when no shard world quests are active. Previously the text was anchored 2px above the divider line, causing it to visually smash against it.
+
+### Improvements
+
+- **Great Vault Progress — Corrected Bar Labels** — "Delves / Dungeons" bar (wired to `Activities`) has been renamed to "Mythic+ Dungeons" to accurately reflect that `Enum.WeeklyRewardChestThresholdType.Activities` only tracks Mythic+/Heroic+ dungeon runs. "World Content" bar has been renamed to "Delves / World Content" since `Enum.WeeklyRewardChestThresholdType.World` is where delve completions (and world quests) are tracked by the API. Also corrected the hardcoded `max` for the World row from 3 to 8.
+
 ## [1.4.3] - 2026-05-03
 
 ### Bug Fixes

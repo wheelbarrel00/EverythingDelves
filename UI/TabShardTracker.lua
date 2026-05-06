@@ -648,7 +648,7 @@ E:RegisterModule(function()
     end
 
     local wqEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqEmptyFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, wqColY - 14)
+    wqEmptyFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, wqColY - 35)
     wqEmptyFS:SetFont(wqEmptyFS:GetFont(), 10)
     wqEmptyFS:SetText(
         E.CC.yellow .. "No Coffer Key Shard WQs found. Click Refresh to rescan.\n"

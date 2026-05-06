@@ -286,11 +286,12 @@ E:RegisterModule(function()
     gvFallbackFS:Hide()
 
     -- Activity type ->display config
-    -- Enum.WeeklyRewardChestThresholdType: World = 1, Activities = 2, RankedPvP = 3
+    -- Enum.WeeklyRewardChestThresholdType: Activities = Mythic+/Heroic+ dungeons,
+    -- World = Delves + world content, RankedPvP = rated PvP.
     local GV_ROWS = {
-        { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Delves / Dungeons", max = 8 },
-        { type = Enum.WeeklyRewardChestThresholdType.World,      label = "World Content",     max = 3 },
-        { type = Enum.WeeklyRewardChestThresholdType.RankedPvP,  label = "PvP",               max = 3 },
+        { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Mythic+ Dungeons",       max = 8 },
+        { type = Enum.WeeklyRewardChestThresholdType.World,      label = "Delves / World Content", max = 8 },
+        { type = Enum.WeeklyRewardChestThresholdType.RankedPvP,  label = "PvP",                    max = 3 },
     }
 
     local gvBars = {}
