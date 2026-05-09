@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-05-08
+
+### Internal
+
+- **TOC bump for Patch 12.0.7** — Updated `## Interface` to `120001, 120005, 120007` so the addon is flagged compatible with today's 12.0.7 client release and no longer shows as out-of-date.
+
 ## [1.4.5] - 2026-05-06
 
 ### Internal
