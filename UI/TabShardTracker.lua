@@ -221,7 +221,7 @@ E:RegisterModule(function()
     local dc = E.Colors.divider
     local div1 = sc:CreateTexture(nil, "ARTWORK")
     div1:SetHeight(1)
-    div1:SetPoint("TOPLEFT", weeklyCapNote, "BOTTOMLEFT", 0, -8)
+    div1:SetPoint("TOPLEFT", weeklyCapNote, "BOTTOMLEFT", 0, -32)
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
@@ -230,7 +230,7 @@ E:RegisterModule(function()
     -- Scrollable list of every shard source with earned/available status
     --------------------------------------------------------------------
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    srcHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -8)
+    srcHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
     srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
 
@@ -331,7 +331,7 @@ E:RegisterModule(function()
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 16)
+    div2:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 40)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
@@ -340,7 +340,7 @@ E:RegisterModule(function()
     -- Shows shards earned and keys earned since login.
     --------------------------------------------------------------------
     local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
+    sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     sessHeader:SetFont(sessHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(sessHeader, "Session Tracker")
 
@@ -365,7 +365,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local div3 = sc:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
-    div3:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -8)
+    div3:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -32)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
@@ -387,7 +387,7 @@ E:RegisterModule(function()
     local SA_WEEKLY_MAX = 3
 
     local saHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
+    saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
     saHeader:SetFont(saHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(saHeader, "Special Assignments")
 
@@ -409,7 +409,7 @@ E:RegisterModule(function()
     -- Divider after Special Assignments
     local div3b = sc:CreateTexture(nil, "ARTWORK")
     div3b:SetHeight(1)
-    div3b:SetPoint("TOPLEFT", saRows[#saRows].fs, "BOTTOMLEFT", 0, -8)
+    div3b:SetPoint("TOPLEFT", saRows[#saRows].fs, "BOTTOMLEFT", 0, -32)
     div3b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3b)
 
@@ -423,7 +423,7 @@ E:RegisterModule(function()
     }
 
     local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -8)
+    wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -32)
     wdqHeader:SetFont(wdqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(wdqHeader, "Weekly Delve Quests")
 
@@ -440,7 +440,7 @@ E:RegisterModule(function()
     -- Divider after Weekly Delve Quests
     local div3c = sc:CreateTexture(nil, "ARTWORK")
     div3c:SetHeight(1)
-    div3c:SetPoint("TOPLEFT", wdqRows[#wdqRows].fs, "BOTTOMLEFT", 0, -8)
+    div3c:SetPoint("TOPLEFT", wdqRows[#wdqRows].fs, "BOTTOMLEFT", 0, -32)
     div3c:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3c)
 
@@ -460,16 +460,15 @@ E:RegisterModule(function()
     local WQ_CURRENCY = 3310
     local MAX_WQ_ROWS = 12  -- max rows to pre-create
 
-    -- Divider before WQ section. Extra top padding (was -8) so the
-    -- WQ heading has visible breathing room from the previous section.
+    -- Divider before WQ section.
     local div4 = sc:CreateTexture(nil, "ARTWORK")
     div4:SetHeight(1)
-    div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -22)
+    div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -32)
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div4)
 
     local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -14)
+    wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -32)
     wqHeader:SetFont(wqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(wqHeader, "Coffer Shard World Quests")
 

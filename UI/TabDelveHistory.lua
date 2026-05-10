@@ -466,7 +466,7 @@ E:RegisterModule(function()
         ----------------------------------------------------------------
         -- Spacer + accent divider + Section: Midnight Delves
         ----------------------------------------------------------------
-        yCur = yCur + 12  -- breathing room above the divider
+        yCur = yCur + 32  -- breathing room above the divider
 
         -- Place + show the accent-colour separator across the FULL UI
         -- width. Parented to `frame`, vertical anchored to sc so it
@@ -478,7 +478,7 @@ E:RegisterModule(function()
         nemesisDivider:SetPoint("TOP",   scrollFrame, "TOP",    0, -yCur)
         nemesisDivider:SetHeight(1)
         nemesisDivider:Show()
-        yCur = yCur + 14  -- breathing room below the divider
+        yCur = yCur + 32  -- breathing room below the divider
 
         PlaceAt(midnightHeader, X_PARENT, 24)
 

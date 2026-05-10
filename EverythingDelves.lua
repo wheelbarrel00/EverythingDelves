@@ -48,6 +48,7 @@ local DEFAULTS = {
     lowShardThreshold      = 100,
     alertNewBountiful      = false,
     alertSpecialAssignment = false,
+    showTrovehunterReminder = true,
     manualComplete         = {},   -- [delveName] = timestamp for manually-marked completes (auto-expires on weekly reset)
     lastKnownBountifulIDs  = {},   -- list of POI IDs from last bountiful scan
     lastKnownActiveSAs     = {},   -- list of active SA quest IDs from last scan
@@ -264,6 +265,7 @@ E.delveRunState = {
     startKeyCount  = 0,
     tier           = 0,     -- captured at entry via C_DelvesUI
     wasBountiful   = false, -- snapshot at BeginDelveRun
+    trovehunterPopupShown = false, -- one-shot guard for the reminder popup
 }
 
 local runState = E.delveRunState
@@ -430,6 +432,9 @@ local function TryCaptureTier(source)
     local t = AutoDetectDelveTier()
     if t and t > 0 then
         runState.tier = t
+        if E.MaybeShowTrovehunterReminder then
+            E:MaybeShowTrovehunterReminder()
+        end
     end
 end
 
@@ -461,6 +466,7 @@ local function BeginDelveRun(name, kind)
             runState.wasBountiful = true
         end
     end
+    runState.trovehunterPopupShown = false
     -- Persist run start to SavedVariables so duration survives /reload
     -- and brief disconnects. GetTime() is continuous across /reload.
     if E.db then
@@ -472,6 +478,7 @@ local function BeginDelveRun(name, kind)
             startKeyCount = runState.startKeyCount,
             tier          = 0,
             wasBountiful  = runState.wasBountiful,
+            trovehunterPopupShown = false,
         }
     end
     TryCaptureTier("BeginDelveRun")
@@ -486,6 +493,7 @@ local function EndDelveRun()
     runState.startKeyCount = 0
     runState.tier          = 0
     runState.wasBountiful  = false
+    runState.trovehunterPopupShown = false
     -- Clear the persisted run so stale state never carries over.
     if E.db then
         E.db.activeRun = nil
@@ -615,7 +623,14 @@ local function TryBeginFromCurrentZone(source)
                 runState.startKeyCount = saved.startKeyCount or 0
                 runState.tier          = saved.tier or 0
                 runState.wasBountiful  = saved.wasBountiful or false
+                runState.trovehunterPopupShown = saved.trovehunterPopupShown or false
                 TryCaptureTier("restored")
+                -- If tier was already captured pre-/reload, TryCaptureTier
+                -- short-circuits and won't trigger the reminder check.
+                -- Run it explicitly so a never-shown popup can still fire.
+                if E.MaybeShowTrovehunterReminder then
+                    E:MaybeShowTrovehunterReminder()
+                end
             else
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)

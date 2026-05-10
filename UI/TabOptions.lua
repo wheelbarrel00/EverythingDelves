@@ -326,16 +326,37 @@ E:RegisterModule(function()
     end)
     Y = Y - 28
 
+    -- Show Trovehunter's Bounty Reminder on Delve Entry
+    -- Anchored to the right side of the General section, vertically
+    -- inline with the Default Tab slider readout. Pulled out of the
+    -- vertical Y flow so it does not consume a row.
+    local troveCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show Trovehunter's Bounty reminder on Delve entry",
+        "showTrovehunterReminder"
+    )
+    troveCB:ClearAllPoints()
+    troveCB:SetPoint("LEFT", defaultTabSlider, "RIGHT", 200, 0)
+    -- Insert the trove icon between the checkbox and its label so
+    -- players who don't recognise the name can identify the item.
+    local troveIcon = content:CreateTexture(nil, "OVERLAY")
+    troveIcon:SetSize(20, 20)
+    troveIcon:SetPoint("LEFT", troveCB, "RIGHT", 4, 0)
+    troveIcon:SetTexture(1064187)
+    troveCB.labelFS:ClearAllPoints()
+    troveCB.labelFS:SetPoint("LEFT", troveIcon, "RIGHT", 6, 0)
+
+    Y = Y - 28  -- breathing room above section divider
+
     --------------------------------------------------------------------
     -- Thin red divider
     --------------------------------------------------------------------
-    local dc = E.Colors.divider
     local div1 = content:CreateTexture(nil, "ARTWORK")
     div1:SetHeight(1)
     div1:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div1:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
-    Y = Y - 10
+    Y = Y - 34  -- breathing room below section divider
 
     --------------------------------------------------------------------
     -- SECTION HEADER: Display
@@ -390,6 +411,8 @@ E:RegisterModule(function()
     )
     Y = Y - 28
 
+    Y = Y - 28  -- breathing room above section divider
+
     --------------------------------------------------------------------
     -- Thin red divider
     --------------------------------------------------------------------
@@ -398,7 +421,7 @@ E:RegisterModule(function()
     div2:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div2:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
-    Y = Y - 10
+    Y = Y - 34  -- breathing room below section divider
 
     --------------------------------------------------------------------
     -- SECTION HEADER: Alerts & Tracking
@@ -459,6 +482,8 @@ E:RegisterModule(function()
     )
     Y = Y - 30
 
+    Y = Y - 28  -- breathing room above section divider
+
     --------------------------------------------------------------------
     -- Thin red divider
     --------------------------------------------------------------------
@@ -467,7 +492,7 @@ E:RegisterModule(function()
     div3:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div3:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
-    Y = Y - 14
+    Y = Y - 34  -- breathing room below section divider
 
     --------------------------------------------------------------------
     -- BOTTOM BAR: Reset Defaults + Version
@@ -569,6 +594,7 @@ E:RegisterModule(function()
         defaultTabSlider:SetValue(E.db.defaultTab or 1)
         scaleSlider:SetValue((E.db.uiScale or 1.0) * 100)
         minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
+        troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
 
         -- Display
         for _, cb in ipairs(accentRadios) do

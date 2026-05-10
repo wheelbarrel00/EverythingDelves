@@ -5,6 +5,17 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.8] - 2026-05-10
+
+### New Features
+
+- **Trovehunter's Bounty Reminder** — A small popup now appears when you enter a Tier 8+ Bountiful Delve while you have an unused Trovehunter's Bounty Map in your bags and the bounty buff is not already active. Includes a dismiss button, a "Don't show this reminder again" checkbox (which disables the popup globally), and the actual in-game item icon so you know what to look for. Toggle is in **Options &rarr; General** and is enabled by default. Thanks to **herky4life** for the suggestion!
+
+### Improvements
+
+- **Section spacing across the last four tabs** — Added significant breathing room between every section on the **Tier Guide**, **Shard Tracker**, **Delve History**, and **Options** tabs. Sections were previously cramped against each other; the new uniform spacing makes everything much easier to scan.
+- **Options &mdash; General layout** — The Trovehunter reminder toggle is anchored to the right side of the General section (inline with the Default Tab readout) so it doesn't add another row to the General block.
+
 ## [1.4.7] - 2026-05-08
 
 ### Internal

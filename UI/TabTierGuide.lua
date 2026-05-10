@@ -318,7 +318,7 @@ E:RegisterModule(function()
     -- Divider after Great Vault
     local gvDiv = sc:CreateTexture(nil, "ARTWORK")
     gvDiv:SetHeight(1)
-    gvDiv:SetPoint("TOPLEFT", gvNoteFS, "BOTTOMLEFT", 0, -6)
+    gvDiv:SetPoint("TOPLEFT", gvNoteFS, "BOTTOMLEFT", 0, -32)
     gvDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(gvDiv)
 
@@ -329,7 +329,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
 
     local nemHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -6)
+    nemHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -32)
     nemHeader:SetFont(nemHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(nemHeader, "Seasonal Nemesis")
 
@@ -557,7 +557,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", nemStatusFS, "BOTTOMLEFT", 0, -8)
+    div2:SetPoint("TOPLEFT", nemStatusFS, "BOTTOMLEFT", 0, -32)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
@@ -570,7 +570,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
 
     local troveHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -8)
+    troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     troveHeader:SetFont(troveHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(troveHeader, "Trovehunter's Bounty")
 
@@ -655,7 +655,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local div3 = sc:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
-    div3:SetPoint("TOPLEFT", troveIcon, "BOTTOMLEFT", 0, -24)
+    div3:SetPoint("TOPLEFT", troveIcon, "BOTTOMLEFT", 0, -48)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
@@ -667,7 +667,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
 
     local beaconHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    beaconHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -8)
+    beaconHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
     beaconHeader:SetFont(beaconHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(beaconHeader, "Beacon of Hope")
 
@@ -748,12 +748,12 @@ E:RegisterModule(function()
     -- Thin red divider
     local div4 = sc:CreateTexture(nil, "ARTWORK")
     div4:SetHeight(1)
-    div4:SetPoint("TOPLEFT", beaconNoteFS, "BOTTOMLEFT", 0, -8)
+    div4:SetPoint("TOPLEFT", beaconNoteFS, "BOTTOMLEFT", 0, -32)
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div4)
 
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    gildedHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -8)
+    gildedHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -32)
     gildedHeader:SetFont(gildedHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(gildedHeader, "Gilded Stash Progress")
 
@@ -873,12 +873,12 @@ E:RegisterModule(function()
     -- Thin red divider
     local div5 = sc:CreateTexture(nil, "ARTWORK")
     div5:SetHeight(1)
-    div5:SetPoint("TOPLEFT", gildedNoteFS, "BOTTOMLEFT", 0, -8)
+    div5:SetPoint("TOPLEFT", gildedNoteFS, "BOTTOMLEFT", 0, -32)
     div5:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div5)
 
     local renownHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    renownHeader:SetPoint("TOPLEFT", div5, "BOTTOMLEFT", 0, -8)
+    renownHeader:SetPoint("TOPLEFT", div5, "BOTTOMLEFT", 0, -32)
     renownHeader:SetFont(renownHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(renownHeader, "Midnight Faction Renown")
 
