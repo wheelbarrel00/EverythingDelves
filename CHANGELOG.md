@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.10] - 2026-05-12
+
+### Bug Fixes
+
+- **Tier detection regression from 1.4.9** &mdash; The ObjectiveTracker scrape in `AutoDetectDelveTier` was modified in 1.4.9 to fix a misfire where the player's lives counter was being read as the tier. The change accidentally broke tier detection entirely: Methods 1 and 2 (`GetInstanceInfo().difficultyName` and `C_Scenario.GetInfo().scenarioName`) both just return `"Delves"` in Midnight with no tier number, leaving the modified Method 3 with nothing useful to fall back on. Every run was logged as `tier=0`, breaking the Delve History tier display and zeroing out the Gilded Stash counter (which requires `tier >= 11`). Restored Method 3 to its exact pre-1.4.9 behavior &mdash; the original implementation's first-match heuristic is imperfect but reliably captures tier in the vast majority of runs, which is far better than logging tier=0 across the board.
+
 ## [1.4.9] - 2026-05-12
 
 ### Bug Fixes

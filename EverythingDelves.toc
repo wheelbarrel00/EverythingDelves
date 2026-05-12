@@ -3,7 +3,7 @@
 ## Title: Everything Delves
 ## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
 ## Author: Wheelbarrel00
-## Version: 1.4.9
+## Version: 1.4.10
 ## SavedVariables: EverythingDelvesDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## OptionalDeps: LibStub, CallbackHandler-1.0, LibDataBroker-1.1, LibDBIcon-1.0

@@ -340,13 +340,18 @@ local function AutoDetectDelveTier()
     end)
     if m2 then return m2 end
 
-    -- Method 3: scrape the ObjectiveTrackerFrame for "Tier N" text.
-    -- Only matches the explicit "Tier N" / "Difficulty N" pattern — the
-    -- previous standalone-number fallback was removed because it
-    -- mis-matched the lives counter ("3 lives" being read as Tier 3).
+    -- Method 3: scrape the ObjectiveTrackerFrame for tier text.
+    -- Restored to the exact 1.4.8 behaviour after attempted "fixes" in
+    -- 1.4.9 / earlier 1.4.10 made the History tab worse. Known
+    -- limitation: in T11 delves where the lives counter happens to be
+    -- the first standalone digit encountered, this can mis-record the
+    -- run as a lower tier — but at least it records *something*, which
+    -- is far better than logging tier=0 across the board.
     local tracker = _G["ObjectiveTrackerFrame"] or _G["ScenarioObjectiveTracker"]
     if tracker then
+        local foundDelveHeader = false
         local foundTier
+        local zoneName = GetRealZoneText() or ""
 
         local function SearchForTier(frame)
             if foundTier then return end
@@ -364,6 +369,15 @@ local function AutoDetectDelveTier()
                             or clean:match("Difficulty%s*:?%s*(%d+)")
                         if m then
                             local n = tonumber(m)
+                            if n and n >= 1 and n <= 11 then
+                                foundTier = n
+                                return
+                            end
+                        end
+                        if clean == "Delves" or clean == zoneName then
+                            foundDelveHeader = true
+                        elseif foundDelveHeader and clean:match("^%d+$") then
+                            local n = tonumber(clean)
                             if n and n >= 1 and n <= 11 then
                                 foundTier = n
                                 return
