@@ -1,8 +1,11 @@
 ------------------------------------------------------------------------
 -- UI/TrovehunterReminder.lua
--- Floating reminder popup shown on entry to a tier 8+ bountiful Delve
--- when the player has an unused Trovehunter's Bounty Map in bags and
--- the consumed-bounty aura is not active.
+-- Floating reminder popup shown on entry to a Bountiful Delve when the
+-- player has an unused Trovehunter's Bounty Map in bags and the
+-- consumed-bounty aura is not active. The original spec gated this on
+-- "tier 8+" but reliable tier detection inside a delve is fragile, and
+-- in practice nobody who has a map is running sub-T8 delves anyway, so
+-- the tier requirement was dropped in favour of the simpler rule.
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
@@ -127,8 +130,16 @@ function E:MaybeShowTrovehunterReminder()
     local rs = E.delveRunState
     if not rs or not rs.inDelve then return end
     if rs.trovehunterPopupShown then return end
-    if not rs.tier or rs.tier < 8 then return end
     if not rs.wasBountiful then return end
+
+    -- Late-firing guard: if more than 60 seconds have elapsed since
+    -- entry, the player is already deep into the run and the reminder
+    -- is no longer useful (would just feel like a popup-on-exit bug).
+    -- Skip it. The popup is meant to fire early.
+    if rs.startTime and rs.startTime > 0
+            and (GetTime() - rs.startTime) > 60 then
+        return
+    end
 
     local count = C_Item.GetItemCount(TROVE_MAP_ITEM)
     if not count or count <= 0 then return end
@@ -137,9 +148,33 @@ function E:MaybeShowTrovehunterReminder()
         and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
     if aura then return end
 
-    rs.trovehunterPopupShown = true
-    if E.db.activeRun then
-        E.db.activeRun.trovehunterPopupShown = true
-    end
-    E:ShowTrovehunterReminder()
+    -- All conditions met. Defer the actual Show by 2 seconds so the
+    -- popup doesn't race the loading-screen-clear / UI-settle period
+    -- on delve entry. Previously the Show was called fast enough that
+    -- the frame appeared (and immediately got covered) before the
+    -- player's UI was visible, leading to "popup never appears even
+    -- though popupShown=true is set" reports. The deferred design
+    -- also delays setting popupShown until the Show actually fires,
+    -- so a /reload mid-deferral doesn't strand the run with a stuck
+    -- flag and no popup.
+    if E._trovehunterDeferPending then return end
+    E._trovehunterDeferPending = true
+
+    C_Timer.After(2, function()
+        E._trovehunterDeferPending = false
+        local rs2 = E.delveRunState
+        if not rs2 or not rs2.inDelve then return end
+        if rs2.trovehunterPopupShown then return end
+        local _, _, instanceType = IsInInstance()
+        local _, _, diffID = GetInstanceInfo()
+        if instanceType ~= "scenario" and diffID ~= 208 then return end
+        local nowAura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
+            and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
+        if nowAura then return end
+        rs2.trovehunterPopupShown = true
+        if E.db and E.db.activeRun then
+            E.db.activeRun.trovehunterPopupShown = true
+        end
+        E:ShowTrovehunterReminder()
+    end)
 end

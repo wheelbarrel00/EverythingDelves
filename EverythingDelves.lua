@@ -155,6 +155,32 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         self:ApplyAccentColor(self.db.accentColor)
     end
 
+    -- Pre-warm the AreaPOI cache for every delve zone. This eliminates
+    -- the race where a player teleports straight into a delve from an
+    -- unrelated zone and C_AreaPoiInfo.GetAreaPOIInfo returns nil
+    -- because the zone was never loaded — causing wasBountiful=false to
+    -- be stamped onto a run that was actually bountiful.
+    if C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIForMap and self.DelveData then
+        local seenMaps = {}
+        for _, delve in ipairs(self.DelveData) do
+            if delve.mapID and not seenMaps[delve.mapID] then
+                seenMaps[delve.mapID] = true
+                pcall(C_AreaPoiInfo.GetAreaPOIForMap, delve.mapID)
+            end
+        end
+    end
+
+    -- Flag one-time auto-repair to run after the next bountiful refresh.
+    self._autoRepairPending = true
+
+    -- Force a refresh shortly after login so the auto-repair pass fires
+    -- without waiting for the user to open the Bountiful tab.
+    C_Timer.After(3, function()
+        if self.RefreshBountifulData then
+            self:RefreshBountifulData(true)
+        end
+    end)
+
     print("|cFFFF2222Everything Delves|r v" .. self.version
         .. " loaded. Type |cFFFFD700/ed|r to open.")
 end)
@@ -280,12 +306,11 @@ local function GetCurrencyQty(id)
 end
 
 --- Auto-detect the current delve tier (1-11) or return nil if unknown.
---- The tier is not exposed through any reliable Blizzard API at the
---- moments we care about, so we try three strategies in order:
----   1. Parse a number out of GetInstanceInfo()'s difficultyName.
+--- Strategy order (most authoritative first):
+---   1. Parse a number out of GetInstanceInfo()'s difficultyName
+---      (typically just "Delves" in Midnight, but kept as fallback).
 ---   2. Parse a number out of C_Scenario.GetInfo()/GetStepInfo() names.
----   3. Scrape the ObjectiveTrackerFrame UI for "Tier N" text or the
----      standalone number immediately after the "Delves" header.
+---   3. Scrape the ObjectiveTrackerFrame UI for "Tier N" text.
 local function AutoDetectDelveTier()
     -- Method 1: difficulty name
     local _, _, _, difficultyName = GetInstanceInfo()
@@ -315,17 +340,14 @@ local function AutoDetectDelveTier()
     end)
     if m2 then return m2 end
 
-    -- Method 3: scrape the ObjectiveTrackerFrame for tier text.
+    -- Method 3: scrape the ObjectiveTrackerFrame for "Tier N" text.
+    -- Only matches the explicit "Tier N" / "Difficulty N" pattern — the
+    -- previous standalone-number fallback was removed because it
+    -- mis-matched the lives counter ("3 lives" being read as Tier 3).
     local tracker = _G["ObjectiveTrackerFrame"] or _G["ScenarioObjectiveTracker"]
     if tracker then
-        local foundDelveHeader = false
         local foundTier
-        local zoneName = GetRealZoneText() or ""
 
-        -- Recursive walker. Uses select() to iterate GetRegions() and
-        -- GetChildren() varargs WITHOUT allocating a temporary table
-        -- per recursive call (the previous `{ frame:GetRegions() }`
-        -- pattern allocated on every visit).
         local function SearchForTier(frame)
             if foundTier then return end
             if not frame or frame:IsForbidden() then return end
@@ -336,23 +358,12 @@ local function AutoDetectDelveTier()
                 if r and r:GetObjectType() == "FontString" and r:IsShown() then
                     local txt = r:GetText()
                     if txt and txt ~= "" then
-                        -- Single combined gsub pass so we allocate one
-                        -- intermediate string instead of four.
                         local clean = txt:gsub("|c%x%x%x%x%x%x%x%x", "")
                                          :gsub("|r", "")
                         local m = clean:match("Tier%s*:?%s*(%d+)")
                             or clean:match("Difficulty%s*:?%s*(%d+)")
                         if m then
                             local n = tonumber(m)
-                            if n and n >= 1 and n <= 11 then
-                                foundTier = n
-                                return
-                            end
-                        end
-                        if clean == "Delves" or clean == zoneName then
-                            foundDelveHeader = true
-                        elseif foundDelveHeader and clean:match("^%d+$") then
-                            local n = tonumber(clean)
                             if n and n >= 1 and n <= 11 then
                                 foundTier = n
                                 return
@@ -432,8 +443,38 @@ local function TryCaptureTier(source)
     local t = AutoDetectDelveTier()
     if t and t > 0 then
         runState.tier = t
+        -- Persist captured tier to SavedVariables so /reload mid-delve
+        -- doesn't lose the value. Previously saved.tier stayed at the
+        -- 0 written by BeginDelveRun, forcing every post-reload run to
+        -- re-detect from scratch (often failing because the UI wasn't
+        -- rebuilt yet).
+        if E.db and E.db.activeRun then
+            E.db.activeRun.tier = t
+        end
         if E.MaybeShowTrovehunterReminder then
             E:MaybeShowTrovehunterReminder()
+        end
+    end
+end
+
+--- Re-check bountiful status and flip runState.wasBountiful to true if
+--- the current delve is on the live bountiful list. NEVER flips back
+--- to false once set — once detected as bountiful, it stays locked.
+--- This lets the snapshot recover from cold-cache map data at entry:
+--- if C_AreaPoiInfo wasn't ready at BeginDelveRun, a later
+--- SCENARIO_UPDATE retry will still catch it.
+local function RefreshBountifulSnapshot()
+    if runState.wasBountiful then return end  -- already locked true
+    if not runState.inDelve or not runState.delveName then return end
+    if not E.RefreshBountifulData then return end
+
+    E:RefreshBountifulData(true)
+
+    if E.currentBountifulNames
+            and E.currentBountifulNames[runState.delveName] then
+        runState.wasBountiful = true
+        if E.db and E.db.activeRun then
+            E.db.activeRun.wasBountiful = true
         end
     end
 end
@@ -447,25 +488,7 @@ local function BeginDelveRun(name, kind)
     runState.deaths        = 0
     runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
     runState.tier          = 0
-    -- Snapshot bountiful status NOW, while the delve is still on
-    -- the live bountiful list. Completed bountifuls drop off the
-    -- list mid-week, so we cannot reliably check this at
-    -- SCENARIO_COMPLETED time.
-    --
-    -- Force a refresh of the bountiful lookup table first — the
-    -- table is normally updated when the Bountiful tab is shown or
-    -- when AreaPoisUpdated fires, but we cannot rely on either
-    -- having happened yet this session. RefreshBountifulData is
-    -- internally debounced so this is cheap.
-    if E.RefreshBountifulData then
-        E:RefreshBountifulData(true)
-    end
     runState.wasBountiful  = false
-    if E.currentBountifulNames and name then
-        if E.currentBountifulNames[name] then
-            runState.wasBountiful = true
-        end
-    end
     runState.trovehunterPopupShown = false
     -- Persist run start to SavedVariables so duration survives /reload
     -- and brief disconnects. GetTime() is continuous across /reload.
@@ -477,11 +500,41 @@ local function BeginDelveRun(name, kind)
             deaths        = 0,
             startKeyCount = runState.startKeyCount,
             tier          = 0,
-            wasBountiful  = runState.wasBountiful,
+            wasBountiful  = false,
             trovehunterPopupShown = false,
         }
     end
+    -- Initial bountiful snapshot. May fail at entry if the POI cache is
+    -- cold; subsequent SCENARIO_UPDATE retries will flip the flag the
+    -- moment the data is available.
+    RefreshBountifulSnapshot()
     TryCaptureTier("BeginDelveRun")
+
+    -- Popup heartbeat: SCENARIO_UPDATE only fires on objective changes,
+    -- which can be sparse (especially right after a /reload or in a
+    -- quiet delve). Run a 1Hz timer for the first 30 seconds so
+    -- MaybeShowTrovehunterReminder gets multiple shots at firing as
+    -- tier capture / POI cache / aura state stabilize. The popup's own
+    -- one-shot guard prevents duplicate firings.
+    local heartbeatTicks = 0
+    if E._popupHeartbeat then E._popupHeartbeat:Cancel() end
+    E._popupHeartbeat = C_Timer.NewTicker(1, function(self)
+        heartbeatTicks = heartbeatTicks + 1
+        if not runState.inDelve
+                or runState.trovehunterPopupShown
+                or heartbeatTicks > 30 then
+            self:Cancel()
+            E._popupHeartbeat = nil
+            return
+        end
+        -- Cheap re-attempt of tier + bountiful in case the SCENARIO_UPDATE
+        -- driven retry never fires.
+        TryCaptureTier("heartbeat")
+        RefreshBountifulSnapshot()
+        if E.MaybeShowTrovehunterReminder then
+            E:MaybeShowTrovehunterReminder()
+        end
+    end)
 end
 
 local function EndDelveRun()
@@ -494,6 +547,11 @@ local function EndDelveRun()
     runState.tier          = 0
     runState.wasBountiful  = false
     runState.trovehunterPopupShown = false
+    -- Cancel popup heartbeat — nothing for it to do once the run ends.
+    if E._popupHeartbeat then
+        E._popupHeartbeat:Cancel()
+        E._popupHeartbeat = nil
+    end
     -- Clear the persisted run so stale state never carries over.
     if E.db then
         E.db.activeRun = nil
@@ -568,6 +626,58 @@ function E:ClearDelveHistory()
     end
     if self.RefreshDelveHistoryTab then
         self:RefreshDelveHistoryTab()
+    end
+end
+
+--- One-time auto-repair of stale wasBountiful flags.
+--- Cross-checks this week's recorded runs against the LIVE bountiful
+--- list. Any run whose delve is currently bountiful but was logged
+--- with wasBountiful=false (because the POI cache was cold at delve
+--- entry) gets its flag corrected. Only repairs THIS WEEK's runs —
+--- past weeks' bountifuls have rotated out and are unrecoverable.
+---
+--- Triggered once per session: PLAYER_LOGIN sets `_autoRepairPending`,
+--- then the next successful `RefreshBountifulData` calls this and
+--- clears the flag.
+function E:AutoRepairBountifulHistory()
+    if not self._autoRepairPending then return end
+    if not self.db or not self.db.delveHistory then return end
+    if not self.currentBountifulNames then return end
+    -- A truly empty lookup table means POI data hasn't loaded yet; wait
+    -- for a later refresh rather than wasting our one-shot repair pass.
+    if not next(self.currentBountifulNames) then return end
+
+    local lastReset = 0
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+        if secs and secs > 0 then
+            local now = (GetServerTime and GetServerTime()) or time()
+            lastReset = now + secs - 604800
+        end
+    end
+
+    local repaired = 0
+    for delveName, entry in pairs(self.db.delveHistory) do
+        if self.currentBountifulNames[delveName] and entry.recentRuns then
+            for _, run in ipairs(entry.recentRuns) do
+                if (run.timestamp or 0) >= lastReset
+                        and not run.wasBountiful then
+                    run.wasBountiful = true
+                    repaired = repaired + 1
+                end
+            end
+        end
+    end
+
+    self._autoRepairPending = false
+
+    if repaired > 0 then
+        print(self.CC.header .. "Everything Delves|r: Repaired "
+            .. repaired .. " mis-flagged bountiful run"
+            .. (repaired == 1 and "" or "s") .. " from this week.")
+        if self.RefreshDelveHistoryTab then
+            self:RefreshDelveHistoryTab()
+        end
     end
 end
 
@@ -660,12 +770,18 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             or event == "ZONE_CHANGED_NEW_AREA"
             or event == "SCENARIO_UPDATE" then
         -- SCENARIO_UPDATE fires 5-10x during delve entry. Once we're in
-        -- a delve and have already captured the tier, there is nothing
-        -- left for TryBeginFromCurrentZone to do; skip the work to
-        -- avoid the recursive ObjectiveTracker scrape.
+        -- a delve and have already captured the tier, skip the expensive
+        -- ObjectiveTracker scrape inside TryBeginFromCurrentZone — but
+        -- still re-attempt the bountiful snapshot (POI cache may have
+        -- warmed since entry) and re-evaluate the trovehunter popup
+        -- (bag/aura state may have changed mid-run).
         if event == "SCENARIO_UPDATE"
                 and runState.inDelve
                 and runState.tier and runState.tier > 0 then
+            RefreshBountifulSnapshot()
+            if E.MaybeShowTrovehunterReminder then
+                E:MaybeShowTrovehunterReminder()
+            end
             return
         end
         TryBeginFromCurrentZone(event)
@@ -688,9 +804,20 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             and math.max(0, math.floor(GetTime() - runState.startTime))
             or 0
 
-        -- Use the tier captured during the run. Do NOT try to detect
-        -- now â€” the UI may already be torn down at completion.
+        -- Final attempts at tier and bountiful before logging. The UI
+        -- may already be torn down (tier scrape can fail here) but it
+        -- costs nothing to try once more, and saves the run record from
+        -- being stamped with tier=0 / wasBountiful=false when the data
+        -- was only a few hundred ms away from being available.
         local tier = runState.tier or 0
+        if tier == 0 then
+            local lastChance = AutoDetectDelveTier()
+            if lastChance and lastChance > 0 then
+                tier = lastChance
+                runState.tier = lastChance
+            end
+        end
+        RefreshBountifulSnapshot()
 
         local keyNow  = GetCurrencyQty(COFFER_KEY_CURRENCY)
         local keyUsed = (runState.startKeyCount > 0)

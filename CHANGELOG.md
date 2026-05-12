@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.9] - 2026-05-12
+
+### Bug Fixes
+
+- **Gilded Stash counter undercount** &mdash; Fixed the root cause where Tier 11 Bountiful runs sometimes failed to register toward the Gilded Stash counter. The `wasBountiful` flag was being stamped `false` on runs entered before the AreaPOI cache was loaded for that delve's zone. The bountiful snapshot now retries on every `SCENARIO_UPDATE` and at `SCENARIO_COMPLETED`, locking to `true` the moment the data becomes available. Captured tier now also persists to SavedVariables so `/reload` mid-delve no longer loses it. Combined with a new one-time auto-repair pass at login, this week's misflagged runs heal silently &mdash; your Gilded Stash counter will correct itself the next time you log in. Thanks to everyone who reported the undercount.
+- **Trovehunter's Bounty popup not firing reliably** &mdash; The popup added in v1.4.8 had several races with delve entry: it depended on `SCENARIO_UPDATE` firing (sparse in quiet delves, silent after `/reload`), its `Show()` was called too early during the loading-screen-clear window so the frame was sometimes shown-but-invisible, and tier detection was occasionally matching the lives counter as "Tier 3". Rewrote the firing logic with a 1Hz heartbeat that runs for 30 seconds after delve entry, a 2-second deferred Show that lets the UI settle, a live game-state re-check at fire time that prevents the popup from appearing as you exit a delve, and a 60-second elapsed guard. Also dropped the tier-8+ requirement &mdash; Trovehunter maps work in any Tier 4+ delve and nobody with a map is running sub-T8 anyway.
+
+### Improvements
+
+- **Delve History &mdash; bountiful indicator** &mdash; Each run row now shows a gold **B** to its left when the run was flagged bountiful. Previously there was no way to see which runs counted toward the Gilded Stash without running diagnostic commands. If a run ever does fail to flag correctly going forward, you'll spot it immediately on this tab.
+
+### Internal
+
+- AreaPOI cache for every delve zone is pre-warmed at `PLAYER_LOGIN` via `C_AreaPoiInfo.GetAreaPOIForMap`, eliminating the cold-cache race that caused `wasBountiful=false` for players teleporting directly into a delve from an unrelated zone.
+- New helper `E:AutoRepairBountifulHistory` cross-checks this week's recorded runs against the live bountiful list and corrects any `wasBountiful=false` flag that should have been `true`. Runs once per session after the first `RefreshBountifulData`. Past weeks' runs are unrecoverable (the live bountiful list rotates weekly) and irrelevant anyway since the Gilded Stash counter only counts the current week.
+- Removed the standalone-number fallback in `AutoDetectDelveTier`'s ObjectiveTracker scrape &mdash; it was misidentifying the player's "lives remaining" counter as a tier value. Only the explicit `"Tier N"` pattern is now accepted.
+
 ## [1.4.8] - 2026-05-10
 
 ### New Features

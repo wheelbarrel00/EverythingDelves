@@ -448,8 +448,12 @@ E:RegisterModule(function()
                             local keyIcon = run.keyUsed
                                 and (E.CC.gold .. "Key" .. E.CC.close)
                                 or  (E.CC.muted .. "   " .. E.CC.close)
+                            local bountMark = run.wasBountiful
+                                and (E.CC.gold .. "B" .. E.CC.close)
+                                or  " "
                             rrow.textFS:SetFormattedText(
-                                "%sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                bountMark,
                                 E:GetTierCC(run.tier or 0), run.tier or 0, E.CC.close,
                                 E.CC.body, FormatDuration(run.duration), E.CC.close,
                                 E.CC.body, run.deaths or 0, E.CC.close,
@@ -531,8 +535,12 @@ E:RegisterModule(function()
                             local keyIcon = run.keyUsed
                                 and (E.CC.gold .. "Key" .. E.CC.close)
                                 or  (E.CC.muted .. "   " .. E.CC.close)
+                            local bountMark = run.wasBountiful
+                                and (E.CC.gold .. "B" .. E.CC.close)
+                                or  " "
                             rrow.textFS:SetFormattedText(
-                                "%sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                bountMark,
                                 E:GetTierCC(run.tier or 0), run.tier or 0, E.CC.close,
                                 E.CC.body, FormatDuration(run.duration), E.CC.close,
                                 E.CC.body, run.deaths or 0, E.CC.close,

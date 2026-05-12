@@ -941,4 +941,10 @@ end)
 ------------------------------------------------------------------------
 function E:RefreshBountifulData(force)
     RefreshBountifulData(force)
+    -- One-shot per session: if PLAYER_LOGIN flagged a repair, fire it
+    -- now that the live bountiful names are populated. AutoRepair
+    -- internally clears the flag and no-ops on subsequent calls.
+    if E._autoRepairPending and E.AutoRepairBountifulHistory then
+        E:AutoRepairBountifulHistory()
+    end
 end
