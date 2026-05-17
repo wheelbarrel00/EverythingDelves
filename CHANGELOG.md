@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.0] - 2026-05-12
 
-**Delve history is now per-character.** Before this update every character on your account shared one history, so an alt could wrongly show your main's Gilded Stash progress (e.g. "3/4" on a level-81 alt). Each character now tracks its own.
+**Delve history is now per-character.** Before this update every character on your account shared one history, so an alt could wrongly show your main's Gilded Stash progress (e.g. "3/4" on a level-90 alt). Each character now tracks its own.
 
 **You don't need to do anything — and nothing is deleted.** Your existing history is preserved automatically and handed to the first character you log in after updating, so **log your main in first** and it keeps everything with zero clicks. Other characters start fresh with their own history. A new **Profiles** tab (the last tab) lets you switch between profiles, create a new one, duplicate, or delete — switching never erases data, it only changes which history that character uses. UI settings (colors, scale, alerts) stay account-wide so you still only set them once.
 
