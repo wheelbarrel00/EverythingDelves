@@ -63,6 +63,7 @@ E.TAB_NAMES = {
     "Shard Tracker",
     "Delve History",
     "Options",
+    "Profiles",
 }
 E.NUM_TABS = #E.TAB_NAMES
 

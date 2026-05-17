@@ -5,6 +5,22 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-05-12
+
+**Delve history is now per-character.** Before this update every character on your account shared one history, so an alt could wrongly show your main's Gilded Stash progress (e.g. "3/4" on a level-81 alt). Each character now tracks its own.
+
+**You don't need to do anything — and nothing is deleted.** Your existing history is preserved automatically and handed to the first character you log in after updating, so **log your main in first** and it keeps everything with zero clicks. Other characters start fresh with their own history. A new **Profiles** tab (the last tab) lets you switch between profiles, create a new one, duplicate, or delete — switching never erases data, it only changes which history that character uses. UI settings (colors, scale, alerts) stay account-wide so you still only set them once.
+
+### New Features
+
+- **Per-character profiles** &mdash; Delve history, completion marks, and Gilded Stash progress are now tracked **per character** instead of being shared account-wide. Previously every character on your account read the same history, so an alt could show "3/4 Gilded Stash" from your main's runs. A new **Profiles** tab lets you see the active profile, switch profiles, create a fresh empty one, duplicate the current one, or delete an unused one. UI settings (accent color, scale, minimap button, alert toggles, the Trovehunter reminder) intentionally stay account-wide so you only configure them once.
+- **Non-destructive migration** &mdash; Your existing history is **never deleted**. On first login after updating, the old account-wide data is moved intact into a profile named "Original", and the first character you log in claims it automatically (log in your main first and it keeps everything with zero clicks). Every other character starts with its own fresh profile. If an alt ever inherits the wrong data, just switch its profile on the Profiles tab &mdash; nothing is lost.
+
+### Internal
+
+- `E.db` is now a transparent proxy: profile-scoped keys (`delveHistory`, `manualComplete`, `activeRun`) redirect to the active profile while everything else maps to the account-wide SavedVariables table. All existing call sites are unchanged &mdash; the per-character behavior is contained in one place.
+- `/ed reset` and the "Reset All Settings" button now reset **only account-wide settings**. They no longer touch profiles, so a settings reset can never wipe delve history.
+
 ## [1.4.10] - 2026-05-12
 
 ### Bug Fixes

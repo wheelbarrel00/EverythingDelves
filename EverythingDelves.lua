@@ -31,6 +31,12 @@ end
 ------------------------------------------------------------------------
 -- Default SavedVariables structure
 ------------------------------------------------------------------------
+-- Account-wide settings only. Per-character gameplay data
+-- (delveHistory, manualComplete, activeRun) is NOT here — it lives in
+-- per-character profiles, resolved in InitDB and reached transparently
+-- through the E.db proxy. lastKnownBountifulIDs / lastKnownActiveSAs
+-- stay account-wide because the bountiful / Special Assignment rotation
+-- is region-wide and identical for every character on the account.
 local DEFAULTS = {
     minimapButton = {
         show  = true,
@@ -49,37 +55,202 @@ local DEFAULTS = {
     alertNewBountiful      = false,
     alertSpecialAssignment = false,
     showTrovehunterReminder = true,
-    manualComplete         = {},   -- [delveName] = timestamp for manually-marked completes (auto-expires on weekly reset)
     lastKnownBountifulIDs  = {},   -- list of POI IDs from last bountiful scan
     lastKnownActiveSAs     = {},   -- list of active SA quest IDs from last scan
-    delveHistory           = {},   -- [delveName] = { completions = { {date, week}, ... }, totalRuns = 0 }
-    activeRun              = nil,  -- persisted mid-run state so duration survives /reload and brief disconnects
 }
+
+-- Keys that are profile-scoped rather than account-wide. The E.db
+-- proxy redirects reads/writes of these to the active profile.
+local PROFILE_KEYS = {
+    delveHistory   = true,
+    manualComplete = true,
+    activeRun      = true,
+}
+
+--- "Name - Realm" key identifying the current character.
+local function CharKey()
+    local name  = UnitName("player")  or "Unknown"
+    local realm = GetRealmName()      or "Unknown"
+    return name .. " - " .. realm
+end
+E.CharKey = CharKey
 
 ------------------------------------------------------------------------
 -- SavedVariables helpers
 ------------------------------------------------------------------------
+--- Ensure a profile table has all required sub-tables.
+local function NormalizeProfile(p)
+    p.delveHistory   = p.delveHistory   or {}
+    p.manualComplete = p.manualComplete or {}
+    -- activeRun intentionally left nil when absent.
+    return p
+end
+
+--- Build the E.db proxy. Profile-scoped keys redirect to the active
+--- profile (E.profile); everything else to the account-wide table.
+--- Reading E.profile dynamically means a runtime profile switch is
+--- reflected immediately with no re-proxy needed.
+local function BuildDBProxy(sv)
+    E.db = setmetatable({}, {
+        __index = function(_, k)
+            if PROFILE_KEYS[k] then
+                return E.profile and E.profile[k]
+            end
+            return sv[k]
+        end,
+        __newindex = function(_, k, val)
+            if PROFILE_KEYS[k] then
+                if E.profile then E.profile[k] = val end
+            else
+                sv[k] = val
+            end
+        end,
+    })
+end
+
 function E:InitDB()
     if not EverythingDelvesDB then
         EverythingDelvesDB = {}
     end
-    -- Shallow-merge defaults into the saved table without overwriting
+    local sv = EverythingDelvesDB
+
+    -- Shallow-merge account-wide setting defaults without overwriting
     -- existing values so player settings survive addon updates.
     for k, v in pairs(DEFAULTS) do
-        if EverythingDelvesDB[k] == nil then
+        if sv[k] == nil then
             if type(v) == "table" then
-                EverythingDelvesDB[k] = CopyTable(v) -- deep copy
+                sv[k] = CopyTable(v)
             else
-                EverythingDelvesDB[k] = v
+                sv[k] = v
             end
         end
     end
-    E.db = EverythingDelvesDB
+
+    -- Profile containers.
+    sv.profiles    = sv.profiles    or {}
+    sv.profileKeys = sv.profileKeys or {}
+
+    local charKey = CharKey()
+
+    -- One-time migration (pre-1.5.0 → profiles). The old account-wide
+    -- gameplay tables are MOVED into an "Original" profile — never
+    -- deleted. The first character to log in after the update claims
+    -- "Original", so a main keeps its full history with zero user
+    -- action; alts get their own fresh profile.
+    if not sv._profileMigrated then
+        local hadData =
+            (type(sv.delveHistory)   == "table" and next(sv.delveHistory))
+            or (type(sv.manualComplete) == "table" and next(sv.manualComplete))
+        if hadData then
+            sv.profiles["Original"] = NormalizeProfile({
+                delveHistory   = sv.delveHistory,
+                manualComplete = sv.manualComplete,
+                activeRun      = sv.activeRun,
+            })
+            sv.profileKeys[charKey] = "Original"
+        end
+        sv.delveHistory     = nil
+        sv.manualComplete   = nil
+        sv.activeRun        = nil
+        sv._profileMigrated = true
+    end
+
+    -- Resolve this character's profile (fresh per character by default).
+    local profName = sv.profileKeys[charKey]
+    if not profName or not sv.profiles[profName] then
+        profName = charKey
+        sv.profileKeys[charKey] = profName
+    end
+    if not sv.profiles[profName] then
+        sv.profiles[profName] = NormalizeProfile({})
+    end
+
+    E.activeProfileName = profName
+    E.profile = NormalizeProfile(sv.profiles[profName])
+
+    BuildDBProxy(sv)
 end
 
+--- Reset ONLY account-wide settings. Profiles (delve history,
+--- completion marks, mid-run state) are deliberately preserved —
+--- wiping every character's history on a settings reset would be
+--- catastrophic for the userbase.
 function E:ResetDB()
-    EverythingDelvesDB = CopyTable(DEFAULTS)
-    E.db = EverythingDelvesDB
+    local sv = EverythingDelvesDB
+    if not sv then return end
+    for k, v in pairs(DEFAULTS) do
+        if type(v) == "table" then
+            sv[k] = CopyTable(v)
+        else
+            sv[k] = v
+        end
+    end
+    -- Re-resolve profile / rebuild proxy (profiles untouched).
+    E:InitDB()
+end
+
+------------------------------------------------------------------------
+-- Profile management API (used by UI/TabProfiles.lua)
+------------------------------------------------------------------------
+
+--- Sorted array of all profile names.
+function E:GetProfileNames()
+    local names = {}
+    local sv = EverythingDelvesDB
+    if sv and sv.profiles then
+        for name in pairs(sv.profiles) do
+            names[#names + 1] = name
+        end
+        table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    end
+    return names
+end
+
+--- Point the current character at an existing profile and make it live.
+function E:SwitchProfile(name)
+    local sv = EverythingDelvesDB
+    if not sv or not name or not sv.profiles[name] then return false end
+    sv.profileKeys[CharKey()] = name
+    E.activeProfileName = name
+    E.profile = NormalizeProfile(sv.profiles[name])
+    if E.RefreshDelveHistoryTab then E:RefreshDelveHistoryTab() end
+    if E.RefreshBountifulData    then E:RefreshBountifulData(true) end
+    return true
+end
+
+--- Create a new empty profile and switch the current character to it.
+function E:CreateProfile(name)
+    local sv = EverythingDelvesDB
+    if not sv or not name or name == "" then return false, "Invalid name." end
+    if sv.profiles[name] then return false, "A profile with that name already exists." end
+    sv.profiles[name] = NormalizeProfile({})
+    return E:SwitchProfile(name)
+end
+
+--- Duplicate an existing profile under a new name and switch to it.
+function E:CopyProfile(sourceName, newName)
+    local sv = EverythingDelvesDB
+    if not sv or not sv.profiles[sourceName] then return false, "Source profile missing." end
+    if not newName or newName == "" then return false, "Invalid name." end
+    if sv.profiles[newName] then return false, "A profile with that name already exists." end
+    sv.profiles[newName] = NormalizeProfile(CopyTable(sv.profiles[sourceName]))
+    return E:SwitchProfile(newName)
+end
+
+--- Delete a profile. The active profile cannot be deleted (switch away
+--- first). Characters that pointed at it fall back to a fresh
+--- per-character profile on their next login.
+function E:DeleteProfile(name)
+    local sv = EverythingDelvesDB
+    if not sv or not sv.profiles[name] then return false, "Profile missing." end
+    if name == E.activeProfileName then
+        return false, "Can't delete the profile you're currently using."
+    end
+    sv.profiles[name] = nil
+    for ck, pk in pairs(sv.profileKeys) do
+        if pk == name then sv.profileKeys[ck] = nil end
+    end
+    return true
 end
 
 ------------------------------------------------------------------------
