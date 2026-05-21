@@ -388,8 +388,13 @@ local function UpdateRows(container)
                     E.CC.muted .. "\226\156\147 " .. delve.name .. E.CC.close
                 )
                 row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
+                local completedPrefix = delve.overcharged
+                    and (E.CC.muted .. "Overcharged" .. E.CC.close
+                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
+                    or ""
                 row.variantText:SetText(
-                    E.CC.muted .. delve.storyVariant .. E.CC.close
+                    completedPrefix
+                    .. E.CC.muted .. delve.storyVariant .. E.CC.close
                 )
                 row:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
             else
@@ -408,8 +413,13 @@ local function UpdateRows(container)
                     end
                 end
 
+                local overchargedPrefix = delve.overcharged
+                    and (E.CC.yellow .. "Overcharged" .. E.CC.close
+                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
+                    or ""
                 row.variantText:SetText(
-                    E.CC.muted .. delve.storyVariant .. E.CC.close
+                    overchargedPrefix
+                    .. E.CC.muted .. delve.storyVariant .. E.CC.close
                     .. normalNote
                 )
                 -- Neutral row tint (matches Delve Locations tab).
@@ -528,6 +538,9 @@ local function CreateRow(parent, index)
             GameTooltip:ClearAllPoints()
             GameTooltip:SetPoint("TOPLEFT", anchorTo, "TOPRIGHT", 8, 0)
             GameTooltip:AddLine(self.delve.name, 1, 0.84, 0, true)
+            if self.delve.overcharged then
+                GameTooltip:AddLine("Overcharged", 1, 1, 0, true)
+            end
             GameTooltip:AddLine(E.CC.muted .. "Story: " .. E.CC.close
                                 .. self.delve.storyVariant,
                                 0.88, 0.88, 0.88, true)

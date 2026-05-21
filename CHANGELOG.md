@@ -5,6 +5,19 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-21
+
+### New Features
+
+- **Companion Audio** &mdash; New section in the Options tab with three independent toggles: mute Valeera's companion voice lines, suppress her in-delve speech bubbles, and mute Dundun's voice lines. Bubble suppression uses selective per-companion hiding when the client supports it, with a fallback that disables all chat bubbles while inside a delve.
+- **Curio Reminder** &mdash; A popup now appears automatically when you open the companion configuration screen inside a delve, showing which combat and utility curios to bring for your current role. Highlights your role and shows live bag counts in green (have it) or red (missing). Also accessible at any time via `/ed curios` or `/ed curios valeera`.
+- **Overcharged Bountiful** &mdash; Overcharged delves are highlighted with a gold "Overcharged" prefix on the Bountiful tab. Active overcharged delves show the prefix in gold; completed ones in muted grey. The hover tooltip also reflects overcharged status.
+- **What's New popup** &mdash; A brief popup now appears on first login after each feature release summarising what changed. Dismiss it once and it never shows again for that version. Re-open it any time with `/ed whatsnew`.
+
+### Bug Fixes
+
+- **Great Vault bar labels** &mdash; The progress bars on the Tier Guide tab now correctly label the activity types. Delves count toward "Delves / World Content", not "Mythic+ Dungeons". The previous labels were causing confusion about which activities fed which vault slot.
+
 ## [1.5.0] - 2026-05-12
 
 **Delve history is now per-character.** Before this update every character on your account shared one history, so an alt could wrongly show your main's Gilded Stash progress (e.g. "3/4" on a level-90 alt). Each character now tracks its own.

@@ -55,6 +55,10 @@ local DEFAULTS = {
     alertNewBountiful      = false,
     alertSpecialAssignment = false,
     showTrovehunterReminder = true,
+    muteValeera            = false,
+    muteValeeraBubbles     = false,
+    muteDundun             = false,
+    seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},   -- list of POI IDs from last bountiful scan
     lastKnownActiveSAs     = {},   -- list of active SA quest IDs from last scan
 }
@@ -301,6 +305,15 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     if msg == "reset" then
         E:ResetDB()
         print("|cFFFF2222Everything Delves|r: Settings reset to defaults.")
+    elseif msg == "curios" or msg:sub(1, 7) == "curios " then
+        local arg = msg:sub(8)
+        if E.ToggleCurioPopup then
+            E:ToggleCurioPopup(arg)
+        end
+    elseif msg == "whatsnew" then
+        if E.ShowWhatsNew then
+            E:ShowWhatsNew()
+        end
     else
         E:ToggleMainFrame()
     end

@@ -495,6 +495,51 @@ E:RegisterModule(function()
     Y = Y - 34  -- breathing room below section divider
 
     --------------------------------------------------------------------
+    -- SECTION HEADER: Companion Audio
+    --------------------------------------------------------------------
+    local audioHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    audioHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
+    audioHeader:SetFont(audioHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+    E:StyleAccentHeader(audioHeader, "Companion Audio")
+    Y = Y - 20
+
+    local muteValeeraCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Mute Valeera voice lines",
+        "muteValeera",
+        function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
+    )
+    Y = Y - 26
+
+    local muteBubblesCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Suppress Valeera speech bubbles",
+        "muteValeeraBubbles",
+        function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
+    )
+    Y = Y - 26
+
+    local muteDundunCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Mute Dundun voice lines",
+        "muteDundun",
+        function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
+    )
+    Y = Y - 30
+
+    Y = Y - 28  -- breathing room above section divider
+
+    --------------------------------------------------------------------
+    -- Thin accent divider
+    --------------------------------------------------------------------
+    local div4 = content:CreateTexture(nil, "ARTWORK")
+    div4:SetHeight(1)
+    div4:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
+    div4:SetPoint("RIGHT", content, "RIGHT", -8, 0)
+    E:StyleAccentDivider(div4)
+    Y = Y - 34  -- breathing room below section divider
+
+    --------------------------------------------------------------------
     -- BOTTOM BAR: Reset Defaults + Version
     --------------------------------------------------------------------
     -- Define the confirmation popup once at module init, not on every
@@ -612,6 +657,11 @@ E:RegisterModule(function()
         threshSlider:SetValue(E.db.lowShardThreshold or 100)
         bountAlertCB:SetChecked(E.db.alertNewBountiful)
         specAlertCB:SetChecked(E.db.alertSpecialAssignment)
+
+        -- Companion Audio
+        muteValeeraCB:SetChecked(E.db.muteValeera == true)
+        muteBubblesCB:SetChecked(E.db.muteValeeraBubbles == true)
+        muteDundunCB:SetChecked(E.db.muteDundun == true)
     end)
 
     --------------------------------------------------------------------
