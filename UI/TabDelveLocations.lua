@@ -47,6 +47,31 @@ local function GetLowerZone(delve)
 end
 
 ------------------------------------------------------------------------
+-- Per-delve tier and notes (Midnight Season 1)
+------------------------------------------------------------------------
+local DLOC_TIER_COLORS = {
+    S = {1.00, 0.84, 0.00},
+    A = {0.20, 0.85, 0.20},
+    B = {0.10, 0.80, 0.90},
+    C = {0.85, 0.75, 0.10},
+    D = {0.55, 0.55, 0.55},
+    F = {0.45, 0.20, 0.20},
+}
+
+local DELVE_NOTES = {
+    ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note="Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear." },
+    ["The Gulf of Memory"]  = { tier="A", story="Sporasaur Special",   note="Glide or use a parasol toy to reach the boss platform quickly. Kite dinos and kick spores back to break their shields." },
+    ["The Darkway"]         = { tier="A", story="Ogre Powered",        note="Straightforward paths to the boss. Kill Unstable Aberrations before moving — they leash and give chase." },
+    ["Parhelion Plaza"]     = { tier="A", story="Holding the Line",    note="Take the staircase down for the fastest route. Kill enemies instead of healing allies for quicker progress." },
+    ["Sunkiller Sanctum"]   = { tier="B", story="Core of the Problem", note="Straight routes with easy kill objectives. Use portals in Core of the Problem to shortcut around the map." },
+    ["Twilight Crypt"]      = { tier="B", story="Party Crasher",       note="Pull levers to deactivate traps before advancing — limits large pulls. Party Crasher is the most direct variant." },
+    ["Atal'Aman"]           = { tier="B", story="Toadly Unbecoming",   note="Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss." },
+    ["The Shadow Enclave"]  = { tier="C", story="Traitor's Due",       note="Large unwalkable map — slow regardless of story. Use the Eye of Antenorian buff whenever it's available." },
+    ["The Grudge Pit"]      = { tier="D", story="Arena Champion",      note="Compact and mountable but long RP transitions and non-combat objectives in all three variants hurt efficiency." },
+    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note="Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful this week." },
+}
+
+------------------------------------------------------------------------
 -- Filtering & sorting
 ------------------------------------------------------------------------
 local function MatchesFilter(delve)
@@ -123,8 +148,23 @@ local function UpdateRows(scrollFrame)
             -- Zone (off-white)
             row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
 
+            -- Tier badge
+            local dn = DELVE_NOTES[delve.name]
+            if dn then
+                local tc = DLOC_TIER_COLORS[dn.tier]
+                if tc then
+                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
+                else
+                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
+                end
+                row.tierText:SetText(dn.tier)
+            else
+                row.tierText:SetText("")
+            end
+
             row:Show()
         else
+            row.tierText:SetText("")
             row:Hide()
         end
     end
@@ -341,7 +381,7 @@ local function CreateColumnHeaders(parent, yOffset)
     local headers = {}
     local cols = {
         { field = "name", label = "Delve Name",  width = 250, anchor = 0   },
-        { field = "zone", label = "Zone",         width = 160, anchor = 256 },
+        { field = "zone", label = "Zone",         width = 120, anchor = 256 },
     }
 
     for _, col in ipairs(cols) do
@@ -380,6 +420,7 @@ local function CreateColumnHeaders(parent, yOffset)
     -- Static labels for the two action columns (not sortable). Anchor
     -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
     for _, info in ipairs({
+        { label = "Tier",   x = 380 },
         { label = "Pin",    x = 422 },
         { label = "TomTom", x = 462 },
     }) do
@@ -424,14 +465,22 @@ local function CreateRow(parent, index)
     nameText:SetWordWrap(false)
     row.nameText = nameText
 
-    -- Zone
+    -- Zone (trimmed to make room for tier badge)
     local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     zoneText:SetPoint("LEFT", row, "LEFT", 256, 0)
     zoneText:SetFont(zoneText:GetFont(), 11)
-    zoneText:SetWidth(160)
+    zoneText:SetWidth(120)
     zoneText:SetJustifyH("LEFT")
     zoneText:SetWordWrap(false)
     row.zoneText = zoneText
+
+    -- Tier badge (S/A/B/C/D/F)
+    local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    tierText:SetPoint("LEFT", row, "LEFT", 380, 0)
+    tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
+    tierText:SetWidth(30)
+    tierText:SetJustifyH("CENTER")
+    row.tierText = tierText
 
     -- [Waypoint] button
     local wpBtn = E:CreateButton(row, 32, 20, "Pin")
@@ -491,7 +540,6 @@ local function CreateRow(parent, index)
     row:SetScript("OnEnter", function(self)
         if self.delve then
             local tipLines = {}
-            -- Bountiful notice at the top, in gold
             if self.isBountiful then
                 table_insert(tipLines, E.CC.gold .. "* This delve is a Bountiful Delve this week!" .. E.CC.close)
                 table_insert(tipLines, "")
@@ -499,6 +547,19 @@ local function CreateRow(parent, index)
             table_insert(tipLines,
                 E.CC.muted .. "Zone: " .. E.CC.close
                     .. E.CC.body .. self.delve.zone .. E.CC.close)
+            local dn = DELVE_NOTES[self.delve.name]
+            if dn then
+                local tc = DLOC_TIER_COLORS[dn.tier] or {0.6, 0.6, 0.6}
+                local cc = string.format("|cFF%02X%02X%02X",
+                    math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
+                table_insert(tipLines, "")
+                table_insert(tipLines,
+                    cc .. dn.tier .. " Tier|r"
+                    .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+                    .. E.CC.body .. "Best: " .. dn.story .. E.CC.close)
+                table_insert(tipLines, "")
+                table_insert(tipLines, E.CC.muted .. dn.note .. E.CC.close)
+            end
             E:ShowTooltip(self, self.delve.name, unpack(tipLines))
         end
     end)

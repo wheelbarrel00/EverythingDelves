@@ -30,6 +30,101 @@ local function EnsureBlizzardAddon(addonName)
 end
 
 ------------------------------------------------------------------------
+-- Story tier data (Midnight Season 1)
+-- Maps story variant name → { tier, note }. Used to sort the bountiful
+-- list, badge each row, and populate hover tooltips.
+------------------------------------------------------------------------
+local TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
+local TIER_COLORS = {
+    S = {1.00, 0.84, 0.00},
+    A = {0.20, 0.85, 0.20},
+    B = {0.10, 0.80, 0.90},
+    C = {0.85, 0.75, 0.10},
+    D = {0.55, 0.55, 0.55},
+    F = {0.45, 0.20, 0.20},
+}
+local function TierCC(tier)
+    local tc = TIER_COLORS[tier]
+    if not tc then return "|cFFAAAAAA" end
+    return string_format("|cFF%02X%02X%02X",
+        math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
+end
+
+local STORY_TIERS = {
+    -- S Tier
+    ["Invasive Glow"]               = { tier="S", note="Bomb DoT scales with tier — keep it rolling and the clear is trivial." },
+    -- A Tier
+    ["Ogre Powered"]                = { tier="A", note="Straight shot to boss. Kill Unstable Aberrations before moving on." },
+    ["Sporasaur Special"]           = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
+    ["Sporasaurus Surprise"]        = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
+    ["Holding the Line"]            = { tier="A", note="Head down the staircase; kill enemies (not heal allies) for the fastest route." },
+    ["Academy Under Siege"]         = { tier="A", note="Scattered powerful items help, but it can't match Invasive Glow." },
+    -- B Tier
+    ["Core of the Problem"]         = { tier="B", note="Use portals to shortcut around the map. Kill enemies and collect orbs." },
+    ["Faculty of Fear"]             = { tier="B", note="Revelation mechanic requires revealing many NPCs, adding significant time." },
+    ["Party Crasher"]               = { tier="B", note="Hit levers to disable traps while defeating 4 Twilight Summoners." },
+    ["Focusers Under Pressure"]     = { tier="B", note="Large crystal collection loop adds time compared to Ogre Powered." },
+    ["Toadly Unbecoming"]           = { tier="B", note="Decurse frogs to spawn the boss. Open layout adds traverse time even when mounted." },
+    -- C Tier
+    ["Alnmoth Munchies"]            = { tier="C", note="Same quick route as Sporasaur Special but extra objectives slow it down." },
+    ["Not What I Expected"]         = { tier="C", note="Click Lightbloom crates and activate security. Displacement Portal clones help in combat." },
+    ["Trapped"]                     = { tier="C", note="Teleported inside — must rescue hostages on the way back to the entrance." },
+    ["Totem Annihilation"]          = { tier="C", note="Take the bird north. Avoid the captured loa's lightning — it hits hard." },
+    ["Traitor's Due"]               = { tier="C", note="Large unwalkable map. Defeat void foci and elites with the Eye of Antenorian buff." },
+    -- D Tier
+    ["Leyline Technician"]          = { tier="D", note="Inspecting every leyline adds a lot of time." },
+    ["Descent of the Haranir"]      = { tier="D", note="Same quick pathing as Sporasaur but extra objectives add considerable time." },
+    ["The Gravitational Effect"]    = { tier="D", note="Flying to collect Singularity Coils breaks the route significantly." },
+    ["Loosed Loa"]                  = { tier="D", note="Use Evasive Elixir before the patrolling loa attacks to avoid a big stun." },
+    ["Loose Loa"]                   = { tier="D", note="Use Evasive Elixir before the patrolling loa attacks to avoid a big stun." },
+    ["Ritual Interrupted"]          = { tier="D", note="Navigate south freeing furbolgs. Haunted weapons deal decent bonus damage." },
+    ["Calamitous"]                  = { tier="D", note="Enormous mountable map with required secondary objectives in all three variants." },
+    ["Arena Champion"]              = { tier="D", note="Defeat two named enemies then collect mold samples from Moldering Fighters." },
+    -- F Tier
+    ["March of the Arcane Brigade"] = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
+    ["Bombing Run"]                 = { tier="F", note="Destroying void portals makes for one of the slowest clears." },
+    ["Mirror Shine"]                = { tier="F", note="Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs." },
+    ["Shadowy Supplies"]            = { tier="F", note="Collecting 30 supplies from enemies and the floor is very slow." },
+    ["Captured Wild"]               = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
+    ["Captured Wildlife"]           = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
+    ["Captured Widlife"]            = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
+    ["Stolen Mana"]                 = { tier="F", note="Use the Galvanic Rifle on mana barrels and free 8 prisoners from Mana Siphoners." },
+    ["Lightbloom Invasion"]         = { tier="F", note="Free fighters and defend barricades against Thornmaws using nearby barrels." },
+    ["Dastardly Rotstalk"]          = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
+    ["Dastardly Rootstalks"]        = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
+}
+
+-- Strip color codes and "Story Variant:" prefix for clean display.
+local function StripStoryPrefix(s)
+    if not s or s == "" then return "" end
+    local plain = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    return plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$") or plain
+end
+
+-- Multi-strategy lookup: handles any prefix format, color codes, or spacing.
+local function GetStoryTier(storyVariant)
+    if not storyVariant or storyVariant == "" then return nil end
+    -- 1) Direct exact match
+    if STORY_TIERS[storyVariant] then return STORY_TIERS[storyVariant] end
+    -- 2) Strip color codes, try again
+    local plain = storyVariant:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    if STORY_TIERS[plain] then return STORY_TIERS[plain] end
+    -- 3) Extract everything after "Variant:" (handles any prefix format/spacing)
+    local name = plain:match("[Vv]ariant:%s*(.-)%s*$")
+    if name and STORY_TIERS[name] then return STORY_TIERS[name] end
+    -- 4) Substring scan — finds the story name anywhere in the string
+    local lower = plain:lower()
+    for key, data in pairs(STORY_TIERS) do
+        if lower:find(key:lower(), 1, true) then return data end
+    end
+    return nil
+end
+
+-- Set during RegisterModule init; read by UpdateBestPick which is called
+-- from CreateRow's OnMouseUp (outside RegisterModule scope).
+local bestPickFS = nil
+
+------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
@@ -240,13 +335,51 @@ local function GetJourneyProgress()
 end
 
 ------------------------------------------------------------------------
--- Sort bountiful list: completed at bottom, then alphabetical
+-- Best Pick banner: show the highest-tier non-completed bountiful
+------------------------------------------------------------------------
+local function UpdateBestPick()
+    if not bestPickFS then return end
+    local best, bestOrder = nil, 8
+    for _, d in ipairs(bountifulList) do
+        if not d.completed then
+            local si = GetStoryTier(d.storyVariant)
+            local order = si and (TIER_ORDER[si.tier] or 7) or 7
+            if order < bestOrder then
+                bestOrder, best = order, d
+            end
+        end
+    end
+    if best then
+        local si = GetStoryTier(best.storyVariant)
+        if si then
+            local cc = TierCC(si.tier)
+            bestPickFS:SetText(
+                E.CC.muted .. "Best Pick: " .. E.CC.close
+                .. E.CC.gold .. best.name .. E.CC.close
+                .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+                .. E.CC.body .. StripStoryPrefix(best.storyVariant) .. E.CC.close
+                .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+                .. cc .. si.tier .. " Tier|r"
+            )
+            return
+        end
+    end
+    bestPickFS:SetText("")
+end
+
+------------------------------------------------------------------------
+-- Sort bountiful list: incomplete first, then by tier, then alphabetical
 ------------------------------------------------------------------------
 local function SortBountifulList()
     table_sort(bountifulList, function(a, b)
         if a.completed ~= b.completed then
-            return not a.completed  -- false (incomplete) sorts first
+            return not a.completed
         end
+        local ta = GetStoryTier(a.storyVariant)
+        local tb = GetStoryTier(b.storyVariant)
+        local oa = ta and (TIER_ORDER[ta.tier] or 7) or 7
+        local ob = tb and (TIER_ORDER[tb.tier] or 7) or 7
+        if oa ~= ob then return oa < ob end
         return a.name:lower() < b.name:lower()
     end)
 end
@@ -425,8 +558,24 @@ local function UpdateRows(container)
                 -- Neutral row tint (matches Delve Locations tab).
                 row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
             end
+
+            local si = GetStoryTier(delve.storyVariant)
+            if si then
+                local tc = TIER_COLORS[si.tier]
+                if delve.completed then
+                    row.tierText:SetTextColor(0.40, 0.40, 0.40)
+                elseif tc then
+                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
+                else
+                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
+                end
+                row.tierText:SetText(si.tier)
+            else
+                row.tierText:SetText("")
+            end
             row:Show()
         else
+            row.tierText:SetText("")
             row:Hide()
         end
     end
@@ -464,14 +613,22 @@ local function CreateRow(parent, index)
     variantText:SetWordWrap(false)
     row.variantText = variantText
 
-    -- Zone
+    -- Zone (width trimmed to make room for tier badge)
     local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     zoneText:SetPoint("LEFT", row, "LEFT", 230, 0)
     zoneText:SetFont(zoneText:GetFont(), 11)
-    zoneText:SetWidth(130)
+    zoneText:SetWidth(100)
     zoneText:SetJustifyH("LEFT")
     zoneText:SetWordWrap(false)
     row.zoneText = zoneText
+
+    -- Tier badge (S / A / B / C / D / F)
+    local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    tierText:SetPoint("LEFT", row, "LEFT", 335, 0)
+    tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
+    tierText:SetWidth(30)
+    tierText:SetJustifyH("CENTER")
+    row.tierText = tierText
 
     -- [Waypoint] button
     local wpBtn = E:CreateButton(row, 32, 20, "Pin")
@@ -538,6 +695,13 @@ local function CreateRow(parent, index)
             GameTooltip:ClearAllPoints()
             GameTooltip:SetPoint("TOPLEFT", anchorTo, "TOPRIGHT", 8, 0)
             GameTooltip:AddLine(self.delve.name, 1, 0.84, 0, true)
+            local si = GetStoryTier(self.delve.storyVariant)
+            if si then
+                local tc = TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
+                GameTooltip:AddLine(si.tier .. " Tier", tc[1], tc[2], tc[3], true)
+                GameTooltip:AddLine(si.note, 0.80, 0.80, 0.80, true)
+                GameTooltip:AddLine(" ")
+            end
             if self.delve.overcharged then
                 GameTooltip:AddLine("Overcharged", 1, 1, 0, true)
             end
@@ -569,6 +733,7 @@ local function CreateRow(parent, index)
             end
             SortBountifulList()
             UpdateRows(parent)
+            UpdateBestPick()
             -- Update the weekly progress bar if it exists
             if parent.progressBar then
                 local done = 0
@@ -790,11 +955,17 @@ E:RegisterModule(function()
     listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(listHeader, "This Week's Bountiful Delves")
 
-    -- Permanent grey line directly under the section header.
+    -- Best Pick subtitle — updated by UpdateBestPick on each data refresh
+    bestPickFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    bestPickFS:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 2, -2)
+    bestPickFS:SetFont(bestPickFS:GetFont(), 10)
+    bestPickFS:SetJustifyH("LEFT")
+
+    -- Permanent grey line below the header + Best Pick line.
     local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
     headerLineBot:SetHeight(1)
-    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y - 26)
-    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y - 26)
+    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y - 44)
+    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y - 44)
     E:StyleGreyLine(headerLineBot)
 
     -- Level 68 unlock warning (shown when player is too low level)
@@ -811,6 +982,7 @@ E:RegisterModule(function()
     refreshBtn:SetScript("OnClick", function()
         RefreshBountifulData(true)
         UpdateRows(frame.listFrame)
+        UpdateBestPick()
         RefreshStats()
         -- Update progress bar
         local done = 0
@@ -832,10 +1004,11 @@ E:RegisterModule(function()
     end)
 
     -- Column headers
-    local COL_Y = LIST_Y - 32
+    local COL_Y = LIST_Y - 50
     for _, col in ipairs({
         { label = "Delve Name",  x = 8   },
         { label = "Zone",        x = 234 },
+        { label = "Tier",        x = 338 },
         { label = "Pin",         x = 374 },
         { label = "TomTom",      x = 412 },
     }) do
@@ -889,6 +1062,7 @@ E:RegisterModule(function()
         progressBar:SetProgress(done, math_max(1, #bountifulList))
 
         UpdateRows(listFrame)
+        UpdateBestPick()
     end)
 
     --------------------------------------------------------------------
@@ -933,6 +1107,7 @@ E:RegisterModule(function()
             end
             progressBar:SetProgress(done, math_max(1, #bountifulList))
             UpdateRows(listFrame)
+            UpdateBestPick()
         end
     end)
 

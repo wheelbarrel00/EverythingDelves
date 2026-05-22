@@ -5,6 +5,15 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-05-21
+
+### New Features
+
+- **Tier badges on Bountiful tab** &mdash; Each row on the Current Bountiful Delves tab now shows a color-coded tier badge (S/A/B/C/D/F) based on the active story variant. The list is sorted by tier (best first), and hovering a row shows the tier letter plus a quick strategy tip for that story.
+- **Best Pick banner** &mdash; A "Best Pick" line below the Bountiful tab header highlights the highest-tier non-completed delve at a glance, showing delve name, story variant, and tier.
+- **Tier badges on Delve Locations tab** &mdash; A color-coded tier column (S/A/B/C/D) has been added to the Delve Locations tab, showing the best achievable tier for each delve.
+- **Delve rundown tooltips** &mdash; Hovering any row on the Delve Locations tab now shows the best story name and a quick strategy note for that delve.
+
 ## [1.6.0] - 2026-05-21
 
 ### New Features
