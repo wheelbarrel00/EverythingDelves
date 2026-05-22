@@ -357,7 +357,7 @@ function E:CreateBrokerObject()
             elseif btn == "RightButton" then
                 E:ToggleMainFrame()
                 if E.MainFrame:IsShown() then
-                    E:SelectTab(6) -- Options
+                    E:SelectTab(8) -- Options
                 end
             end
         end,
@@ -479,7 +479,7 @@ function E:CreateMinimapButton()
         elseif btn == "RightButton" then
             E:ToggleMainFrame()
             if E.MainFrame:IsShown() then
-                E:SelectTab(6) -- Options
+                E:SelectTab(8) -- Options
             end
         end
     end)

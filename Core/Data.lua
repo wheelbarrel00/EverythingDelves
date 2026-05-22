@@ -154,3 +154,26 @@ E.DelveZoneIDs = {
     [2979] = "Shadowguard Point",
     [3003] = "The Darkway",
 }
+
+------------------------------------------------------------------------
+-- Delver's Call quests — one rotational "World Tour" quest per delve.
+-- Quest IDs catalogued for Midnight S1. The leveling strategy: pick all
+-- of these up but BANK them (don't turn in) until you're a few levels
+-- short of cap — turn-in XP scales to your level, so a banked batch
+-- becomes a burst through the final levels.
+--
+-- `delve` MUST match the name used in E.DelveData exactly so rows line
+-- up with the Delve Locations tab (note: "Twilight Crypt", singular).
+------------------------------------------------------------------------
+E.DelversCall = {
+    { delve = "Atal'Aman",           questID = 93409 },
+    { delve = "Collegiate Calamity", questID = 93384 },
+    { delve = "Parhelion Plaza",     questID = 93386 },
+    { delve = "Shadowguard Point",   questID = 93428 },
+    { delve = "Sunkiller Sanctum",   questID = 93427 },
+    { delve = "The Darkway",         questID = 93385 },
+    { delve = "The Grudge Pit",      questID = 93421 },
+    { delve = "The Gulf of Memory",  questID = 93416 },
+    { delve = "The Shadow Enclave",  questID = 93372 },
+    { delve = "Twilight Crypt",      questID = 93410 },
+}

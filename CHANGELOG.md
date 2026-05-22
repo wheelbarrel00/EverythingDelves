@@ -5,6 +5,22 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-05-21
+
+### New Features
+
+- **Delver's Call quest tracker** &mdash; A new Delver's Call tab tracks all 10 weekly World Tour quests across four states: Available, In Progress, Banked, and Turned In. State is auto-detected from your quest log. Bank the quests and hold them until you are near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account.
+- **Nullaeus tab** &mdash; A new tab dedicated to the weekly Nullaeus Nemesis boss delve: a Beacon of Hope inventory and Undercoin tracker, the full boss mechanics list, phase transitions, and the reward track. Pin the location on your map or send it to TomTom in one click.
+
+### Improvements
+
+- **Sortable tier column** &mdash; The tier column header on the Delve Locations tab is now clickable to sort by tier, alongside the existing Name and Zone sorting. A small hint above the list reminds you the column headers are sortable.
+- **Live bountiful story in tooltips** &mdash; Hovering a delve that is currently bountiful on the Delve Locations tab now shows the active story variant and its tier badge.
+
+### Bug Fixes
+
+- **Minimap right-click** &mdash; Right-clicking the minimap button now correctly opens the Options tab instead of the Delve History tab.
+
 ## [1.6.1] - 2026-05-21
 
 ### New Features

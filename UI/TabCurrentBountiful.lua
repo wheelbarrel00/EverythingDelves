@@ -417,10 +417,14 @@ local function RefreshBountifulData(force)
         end
     end
     -- Build lookup tables so other tabs can check bountiful status
-    if not E.currentBountifulNames then E.currentBountifulNames = {} end
-    if not E.currentBountifulPOIs  then E.currentBountifulPOIs  = {} end
+    if not E.currentBountifulNames     then E.currentBountifulNames     = {} end
+    if not E.currentBountifulPOIs      then E.currentBountifulPOIs      = {} end
+    if not E.currentBountifulStory     then E.currentBountifulStory     = {} end
+    if not E.currentBountifulStoryTier then E.currentBountifulStoryTier = {} end
     wipe(E.currentBountifulNames)
     wipe(E.currentBountifulPOIs)
+    wipe(E.currentBountifulStory)
+    wipe(E.currentBountifulStoryTier)
     E.currentBountifulCount = #bountifulList  -- actual count (not doubled)
     for _, delve in ipairs(bountifulList) do
         E.currentBountifulNames[delve.name] = true
@@ -430,6 +434,10 @@ local function RefreshBountifulData(force)
         if delve.poiID then
             E.currentBountifulPOIs[delve.poiID] = true
         end
+        -- Story variant + tier for this week's rotation (used by Delve Locations tab)
+        local si = GetStoryTier(delve.storyVariant)
+        E.currentBountifulStory[delve.name]     = StripStoryPrefix(delve.storyVariant)
+        E.currentBountifulStoryTier[delve.name] = si and si.tier or nil
     end
 
     -- Bountiful rotation change alert (F6)

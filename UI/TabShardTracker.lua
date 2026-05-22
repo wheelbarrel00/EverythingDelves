@@ -1402,5 +1402,5 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     -- Register with the main frame tab system
     --------------------------------------------------------------------
-    E:RegisterTab(4, frame)
+    E:RegisterTab(5, frame)
 end)

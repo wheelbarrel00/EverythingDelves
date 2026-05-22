@@ -347,5 +347,5 @@ E:RegisterModule(function()
         Rebuild()
     end)
 
-    E:RegisterTab(7, frame)
+    E:RegisterTab(9, frame)
 end)

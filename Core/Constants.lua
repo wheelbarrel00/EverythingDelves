@@ -60,8 +60,10 @@ E.TAB_NAMES = {
     "Delve Locations",
     "Current Bountiful Delves",
     "Tier Guide",
+    "Nullaeus",
     "Shard Tracker",
     "Delve History",
+    "Delver's Call",
     "Options",
     "Profiles",
 }

@@ -61,6 +61,11 @@ local DEFAULTS = {
     seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},   -- list of POI IDs from last bountiful scan
     lastKnownActiveSAs     = {},   -- list of active SA quest IDs from last scan
+    -- Account-wide Delver's Call roster: charKey → { name, realm, class,
+    -- states = { [delve] = state }, updated }. Account-wide (NOT a profile
+    -- key) so the alt rollup can see every character at once — you can't
+    -- read an alt's quest log, so each character snapshots its own state.
+    delversCallRoster      = {},
 }
 
 -- Keys that are profile-scoped rather than account-wide. The E.db

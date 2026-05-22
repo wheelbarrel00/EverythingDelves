@@ -17,7 +17,7 @@ local table_insert, table_sort = table.insert, table.sort
 local filteredData   = {}  -- currently visible rows after filter/sort
 local currentZone    = nil -- nil = "All Zones"
 local currentSearch  = ""
-local sortField      = "name"  -- "name" | "zone"
+local sortField      = "name"  -- "name" | "zone" | "tier"
 local sortAscending  = true
 local ROW_HEIGHT     = 28
 local VISIBLE_ROWS   = 13
@@ -57,6 +57,7 @@ local DLOC_TIER_COLORS = {
     D = {0.55, 0.55, 0.55},
     F = {0.45, 0.20, 0.20},
 }
+local DLOC_TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
 
 local DELVE_NOTES = {
     ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note="Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear." },
@@ -98,6 +99,15 @@ local function RefreshFilteredData()
 
     -- Sort
     table_sort(filteredData, function(a, b)
+        if sortField == "tier" then
+            local da, db = DELVE_NOTES[a.name], DELVE_NOTES[b.name]
+            local oa = da and (DLOC_TIER_ORDER[da.tier] or 7) or 7
+            local ob = db and (DLOC_TIER_ORDER[db.tier] or 7) or 7
+            if oa ~= ob then
+                if sortAscending then return oa < ob else return oa > ob end
+            end
+            return GetLowerName(a) < GetLowerName(b)
+        end
         local va, vb
         if sortField == "name" then
             va, vb = GetLowerName(a), GetLowerName(b)
@@ -382,6 +392,7 @@ local function CreateColumnHeaders(parent, yOffset)
     local cols = {
         { field = "name", label = "Delve Name",  width = 250, anchor = 0   },
         { field = "zone", label = "Zone",         width = 120, anchor = 256 },
+        { field = "tier", label = "Tier",         width = 35,  anchor = 378 },
     }
 
     for _, col in ipairs(cols) do
@@ -420,7 +431,6 @@ local function CreateColumnHeaders(parent, yOffset)
     -- Static labels for the two action columns (not sortable). Anchor
     -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
     for _, info in ipairs({
-        { label = "Tier",   x = 380 },
         { label = "Pin",    x = 422 },
         { label = "TomTom", x = 462 },
     }) do
@@ -541,7 +551,16 @@ local function CreateRow(parent, index)
         if self.delve then
             local tipLines = {}
             if self.isBountiful then
-                table_insert(tipLines, E.CC.gold .. "* This delve is a Bountiful Delve this week!" .. E.CC.close)
+                table_insert(tipLines, E.CC.gold .. "* Bountiful Delve this week!" .. E.CC.close)
+                local story  = E.currentBountifulStory     and E.currentBountifulStory[self.delve.name]
+                local stTier = E.currentBountifulStoryTier and E.currentBountifulStoryTier[self.delve.name]
+                if story and story ~= "" then
+                    local tc  = stTier and (DLOC_TIER_COLORS[stTier] or {0.6, 0.6, 0.6}) or nil
+                    local cc  = tc and string.format("|cFF%02X%02X%02X",
+                                    math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255)) or ""
+                    local sfx = stTier and (E.CC.muted .. "  \226\128\148  " .. E.CC.close .. cc .. stTier .. " Tier|r") or ""
+                    table_insert(tipLines, E.CC.body .. story .. E.CC.close .. sfx)
+                end
                 table_insert(tipLines, "")
             end
             table_insert(tipLines,
@@ -659,6 +678,14 @@ E:RegisterModule(function()
     end)
 
     -- Row count label removed by request ("Showing 10 of 10" was redundant).
+
+    -- Small sort hint in the gap between toolbar and column headers
+    local sortHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    sortHint:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514, LIST_Y + 46)
+    sortHint:SetFont(sortHint:GetFont(), 9)
+    sortHint:SetTextColor(0.38, 0.38, 0.38, 1)
+    sortHint:SetJustifyH("RIGHT")
+    sortHint:SetText("Click column headers to sort")
 
     --------------------------------------------------------------------
     -- Column headers

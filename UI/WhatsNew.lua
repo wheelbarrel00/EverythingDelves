@@ -5,24 +5,20 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.6.0"
+local WHATS_NEW_VERSION = "1.7.0"
 
 local ENTRIES = {
     {
-        title = "Companion Audio",
-        desc  = "Mute Valeera's voice lines, suppress her speech bubbles, or silence Dundun independently. All three toggles are in the Options tab under Companion Audio.",
+        title = "Delver's Call Quest Tracker",
+        desc  = "A new Delver's Call tab tracks all 10 weekly World Tour quests across four states: Available, In Progress, Banked, and Turned In. Bank the quests and hold them until you are near max level, then turn them all in for a leveling burst. Includes a rollup across every character on your account.",
     },
     {
-        title = "Curio Reminder",
-        desc  = "A popup now opens automatically when you configure your companion inside a delve, showing which combat and utility curios to bring for your role. Also available at any time via /ed curios.",
+        title = "Nullaeus \226\128\148 The Nemesis Delve",
+        desc  = "A new Nullaeus tab covers the weekly Nemesis boss delve: a Beacon of Hope and Undercoin tracker, full boss mechanics, phase transitions, and the reward track. Pin the location or send it to TomTom in one click.",
     },
     {
-        title = "Overcharged Bountiful",
-        desc  = "Overcharged delves are highlighted with a gold prefix on the Bountiful tab so they are easy to spot at a glance.",
-    },
-    {
-        title = "Great Vault Labels Corrected",
-        desc  = "The vault progress bars on the Tier Guide tab now correctly show Delves / World Content and Mythic+ Dungeons.",
+        title = "Delve Tier Ratings",
+        desc  = "Every delve and bountiful story variant now shows an S-through-F tier badge so the best picks are obvious at a glance. The Bountiful tab calls out the top Best Pick, and hovering any delve shows a quick strategy rundown.",
     },
 }
 

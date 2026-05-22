@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- UI/TabTierGuide.lua - Tab 3: Tier Guide
--- Tier iLvl reference table, player recommendation, Seasonal Nemesis,
--- Trovehunter's Bounty, and Beacon of Hope sections.
+-- Tier iLvl reference table, player recommendation, Valeera companion,
+-- Trovehunter's Bounty, Gilded Stash, and faction renown.
 --
 -- Display-only: reads GetAverageItemLevel(), currency data, and quest
 -- completion status. No gameplay automation.
@@ -322,86 +322,6 @@ E:RegisterModule(function()
     gvDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(gvDiv)
 
-    --------------------------------------------------------------------
-    -- SEASONAL NEMESIS
-    -- Quest 93525 "Nulling Nullaeus" - boss Nullaeus in Voidstorm
-    -- at Torment's Rise (61.2, 71.6). Percentage-based coordinates.
-    --------------------------------------------------------------------
-
-    local nemHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -32)
-    nemHeader:SetFont(nemHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(nemHeader, "Seasonal Nemesis")
-
-    local NEMESIS_NAME  = "Nullaeus"
-    local NEMESIS_ZONE  = "Voidstorm"
-    local NEMESIS_QUEST = 93525
-    local NEMESIS_X, NEMESIS_Y_COORD = 61.2, 71.6
-    local NEMESIS_MAP   = 2405
-    local NEMESIS_LOC   = "Torment's Rise"
-    local NEMESIS_ICON  = "Interface\\Icons\\Inv_120_raid_voidspire_hostgeneral"
-
-    -- Nemesis icon
-    local nemIcon = sc:CreateTexture(nil, "ARTWORK")
-    nemIcon:SetPoint("TOPLEFT", nemHeader, "BOTTOMLEFT", 0, -4)
-    nemIcon:SetSize(32, 32)
-    nemIcon:SetTexture(NEMESIS_ICON)
-
-    local nemNameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemNameFS:SetPoint("LEFT", nemIcon, "RIGHT", 6, 6)
-    nemNameFS:SetFont(nemNameFS:GetFont(), 11)
-    nemNameFS:SetText(
-        E.CC.gold .. NEMESIS_NAME .. E.CC.close
-        .. E.CC.muted .. "  (" .. NEMESIS_ZONE
-        .. " - " .. NEMESIS_LOC .. ")" .. E.CC.close
-    )
-
-    local nemStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemStatusFS:SetPoint("TOPLEFT", nemIcon, "BOTTOMLEFT", 0, -2)
-    nemStatusFS:SetFont(nemStatusFS:GetFont(), 11)
-
-    -- Waypoint / TomTom buttons for nemesis
-    local nemWpBtn = E:CreateButton(sc, 32, 20, "Pin")
-    nemWpBtn.label:SetFont(nemWpBtn.label:GetFont(), 10)
-    nemWpBtn:SetPoint("LEFT", nemIcon, "RIGHT", 240, 0)
-    nemWpBtn:SetScript("OnClick", function()
-        E:SetWaypoint(NEMESIS_MAP, NEMESIS_X, NEMESIS_Y_COORD)
-        E:FlashButtonConfirm(nemWpBtn)
-    end)
-    nemWpBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set Waypoint", "Pin the Nemesis location on your map.")
-    end)
-    nemWpBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
-    local nemTTBtn = E:CreateButton(sc, 50, 20, "TomTom")
-    nemTTBtn.label:SetFont(nemTTBtn.label:GetFont(), 10)
-    nemTTBtn:SetPoint("LEFT", nemWpBtn, "RIGHT", 4, 0)
-    nemTTBtn:SetScript("OnClick", function()
-        E:AddTomTomWaypoint(NEMESIS_MAP, NEMESIS_X, NEMESIS_Y_COORD, NEMESIS_NAME)
-        E:FlashButtonConfirm(nemTTBtn)
-    end)
-    nemTTBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, "TomTom Waypoint", "Add a TomTom arrow to the Nemesis.")
-        else
-            E:ShowTooltip(self, "TomTom Not Installed",
-                          "Install the TomTom addon to use arrow waypoints.")
-        end
-    end)
-    nemTTBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
     local function RefreshGreatVault()
         local ok, activities = pcall(function()
             if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
@@ -453,71 +373,13 @@ E:RegisterModule(function()
         end
     end
 
-    local function RefreshNemesis()
-        local completed  = false
-        local inProgress = false
-        if C_QuestLog then
-            if C_QuestLog.IsQuestFlaggedCompleted then
-                completed = C_QuestLog.IsQuestFlaggedCompleted(NEMESIS_QUEST)
-            end
-            if (not completed) and C_QuestLog.IsOnQuest then
-                inProgress = C_QuestLog.IsOnQuest(NEMESIS_QUEST)
-            end
-        end
-
-        if completed then
-            nemStatusFS:SetText(
-                E.CC.green .. "[Done] \"Nulling Nullaeus\" complete this week" .. E.CC.close
-            )
-        elseif inProgress then
-            nemStatusFS:SetText(
-                E.CC.yellow .. "\"Nulling Nullaeus\" in progress - check your quest log" .. E.CC.close
-            )
-        else
-            nemStatusFS:SetText(
-                E.CC.btnText .. "Quest available" .. E.CC.close
-                .. E.CC.muted .. " - pick up at Delvers HQ in Silvermoon"
-                .. " (if eligible)" .. E.CC.close
-            )
-        end
-    end
-
-    --------------------------------------------------------------------
-    -- VALEERA - COMPANION BUTTON
-    -- Opens the Delve Companion UI (Blizzard_DelvesCompanionConfiguration).
-    -- The companion config is a load-on-demand Blizzard addon that provides
-    -- DelvesCompanionConfigurationFrame once loaded.
-    --
-    -- Placed at the right edge of the Seasonal Nemesis section
-    -- (mirroring how the Refresh button sits on other tabs). A 32 x 32
-    -- portrait icon - same size as the Nullaeus nemesis icon - sits
-    -- to the LEFT of the button. Both icons get the same circular
-    -- alpha mask so they read as a matched pair.
-    --
-    -- A wrapper frame is used because we need the button right-aligned
-    -- to the scroll-child while ALSO vertically aligned to the nemesis
-    -- icon row. Two perpendicular SetPoints would stretch the button.
-    --------------------------------------------------------------------
     local VALEERA_ICON  = "Interface\\Icons\\Achievement_Character_BloodElf_Female"
     local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
-    -- Apply the same circular mask to the nemesis icon so the two
-    -- icons read as a matched pair. Wrapped in pcall because SetMask
-    -- can be unavailable on some texture types.
-    if nemIcon.SetMask then
-        pcall(nemIcon.SetMask, nemIcon, PORTRAIT_MASK)
-    end
-
-    -- Wrapper row: stretches horizontally from nemIcon's left edge to
-    -- the scroll-child's right edge, height 40 px (matches button).
     local valeeraRow = CreateFrame("Frame", nil, sc)
     valeeraRow:SetHeight(40)
-    valeeraRow:SetPoint("TOPLEFT",  nemIcon, "TOPLEFT", 0, 4)
+    valeeraRow:SetPoint("TOPLEFT",  gvDiv, "BOTTOMLEFT", 0, -8)
     valeeraRow:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -20, 4)
-
-    local valeeraBtn = E:CreateButton(valeeraRow, 280, 40, "Valeera \226\128\148 Companion")
-    valeeraBtn.label:SetFont(valeeraBtn.label:GetFont(), 14)
-    valeeraBtn:SetPoint("RIGHT", valeeraRow, "RIGHT", 0, 0)
 
     local valeeraIcon = sc:CreateTexture(nil, "ARTWORK")
     valeeraIcon:SetSize(32, 32)
@@ -525,7 +387,11 @@ E:RegisterModule(function()
     if valeeraIcon.SetMask then
         pcall(valeeraIcon.SetMask, valeeraIcon, PORTRAIT_MASK)
     end
-    valeeraIcon:SetPoint("RIGHT", valeeraBtn, "LEFT", -8, 0)
+    valeeraIcon:SetPoint("LEFT", valeeraRow, "LEFT", 0, 0)
+
+    local valeeraBtn = E:CreateButton(valeeraRow, 280, 40, "Valeera \226\128\148 Companion")
+    valeeraBtn.label:SetFont(valeeraBtn.label:GetFont(), 14)
+    valeeraBtn:SetPoint("LEFT", valeeraIcon, "RIGHT", 8, 0)
 
     valeeraBtn:SetScript("OnClick", function()
         -- Load the Blizzard companion config addon if not already loaded
@@ -557,7 +423,7 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", nemStatusFS, "BOTTOMLEFT", 0, -32)
+    div2:SetPoint("TOPLEFT", valeeraRow, "BOTTOMLEFT", 0, -8)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
@@ -660,84 +526,6 @@ E:RegisterModule(function()
     E:StyleAccentDivider(div3)
 
     --------------------------------------------------------------------
-    -- BEACON OF HOPE
-    -- Checks bags/bank for the item and shows Undercoin progress.
-    -- C_Item.GetItemCount(itemID, includeBank) returns the count.
-    -- Undercoin currency 2803 is used to purchase from vendor (5000).
-    --------------------------------------------------------------------
-
-    local beaconHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    beaconHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
-    beaconHeader:SetFont(beaconHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(beaconHeader, "Beacon of Hope")
-
-    local beaconStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    beaconStatusFS:SetPoint("TOPLEFT", beaconHeader, "BOTTOMLEFT", 0, -4)
-    beaconStatusFS:SetFont(beaconStatusFS:GetFont(), 11)
-
-    local BEACON_ITEM_ID    = 253342  -- Beacon of Hope item
-    local UNDERCOIN_ID      = 2803    -- Undercoin currency
-    local BEACON_PRICE      = 5000    -- cost in Undercoins
-
-    -- Currency progress bar toward buying a Beacon
-    local beaconBar = E:CreateProgressBar(sc, 0, 14)
-    beaconBar:SetPoint("TOPLEFT", beaconStatusFS, "BOTTOMLEFT", 0, -6)
-    beaconBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-
-    local beaconNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    beaconNoteFS:SetPoint("TOPLEFT", beaconBar, "BOTTOMLEFT", 0, -4)
-    beaconNoteFS:SetFont(beaconNoteFS:GetFont(), 10)
-
-    local function RefreshBeacon()
-        -- C_Item.GetItemCount counts items in bags; second arg = include bank
-        local inBags = 0
-        if C_Item and C_Item.GetItemCount then
-            inBags = C_Item.GetItemCount(BEACON_ITEM_ID, true)
-        end
-
-        if inBags > 0 then
-            beaconStatusFS:SetText(
-                E.CC.green .. "[Done] Beacon of Hope in inventory ("
-                .. inBags .. ")" .. E.CC.close
-                .. E.CC.muted .. " - go get that Nemesis!" .. E.CC.close
-            )
-        else
-            beaconStatusFS:SetText(
-                E.CC.btnText .. "No Beacon of Hope in bags or bank" .. E.CC.close
-            )
-        end
-
-        -- Undercoin progress toward purchasing one
-        local undercoins = 0
-        if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
-            local info = C_CurrencyInfo.GetCurrencyInfo(UNDERCOIN_ID)
-            if info then
-                undercoins = info.quantity or 0
-            end
-        end
-
-        beaconBar:SetProgress(undercoins, BEACON_PRICE)
-
-        if undercoins < BEACON_PRICE then
-            beaconNoteFS:SetText(
-                E.CC.btnText .. "Insufficient Undercoins. " .. E.CC.close
-                .. E.CC.muted .. "(" .. E.CC.close
-                .. E.CC.btnText .. undercoins .. E.CC.close
-                .. E.CC.muted .. " of " .. E.CC.close
-                .. E.CC.white .. BEACON_PRICE .. E.CC.close
-                .. E.CC.muted .. ")" .. E.CC.close
-            )
-        else
-            beaconNoteFS:SetText(
-                E.CC.green .. "You have enough Undercoins to purchase a Beacon!"
-                .. E.CC.close
-                .. E.CC.muted .. " (" .. undercoins .. " / " .. BEACON_PRICE .. ")"
-                .. E.CC.close
-            )
-        end
-    end
-
-    --------------------------------------------------------------------
     -- GILDED STASH PROGRESS
     -- 4x T11 Bountiful Delves this week. Counted from our own
     -- delveHistory SavedVariables since Blizzard does not expose the
@@ -745,15 +533,8 @@ E:RegisterModule(function()
     --------------------------------------------------------------------
     local GILDED_MAX     = 4
 
-    -- Thin red divider
-    local div4 = sc:CreateTexture(nil, "ARTWORK")
-    div4:SetHeight(1)
-    div4:SetPoint("TOPLEFT", beaconNoteFS, "BOTTOMLEFT", 0, -32)
-    div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div4)
-
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    gildedHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -32)
+    gildedHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
     gildedHeader:SetFont(gildedHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(gildedHeader, "Gilded Stash Progress")
 
@@ -962,9 +743,7 @@ E:RegisterModule(function()
     frame:SetScript("OnShow", function()
         RefreshRecommendation()
         RefreshGreatVault()
-        RefreshNemesis()
         RefreshTrovehunter()
-        RefreshBeacon()
         RefreshGildedStash()
         RefreshRenown()
         -- Recompute content height after frames are laid out so the
@@ -986,14 +765,7 @@ E:RegisterModule(function()
 
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsShown() then
-            RefreshNemesis()
             RefreshTrovehunter()
-        end
-    end)
-
-    E:RegisterCallback("BagUpdate", function()
-        if frame:IsShown() then
-            RefreshBeacon()
         end
     end)
 
