@@ -5,6 +5,16 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-05-24
+
+### New Features
+
+- **Story variants in Delve History** &mdash; Each run in the Delve History tab now shows its story variant. Older runs display the delve's signature story, while runs you finish while a delve is Bountiful from now on record the actual variant you played that week. Thanks to BanditC64 for the suggestion!
+
+### Improvements
+
+- **Nullaeus rewards & mechanics refresh** &mdash; The Nullaeus tab now lists the real season rewards &mdash; the Nullaeus Domaneye helm, Dominating Victory toy, and Arcanovoid Construct mount each show their item icon with a live tooltip on hover, alongside the Ominous and Fabled Vanquisher titles and their unlock conditions. The boss ability list and the three phase intermissions (Null Zone, Gravity Well, Umbral Rage) have been corrected to match the actual encounter.
+
 ## [1.7.1] - 2026-05-22
 
 ### Maintenance

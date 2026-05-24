@@ -72,6 +72,14 @@ local DELVE_NOTES = {
     ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note="Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful this week." },
 }
 
+-- Publish the signature story name for each delve so other tabs (the
+-- History tab) can show it as a fallback when a run had no live story
+-- captured. DELVE_NOTES stays the single source of truth.
+E.DelveStories = E.DelveStories or {}
+for delveName, info in pairs(DELVE_NOTES) do
+    E.DelveStories[delveName] = info.story
+end
+
 ------------------------------------------------------------------------
 -- Filtering & sorting
 ------------------------------------------------------------------------

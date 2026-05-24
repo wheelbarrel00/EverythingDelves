@@ -5,20 +5,16 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.7.0"
+local WHATS_NEW_VERSION = "1.8.0"
 
 local ENTRIES = {
     {
-        title = "Delver's Call Quest Tracker",
-        desc  = "A new Delver's Call tab tracks all 10 weekly World Tour quests across four states: Available, In Progress, Banked, and Turned In. Bank the quests and hold them until you are near max level, then turn them all in for a leveling burst. Includes a rollup across every character on your account.",
+        title = "Story Variants in Delve History",
+        desc  = "Each run in the Delve History tab now shows its story variant. Older runs display the delve's signature story; from now on, runs you finish while a delve is Bountiful record the actual variant you played that week. Thanks to BanditC64 for the suggestion!",
     },
     {
-        title = "Nullaeus \226\128\148 The Nemesis Delve",
-        desc  = "A new Nullaeus tab covers the weekly Nemesis boss delve: a Beacon of Hope and Undercoin tracker, full boss mechanics, phase transitions, and the reward track. Pin the location or send it to TomTom in one click.",
-    },
-    {
-        title = "Delve Tier Ratings",
-        desc  = "Every delve and bountiful story variant now shows an S-through-F tier badge so the best picks are obvious at a glance. The Bountiful tab calls out the top Best Pick, and hovering any delve shows a quick strategy rundown.",
+        title = "Nullaeus Rewards & Mechanics Refresh",
+        desc  = "The Nullaeus tab now lists the real rewards \226\128\148 with item icons and hover tooltips for the helm, toy, and mount \226\128\148 plus corrected boss abilities and the three phase intermissions.",
     },
 }
 

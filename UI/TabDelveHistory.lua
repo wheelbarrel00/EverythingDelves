@@ -55,6 +55,17 @@ local function FormatDate(ts)
     return date("%b %d, %Y", ts)
 end
 
+--- Resolve the story/variation label for a single run row.
+--- Prefers the live variant captured when the run was logged; falls back
+--- to the delve's signature story (E.DelveStories). Returns nil when
+--- neither is known (e.g. the Nemesis delve, which has no signature).
+local function ResolveRunStory(run, delveKey)
+    if run and run.story and run.story ~= "" then
+        return run.story
+    end
+    return E.DelveStories and E.DelveStories[delveKey] or nil
+end
+
 ------------------------------------------------------------------------
 -- MODULE INIT
 ------------------------------------------------------------------------
@@ -451,13 +462,17 @@ E:RegisterModule(function()
                             local bountMark = run.wasBountiful
                                 and (E.CC.gold .. "B" .. E.CC.close)
                                 or  " "
+                            local storyTxt = ResolveRunStory(run, key)
+                            local storyCC  = storyTxt and E.CC.body or E.CC.muted
+                            storyTxt = storyTxt or "--"
                             rrow.textFS:SetFormattedText(
-                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s  ||  %s%s%s",
                                 bountMark,
                                 E:GetTierCC(run.tier or 0), run.tier or 0, E.CC.close,
                                 E.CC.body, FormatDuration(run.duration), E.CC.close,
                                 E.CC.body, run.deaths or 0, E.CC.close,
                                 keyIcon,
+                                storyCC, storyTxt, E.CC.close,
                                 E.CC.muted, FormatDate(run.timestamp), E.CC.close
                             )
                             PlaceRow(rrow, X_CHILD, RUN_ROW_HEIGHT + 1)
@@ -538,13 +553,17 @@ E:RegisterModule(function()
                             local bountMark = run.wasBountiful
                                 and (E.CC.gold .. "B" .. E.CC.close)
                                 or  " "
+                            local storyTxt = ResolveRunStory(run, key)
+                            local storyCC  = storyTxt and E.CC.body or E.CC.muted
+                            storyTxt = storyTxt or "--"
                             rrow.textFS:SetFormattedText(
-                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s",
+                                "%s %sT%-2d%s  ||  %s%-8s%s  ||  %sDeaths: %d%s  ||  %s  ||  %s%s%s  ||  %s%s%s",
                                 bountMark,
                                 E:GetTierCC(run.tier or 0), run.tier or 0, E.CC.close,
                                 E.CC.body, FormatDuration(run.duration), E.CC.close,
                                 E.CC.body, run.deaths or 0, E.CC.close,
                                 keyIcon,
+                                storyCC, storyTxt, E.CC.close,
                                 E.CC.muted, FormatDate(run.timestamp), E.CC.close
                             )
                             PlaceRow(rrow, X_CHILD, RUN_ROW_HEIGHT + 1)

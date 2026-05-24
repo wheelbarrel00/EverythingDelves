@@ -763,7 +763,10 @@ end
 
 --- Append a completed run to the SavedVariables history.
 --- Updates lifetime counters in-place and caps recentRuns at 20.
-function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful)
+--- `story` (optional) is the detected story variant for THIS run (e.g.
+--- "Invasive Glow"); stored only when non-empty so the History tab can
+--- show the actual variant instead of the delve's signature story.
+function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story)
     if not name or not self.db then
         return
     end
@@ -815,6 +818,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful)
         keyUsed      = keyUsed and true or false,
         timestamp    = now,
         wasBountiful = wasBountiful and true or false,
+        story        = (story and story ~= "") and story or nil,
     })
     while #recent > MAX_RECENT_RUNS do
         recent[#recent] = nil
@@ -1028,9 +1032,16 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             or false
 
         if matchedName then
+            -- Live story variant for this run, when detectable. Populated
+            -- only for delves that are bountiful this week (the POI tooltip
+            -- is the reliable source); RefreshBountifulSnapshot above just
+            -- refreshed it. Non-bountiful runs leave this nil and the
+            -- History tab falls back to the delve's signature story.
+            local story = E.currentBountifulStory
+                and E.currentBountifulStory[matchedName] or nil
             E:LogDelveRun(
                 matchedName, tier, duration, runState.deaths,
-                keyUsed, runState.wasBountiful
+                keyUsed, runState.wasBountiful, story
             )
             if E.RefreshDelveHistoryTab then
                 E:RefreshDelveHistoryTab()

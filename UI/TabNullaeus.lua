@@ -7,6 +7,22 @@ local E = EverythingDelves
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 
+--- Resolve an item's icon texture from its ID. GetItemInfoInstant /
+--- GetItemIconByID return immediately (no server round-trip) so this is
+--- safe to call during layout.
+local function GetRewardIcon(itemID)
+    if not itemID then return nil end
+    if C_Item and C_Item.GetItemIconByID then
+        local icon = C_Item.GetItemIconByID(itemID)
+        if icon then return icon end
+    end
+    if C_Item and C_Item.GetItemInfoInstant then
+        local _, _, _, _, icon = C_Item.GetItemInfoInstant(itemID)
+        return icon
+    end
+    return nil
+end
+
 ------------------------------------------------------------------------
 -- MODULE INIT
 ------------------------------------------------------------------------
@@ -215,27 +231,21 @@ E:RegisterModule(function()
     local MECHANICS = {
         {
             name     = "Emptiness of the Void",
-            tag      = "AoE",
+            tag      = "Interruptible AoE",
             tagColor = E.CC.red,
-            desc     = "Nullaeus slams the ground, leaving expanding void pools. Move out of highlighted areas immediately — pools linger and damage stacks.",
+            desc     = "A cast that hits the whole group with shadow damage. Interrupt it whenever you can; otherwise pop a defensive — there's no dodging it.",
         },
         {
             name     = "Devouring Essence",
-            tag      = "DoT Cast",
+            tag      = "DoT — Kick / Dispel",
             tagColor = E.CC.yellow,
-            desc     = "A targeted channel that drains health over several seconds. Interrupt if possible; use a defensive cooldown if you cannot.",
+            desc     = "A targeted damage-over-time channel. It's both interruptible and dispellable — kick the cast, dispel the debuff, or ride it out with a cooldown.",
         },
         {
-            name     = "Dread Portal",
-            tag      = "Add Spawn",
-            tagColor = E.CC.purple,
-            desc     = "Dark portals open around the arena and spawn Void Shades. Burst them down quickly — they deal significant damage if left alive.",
-        },
-        {
-            name     = "Umbral Rage",
-            tag      = "Stacking Debuff",
+            name     = "Imploding Strike",
+            tag      = "Tank Hit",
             tagColor = "|cFFFF8800",
-            desc     = "Each melee hit applies a stacking damage-taken debuff. Kite or use mobility between hits to keep stacks manageable, especially in later phases.",
+            desc     = "A heavy physical strike on whoever holds threat. Solo players should rotate defensives or kite between casts; pre-mitigate it if you can.",
         },
     }
 
@@ -275,18 +285,23 @@ E:RegisterModule(function()
     phaseHeader:SetFont(phaseHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(phaseHeader, "Phase Transitions")
 
+    -- Each HP threshold triggers a ~30-second intermission with its own
+    -- signature hazard.
     local PHASES = {
         {
             pct  = "75%",
-            desc = "Nullaeus roars — Dread Portals open and the first wave of Void Shades floods the arena. AoE them down before refocusing on the boss.",
+            name = "Null Zone",
+            desc = "First intermission. Void energy pools spread across the floor — keep moving and stay clear of the Null Zones until the phase ends.",
         },
         {
             pct  = "50%",
-            desc = "Second add wave spawns. Devouring Essence frequency increases. This is the most hectic phase — use defensives and cooldowns here.",
+            name = "Gravity Well",
+            desc = "Second intermission. A Gravity Well orb drags you toward it — run against the pull and use mobility to avoid being pulled into hazards.",
         },
         {
             pct  = "25%",
-            desc = "Final add wave. Umbral Rage stacks accumulate faster. Burn hard while managing void pools — avoid standing still.",
+            name = "Umbral Rage",
+            desc = "Final intermission and soft enrage. Umbral Rage stacks keep ramping his damage the longer he lives — burn him down fast before it overwhelms you.",
         },
     }
 
@@ -297,7 +312,11 @@ E:RegisterModule(function()
         -- back -12 to keep every percentage line on the same left baseline.
         pctLine:SetPoint("TOPLEFT", phaseAnchor, "BOTTOMLEFT", (i == 1) and 0 or -12, (i == 1) and -8 or -14)
         pctLine:SetFont(pctLine:GetFont(), 11)
-        pctLine:SetText(E.CC.red .. ph.pct .. " HP" .. E.CC.close)
+        pctLine:SetText(
+            E.CC.red .. ph.pct .. " HP" .. E.CC.close
+            .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+            .. E.CC.gold .. ph.name .. E.CC.close
+        )
         local descLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         descLine:SetPoint("TOPLEFT", pctLine, "BOTTOMLEFT", 12, -2)
         descLine:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
@@ -325,26 +344,83 @@ E:RegisterModule(function()
     rewardNoteFS:SetPoint("TOPLEFT", rewardHeader, "BOTTOMLEFT", 0, -4)
     rewardNoteFS:SetFont(rewardNoteFS:GetFont(), 10)
     rewardNoteFS:SetText(
-        E.CC.muted .. "Earned by defeating Nullaeus across multiple weeks:" .. E.CC.close
+        E.CC.muted .. "Collectibles for defeating Nullaeus this season "
+        .. "(hover an item for its tooltip):" .. E.CC.close
     )
 
+    -- Item rewards carry a verified itemID so we can show the real game
+    -- icon and a live item tooltip. Title rewards have no item and fall
+    -- back to a coloured bullet + custom tooltip.
     local REWARDS = {
-        { label = "Cosmetic Helm",        color = E.CC.body   },
-        { label = "Title",                color = E.CC.gold   },
-        { label = "Flying Mount",         color = E.CC.purple },
-        { label = "Region-Limited Title", color = E.CC.yellow },
-        { label = "Toy",                  color = E.CC.green  },
+        { name = "Nullaeus Domaneye",            kind = "Cosmetic Helm", itemID = 263413, color = E.CC.purple,
+          cond = "Defeat Nullaeus on any difficulty this season.", extra = "Also grants 30 Hero Dawncrests." },
+        { name = "Dominating Victory",           kind = "Toy",           itemID = 264413, color = E.CC.green,
+          cond = "Reward from the Nulling Nullaeus quest." },
+        { name = "Arcanovoid Construct",         kind = "Mount",         itemID = 263222, color = E.CC.purple,
+          cond = "Defeat Nullaeus solo (Let Me Solo Him: Nullaeus)." },
+        { name = "The Ominous",                  kind = "Title",                          color = E.CC.gold,
+          cond = "Defeat Nullaeus at Tier 11 (Lighting the Dark)." },
+        { name = "Fabled Vanquisher of Nullaeus", kind = "Title",                         color = E.CC.yellow,
+          cond = "Be among the first 4,000 in your region to solo him." },
     }
 
     local rewardAnchor = rewardNoteFS
     for i, r in ipairs(REWARDS) do
-        local line = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        -- Only the first bullet indents +8 from the note; the rest chain at x=0
-        -- so they stay aligned instead of stepping further right each row.
-        line:SetPoint("TOPLEFT", rewardAnchor, "BOTTOMLEFT", (i == 1) and 8 or 0, (i == 1) and -6 or -4)
-        line:SetFont(line:GetFont(), 11)
-        line:SetText(r.color .. "\226\128\162  " .. r.label .. E.CC.close)
-        rewardAnchor = line
+        local row = CreateFrame("Frame", nil, sc)
+        row:SetHeight(30)
+        row:SetPoint("TOPLEFT", rewardAnchor, "BOTTOMLEFT", (i == 1) and 8 or 0, -8)
+        row:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
+        row:EnableMouse(true)
+
+        -- Icon (item rewards) or coloured bullet (title rewards).
+        if r.itemID then
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(20, 20)
+            icon:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            local tex = GetRewardIcon(r.itemID)
+            if tex then icon:SetTexture(tex) end
+        else
+            local bullet = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            bullet:SetPoint("TOPLEFT", row, "TOPLEFT", 5, -2)
+            bullet:SetFont(bullet:GetFont(), 12)
+            bullet:SetText(r.color .. "\226\128\162" .. E.CC.close)
+        end
+
+        local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameFS:SetPoint("TOPLEFT", row, "TOPLEFT", 26, -1)
+        nameFS:SetFont(nameFS:GetFont(), 11)
+        nameFS:SetText(
+            r.color .. r.name .. E.CC.close
+            .. E.CC.muted .. "  \226\128\162  " .. r.kind .. E.CC.close
+        )
+
+        local condFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        condFS:SetPoint("TOPLEFT", nameFS, "BOTTOMLEFT", 0, -2)
+        condFS:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+        condFS:SetFont(condFS:GetFont(), 10)
+        condFS:SetJustifyH("LEFT")
+        condFS:SetText(E.CC.body .. r.cond .. E.CC.close)
+
+        -- Hover: live item tooltip for items, custom tooltip for titles.
+        row.itemID = r.itemID
+        row.rName  = r.name
+        row.rCond  = r.extra and (r.cond .. "  " .. r.extra) or r.cond
+        row:SetScript("OnEnter", function(self)
+            if self.itemID then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetItemByID(self.itemID)
+                GameTooltip:Show()
+            else
+                E:ShowTooltip(self, self.rName, self.rCond)
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+            E:HideTooltip()
+        end)
+
+        rewardAnchor = row
     end
 
     --------------------------------------------------------------------
