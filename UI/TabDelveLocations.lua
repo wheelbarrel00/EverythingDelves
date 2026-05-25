@@ -180,9 +180,18 @@ local function UpdateRows(scrollFrame)
                 row.tierText:SetText("")
             end
 
+            -- This week's story variant, read live from the delve POI.
+            local story = E.GetDelveStoryVariant and E:GetDelveStoryVariant(delve.name)
+            if story and story ~= "" then
+                row.storyText:SetText(E.CC.body .. story .. E.CC.close)
+            else
+                row.storyText:SetText(E.CC.muted .. "--" .. E.CC.close)
+            end
+
             row:Show()
         else
             row.tierText:SetText("")
+            row.storyText:SetText("")
             row:Hide()
         end
     end
@@ -439,8 +448,9 @@ local function CreateColumnHeaders(parent, yOffset)
     -- Static labels for the two action columns (not sortable). Anchor
     -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
     for _, info in ipairs({
-        { label = "Pin",    x = 422 },
-        { label = "TomTom", x = 462 },
+        { label = "Pin",               x = 422 },
+        { label = "TomTom",            x = 462 },
+        { label = "This Week's Story", x = 520 },
     }) do
         local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("LEFT", parent, "TOPLEFT", info.x, yOffset - 11)
@@ -552,6 +562,16 @@ local function CreateRow(parent, index)
         E:HideTooltip()
     end)
     row.ttBtn = ttBtn
+
+    -- This week's story variant, read live from the delve's POI. Stretches
+    -- from just past the TomTom button to the right edge of the row.
+    local storyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    storyText:SetPoint("LEFT",  row, "LEFT",  520, 0)
+    storyText:SetPoint("RIGHT", row, "RIGHT", -8,  0)
+    storyText:SetFont(storyText:GetFont(), 11)
+    storyText:SetJustifyH("LEFT")
+    storyText:SetWordWrap(false)
+    row.storyText = storyText
 
     -- Row hover tooltip (no background colour change — rows stay
     -- neutral on hover/click/select).
@@ -706,7 +726,7 @@ E:RegisterModule(function()
     local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
     headerLineTop:SetHeight(1)
     headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 36)
-    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y + 36)
+    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 36)
     E:StyleGreyLine(headerLineTop)
 
     CreateColumnHeaders(frame, LIST_Y + 22)
@@ -715,7 +735,7 @@ E:RegisterModule(function()
     local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
     headerLineBot:SetHeight(1)
     headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y - 8)
-    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514,  LIST_Y - 8)
+    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y - 8)
     E:StyleGreyLine(headerLineBot)
 
     --------------------------------------------------------------------
@@ -742,6 +762,15 @@ E:RegisterModule(function()
 
     -- Store a reference so other functions can trigger refreshes
     frame.listFrame = listFrame
+
+    -- Refresh rows when POI data updates so the bountiful stars and this
+    -- week's story column fill in if the tab is open before the POI cache
+    -- warms. Mirrors the Current Bountiful tab's live refresh.
+    E:RegisterCallback("AreaPoisUpdated", function()
+        if listFrame:IsShown() then
+            UpdateRows(listFrame)
+        end
+    end)
 
     -- Close the zone dropdown when clicking anywhere else on the tab
     frame:EnableMouse(true)

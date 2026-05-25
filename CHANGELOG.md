@@ -5,6 +5,17 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-05-24
+
+### New Features
+
+- **Story variant on every delve** &mdash; Delve History now records the actual story variant for every completed run, not just Bountiful ones, by reading it from the delve's map POI. The Delve Locations tab also gained a "This Week's Story" column showing each delve's current rotation at a glance. Thanks to BanditC64 for the suggestion and for helping track down where the data lived.
+
+### Bug Fixes
+
+- **Tab row no longer overflows the window** &mdash; The main window now sizes itself to fit the full row of tabs, so the rightmost tab (Profiles) no longer spills outside the frame in the default UI font.
+- **Correct tier and time on re-entered delves** &mdash; A persisted in-progress run is now only resumed after a genuine `/reload`, not whenever you re-enter a delve. Previously a leftover run could be restored onto a fresh entry, logging the old start time and tier (e.g. a fresh Tier 8 recorded as a 1h+ Tier 11). `/reload` mid-delve still preserves the timer as before.
+
 ## [1.8.0] - 2026-05-24
 
 ### New Features

@@ -159,6 +159,11 @@ function E:CreateTabButtons(parent)
     local TAB_HEIGHT  = 28
     local TAB_Y       = -54   -- distance from top of the frame
     local TAB_PADDING = 4     -- gap between tabs
+    local TAB_START_X = 10    -- x offset of the first tab from the frame edge
+
+    -- Running total of the tab-row width so we can guarantee the frame is
+    -- wide enough to hold every tab (see the widen step after the loop).
+    local rowContentWidth = 0
 
     -- Reusable measurement FontString for tab width calculation
     local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -171,12 +176,16 @@ function E:CreateTabButtons(parent)
 
         -- Size each tab to fit its label with some horizontal padding
         measure:SetText(name)
-        local textWidth = measure:GetStringWidth()
-        tab:SetWidth(textWidth + 24)
+        local tabWidth = measure:GetStringWidth() + 24
+        tab:SetWidth(tabWidth)
+        rowContentWidth = rowContentWidth + tabWidth
+        if i > 1 then
+            rowContentWidth = rowContentWidth + TAB_PADDING
+        end
 
         -- Anchor: first tab to frame corner, rest chain left-to-right
         if i == 1 then
-            tab:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, TAB_Y)
+            tab:SetPoint("TOPLEFT", parent, "TOPLEFT", TAB_START_X, TAB_Y)
         else
             tab:SetPoint("LEFT", self.tabButtons[i - 1], "RIGHT", TAB_PADDING, 0)
         end
@@ -219,6 +228,17 @@ function E:CreateTabButtons(parent)
         end)
 
         self.tabButtons[i] = tab
+    end
+
+    -- The tab row grew past the original 900px frame width as tabs were
+    -- added over time (most visibly the rightmost "Profiles" tab spilling
+    -- outside the frame in the default UI font). Widen the frame so it
+    -- always fits the whole row plus a matching right margin. Setups on a
+    -- narrower replacement font keep the original width; only those where
+    -- the row actually overflows get widened.
+    local neededWidth = TAB_START_X + rowContentWidth + TAB_START_X
+    if parent:GetWidth() < neededWidth then
+        parent:SetWidth(neededWidth)
     end
 
     -- Thin accent horizontal divider between tab row and content

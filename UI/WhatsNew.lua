@@ -5,16 +5,16 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.8.0"
+local WHATS_NEW_VERSION = "1.9.0"
 
 local ENTRIES = {
     {
-        title = "Story Variants in Delve History",
-        desc  = "Each run in the Delve History tab now shows its story variant. Older runs display the delve's signature story; from now on, runs you finish while a delve is Bountiful record the actual variant you played that week. Thanks to BanditC64 for the suggestion!",
+        title = "Story Variants \226\128\148 Now for Every Delve",
+        desc  = "Delve History now records the actual story variant for every run, not just Bountiful ones. The Delve Locations tab also gained a \"This Week's Story\" column showing each delve's current variant at a glance. Thanks to BanditC64 for the idea!",
     },
     {
-        title = "Nullaeus Rewards & Mechanics Refresh",
-        desc  = "The Nullaeus tab now lists the real rewards \226\128\148 with item icons and hover tooltips for the helm, toy, and mount \226\128\148 plus corrected boss abilities and the three phase intermissions.",
+        title = "Window Fits Every Tab",
+        desc  = "The main window now sizes itself to fit the full row of tabs, so the Profiles tab no longer spills off the right edge in the default UI font.",
     },
 }
 

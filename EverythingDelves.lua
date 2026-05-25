@@ -480,6 +480,7 @@ E.delveRunState = {
     startKeyCount  = 0,
     tier           = 0,     -- captured at entry via C_DelvesUI
     wasBountiful   = false, -- snapshot at BeginDelveRun
+    story          = nil,   -- story variant, read from the delve's POI tooltip
     trovehunterPopupShown = false, -- one-shot guard for the reminder popup
 }
 
@@ -682,6 +683,61 @@ local function RefreshBountifulSnapshot()
     end
 end
 
+--- Read the "Story Variant: X" text from a delve POI's tooltip widget.
+--- The story sits at orderIndex 0 of the POI's tooltip TextWithState
+--- widget set — the same data the Bountiful tab reads. It is present for
+--- NORMAL (non-bountiful) delve POIs too, and is readable from inside the
+--- instance.
+local function ReadPOIStoryText(mapID, poiID)
+    if not (mapID and poiID and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then
+        return nil
+    end
+    local poi = C_AreaPoiInfo.GetAreaPOIInfo(mapID, poiID)
+    if not (poi and poi.tooltipWidgetSet and C_UIWidgetManager
+            and C_UIWidgetManager.GetAllWidgetsBySetID) then
+        return nil
+    end
+    local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(poi.tooltipWidgetSet)
+    if not widgets then return nil end
+    for _, info in ipairs(widgets) do
+        if info.widgetType == Enum.UIWidgetVisualizationType.TextWithState
+                and C_UIWidgetManager.GetTextWithStateWidgetVisualizationInfo then
+            local viz = C_UIWidgetManager
+                .GetTextWithStateWidgetVisualizationInfo(info.widgetID)
+            if viz and viz.orderIndex == 0 and viz.text and viz.text ~= "" then
+                return viz.text
+            end
+        end
+    end
+    return nil
+end
+
+--- Strip color codes and the "Story Variant:" prefix to a clean name.
+local function CleanStoryName(s)
+    if not s or s == "" then return nil end
+    local plain = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local name = plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$")
+    if not name or name == "" then return nil end
+    return name
+end
+
+--- Resolve the current story variant for a delve by name (e.g. "Academy
+--- Under Siege"). Reads the delve's POI tooltip, trying the bountiful POI
+--- first and the normal POI second (only one is active at a time), so it
+--- works for bountiful and non-bountiful delves alike. Returns nil for
+--- delves with no POI story (e.g. the Nemesis delve) or if data isn't ready.
+function E:GetDelveStoryVariant(delveName)
+    if not (delveName and self.DelveData) then return nil end
+    local entry
+    for _, d in ipairs(self.DelveData) do
+        if d.name == delveName then entry = d; break end
+    end
+    if not entry then return nil end
+    local raw = ReadPOIStoryText(entry.mapID, entry.poiID)
+             or ReadPOIStoryText(entry.mapID, entry.normalPoiID)
+    return CleanStoryName(raw)
+end
+
 --- Reset the active-run state for a newly-entered delve.
 local function BeginDelveRun(name, kind)
     runState.inDelve       = true
@@ -692,6 +748,11 @@ local function BeginDelveRun(name, kind)
     runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
     runState.tier          = 0
     runState.wasBountiful  = false
+    -- Story variant for this run, read from the delve's POI tooltip. Works
+    -- for bountiful and non-bountiful delves; it is weekly-stable, so the
+    -- value read at entry matches completion. Re-read at completion too as
+    -- a fallback in case the POI cache was cold here.
+    runState.story         = E:GetDelveStoryVariant(name)
     runState.trovehunterPopupShown = false
     -- Persist run start to SavedVariables so duration survives /reload
     -- and brief disconnects. GetTime() is continuous across /reload.
@@ -704,6 +765,7 @@ local function BeginDelveRun(name, kind)
             startKeyCount = runState.startKeyCount,
             tier          = 0,
             wasBountiful  = false,
+            story         = runState.story,
             trovehunterPopupShown = false,
         }
     end
@@ -749,6 +811,7 @@ local function EndDelveRun()
     runState.startKeyCount = 0
     runState.tier          = 0
     runState.wasBountiful  = false
+    runState.story         = nil
     runState.trovehunterPopupShown = false
     -- Cancel popup heartbeat — nothing for it to do once the run ends.
     if E._popupHeartbeat then
@@ -899,6 +962,12 @@ delveFrame:RegisterEvent("SCENARIO_UPDATE")
 delveFrame:RegisterEvent("SCENARIO_COMPLETED")
 delveFrame:RegisterEvent("PLAYER_DEAD")
 
+-- True only when the most recent PLAYER_ENTERING_WORLD was a UI reload
+-- (set in the event handler below). Gates the activeRun restore so a
+-- stale saved run is never resumed onto a fresh delve entry — only a
+-- genuine /reload mid-delve resumes the timer.
+local enteredViaReload = false
+
 --- Try to start tracking if we're currently inside a delve.
 local function TryBeginFromCurrentZone(source)
     local _, _, instanceType = IsInInstance(), nil, select(2, IsInInstance())
@@ -921,15 +990,16 @@ local function TryBeginFromCurrentZone(source)
 
     if matchedName then
         if not runState.inDelve or runState.delveName ~= matchedName then
-            -- If we have a persisted active run for this same delve
-            -- (saved across /reload or a brief disconnect), restore
-            -- runState from it rather than starting a fresh timer.
-            -- Edge case: if the WoW client was fully restarted,
-            -- GetTime() resets to near-zero. In that case the saved
-            -- startTime will be greater than the current GetTime();
-            -- discard the saved run and start fresh.
+            -- Resume a persisted run ONLY when this world-entry was a
+            -- genuine /reload (enteredViaReload). On a fresh delve entry we
+            -- must start a new run even if a stale activeRun for the same
+            -- delve is still saved — otherwise its old start time and tier
+            -- get restored onto the new run (the bug that logged a fresh
+            -- T8 as a 1h+ T11). Extra guard: a full client restart resets
+            -- GetTime() to near-zero, so a saved startTime in the "future"
+            -- is treated as stale too.
             local saved = E.db and E.db.activeRun
-            if saved and saved.name == matchedName
+            if enteredViaReload and saved and saved.name == matchedName
                     and saved.startTime
                     and saved.startTime <= GetTime() then
                 runState.inDelve       = true
@@ -940,6 +1010,7 @@ local function TryBeginFromCurrentZone(source)
                 runState.startKeyCount = saved.startKeyCount or 0
                 runState.tier          = saved.tier or 0
                 runState.wasBountiful  = saved.wasBountiful or false
+                runState.story         = saved.story
                 runState.trovehunterPopupShown = saved.trovehunterPopupShown or false
                 TryCaptureTier("restored")
                 -- If tier was already captured pre-/reload, TryCaptureTier
@@ -973,6 +1044,15 @@ local function TryBeginFromCurrentZone(source)
 end
 
 delveFrame:SetScript("OnEvent", function(_, event, ...)
+    -- Record whether this world-entry is a UI reload before any delve
+    -- detection runs. Re-set on every PLAYER_ENTERING_WORLD, so a fresh
+    -- delve entry (which always fires PEW with isReloadingUi=false) clears
+    -- a reload flag left over from an earlier /reload.
+    if event == "PLAYER_ENTERING_WORLD" then
+        local _, isReloadingUi = ...
+        enteredViaReload = isReloadingUi and true or false
+    end
+
     if event == "PLAYER_ENTERING_WORLD"
             or event == "ZONE_CHANGED_NEW_AREA"
             or event == "SCENARIO_UPDATE" then
@@ -1032,13 +1112,15 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             or false
 
         if matchedName then
-            -- Live story variant for this run, when detectable. Populated
-            -- only for delves that are bountiful this week (the POI tooltip
-            -- is the reliable source); RefreshBountifulSnapshot above just
-            -- refreshed it. Non-bountiful runs leave this nil and the
-            -- History tab falls back to the delve's signature story.
-            local story = E.currentBountifulStory
-                and E.currentBountifulStory[matchedName] or nil
+            -- Story variant for this run. Captured at entry into
+            -- runState.story (and persisted across /reload); re-read here
+            -- from the delve's POI tooltip as a fallback if entry capture
+            -- missed (e.g. cold POI cache). Works for bountiful AND
+            -- non-bountiful delves now, not just bountiful ones.
+            local story = runState.story
+            if not story or story == "" then
+                story = E:GetDelveStoryVariant(matchedName)
+            end
             E:LogDelveRun(
                 matchedName, tier, duration, runState.deaths,
                 keyUsed, runState.wasBountiful, story
