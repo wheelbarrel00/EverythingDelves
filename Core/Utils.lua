@@ -10,7 +10,6 @@ local E = EverythingDelves
 ------------------------------------------------------------------------
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
-local table_insert, table_remove = table.insert, table.remove
 local tostring = tostring
 
 ------------------------------------------------------------------------
@@ -271,29 +270,6 @@ end
 ------------------------------------------------------------------------
 -- Delve history helpers
 ------------------------------------------------------------------------
---- Record a delve completion in E.db.delveHistory.
---- @param delveName string
-function E:RecordDelveCompletion(delveName)
-    if not delveName or delveName == "" then return end
-    if not self.db.delveHistory then self.db.delveHistory = {} end
-
-    local entry = self.db.delveHistory[delveName]
-    if not entry then
-        entry = { completions = {}, totalRuns = 0 }
-        self.db.delveHistory[delveName] = entry
-    end
-
-    local today = date("%Y-%m-%d")
-    local weekNum = tonumber(date("%W")) or 0
-    table_insert(entry.completions, { date = today, week = weekNum })
-    entry.totalRuns = entry.totalRuns + 1
-
-    -- Cap history to 50 most recent entries per delve
-    while #entry.completions > 50 do
-        table_remove(entry.completions, 1)
-    end
-end
-
 --- Get history for a delve. Returns entry or nil.
 --- @param delveName string
 --- @return table|nil

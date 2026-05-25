@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
 -- UI/TabCurrentBountiful.lua - Tab 2: Current Bountiful Delves
--- Tracks the player's live bountiful delve status for the week:
--- currency stats, weekly reset timer, quick-action buttons, and a
--- scrollable list of this week's bountiful delves.
+-- Tracks the player's live bountiful delve status (bountiful rerolls
+-- daily): currency stats, weekly reset timer, quick-action buttons, and
+-- a scrollable list of today's bountiful delves.
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
@@ -120,6 +120,13 @@ local function GetStoryTier(storyVariant)
     return nil
 end
 
+-- Expose the variant tier+note lookup so other tabs can reuse it (the
+-- Delve Locations tab shows today's variant's note on hover). Returns the
+-- { tier, note } table for a story-variant string, or nil.
+function E:GetStoryTier(storyVariant)
+    return GetStoryTier(storyVariant)
+end
+
 -- Set during RegisterModule init; read by UpdateBestPick which is called
 -- from CreateRow's OnMouseUp (outside RegisterModule scope).
 local bestPickFS = nil
@@ -130,7 +137,7 @@ local bestPickFS = nil
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
 local VISIBLE_ROWS   = 10
 local rows           = {}
-local bountifulList  = {}   -- current week's bountiful delves (reused)
+local bountifulList  = {}   -- today's bountiful delves (reused)
 -- Bountiful count is derived dynamically from #bountifulList (no hardcoded constant)
 
 -- Entry pool: recycled delve entry tables to avoid allocating 6-8
@@ -158,7 +165,7 @@ end
 ------------------------------------------------------------------------
 -- Bountiful delve live detection
 -- Uses C_AreaPoiInfo.GetAreaPOIInfo() to check each known delve's POI.
--- If atlasName == "delves-bountiful", the delve is bountiful this week.
+-- If atlasName == "delves-bountiful", the delve is bountiful today.
 -- Also detects "overcharged" bountiful via iconWidgetSet widget count.
 -- Populates `out` in place (reusing entries from the pool) so this
 -- function allocates nothing on the steady path.
@@ -278,35 +285,20 @@ local function KeysFromShards(shards)
 end
 
 ------------------------------------------------------------------------
--- Weekly reset timer
--- C_DateAndTime.GetSecondsUntilWeeklyReset() returns the number of
--- seconds until the next weekly reset (Tuesday NA / Wednesday EU).
+-- Reset timer
+-- Bountiful delves + story variants reroll on the DAILY reset; this tab
+-- tracks today's bountiful set, so it shows the daily countdown. (The
+-- weekly reset still governs the vault / Gilded Stash / bounties.)
 ------------------------------------------------------------------------
 
---- Returns the epoch timestamp of the most recent weekly reset.
---- Used to invalidate manual completion marks from previous weeks.
-local function GetLastWeeklyResetTime()
-    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-        local secsUntilReset = C_DateAndTime.GetSecondsUntilWeeklyReset()
-        if secsUntilReset and secsUntilReset > 0 then
-            local now = GetServerTime and GetServerTime() or time()
-            -- The reset cycle is 7 days (604800 seconds).
-            -- Last reset = next reset - 604800.
-            return now + secsUntilReset - 604800
-        end
-    end
-    return 0  -- fallback: treat all marks as valid
-end
-
 local function GetResetTimeString()
-    -- C_DateAndTime.GetSecondsUntilWeeklyReset is confirmed in 12.0.
-    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+    -- Bountiful delves reroll on the daily reset (< 24h away).
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
+        local secs = C_DateAndTime.GetSecondsUntilDailyReset()
         if secs and secs > 0 then
-            local days  = math_floor(secs / 86400)
-            local hours = math_floor((secs % 86400) / 3600)
+            local hours = math_floor(secs / 3600)
             local mins  = math_floor((secs % 3600) / 60)
-            return string_format("Resets in %dd %dh %dm", days, hours, mins)
+            return string_format("Resets in %dh %dm", hours, mins)
         end
     end
     return "Reset timer unavailable"
@@ -398,21 +390,28 @@ local function RefreshBountifulData(force)
     -- using the entry pool - no table churn on the hot path).
     PopulateBountifulDelvesLive(bountifulList)
 
-    -- Merge manual completions from SavedVariables
-    -- Only honour marks from the current weekly reset period
-    if E.db and E.db.manualComplete then
-        local lastReset = GetLastWeeklyResetTime()
-        -- Sweep: drop every stale entry (any delve, not just ones in
-        -- this week's bountiful list) so the table never grows
-        -- unbounded across seasons.
-        for name, stamp in pairs(E.db.manualComplete) do
-            if type(stamp) ~= "number" or stamp < lastReset then
-                E.db.manualComplete[name] = nil
-            end
-        end
-        for _, delve in ipairs(bountifulList) do
-            if E.db.manualComplete[delve.name] then
-                delve.completed = true
+    -- Completion is automatic: a bountiful delve counts as done if it has
+    -- a run logged since today's daily reset, so the checklist + progress
+    -- bar fill in when you finish one. (run.timestamp is written with
+    -- time(), so the daily reset boundary is computed in the same base.)
+    if E.db and E.db.delveHistory
+            and C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
+        local secs = C_DateAndTime.GetSecondsUntilDailyReset()
+        if secs and secs > 0 then
+            local dailyResetEpoch = time() + secs - 86400
+            for _, delve in ipairs(bountifulList) do
+                if not delve.completed then
+                    local hist = E.db.delveHistory[delve.name]
+                    local runs = hist and hist.recentRuns
+                    if runs then
+                        for _, run in ipairs(runs) do
+                            if (run.timestamp or 0) >= dailyResetEpoch then
+                                delve.completed = true
+                                break
+                            end
+                        end
+                    end
+                end
             end
         end
     end
@@ -434,7 +433,7 @@ local function RefreshBountifulData(force)
         if delve.poiID then
             E.currentBountifulPOIs[delve.poiID] = true
         end
-        -- Story variant + tier for this week's rotation (used by Delve Locations tab)
+        -- Story variant + tier for today's rotation (used by Delve Locations tab)
         local si = GetStoryTier(delve.storyVariant)
         E.currentBountifulStory[delve.name]     = StripStoryPrefix(delve.storyVariant)
         E.currentBountifulStoryTier[delve.name] = si and si.tier or nil
@@ -443,7 +442,7 @@ local function RefreshBountifulData(force)
     -- Bountiful rotation change alert (F6)
     if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
         -- Reusable scratch buffer - avoids allocating a fresh table
-        -- every refresh just to detect a once-per-week rotation change.
+        -- every refresh just to detect a daily rotation change.
         if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
         local currentIDs = E._bountifulIDBuf
         wipe(currentIDs)
@@ -464,7 +463,7 @@ local function RefreshBountifulData(force)
         end
 
         if changed and #storedIDs > 0 then
-            print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available this week! Open Everything Delves to see them.")
+            print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available today! Open Everything Delves to see them.")
         end
         -- Mutate the SavedVariables table in place instead of replacing
         -- the reference each refresh (keeps the DB table stable).
@@ -713,44 +712,13 @@ local function CreateRow(parent, index)
             if self.delve.overcharged then
                 GameTooltip:AddLine("Overcharged", 1, 1, 0, true)
             end
-            GameTooltip:AddLine(E.CC.muted .. "Story: " .. E.CC.close
-                                .. self.delve.storyVariant,
-                                0.88, 0.88, 0.88, true)
-            GameTooltip:AddLine(" ", 0.88, 0.88, 0.88, true)
-            GameTooltip:AddLine(E.CC.muted
-                                .. "Right-click to toggle manual completion."
-                                .. E.CC.close,
+            GameTooltip:AddLine(self.delve.storyVariant,
                                 0.88, 0.88, 0.88, true)
             GameTooltip:Show()
         end
     end)
     row:SetScript("OnLeave", function(self)
         E:HideTooltip()
-    end)
-
-    -- Right-click: toggle manual completion
-    row:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" and self.delve then
-            self.delve.completed = not self.delve.completed
-            -- Persist in SavedVariables with current timestamp
-            if self.delve.completed then
-                E.db.manualComplete[self.delve.name] = GetServerTime and GetServerTime() or time()
-                E:RecordDelveCompletion(self.delve.name)
-            else
-                E.db.manualComplete[self.delve.name] = nil
-            end
-            SortBountifulList()
-            UpdateRows(parent)
-            UpdateBestPick()
-            -- Update the weekly progress bar if it exists
-            if parent.progressBar then
-                local done = 0
-                for _, d in ipairs(bountifulList) do
-                    if d.completed then done = done + 1 end
-                end
-                parent.progressBar:SetProgress(done, math_max(1, #bountifulList))
-            end
-        end
     end)
 
     return row
@@ -779,7 +747,7 @@ E:RegisterModule(function()
 
     -- Right column
     statValues.journey       = CreateStatRow(frame, "Journey:", STAT_Y, COL2_X)
-    statValues.resetTimer    = CreateStatRow(frame, "Weekly Reset:", STAT_Y - 18, COL2_X)
+    statValues.resetTimer    = CreateStatRow(frame, "Bountiful Reset:", STAT_Y - 18, COL2_X)
     statValues.sessionCount  = CreateStatRow(frame, "Session Completions:", STAT_Y - 36, COL2_X)
 
     -- Function to refresh all stat display values
@@ -961,7 +929,7 @@ E:RegisterModule(function()
     local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
     listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(listHeader, "This Week's Bountiful Delves")
+    E:StyleAccentHeader(listHeader, "Today's Bountiful Delves")
 
     -- Best Pick subtitle — updated by UpdateBestPick on each data refresh
     bestPickFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

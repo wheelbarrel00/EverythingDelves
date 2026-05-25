@@ -5,16 +5,16 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.9.0"
+local WHATS_NEW_VERSION = "1.9.1"
 
 local ENTRIES = {
     {
-        title = "Story Variants \226\128\148 Now for Every Delve",
-        desc  = "Delve History now records the actual story variant for every run, not just Bountiful ones. The Delve Locations tab also gained a \"This Week's Story\" column showing each delve's current variant at a glance. Thanks to BanditC64 for the idea!",
+        title = "Daily Rotation \226\128\148 Wording & Tracking Fixed",
+        desc  = "Delve story variants and Bountiful delves rotate daily, not weekly. Labels now say \"Today\", the Bountiful tab shows a daily reset countdown, and the Delve Locations tier badge, sort, and tooltip all reflect today's actual variant with its strategy tip. Thanks to BanditC64!",
     },
     {
-        title = "Window Fits Every Tab",
-        desc  = "The main window now sizes itself to fit the full row of tabs, so the Profiles tab no longer spills off the right edge in the default UI font.",
+        title = "Bountiful Checklist Fills Itself",
+        desc  = "The Current Bountiful Delves progress bar now ticks up automatically as you finish bountiful delves \226\128\148 the manual right-click marking has been removed.",
     },
 }
 

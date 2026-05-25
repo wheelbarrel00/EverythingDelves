@@ -165,8 +165,19 @@ E:RegisterModule(function()
 
     local function AnchorPopup()
         popup:ClearAllPoints()
-        if DelvesCompanionConfigurationFrame and DelvesCompanionConfigurationFrame:IsShown() then
-            popup:SetPoint("TOPRIGHT", DelvesCompanionConfigurationFrame, "TOPLEFT", -8, 0)
+        local cf = DelvesCompanionConfigurationFrame
+        if cf and cf:IsShown() then
+            -- Sit to the LEFT of the companion frame when there's room for
+            -- the full popup width, otherwise flip to the RIGHT. The old
+            -- always-left anchor got clamped on top of Valeera's UI when
+            -- the frame opened near the left screen edge (default UI);
+            -- ElvUI shifts the frame rightward so the left side stays clear.
+            local roomLeft = cf:GetLeft() or 0
+            if roomLeft >= POPUP_W + 8 then
+                popup:SetPoint("TOPRIGHT", cf, "TOPLEFT", -8, 0)
+            else
+                popup:SetPoint("TOPLEFT", cf, "TOPRIGHT", 8, 0)
+            end
         else
             popup:SetPoint("CENTER", UIParent, "CENTER", -320, 0)
         end

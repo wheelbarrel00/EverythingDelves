@@ -25,6 +25,12 @@ local scrollOffset   = 0
 local scrollBar      = nil  -- forward ref, set during init
 local rows           = {}  -- recycled row frames
 
+-- Today's live variant + its tier per delve, refreshed each
+-- RefreshFilteredData so the badge, the sort, the Today's Story column,
+-- and the tooltip all agree (and we avoid re-reading the POI per row).
+local todayStoryByName = {}
+local todayTierByName  = {}
+
 -- Cache of lower-cased / trimmed delve names so MatchesFilter,
 -- UpdateRows, and the bountiful lookup never have to allocate
 -- ":lower()" / strtrim() strings inside the scroll/refresh hot path.
@@ -105,12 +111,31 @@ local function RefreshFilteredData()
         end
     end
 
+    -- Refresh today's variant + tier for every delve (one POI read each)
+    -- so the sort and the rows below use today's live ratings, falling
+    -- back to the delve's signature tier when a variant isn't rated.
+    wipe(todayStoryByName)
+    wipe(todayTierByName)
+    for _, delve in ipairs(E.DelveData) do
+        local story = E.GetDelveStoryVariant and E:GetDelveStoryVariant(delve.name) or nil
+        todayStoryByName[delve.name] = story
+        local tier
+        if story and story ~= "" and E.GetStoryTier then
+            local si = E:GetStoryTier(story)
+            tier = si and si.tier
+        end
+        if not tier then
+            local dn = DELVE_NOTES[delve.name]
+            tier = dn and dn.tier
+        end
+        todayTierByName[delve.name] = tier
+    end
+
     -- Sort
     table_sort(filteredData, function(a, b)
         if sortField == "tier" then
-            local da, db = DELVE_NOTES[a.name], DELVE_NOTES[b.name]
-            local oa = da and (DLOC_TIER_ORDER[da.tier] or 7) or 7
-            local ob = db and (DLOC_TIER_ORDER[db.tier] or 7) or 7
+            local oa = DLOC_TIER_ORDER[todayTierByName[a.name] or ""] or 7
+            local ob = DLOC_TIER_ORDER[todayTierByName[b.name] or ""] or 7
             if oa ~= ob then
                 if sortAscending then return oa < ob else return oa > ob end
             end
@@ -154,8 +179,9 @@ local function UpdateRows(scrollFrame)
             end
             local hist = E:GetDelveHistory(delve.name)
             local runSuffix = ""
-            if hist and hist.totalRuns and hist.totalRuns > 0 then
-                runSuffix = E.CC.muted .. " (" .. hist.totalRuns .. "x)" .. E.CC.close
+            local totalRuns = hist and hist.lifetime and hist.lifetime.totalRuns
+            if totalRuns and totalRuns > 0 then
+                runSuffix = E.CC.muted .. " (" .. totalRuns .. "x)" .. E.CC.close
             end
             if isBountiful then
                 row.nameText:SetText(E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix)
@@ -166,22 +192,22 @@ local function UpdateRows(scrollFrame)
             -- Zone (off-white)
             row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
 
-            -- Tier badge
-            local dn = DELVE_NOTES[delve.name]
-            if dn then
-                local tc = DLOC_TIER_COLORS[dn.tier]
+            -- Tier badge — today's variant's tier (signature fallback).
+            local tierLetter = todayTierByName[delve.name]
+            if tierLetter then
+                local tc = DLOC_TIER_COLORS[tierLetter]
                 if tc then
                     row.tierText:SetTextColor(tc[1], tc[2], tc[3])
                 else
                     row.tierText:SetTextColor(0.60, 0.60, 0.60)
                 end
-                row.tierText:SetText(dn.tier)
+                row.tierText:SetText(tierLetter)
             else
                 row.tierText:SetText("")
             end
 
-            -- This week's story variant, read live from the delve POI.
-            local story = E.GetDelveStoryVariant and E:GetDelveStoryVariant(delve.name)
+            -- Today's story variant (from the same per-refresh cache).
+            local story = todayStoryByName[delve.name]
             if story and story ~= "" then
                 row.storyText:SetText(E.CC.body .. story .. E.CC.close)
             else
@@ -448,9 +474,9 @@ local function CreateColumnHeaders(parent, yOffset)
     -- Static labels for the two action columns (not sortable). Anchor
     -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
     for _, info in ipairs({
-        { label = "Pin",               x = 422 },
-        { label = "TomTom",            x = 462 },
-        { label = "This Week's Story", x = 520 },
+        { label = "Pin",            x = 422 },
+        { label = "TomTom",         x = 462 },
+        { label = "Today's Story",  x = 520 },
     }) do
         local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("LEFT", parent, "TOPLEFT", info.x, yOffset - 11)
@@ -563,7 +589,7 @@ local function CreateRow(parent, index)
     end)
     row.ttBtn = ttBtn
 
-    -- This week's story variant, read live from the delve's POI. Stretches
+    -- Today's story variant, read live from the delve's POI. Stretches
     -- from just past the TomTom button to the right edge of the row.
     local storyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     storyText:SetPoint("LEFT",  row, "LEFT",  520, 0)
@@ -579,34 +605,38 @@ local function CreateRow(parent, index)
         if self.delve then
             local tipLines = {}
             if self.isBountiful then
-                table_insert(tipLines, E.CC.gold .. "* Bountiful Delve this week!" .. E.CC.close)
-                local story  = E.currentBountifulStory     and E.currentBountifulStory[self.delve.name]
-                local stTier = E.currentBountifulStoryTier and E.currentBountifulStoryTier[self.delve.name]
-                if story and story ~= "" then
-                    local tc  = stTier and (DLOC_TIER_COLORS[stTier] or {0.6, 0.6, 0.6}) or nil
-                    local cc  = tc and string.format("|cFF%02X%02X%02X",
-                                    math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255)) or ""
-                    local sfx = stTier and (E.CC.muted .. "  \226\128\148  " .. E.CC.close .. cc .. stTier .. " Tier|r") or ""
-                    table_insert(tipLines, E.CC.body .. story .. E.CC.close .. sfx)
-                end
-                table_insert(tipLines, "")
+                table_insert(tipLines, E.CC.gold .. "* Bountiful Delve today!" .. E.CC.close)
             end
             table_insert(tipLines,
                 E.CC.muted .. "Zone: " .. E.CC.close
                     .. E.CC.body .. self.delve.zone .. E.CC.close)
-            local dn = DELVE_NOTES[self.delve.name]
-            if dn then
-                local tc = DLOC_TIER_COLORS[dn.tier] or {0.6, 0.6, 0.6}
-                local cc = string.format("|cFF%02X%02X%02X",
-                    math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
+
+            -- Today's live story variant (all delves) + its tier and the
+            -- per-variant strategy note from STORY_TIERS (shared via
+            -- E:GetStoryTier from the Bountiful tab).
+            local todayStory = E.GetDelveStoryVariant and E:GetDelveStoryVariant(self.delve.name)
+            if todayStory and todayStory ~= "" then
+                local si = E.GetStoryTier and E:GetStoryTier(todayStory)
                 table_insert(tipLines, "")
-                table_insert(tipLines,
-                    cc .. dn.tier .. " Tier|r"
-                    .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                    .. E.CC.body .. "Best: " .. dn.story .. E.CC.close)
-                table_insert(tipLines, "")
-                table_insert(tipLines, E.CC.muted .. dn.note .. E.CC.close)
+                if si and si.tier then
+                    local tc = DLOC_TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
+                    local cc = string.format("|cFF%02X%02X%02X",
+                        math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
+                    table_insert(tipLines,
+                        E.CC.muted .. "Today's Story: " .. E.CC.close
+                        .. E.CC.body .. todayStory .. E.CC.close
+                        .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+                        .. cc .. si.tier .. " Tier|r")
+                else
+                    table_insert(tipLines,
+                        E.CC.muted .. "Today's Story: " .. E.CC.close
+                        .. E.CC.body .. todayStory .. E.CC.close)
+                end
+                if si and si.note then
+                    table_insert(tipLines, E.CC.muted .. si.note .. E.CC.close)
+                end
             end
+
             E:ShowTooltip(self, self.delve.name, unpack(tipLines))
         end
     end)

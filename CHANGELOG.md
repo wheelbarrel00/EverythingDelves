@@ -5,6 +5,18 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-05-25
+
+### Improvements
+
+- **Daily rotation accuracy** &mdash; Delve story variants and Bountiful delves rotate daily, not weekly. Wording across the addon now says "Today" instead of "this week", the Current Bountiful tab shows a daily reset countdown, and the Delve Locations tier badge, tier sort, and hover tooltip now reflect today's actual story variant (with its strategy note) instead of a static "best variant". Thanks to BanditC64 for the reports.
+- **Automatic Bountiful completion** &mdash; The Current Bountiful Delves checklist and progress bar now fill in automatically from your completed runs. The manual right-click "mark complete" option has been removed, and the internal completion history is now recorded in a single consistent format.
+- **Delve Locations run count** &mdash; The "(Nx)" run-count beside each delve now reflects your actual logged runs.
+
+### Bug Fixes
+
+- **Curio recommendations popup** &mdash; No longer overlaps the companion configuration window in the default UI layout; it now opens on whichever side of the frame has room.
+
 ## [1.9.0] - 2026-05-24
 
 ### New Features
