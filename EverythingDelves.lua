@@ -319,6 +319,17 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.ShowWhatsNew then
             E:ShowWhatsNew()
         end
+    elseif msg == "debug" then
+        -- Toggle verbose tier-tracker logging. Off by default and silent
+        -- for normal players; used to diagnose how a delve's tier is
+        -- captured and logged. Persisted so it survives a /reload mid-test.
+        if E.db then
+            E.db.debugTier = not E.db.debugTier
+            print("|cFFFF2222Everything Delves|r: tier debug "
+                .. (E.db.debugTier and "|cFF22FF22ON|r" or "|cFFFF2222OFF|r")
+                .. ". Run two delves back-to-back, then send me every line"
+                .. " that starts with |cFFFFD700[ED tier]|r.")
+        end
     else
         E:ToggleMainFrame()
     end
@@ -495,6 +506,19 @@ local function GetCurrencyQty(id)
     return 0
 end
 
+--- Verbose tier-tracker logging, toggled by "/ed debug". A no-op (one
+--- table lookup) when off, so it costs nothing for normal players. Used
+--- only to diagnose how a run's tier is detected, captured, and logged.
+local function DebugTier(fmt, ...)
+    if not (E.db and E.db.debugTier) then return end
+    -- Never let a malformed debug line throw inside an event handler and
+    -- interrupt tracking/logging — format defensively, print only on success.
+    local ok, msg = pcall(string.format, fmt, ...)
+    if ok then
+        print("|cFFFFD700[ED tier]|r " .. msg)
+    end
+end
+
 --- Auto-detect the current delve tier (1-11) or return nil if unknown.
 --- Strategy order (most authoritative first):
 ---   1. Parse a number out of GetInstanceInfo()'s difficultyName
@@ -507,7 +531,10 @@ local function AutoDetectDelveTier()
     if difficultyName and difficultyName ~= "" then
         local m = difficultyName:match("(%d+)")
         local n = m and tonumber(m)
-        if n and n >= 1 and n <= 11 then return n end
+        if n and n >= 1 and n <= 11 then
+            DebugTier("m1 difficultyName=%q -> %d", difficultyName, n)
+            return n
+        end
     end
 
     -- Method 2: scenario / step name
@@ -528,7 +555,10 @@ local function AutoDetectDelveTier()
             end
         end
     end)
-    if m2 then return m2 end
+    if m2 then
+        DebugTier("m2 scenario/step -> %d", m2)
+        return m2
+    end
 
     -- Method 3: scrape the ObjectiveTrackerFrame for tier text.
     -- Restored to the exact 1.4.8 behaviour after attempted "fixes" in
@@ -541,6 +571,7 @@ local function AutoDetectDelveTier()
     if tracker then
         local foundDelveHeader = false
         local foundTier
+        local foundVia                       -- "explicit" | "standalone"
         local zoneName = GetRealZoneText() or ""
 
         local function SearchForTier(frame)
@@ -561,6 +592,7 @@ local function AutoDetectDelveTier()
                             local n = tonumber(m)
                             if n and n >= 1 and n <= 11 then
                                 foundTier = n
+                                foundVia  = "explicit"
                                 return
                             end
                         end
@@ -570,6 +602,7 @@ local function AutoDetectDelveTier()
                             local n = tonumber(clean)
                             if n and n >= 1 and n <= 11 then
                                 foundTier = n
+                                foundVia  = "standalone"
                                 return
                             end
                         end
@@ -586,9 +619,13 @@ local function AutoDetectDelveTier()
         end
 
         pcall(SearchForTier, tracker)
-        if foundTier then return foundTier end
+        if foundTier then
+            DebugTier("m3 scrape -> %d (via %s)", foundTier, tostring(foundVia))
+            return foundTier
+        end
     end
 
+    DebugTier("no tier detected")
     return nil
 end
 
@@ -643,8 +680,14 @@ end
 --- inside a delve â€” the ObjectiveTracker UI may not populate on the
 --- first fire, so we keep retrying until we get a value.
 local function TryCaptureTier(source)
-    if runState.tier and runState.tier > 0 then return end
+    if runState.tier and runState.tier > 0 then
+        DebugTier("capture[%s]: skip, already latched=%d",
+            tostring(source), runState.tier)
+        return
+    end
     local t = AutoDetectDelveTier()
+    DebugTier("capture[%s]: read=%s (latched startTime=%.0f, now=%.0f)",
+        tostring(source), tostring(t), runState.startTime or 0, GetTime())
     if t and t > 0 then
         runState.tier = t
         -- Persist captured tier to SavedVariables so /reload mid-delve
@@ -989,7 +1032,24 @@ local function TryBeginFromCurrentZone(source)
     local matchedName, kind = MatchDelveName(candidate or "")
 
     if matchedName then
-        if not runState.inDelve or runState.delveName ~= matchedName then
+        -- A genuine new world-entry (a PLAYER_ENTERING_WORLD that is NOT a
+        -- UI reload) always means a brand-new delve instance, so it must
+        -- begin a fresh run even when the delve name matches the one we
+        -- were just tracking. Without this, running the SAME delve twice
+        -- back-to-back left runState.inDelve true with run 1's startTime
+        -- whenever EndDelveRun never fired between them — e.g. run 1's
+        -- SCENARIO_COMPLETED was missed, or the player hopped delve->delve
+        -- without crossing a non-delve zone. Run 2 then fell into the
+        -- timing-preserving "else" branch and its duration was measured
+        -- from run 1's start (an 18:57 run + a faster second run logged as
+        -- 38:17). A /reload keeps enteredViaReload true and is handled by
+        -- the resume branch below, so its timer is preserved; mid-run
+        -- SCENARIO_UPDATE/ZONE_CHANGED retries are not PLAYER_ENTERING_WORLD
+        -- and so never force a reset.
+        local freshEntry = (source == "PLAYER_ENTERING_WORLD")
+                and not enteredViaReload
+        if not runState.inDelve or runState.delveName ~= matchedName
+                or freshEntry then
             -- Resume a persisted run ONLY when this world-entry was a
             -- genuine /reload (enteredViaReload). On a fresh delve entry we
             -- must start a new run even if a stale activeRun for the same
@@ -1091,19 +1151,22 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             and math.max(0, math.floor(GetTime() - runState.startTime))
             or 0
 
-        -- Final attempts at tier and bountiful before logging. The UI
-        -- may already be torn down (tier scrape can fail here) but it
-        -- costs nothing to try once more, and saves the run record from
-        -- being stamped with tier=0 / wasBountiful=false when the data
-        -- was only a few hundred ms away from being available.
-        local tier = runState.tier or 0
-        if tier == 0 then
-            local lastChance = AutoDetectDelveTier()
-            if lastChance and lastChance > 0 then
-                tier = lastChance
-                runState.tier = lastChance
-            end
-        end
+        -- Tier reconciliation before logging. The value captured at ENTRY
+        -- is unreliable: at the moment we zone in, the objective tracker is
+        -- still showing the delve we just left, so the tier detector reads
+        -- the PREVIOUS run's tier and latches it (debug confirmed every run
+        -- logging the tier of the run before it). A run's tier never changes
+        -- mid-run, and by the time we complete, the tracker is reliably
+        -- showing THIS run's tier — so we re-read now and PREFER that value.
+        -- We fall back to the entry-latched value only if the re-read comes
+        -- up empty (e.g. the tracker was already torn down), which is no
+        -- worse than the old behaviour.
+        local latched   = runState.tier or 0
+        local confirmed = AutoDetectDelveTier()      -- current run's tier
+        local tier      = (confirmed and confirmed > 0) and confirmed or latched
+        runState.tier   = tier
+        DebugTier("completion: latched=%d reread=%s -> logging T%d",
+            latched, tostring(confirmed), tier)
         RefreshBountifulSnapshot()
 
         local keyNow  = GetCurrencyQty(COFFER_KEY_CURRENCY)

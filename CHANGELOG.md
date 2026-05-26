@@ -5,6 +5,13 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-05-25
+
+### Bug Fixes
+
+- **Accurate time on back-to-back delves** &mdash; Running the same delve twice in a row no longer records an inflated time on the second run. Previously, when a run ended without fully resetting &mdash; for example re-entering the same delve without passing through the open world &mdash; the next run's timer could carry over the previous run's start time, logging a far longer duration than the run actually took.
+- **Accurate tier on every delve** &mdash; Each completed run now records the tier you actually played. The tier is now confirmed when the run completes, fixing cases where a run could be stamped with the previous delve's tier (for example a Tier 8 run recorded as a Tier 11).
+
 ## [1.9.1] - 2026-05-25
 
 ### Improvements
