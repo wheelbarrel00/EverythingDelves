@@ -37,14 +37,15 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 
 ## Everything in One Window
 
-- **Delve Locations** — all 10 Midnight delves with tier ratings, today's story, waypoints, and expandable boss tactics
-- **Current Bountiful Delves** — live bountiful detection, a "Best Pick", an auto-filling checklist, and a daily reset timer
-- **Tier Guide** — T1–T11 reward iLvls, Great Vault progress, Gilded Stash, Trovehunter's Bounty, and faction renown
-- **Nullaeus** — the weekly seasonal nemesis boss delve: mechanics, phases, and the full reward track
-- **Shard Tracker** — every shard source, currency bars, a session shards/hour rate, and a world-quest scanner
-- **Delve History** — per-character run log with times, tiers, the boss you faced, story variants, and your own notes
+- **Delve Locations** — all 10 Midnight delves across 6 zones, with S–F tier ratings for today's story variant, one-click Blizzard/TomTom waypoints (single or all at once), and click-to-expand boss tactics that highlight today's boss
+- **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
+- **Tier Guide** — T1–T11 reward iLvls with your gear auto-matched, Great Vault progress bars, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
+- **Nullaeus (Seasonal Nemesis)** — the weekly boss delve at Torment's Rise: boss mechanics, phase transitions, and the full reward track
+- **Shard Tracker** — every shard source with quest tracking, currency bars, a session shards/hour rate, and a World Quest scanner
+- **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, and your own free-form notes
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
-- **Options & Profiles** — color themes, alerts, companion-audio mutes, and per-character history profiles
+- **Options & Profiles** — color themes, alerts, a curio reminder, Valeera (and Brann) audio mutes, and per-character history profiles that auto-migrate and are never deleted
+- **Plus** — a minimap button with live tooltip stats, a dark Midnight theme, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
 
 ---
 
