@@ -18,11 +18,20 @@
 </p>
 <details>
 <summary>Screenshots</summary>
-<img width="1265" height="916" alt="Delve Locations" src="https://github.com/user-attachments/assets/95c4c29c-028a-40ba-aec5-b4d5d6ce8ccf" />
-<img width="1265" height="912" alt="Bountiful Delves" src="https://github.com/user-attachments/assets/27dc373f-479a-4571-9e4f-24a501958f2b" />
-<img width="1269" height="917" alt="Tier Gude" src="https://github.com/user-attachments/assets/242a10f3-80a9-4cf8-a9c1-0af622787015" />
-<img width="1268" height="916" alt="Shard Tracker" src="https://github.com/user-attachments/assets/df555bea-774c-4c8b-ad6f-c30ea18bee79" />
-<img width="1271" height="921" alt="Options" src="https://github.com/user-attachments/assets/daf7b38c-af87-4bf2-8949-5b93a137f208" />
+<img width="1710" height="1055" alt="Delve Locations Tab" src="https://github.com/user-attachments/assets/15057071-f531-4c7c-bafb-350f45bb4dbd" />
+<img width="1522" height="1056" alt="Current Bountiful Delves Tab" src="https://github.com/user-attachments/assets/02a6914f-b2e8-4cad-90d1-7419e763de93" />
+<img width="1521" height="1054" alt="Tier Guide TabUp" src="https://github.com/user-attachments/assets/3ca66e90-e97a-42b3-a71f-8726a5771f4d" />
+<img width="1520" height="1052" alt="Tier Guide TabDown" src="https://github.com/user-attachments/assets/bf195028-120c-469f-8c02-412d98b1e3a7" />
+<img width="1520" height="1054" alt="Nullaeus TabUp" src="https://github.com/user-attachments/assets/899c185d-9859-40aa-b9b1-315bccb54ca1" />
+<img width="1520" height="1054" alt="Nullaeus TabDown" src="https://github.com/user-attachments/assets/d862bcd8-1195-48a5-bcc6-0cc7fac42c40" />
+<img width="1525" height="1054" alt="Shard Tracker TabDown" src="https://github.com/user-attachments/assets/5df52bd5-a71b-4c38-9c32-1c81b27a7beb" />
+<img width="1519" height="1054" alt="Shard Tracker TabUp" src="https://github.com/user-attachments/assets/78b53e3f-3bde-4fba-8443-cc5e93bd3dc7" />
+<img width="1520" height="1053" alt="Delve History Tab" src="https://github.com/user-attachments/assets/fd7b5e81-1f1f-4c82-b4f5-a6b1f1744083" />
+<img width="1521" height="1055" alt="DelversCall Tab" src="https://github.com/user-attachments/assets/04900723-389b-41b8-bcbd-bdb5bbdd7457" />
+<img width="1517" height="1054" alt="Options Tab" src="https://github.com/user-attachments/assets/3af584c1-9d46-45ef-b2a6-a0feff3fb4ce" />
+<img width="1522" height="1054" alt="Profile Tab" src="https://github.com/user-attachments/assets/1d2a2192-1284-44ef-b166-ac6abf76750b" />
+<img width="358" height="390" alt="MiniMap ToolTip" src="https://github.com/user-attachments/assets/3e974e37-0100-4cf5-9485-9d1409bb7290" />
+
 </details>
 
 ---
