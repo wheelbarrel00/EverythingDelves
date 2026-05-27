@@ -5,6 +5,24 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-05-26
+
+### New Features
+
+- **Run notes** &mdash; Attach a free-form note to any run in the Delve History tab to jot down a build you tested, a notable drop, or a curio experiment. Click the note icon beside a run to add, edit, or clear it. Thanks to BanditC64 for the suggestion!
+- **Boss tactics in the delve lists** &mdash; Click any delve in Delve Locations or Current Bountiful Delves to expand it and read each boss's mechanics: a one-line summary plus a full role-by-role breakdown. Multi-boss delves list every boss. Also suggested by BanditC64.
+- **Today's boss** &mdash; Delves that field different bosses depending on the story variant now mark today's boss with a star when expanded, using a verified variant-to-boss table so it is correct from the first login.
+
+### Improvements
+
+- **Delve History detail** &mdash; Each run now records the boss you faced in its own column, the summary line shows the latest run's time and date, run rows are aligned into clean columns, and run dates now include the time of day.
+- **Delve Locations cleanup** &mdash; Removed the search box and zone filter; sort by clicking the Name, Zone, or Tier column headers instead. Rows now expand to show boss tactics.
+
+### Bug Fixes
+
+- **No more 26-hour runs** &mdash; A run could occasionally be logged with a wildly inflated duration when an in-progress run saved in a previous session was resumed onto a new one. Run start times are now validated against the wall clock, and any existing run with an impossible duration is cleaned up automatically on login.
+- **Steady section dividers in Delve History** &mdash; The divider lines between the Seasonal Nemesis and Midnight Delves sections no longer float over your runs as you scroll &mdash; they now scroll with their section.
+
 ## [1.9.2] - 2026-05-25
 
 ### Bug Fixes

@@ -5,22 +5,30 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.9.1"
+local WHATS_NEW_VERSION = "1.10.0"
 
 local ENTRIES = {
     {
-        title = "Daily Rotation \226\128\148 Wording & Tracking Fixed",
-        desc  = "Delve story variants and Bountiful delves rotate daily, not weekly. Labels now say \"Today\", the Bountiful tab shows a daily reset countdown, and the Delve Locations tier badge, sort, and tooltip all reflect today's actual variant with its strategy tip. Thanks to BanditC64!",
+        title = "Run Notes",
+        desc  = "Attach a free-form note to any run on the Delve History tab \226\128\148 log a build you tested, a notable drop, or a curio idea. Click the note icon next to a run to add, edit, or clear it. Thanks to BanditC64 for the suggestion!",
     },
     {
-        title = "Bountiful Checklist Fills Itself",
-        desc  = "The Current Bountiful Delves progress bar now ticks up automatically as you finish bountiful delves \226\128\148 the manual right-click marking has been removed.",
+        title = "Boss Tactics in the Delve Lists",
+        desc  = "Click any delve in Delve Locations or Current Bountiful to expand it and read each boss's mechanics: a one-line summary plus full role-by-role tips. Also suggested by BanditC64 \226\128\148 thank you!",
+    },
+    {
+        title = "Today's Boss, Marked for You",
+        desc  = "Delves that field different bosses now mark today's boss with a star when you expand them, and every run in your Delve History records the boss you faced.",
+    },
+    {
+        title = "Delve History Accuracy",
+        desc  = "I've worked hard to get delve times and tiers recording correctly and believe it's finally there. Apologies if some older runs show an off time or tier \226\128\148 those tracking bugs are now fixed.",
     },
 }
 
 local POPUP_W  = 460
 local PAD      = 12
-local ENTRY_H  = 62
+local ENTRY_H  = 66
 local HEADER_H = 40
 local FOOTER_H = 50
 local popupH   = HEADER_H + (#ENTRIES * ENTRY_H) + FOOTER_H

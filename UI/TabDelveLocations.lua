@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- UI/TabDelveLocations.lua - Tab 1: Delve Locations
--- Complete directory of all Midnight delves with filtering, sorting,
--- waypoints, and TomTom integration.
+-- Complete directory of all Midnight delves with sorting, waypoints,
+-- TomTom integration, and expandable per-delve boss tactics.
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
@@ -10,20 +10,20 @@ local E = EverythingDelves
 ------------------------------------------------------------------------
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local table_insert, table_sort = table.insert, table.sort
+local string_format = string.format
 
 ------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
-local filteredData   = {}  -- currently visible rows after filter/sort
-local currentZone    = nil -- nil = "All Zones"
-local currentSearch  = ""
+local filteredData   = {}  -- delves after sort (all delves; no filtering)
 local sortField      = "name"  -- "name" | "zone" | "tier"
 local sortAscending  = true
 local ROW_HEIGHT     = 28
-local VISIBLE_ROWS   = 13
-local scrollOffset   = 0
-local scrollBar      = nil  -- forward ref, set during init
-local rows           = {}  -- recycled row frames
+
+-- Expansion state (survives refresh). Delve-level keyed by delve name;
+-- boss-level keyed by "<delveName>##<bossIndex>".
+local expandedDelve  = {}
+local expandedBoss   = {}
 
 -- Today's live variant + its tier per delve, refreshed each
 -- RefreshFilteredData so the badge, the sort, the Today's Story column,
@@ -31,10 +31,8 @@ local rows           = {}  -- recycled row frames
 local todayStoryByName = {}
 local todayTierByName  = {}
 
--- Cache of lower-cased / trimmed delve names so MatchesFilter,
--- UpdateRows, and the bountiful lookup never have to allocate
--- ":lower()" / strtrim() strings inside the scroll/refresh hot path.
--- Populated lazily on first access; safe because delve.name is static.
+-- Cache of lower-cased / trimmed delve names so the sort comparator
+-- never has to allocate ":lower()" strings inside the hot path.
 local delveLowerName = {}  -- [delve] = lower(name)
 local delveLowerZone = {}  -- [delve] = lower(zone)
 local function GetLowerName(delve)
@@ -87,28 +85,27 @@ for delveName, info in pairs(DELVE_NOTES) do
 end
 
 ------------------------------------------------------------------------
--- Filtering & sorting
+-- Boss-note role colouring helpers (shared role metadata lives in
+-- Core/Data.lua so both delve tabs render boss tactics identically).
 ------------------------------------------------------------------------
-local function MatchesFilter(delve)
-    -- Zone filter
-    if currentZone and delve.zone ~= currentZone then
-        return false
-    end
-    -- Search filter (case-insensitive substring match on delve name)
-    if currentSearch ~= "" then
-        if not GetLowerName(delve):find(currentSearch, 1, true) then
-            return false
-        end
-    end
-    return true
+local function RoleCC(role)
+    local m = E.BossRoleMeta and E.BossRoleMeta[role]
+    local rgb = m and m.rgb or {0.80, 0.80, 0.85}
+    return string_format("|cFF%02X%02X%02X",
+        math_floor(rgb[1]*255), math_floor(rgb[2]*255), math_floor(rgb[3]*255))
+end
+local function RoleLabel(role)
+    local m = E.BossRoleMeta and E.BossRoleMeta[role]
+    return (m and m.label or "Note") .. ":"
 end
 
+------------------------------------------------------------------------
+-- Sorting (all delves are shown; only ordering changes)
+------------------------------------------------------------------------
 local function RefreshFilteredData()
     wipe(filteredData)
     for _, delve in ipairs(E.DelveData) do
-        if MatchesFilter(delve) then
-            table_insert(filteredData, delve)
-        end
+        table_insert(filteredData, delve)
     end
 
     -- Refresh today's variant + tier for every delve (one POI read each)
@@ -156,555 +153,314 @@ local function RefreshFilteredData()
 end
 
 ------------------------------------------------------------------------
--- Row rendering
-------------------------------------------------------------------------
-local function UpdateRows(scrollFrame)
-    local totalRows = #filteredData
-    for i = 1, VISIBLE_ROWS do
-        local row = rows[i]
-        local dataIndex = i + scrollOffset
-        if dataIndex <= totalRows then
-            local delve = filteredData[dataIndex]
-            row.delve = delve
-
-            -- Delve name - gold star prefix if bountiful this week
-            local isBountiful = false
-            if E.currentBountifulNames then
-                -- Try exact name, then normalized name, then POI ID fallback
-                isBountiful = E.currentBountifulNames[delve.name]
-                    or E.currentBountifulNames[GetLowerName(delve)]
-                    or (E.currentBountifulPOIs and delve.poiID
-                        and E.currentBountifulPOIs[delve.poiID])
-                    or false
-            end
-            local hist = E:GetDelveHistory(delve.name)
-            local runSuffix = ""
-            local totalRuns = hist and hist.lifetime and hist.lifetime.totalRuns
-            if totalRuns and totalRuns > 0 then
-                runSuffix = E.CC.muted .. " (" .. totalRuns .. "x)" .. E.CC.close
-            end
-            if isBountiful then
-                row.nameText:SetText(E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix)
-            else
-                row.nameText:SetText(E.CC.body .. delve.name .. E.CC.close .. runSuffix)
-            end
-            row.isBountiful = isBountiful
-            -- Zone (off-white)
-            row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
-
-            -- Tier badge — today's variant's tier (signature fallback).
-            local tierLetter = todayTierByName[delve.name]
-            if tierLetter then
-                local tc = DLOC_TIER_COLORS[tierLetter]
-                if tc then
-                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
-                else
-                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
-                end
-                row.tierText:SetText(tierLetter)
-            else
-                row.tierText:SetText("")
-            end
-
-            -- Today's story variant (from the same per-refresh cache).
-            local story = todayStoryByName[delve.name]
-            if story and story ~= "" then
-                row.storyText:SetText(E.CC.body .. story .. E.CC.close)
-            else
-                row.storyText:SetText(E.CC.muted .. "--" .. E.CC.close)
-            end
-
-            row:Show()
-        else
-            row.tierText:SetText("")
-            row.storyText:SetText("")
-            row:Hide()
-        end
-    end
-
-    -- Update row count label
-    -- (Showing N of N text removed by request — nothing scrolls.)
-end
-
-------------------------------------------------------------------------
--- Scroll handling
-------------------------------------------------------------------------
-local function OnMouseWheel(self, delta)
-    local maxOffset = math_max(0, #filteredData - VISIBLE_ROWS)
-    scrollOffset = math_max(0, math_min(scrollOffset - delta, maxOffset))
-    -- Move the scroll bar thumb to match
-    if self.scrollBar then
-        self.scrollBar:SetValue(scrollOffset)
-    end
-    UpdateRows(self)
-end
-
-------------------------------------------------------------------------
--- Zone dropdown (custom, no UIDropDownMenu to avoid taint)
-------------------------------------------------------------------------
-local dropdownMenu = nil  -- forward ref
-
-local function CreateZoneDropdown(parent)
-    -- The button that shows the current filter value
-    local btn = E:CreateButton(parent, 170, 24, "All Zones")
-    btn.label:SetFont(btn.label:GetFont(), 11)
-
-    -- Dropdown list (hidden by default)
-    local menu = CreateFrame("Frame", "EverythingDelvesZoneMenu",
-                             btn, "BackdropTemplate")
-    menu:SetFrameStrata("TOOLTIP")
-    menu:SetFrameLevel(100)
-    menu:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    menu:SetBackdropColor(0.05, 0.05, 0.05, 0.98)
-    E:RegisterThemed(function(p)
-        menu:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
-    end)
-    menu:Hide()
-    dropdownMenu = menu
-
-    -- Build option list: "All Zones" + each zone
-    local options = { { name = "All Zones", value = nil } }
-    for _, z in ipairs(E.Zones) do
-        table_insert(options, { name = z.name, value = z.name })
-    end
-
-    local optionButtons = {}
-    local function UpdateOptionHighlights()
-        for _, ob in ipairs(optionButtons) do
-            if ob.zoneValue == currentZone then
-                ob.label:SetText(E.CC.gold .. ob.zoneName .. E.CC.close)
-                ob:SetBackdropColor(0.20, 0, 0, 0.50)
-            else
-                ob.label:SetText(E.CC.white .. ob.zoneName .. E.CC.close)
-                ob:SetBackdropColor(0.05, 0.05, 0.05, 1)
-            end
-        end
-    end
-
-    for idx, opt in ipairs(options) do
-        local ob = CreateFrame("Button", nil, menu, "BackdropTemplate")
-        ob:SetHeight(20)
-        ob:RegisterForClicks("LeftButtonUp")
-        ob:EnableMouse(true)
-        ob:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8",
-        })
-        ob:SetBackdropColor(0.05, 0.05, 0.05, 1)
-        if idx == 1 then
-            ob:SetPoint("TOPLEFT", menu, "TOPLEFT", 2, -2)
-            ob:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -2, -2)
-        else
-            ob:SetPoint("TOPLEFT", optionButtons[idx - 1], "BOTTOMLEFT", 0, 0)
-            ob:SetPoint("TOPRIGHT", optionButtons[idx - 1], "BOTTOMRIGHT", 0, 0)
-        end
-
-        local label = ob:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("LEFT", 6, 0)
-        label:SetFont(label:GetFont(), 11)
-        label:SetText(E.CC.white .. opt.name .. E.CC.close)
-        ob.label = label
-        ob.zoneName = opt.name
-        ob.zoneValue = opt.value
-
-        ob:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(0.40, 0, 0, 0.70)
-        end)
-        ob:SetScript("OnLeave", function(self)
-            if self.zoneValue == currentZone then
-                self:SetBackdropColor(0.20, 0, 0, 0.50)
-            else
-                self:SetBackdropColor(0.05, 0.05, 0.05, 1)
-            end
-        end)
-        ob:SetScript("OnClick", function(self)
-            currentZone = opt.value
-            btn.label:SetText(E.CC.white .. opt.name .. E.CC.close)
-            menu:Hide()
-            scrollOffset = 0
-            if scrollBar then scrollBar:SetValue(0) end
-            RefreshFilteredData()
-            UpdateRows(parent)
-            UpdateOptionHighlights()
-        end)
-
-        optionButtons[idx] = ob
-    end
-
-    local totalHeight = #options * 20 + 4
-    menu:SetSize(170, totalHeight)
-    menu:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
-
-    -- Click-outside-to-close: use GLOBAL_MOUSE_DOWN instead of a
-    -- fullscreen overlay button (which kept stealing clicks from the
-    -- option buttons no matter how the strata/levels were configured).
-    -- The menu listens for any global mouse-down and closes itself if
-    -- the click landed outside both the menu and the toggle button.
-    menu:RegisterEvent("GLOBAL_MOUSE_DOWN")
-    menu:SetScript("OnEvent", function(self, event)
-        if event ~= "GLOBAL_MOUSE_DOWN" then return end
-        if not self:IsShown() then return end
-        if self:IsMouseOver() or btn:IsMouseOver() then return end
-        self:Hide()
-    end)
-
-    btn:SetScript("OnClick", function()
-        if menu:IsShown() then
-            menu:Hide()
-        else
-            menu:Show()
-        end
-    end)
-
-    menu:SetScript("OnShow", function(self)
-        self:SetPropagateKeyboardInput(false)
-    end)
-
-    return btn
-end
-
-------------------------------------------------------------------------
--- Search box
-------------------------------------------------------------------------
-local function CreateSearchBox(parent)
-    -- BackdropTemplate frame wrapping the EditBox for visual styling
-    local wrapper = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    wrapper:SetSize(180, 24)
-    wrapper:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    wrapper:SetBackdropColor(0.10, 0.10, 0.10, 1)
-    wrapper:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
-
-    local editBox = CreateFrame("EditBox", "EverythingDelvesSearchBox",
-                                wrapper)
-    editBox:SetSize(168, 20)
-    editBox:SetPoint("CENTER")
-    editBox:SetFontObject(GameFontNormal)
-    local fontPath, _, fontFlags = editBox:GetFont()
-    editBox:SetFont(fontPath, 11, fontFlags or "")
-    editBox:SetTextColor(0.88, 0.88, 0.88, 1)
-    editBox:SetAutoFocus(false)
-    editBox:SetMaxLetters(40)
-
-    -- Placeholder text (shown when the box is empty)
-    local placeholder = editBox:CreateFontString(nil, "OVERLAY",
-                                                  "GameFontNormal")
-    placeholder:SetPoint("LEFT", 2, 0)
-    local phFont, _, phFlags = placeholder:GetFont()
-    placeholder:SetFont(phFont, 11, phFlags or "")
-    placeholder:SetText(E.CC.muted .. "Search delves..." .. E.CC.close)
-    editBox.placeholder = placeholder
-
-    editBox:SetScript("OnTextChanged", function(self)
-        local text = self:GetText()
-        if text == "" then
-            placeholder:Show()
-        else
-            placeholder:Hide()
-        end
-        currentSearch = strtrim(text):lower()
-        scrollOffset = 0
-        if scrollBar then scrollBar:SetValue(0) end
-        RefreshFilteredData()
-        UpdateRows(parent)
-    end)
-    editBox:SetScript("OnEditFocusGained", function(self)
-        if self:GetText() ~= "" then placeholder:Hide() end
-    end)
-    editBox:SetScript("OnEditFocusLost", function(self)
-        if self:GetText() == "" then placeholder:Show() end
-    end)
-    editBox:SetScript("OnEscapePressed", function(self)
-        self:ClearFocus()
-    end)
-
-    return wrapper
-end
-
-------------------------------------------------------------------------
--- Column headers (clickable to re-sort)
-------------------------------------------------------------------------
-local function CreateColumnHeaders(parent, yOffset)
-    local headers = {}
-    local cols = {
-        { field = "name", label = "Delve Name",  width = 250, anchor = 0   },
-        { field = "zone", label = "Zone",         width = 120, anchor = 256 },
-        { field = "tier", label = "Tier",         width = 35,  anchor = 378 },
-    }
-
-    for _, col in ipairs(cols) do
-        local btn = CreateFrame("Button", nil, parent)
-        btn:SetSize(col.width, 22)
-        btn:SetPoint("TOPLEFT", parent, "TOPLEFT", col.anchor, yOffset)
-
-        local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        text:SetPoint("LEFT")
-        if col.field == "name" then
-            -- Delve Name is the section header for the list — apply
-            -- the unified header font size + accent colour.
-            text:SetFont(text:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-        else
-            text:SetFont(text:GetFont(), 11, "OUTLINE")
-        end
-        E:StyleAccentHeader(text, col.label)
-        btn.label = text
-
-        btn:SetScript("OnClick", function()
-            if sortField == col.field then
-                sortAscending = not sortAscending
-            else
-                sortField = col.field
-                sortAscending = true
-            end
-            scrollOffset = 0
-            if scrollBar then scrollBar:SetValue(0) end
-            RefreshFilteredData()
-            UpdateRows(parent)
-        end)
-
-        table_insert(headers, { field = col.field, btn = btn })
-    end
-
-    -- Static labels for the two action columns (not sortable). Anchor
-    -- by LEFT (vertical centre) instead of TOPLEFT so the baseline lines\n    -- up with the Zone column header (which lives inside a 22 px button).
-    for _, info in ipairs({
-        { label = "Pin",            x = 422 },
-        { label = "TomTom",         x = 462 },
-        { label = "Today's Story",  x = 520 },
-    }) do
-        local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("LEFT", parent, "TOPLEFT", info.x, yOffset - 11)
-        fs:SetFont(fs:GetFont(), 11, "OUTLINE")
-        E:StyleAccentHeader(fs, info.label)
-    end
-
-    -- Set initial sort arrow
-    -- (Arrow indicator removed by request.)
-
-    return headers
-end
-
-------------------------------------------------------------------------
--- Create a single row frame (recycled - created once, reused on scroll)
-------------------------------------------------------------------------
-local function CreateRow(parent, index)
-    local row = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    row:SetHeight(ROW_HEIGHT)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0,
-                 -((index - 1) * ROW_HEIGHT))
-    row:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
-    row:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-    })
-    -- Alternate row shading for readability
-    if index % 2 == 0 then
-        row:SetBackdropColor(0.08, 0.08, 0.08, 0.50)
-    else
-        row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-    end
-    row:EnableMouse(true)
-
-    -- Delve Name
-    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nameText:SetPoint("LEFT", row, "LEFT", 4, 0)
-    nameText:SetFont(nameText:GetFont(), 11)
-    nameText:SetWidth(246)
-    nameText:SetJustifyH("LEFT")
-    nameText:SetWordWrap(false)
-    row.nameText = nameText
-
-    -- Zone (trimmed to make room for tier badge)
-    local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    zoneText:SetPoint("LEFT", row, "LEFT", 256, 0)
-    zoneText:SetFont(zoneText:GetFont(), 11)
-    zoneText:SetWidth(120)
-    zoneText:SetJustifyH("LEFT")
-    zoneText:SetWordWrap(false)
-    row.zoneText = zoneText
-
-    -- Tier badge (S/A/B/C/D/F)
-    local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    tierText:SetPoint("LEFT", row, "LEFT", 380, 0)
-    tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
-    tierText:SetWidth(30)
-    tierText:SetJustifyH("CENTER")
-    row.tierText = tierText
-
-    -- [Waypoint] button
-    local wpBtn = E:CreateButton(row, 32, 20, "Pin")
-    wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
-    wpBtn:SetPoint("LEFT", row, "LEFT", 422, 0)
-    wpBtn:SetScript("OnClick", function()
-        if row.delve then
-            E:SetWaypoint(row.delve.mapID, row.delve.x, row.delve.y)
-            E:FlashButtonConfirm(wpBtn)
-        end
-    end)
-    wpBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set Waypoint",
-                      "Places a Blizzard map pin on this delve's location.")
-    end)
-    wpBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-    row.wpBtn = wpBtn
-
-    -- [TomTom] button
-    local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
-    ttBtn.label:SetFont(ttBtn.label:GetFont(), 10)
-    ttBtn:SetPoint("LEFT", row, "LEFT", 460, 0)
-    ttBtn:SetScript("OnClick", function()
-        if row.delve then
-            E:AddTomTomWaypoint(row.delve.mapID,
-                                row.delve.x, row.delve.y,
-                                row.delve.name)
-            E:FlashButtonConfirm(ttBtn)
-        end
-    end)
-    ttBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, "TomTom Waypoint",
-                          "Add an arrow waypoint via TomTom.")
-        else
-            E:ShowTooltip(self, "TomTom Not Installed",
-                          "Install the TomTom addon to use arrow waypoints.")
-        end
-    end)
-    ttBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-    row.ttBtn = ttBtn
-
-    -- Today's story variant, read live from the delve's POI. Stretches
-    -- from just past the TomTom button to the right edge of the row.
-    local storyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    storyText:SetPoint("LEFT",  row, "LEFT",  520, 0)
-    storyText:SetPoint("RIGHT", row, "RIGHT", -8,  0)
-    storyText:SetFont(storyText:GetFont(), 11)
-    storyText:SetJustifyH("LEFT")
-    storyText:SetWordWrap(false)
-    row.storyText = storyText
-
-    -- Row hover tooltip (no background colour change — rows stay
-    -- neutral on hover/click/select).
-    row:SetScript("OnEnter", function(self)
-        if self.delve then
-            local tipLines = {}
-            if self.isBountiful then
-                table_insert(tipLines, E.CC.gold .. "* Bountiful Delve today!" .. E.CC.close)
-            end
-            table_insert(tipLines,
-                E.CC.muted .. "Zone: " .. E.CC.close
-                    .. E.CC.body .. self.delve.zone .. E.CC.close)
-
-            -- Today's live story variant (all delves) + its tier and the
-            -- per-variant strategy note from STORY_TIERS (shared via
-            -- E:GetStoryTier from the Bountiful tab).
-            local todayStory = E.GetDelveStoryVariant and E:GetDelveStoryVariant(self.delve.name)
-            if todayStory and todayStory ~= "" then
-                local si = E.GetStoryTier and E:GetStoryTier(todayStory)
-                table_insert(tipLines, "")
-                if si and si.tier then
-                    local tc = DLOC_TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
-                    local cc = string.format("|cFF%02X%02X%02X",
-                        math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
-                    table_insert(tipLines,
-                        E.CC.muted .. "Today's Story: " .. E.CC.close
-                        .. E.CC.body .. todayStory .. E.CC.close
-                        .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                        .. cc .. si.tier .. " Tier|r")
-                else
-                    table_insert(tipLines,
-                        E.CC.muted .. "Today's Story: " .. E.CC.close
-                        .. E.CC.body .. todayStory .. E.CC.close)
-                end
-                if si and si.note then
-                    table_insert(tipLines, E.CC.muted .. si.note .. E.CC.close)
-                end
-            end
-
-            E:ShowTooltip(self, self.delve.name, unpack(tipLines))
-        end
-    end)
-    row:SetScript("OnLeave", function(self)
-        E:HideTooltip()
-    end)
-
-    return row
-end
-
-------------------------------------------------------------------------
--- Scroll bar (simple vertical slider)
-------------------------------------------------------------------------
-local function CreateScrollBar(parent, listFrame)
-    -- Slider widget acts as the scroll bar thumb
-    local bar = CreateFrame("Slider", nil, parent, "BackdropTemplate")
-    bar:SetWidth(14)
-    bar:SetPoint("TOPRIGHT", listFrame, "TOPRIGHT", 16, 0)
-    bar:SetPoint("BOTTOMRIGHT", listFrame, "BOTTOMRIGHT", 16, 0)
-    bar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    bar:SetBackdropColor(0.10, 0.10, 0.10, 0.80)
-    bar:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
-
-    -- Thumb texture
-    local thumb = bar:CreateTexture(nil, "OVERLAY")
-    thumb:SetSize(12, 40)
-    E:StyleAccentThumb(thumb)
-    bar:SetThumbTexture(thumb)
-
-    bar:SetOrientation("VERTICAL")
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0)
-    bar:SetValueStep(1)
-    bar:SetObeyStepOnDrag(true)
-
-    bar:SetScript("OnValueChanged", function(self, value)
-        scrollOffset = math_floor(value + 0.5)
-        UpdateRows(parent)
-    end)
-
-    return bar
-end
-
-------------------------------------------------------------------------
 -- MODULE INIT - called via RegisterModule after the main frame exists
 ------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")
     local TOOLBAR_Y = -4
-    -- LIST_Y previously − 58 (toolbar + 1 line for count + column-header).
-    -- Count line removed and 20 px of breathing room added below the
-    -- toolbar per design request.
     local LIST_Y    = -78
 
-    --------------------------------------------------------------------
-    -- Toolbar row: zone dropdown, search box, [Set All Waypoints], count
-    --------------------------------------------------------------------
-    local zoneDrop = CreateZoneDropdown(frame)
-    zoneDrop:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, TOOLBAR_Y)
+    -- Forward-declared rebuild so row/header click handlers can call it.
+    local Refresh
 
-    local searchBox = CreateSearchBox(frame)
-    searchBox:SetPoint("LEFT", zoneDrop, "RIGHT", 10, 0)
+    --------------------------------------------------------------------
+    -- Pools (rows are re-anchored every Refresh via the Y-cursor; we
+    -- never destroy frames — unused ones are hidden).
+    --------------------------------------------------------------------
+    local delveRowPool = {}
+    local bossRowPool  = {}
+    local noteLinePool = {}
 
-    -- [Set All Waypoints] button
+    --------------------------------------------------------------------
+    -- Scroll frame + scroll child
+    --------------------------------------------------------------------
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
+    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",  4,   LIST_Y - 16)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
+    scrollFrame:EnableMouseWheel(true)
+
+    local sc = CreateFrame("Frame")
+    sc:SetSize(1, 1)
+    scrollFrame:SetScrollChild(sc)
+    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
+    sc:SetHeight(1)
+
+    local scrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
+    scrollBar:SetWidth(14)
+    scrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
+    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
+    scrollBar:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    scrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
+    scrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
+    local sbThumb = scrollBar:CreateTexture(nil, "OVERLAY")
+    sbThumb:SetSize(12, 40)
+    E:StyleAccentThumb(sbThumb)
+    scrollBar:SetThumbTexture(sbThumb)
+    scrollBar:SetOrientation("VERTICAL")
+    scrollBar:SetMinMaxValues(0, 1)
+    scrollBar:SetValue(0)
+    scrollBar:SetValueStep(1)
+    scrollBar:SetObeyStepOnDrag(true)
+    scrollBar:SetScript("OnValueChanged", function(_, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
+
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
+        local newVal = math_max(0, math_min(
+            self:GetVerticalScroll() - delta * 30, maxScroll))
+        self:SetVerticalScroll(newVal)
+        scrollBar:SetValue(newVal)
+    end)
+
+    local function UpdateScrollRange()
+        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
+        scrollBar:SetMinMaxValues(0, maxScroll)
+        if maxScroll <= 0 then
+            scrollBar:Hide()
+        else
+            scrollBar:Show()
+        end
+    end
+
+    --------------------------------------------------------------------
+    -- Row click handlers (shared — no per-row closures)
+    --------------------------------------------------------------------
+    local function DelveRow_Toggle(self)
+        local d = self.delve
+        if not d then return end
+        expandedDelve[d.name] = not expandedDelve[d.name]
+        if Refresh then Refresh() end
+    end
+
+    local function BossRow_OnClick(self)
+        if not self.bossKey then return end
+        expandedBoss[self.bossKey] = not expandedBoss[self.bossKey]
+        if Refresh then Refresh() end
+    end
+
+    --------------------------------------------------------------------
+    -- Delve row factory (all columns + waypoint buttons). Rows are
+    -- re-anchored each Refresh, so the constructor only builds widgets.
+    --------------------------------------------------------------------
+    local function CreateDelveRow()
+        local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
+        row:SetHeight(ROW_HEIGHT)
+        row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+        row:RegisterForClicks("LeftButtonUp")
+        row:SetScript("OnClick", DelveRow_Toggle)
+
+        -- Delve Name (caret prefix is baked into the text)
+        local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameText:SetPoint("LEFT", row, "LEFT", 4, 0)
+        nameText:SetFont(nameText:GetFont(), 11)
+        nameText:SetWidth(246)
+        nameText:SetJustifyH("LEFT")
+        nameText:SetWordWrap(false)
+        row.nameText = nameText
+
+        -- Zone
+        local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        zoneText:SetPoint("LEFT", row, "LEFT", 256, 0)
+        zoneText:SetFont(zoneText:GetFont(), 11)
+        zoneText:SetWidth(120)
+        zoneText:SetJustifyH("LEFT")
+        zoneText:SetWordWrap(false)
+        row.zoneText = zoneText
+
+        -- Tier badge (S/A/B/C/D/F)
+        local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        tierText:SetPoint("LEFT", row, "LEFT", 380, 0)
+        tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
+        tierText:SetWidth(30)
+        tierText:SetJustifyH("CENTER")
+        row.tierText = tierText
+
+        -- [Pin] button
+        local wpBtn = E:CreateButton(row, 32, 20, "Pin")
+        wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
+        wpBtn:SetPoint("LEFT", row, "LEFT", 422, 0)
+        wpBtn:SetScript("OnClick", function()
+            if row.delve then
+                E:SetWaypoint(row.delve.mapID, row.delve.x, row.delve.y)
+                E:FlashButtonConfirm(wpBtn)
+            end
+        end)
+        wpBtn:SetScript("OnEnter", function(self)
+            local hc = E.Colors.buttonHover
+            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+            E:ShowTooltip(self, "Set Waypoint",
+                          "Places a Blizzard map pin on this delve's location.")
+        end)
+        wpBtn:SetScript("OnLeave", function(self)
+            local bc = E.Colors.buttonBg
+            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+            E:HideTooltip()
+        end)
+        row.wpBtn = wpBtn
+
+        -- [TomTom] button
+        local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
+        ttBtn.label:SetFont(ttBtn.label:GetFont(), 10)
+        ttBtn:SetPoint("LEFT", row, "LEFT", 460, 0)
+        ttBtn:SetScript("OnClick", function()
+            if row.delve then
+                E:AddTomTomWaypoint(row.delve.mapID,
+                                    row.delve.x, row.delve.y,
+                                    row.delve.name)
+                E:FlashButtonConfirm(ttBtn)
+            end
+        end)
+        ttBtn:SetScript("OnEnter", function(self)
+            local hc = E.Colors.buttonHover
+            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+            if E:IsTomTomLoaded() then
+                E:ShowTooltip(self, "TomTom Waypoint",
+                              "Add an arrow waypoint via TomTom.")
+            else
+                E:ShowTooltip(self, "TomTom Not Installed",
+                              "Install the TomTom addon to use arrow waypoints.")
+            end
+        end)
+        ttBtn:SetScript("OnLeave", function(self)
+            local bc = E.Colors.buttonBg
+            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+            E:HideTooltip()
+        end)
+        row.ttBtn = ttBtn
+
+        -- Today's story variant
+        local storyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        storyText:SetPoint("LEFT",  row, "LEFT",  520, 0)
+        storyText:SetPoint("RIGHT", row, "RIGHT", -8,  0)
+        storyText:SetFont(storyText:GetFont(), 11)
+        storyText:SetJustifyH("LEFT")
+        storyText:SetWordWrap(false)
+        row.storyText = storyText
+
+        -- Row hover tooltip
+        row:SetScript("OnEnter", function(self)
+            if self.delve then
+                local tipLines = {}
+                if self.isBountiful then
+                    table_insert(tipLines, E.CC.gold .. "* Bountiful Delve today!" .. E.CC.close)
+                end
+                table_insert(tipLines,
+                    E.CC.muted .. "Zone: " .. E.CC.close
+                        .. E.CC.body .. self.delve.zone .. E.CC.close)
+
+                local todayStory = E.GetDelveStoryVariant and E:GetDelveStoryVariant(self.delve.name)
+                if todayStory and todayStory ~= "" then
+                    local si = E.GetStoryTier and E:GetStoryTier(todayStory)
+                    table_insert(tipLines, "")
+                    if si and si.tier then
+                        local tc = DLOC_TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
+                        local cc = string_format("|cFF%02X%02X%02X",
+                            math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
+                        table_insert(tipLines,
+                            E.CC.muted .. "Today's Story: " .. E.CC.close
+                            .. E.CC.body .. todayStory .. E.CC.close
+                            .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
+                            .. cc .. si.tier .. " Tier|r")
+                    else
+                        table_insert(tipLines,
+                            E.CC.muted .. "Today's Story: " .. E.CC.close
+                            .. E.CC.body .. todayStory .. E.CC.close)
+                    end
+                    if si and si.note then
+                        table_insert(tipLines, E.CC.muted .. si.note .. E.CC.close)
+                    end
+                end
+
+                local bosses = E.GetDelveBosses and E:GetDelveBosses(self.delve.name)
+                if bosses then
+                    table_insert(tipLines, "")
+                    table_insert(tipLines, E.CC.muted
+                        .. (expandedDelve[self.delve.name]
+                            and "Click to hide boss tactics"
+                            or  "Click to show boss tactics")
+                        .. E.CC.close)
+                end
+
+                E:ShowTooltip(self, self.delve.name, unpack(tipLines))
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            E:HideTooltip()
+        end)
+
+        return row
+    end
+
+    local function AcquireDelveRow(i)
+        local row = delveRowPool[i]
+        if not row then
+            row = CreateDelveRow()
+            delveRowPool[i] = row
+        end
+        row:ClearAllPoints()
+        return row
+    end
+
+    --------------------------------------------------------------------
+    -- Boss sub-row factory: caret + boss name on line 1, brief on line 2.
+    --------------------------------------------------------------------
+    local function CreateBossRow()
+        local row = CreateFrame("Button", nil, sc)
+        row:RegisterForClicks("LeftButtonUp")
+        row:SetScript("OnClick", BossRow_OnClick)
+
+        local caretFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        caretFS:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2)
+        caretFS:SetFont(caretFS:GetFont(), 11, "OUTLINE")
+        row.caretFS = caretFS
+
+        local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameFS:SetPoint("TOPLEFT", caretFS, "TOPRIGHT", 6, 0)
+        nameFS:SetFont(nameFS:GetFont(), 11, "OUTLINE")
+        nameFS:SetJustifyH("LEFT")
+        row.nameFS = nameFS
+
+        local briefFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        briefFS:SetPoint("TOPLEFT", row, "TOPLEFT", 18, -17)
+        briefFS:SetFont(briefFS:GetFont(), 10)
+        briefFS:SetJustifyH("LEFT")
+        briefFS:SetSpacing(2)
+        row.briefFS = briefFS
+
+        return row
+    end
+
+    local function AcquireBossRow(i)
+        local row = bossRowPool[i]
+        if not row then
+            row = CreateBossRow()
+            bossRowPool[i] = row
+        end
+        row:ClearAllPoints()
+        return row
+    end
+
+    local function AcquireNoteLine(i)
+        local fs = noteLinePool[i]
+        if not fs then
+            fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            fs:SetFont(fs:GetFont(), 10)
+            fs:SetJustifyH("LEFT")
+            fs:SetSpacing(2)
+            noteLinePool[i] = fs
+        end
+        fs:ClearAllPoints()
+        return fs
+    end
+
+    --------------------------------------------------------------------
+    -- Toolbar: [Set All Waypoints] only (search box + zone filter removed)
+    --------------------------------------------------------------------
     local setAllBtn = E:CreateButton(frame, 130, 24, "Set All Waypoints")
     setAllBtn.label:SetFont(setAllBtn.label:GetFont(), 10)
     setAllBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, TOOLBAR_Y)
@@ -725,7 +481,7 @@ E:RegisterModule(function()
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         E:ShowTooltip(self, "Set All Waypoints",
                       "Adds TomTom waypoints for every delve",
-                      "currently visible in the filtered list.",
+                      "in the list.",
                       "",
                       E.CC.muted .. "Requires TomTom addon." .. E.CC.close)
     end)
@@ -735,33 +491,64 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Row count label removed by request ("Showing 10 of 10" was redundant).
-
-    -- Small sort hint in the gap between toolbar and column headers
+    -- Hint text in the gap between toolbar and column headers
     local sortHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sortHint:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514, LIST_Y + 46)
     sortHint:SetFont(sortHint:GetFont(), 9)
     sortHint:SetTextColor(0.38, 0.38, 0.38, 1)
     sortHint:SetJustifyH("RIGHT")
-    sortHint:SetText("Click column headers to sort")
+    sortHint:SetText("Click a delve for boss tactics  \226\128\148  click headers to sort")
 
     --------------------------------------------------------------------
-    -- Column headers
+    -- Column headers (clickable to re-sort)
     --------------------------------------------------------------------
-    -- Permanent grey line ABOVE the column header row (#4A4A4A,
-    -- not affected by accent colour). Stops at the right edge of TomTom.
-    -- Sits a few pixels higher than a tight fit so the OUTLINE glow on
-    -- the "Delve Name" header (20pt OUTLINE) doesn't bleed into the
-    -- line and make it look thicker than the lower line.
     local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
     headerLineTop:SetHeight(1)
     headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 36)
     headerLineTop:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 36)
     E:StyleGreyLine(headerLineTop)
 
-    CreateColumnHeaders(frame, LIST_Y + 22)
+    do
+        local cols = {
+            { field = "name", label = "Delve Name",  width = 250, anchor = 0   },
+            { field = "zone", label = "Zone",         width = 120, anchor = 256 },
+            { field = "tier", label = "Tier",         width = 35,  anchor = 378 },
+        }
+        for _, col in ipairs(cols) do
+            local btn = CreateFrame("Button", nil, frame)
+            btn:SetSize(col.width, 22)
+            btn:SetPoint("TOPLEFT", frame, "TOPLEFT", col.anchor, LIST_Y + 22)
+            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            text:SetPoint("LEFT")
+            if col.field == "name" then
+                text:SetFont(text:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+            else
+                text:SetFont(text:GetFont(), 11, "OUTLINE")
+            end
+            E:StyleAccentHeader(text, col.label)
+            btn:SetScript("OnClick", function()
+                if sortField == col.field then
+                    sortAscending = not sortAscending
+                else
+                    sortField = col.field
+                    sortAscending = true
+                end
+                if Refresh then Refresh() end
+            end)
+        end
 
-    -- Permanent grey line BELOW the column header row.
+        for _, info in ipairs({
+            { label = "Pin",            x = 422 },
+            { label = "TomTom",         x = 462 },
+            { label = "Today's Story",  x = 520 },
+        }) do
+            local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            fs:SetPoint("LEFT", frame, "TOPLEFT", info.x, LIST_Y + 22 - 11)
+            fs:SetFont(fs:GetFont(), 11, "OUTLINE")
+            E:StyleAccentHeader(fs, info.label)
+        end
+    end
+
     local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
     headerLineBot:SetHeight(1)
     headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y - 8)
@@ -769,44 +556,163 @@ E:RegisterModule(function()
     E:StyleGreyLine(headerLineBot)
 
     --------------------------------------------------------------------
-    -- Scrollable list area
+    -- Refresh: rebuild the list (delve rows + expanded boss tactics)
     --------------------------------------------------------------------
-    local listFrame = CreateFrame("Frame", nil, frame)
-    listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,  LIST_Y - 16)
-    listFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
-    listFrame:EnableMouseWheel(false)
+    function Refresh()
+        RefreshFilteredData()
 
-    -- Create recycled rows
-    for i = 1, VISIBLE_ROWS do
-        rows[i] = CreateRow(listFrame, i)
+        for _, r in ipairs(delveRowPool) do r:Hide() end
+        for _, r in ipairs(bossRowPool)  do r:Hide() end
+        for _, r in ipairs(noteLinePool) do r:Hide() end
+
+        local dUsed, bUsed, nUsed = 0, 0, 0
+        local yCur = 2
+
+        local function PlaceRow(row, x, h)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
+            row:SetPoint("RIGHT",   sc, "RIGHT",  -2, 0)
+            row:Show()
+            yCur = yCur + h
+        end
+
+        for _, delve in ipairs(filteredData) do
+            dUsed = dUsed + 1
+            local row = AcquireDelveRow(dUsed)
+            row:SetParent(sc)
+            row.delve = delve
+
+            -- Alternate shading by emission order.
+            if dUsed % 2 == 0 then
+                row:SetBackdropColor(0.08, 0.08, 0.08, 0.50)
+            else
+                row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
+            end
+
+            -- Bountiful star + run count.
+            local isBountiful = false
+            if E.currentBountifulNames then
+                isBountiful = E.currentBountifulNames[delve.name]
+                    or E.currentBountifulNames[GetLowerName(delve)]
+                    or (E.currentBountifulPOIs and delve.poiID
+                        and E.currentBountifulPOIs[delve.poiID])
+                    or false
+            end
+            row.isBountiful = isBountiful
+
+            local hist = E:GetDelveHistory(delve.name)
+            local runSuffix = ""
+            local totalRuns = hist and hist.lifetime and hist.lifetime.totalRuns
+            if totalRuns and totalRuns > 0 then
+                runSuffix = E.CC.muted .. " (" .. totalRuns .. "x)" .. E.CC.close
+            end
+
+            local caret = E.CC.gold
+                .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
+            if isBountiful then
+                row.nameText:SetText(caret .. " "
+                    .. E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix)
+            else
+                row.nameText:SetText(caret .. " "
+                    .. E.CC.body .. delve.name .. E.CC.close .. runSuffix)
+            end
+
+            row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
+
+            local tierLetter = todayTierByName[delve.name]
+            if tierLetter then
+                local tc = DLOC_TIER_COLORS[tierLetter]
+                if tc then
+                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
+                else
+                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
+                end
+                row.tierText:SetText(tierLetter)
+            else
+                row.tierText:SetText("")
+            end
+
+            local story = todayStoryByName[delve.name]
+            if story and story ~= "" then
+                row.storyText:SetText(E.CC.body .. story .. E.CC.close)
+            else
+                row.storyText:SetText(E.CC.muted .. "--" .. E.CC.close)
+            end
+
+            PlaceRow(row, 0, ROW_HEIGHT)
+
+            -- Expanded: list this delve's boss tactics.
+            if expandedDelve[delve.name] then
+                local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
+                if bosses then
+                    local todaysBoss = E.GetTodaysBossName
+                        and E:GetTodaysBossName(delve.name)
+                    for bi, boss in ipairs(bosses) do
+                        bUsed = bUsed + 1
+                        local brow = AcquireBossRow(bUsed)
+                        brow:SetParent(sc)
+                        local bossKey = delve.name .. "##" .. bi
+                        brow.bossKey = bossKey
+
+                        local bExpanded = expandedBoss[bossKey]
+                        brow.caretFS:SetText(E.CC.muted
+                            .. (bExpanded and "v" or ">") .. E.CC.close)
+                        if todaysBoss and boss.name == todaysBoss then
+                            brow.nameFS:SetText(
+                                "|TInterface\\Common\\FavoritesIcon:14:14|t "
+                                .. E.CC.gold .. boss.name .. E.CC.close
+                                .. E.CC.muted .. "   (today's boss)" .. E.CC.close)
+                        else
+                            brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
+                        end
+
+                        local briefW = math_max(150,
+                            (sc:GetWidth() or 600) - 18 - 16)
+                        brow.briefFS:SetWidth(briefW)
+                        brow.briefFS:SetText(E.CC.muted .. (boss.brief or "") .. E.CC.close)
+
+                        local bh = 18 + (brow.briefFS:GetStringHeight() or 12) + 6
+                        brow:SetHeight(bh)
+                        PlaceRow(brow, 24, bh)
+
+                        if bExpanded and boss.notes then
+                            for _, note in ipairs(boss.notes) do
+                                nUsed = nUsed + 1
+                                local nl = AcquireNoteLine(nUsed)
+                                nl:SetParent(sc)
+                                local w = math_max(150,
+                                    (sc:GetWidth() or 600) - 48 - 12)
+                                nl:SetWidth(w)
+                                nl:SetText(
+                                    RoleCC(note.role) .. RoleLabel(note.role) .. "|r  "
+                                    .. E.CC.body .. note.text .. E.CC.close)
+                                local h = (nl:GetStringHeight() or 12) + 5
+                                nl:SetPoint("TOPLEFT", sc, "TOPLEFT", 48, -yCur)
+                                nl:Show()
+                                yCur = yCur + h
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        sc:SetHeight(yCur + 8)
+        UpdateScrollRange()
     end
 
-    -- Scrollbar removed by request — the full delve list (10) fits
-    -- within VISIBLE_ROWS, so there is nothing to scroll to.
-
-    -- Whenever the list frame shows, refresh data and rows
-    listFrame:SetScript("OnShow", function(self)
-        RefreshFilteredData()
-        UpdateRows(self)
+    --------------------------------------------------------------------
+    -- Show / refresh hooks
+    --------------------------------------------------------------------
+    frame:SetScript("OnShow", function()
+        Refresh()
+        scrollFrame:SetVerticalScroll(0)
+        scrollBar:SetValue(0)
     end)
 
-    -- Store a reference so other functions can trigger refreshes
-    frame.listFrame = listFrame
-
-    -- Refresh rows when POI data updates so the bountiful stars and this
-    -- week's story column fill in if the tab is open before the POI cache
-    -- warms. Mirrors the Current Bountiful tab's live refresh.
     E:RegisterCallback("AreaPoisUpdated", function()
-        if listFrame:IsShown() then
-            UpdateRows(listFrame)
-        end
-    end)
-
-    -- Close the zone dropdown when clicking anywhere else on the tab
-    frame:EnableMouse(true)
-    frame:SetScript("OnMouseDown", function()
-        if dropdownMenu and dropdownMenu:IsShown() then
-            dropdownMenu:Hide()
+        if frame:IsShown() then
+            Refresh()
         end
     end)
 

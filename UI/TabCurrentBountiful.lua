@@ -127,16 +127,14 @@ function E:GetStoryTier(storyVariant)
     return GetStoryTier(storyVariant)
 end
 
--- Set during RegisterModule init; read by UpdateBestPick which is called
--- from CreateRow's OnMouseUp (outside RegisterModule scope).
+-- Set during RegisterModule init; read by UpdateBestPick (defined at file
+-- scope, outside the RegisterModule body).
 local bestPickFS = nil
 
 ------------------------------------------------------------------------
 -- Local state
 ------------------------------------------------------------------------
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
-local VISIBLE_ROWS   = 10
-local rows           = {}
 local bountifulList  = {}   -- today's bountiful delves (reused)
 -- Bountiful count is derived dynamically from #bountifulList (no hardcoded constant)
 
@@ -144,6 +142,30 @@ local bountifulList  = {}   -- today's bountiful delves (reused)
 -- fresh tables every time the bountiful list is rebuilt (on OnShow,
 -- area POI updates, and refresh button clicks).
 local bountifulEntryPool = {}
+
+-- Expansion state for boss tactics (keyed by delve name / "name##idx").
+-- The boss data + rendering match the Delve Locations tab exactly.
+local expandedDelve = {}
+local expandedBoss  = {}
+
+-- Reflow pools + scroll widgets (assigned during init).
+local delveRowPool = {}
+local bossRowPool  = {}
+local noteLinePool = {}
+local sc, scrollFrame, scrollBar
+local UpdateScrollRange
+
+-- Boss-note role colouring (mirrors the Delve Locations tab).
+local function RoleCC(role)
+    local m = E.BossRoleMeta and E.BossRoleMeta[role]
+    local rgb = m and m.rgb or {0.80, 0.80, 0.85}
+    return string_format("|cFF%02X%02X%02X",
+        math_floor(rgb[1]*255), math_floor(rgb[2]*255), math_floor(rgb[3]*255))
+end
+local function RoleLabel(role)
+    local m = E.BossRoleMeta and E.BossRoleMeta[role]
+    return (m and m.label or "Note") .. ":"
+end
 
 local function AcquireBountifulEntry()
     local n = #bountifulEntryPool
@@ -511,98 +533,36 @@ local function CreateStatRow(parent, labelText, yOffset, xOffset, itemIconID)
 end
 
 ------------------------------------------------------------------------
--- Row rendering
+-- Row rendering (reflowed list with expandable boss tactics)
 ------------------------------------------------------------------------
-local function UpdateRows(container)
-    local total = #bountifulList
-    for i = 1, VISIBLE_ROWS do
-        local row = rows[i]
-        local idx = i
-        if idx <= total then
-            local delve = bountifulList[idx]
-            row.delve = delve
+-- Forward declaration so the row/boss toggle handlers can call it.
+local UpdateRows
 
-            if delve.completed then
-                -- Completed: dimmed with checkmark prefix
-                row.nameText:SetText(
-                    E.CC.muted .. "\226\156\147 " .. delve.name .. E.CC.close
-                )
-                row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
-                local completedPrefix = delve.overcharged
-                    and (E.CC.muted .. "Overcharged" .. E.CC.close
-                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
-                    or ""
-                row.variantText:SetText(
-                    completedPrefix
-                    .. E.CC.muted .. delve.storyVariant .. E.CC.close
-                )
-                row:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
-            else
-                row.nameText:SetText(E.CC.gold .. delve.name .. E.CC.close)
-                row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
-
-                -- Check if normal (non-bountiful) version is also active
-                local normalNote = ""
-                if delve.normalPoiID and delve.mapID
-                        and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo then
-                    local nPoi = C_AreaPoiInfo.GetAreaPOIInfo(
-                                     delve.mapID, delve.normalPoiID)
-                    if nPoi then
-                        normalNote = E.CC.muted
-                            .. " (Normal version available)" .. E.CC.close
-                    end
-                end
-
-                local overchargedPrefix = delve.overcharged
-                    and (E.CC.yellow .. "Overcharged" .. E.CC.close
-                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
-                    or ""
-                row.variantText:SetText(
-                    overchargedPrefix
-                    .. E.CC.muted .. delve.storyVariant .. E.CC.close
-                    .. normalNote
-                )
-                -- Neutral row tint (matches Delve Locations tab).
-                row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-            end
-
-            local si = GetStoryTier(delve.storyVariant)
-            if si then
-                local tc = TIER_COLORS[si.tier]
-                if delve.completed then
-                    row.tierText:SetTextColor(0.40, 0.40, 0.40)
-                elseif tc then
-                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
-                else
-                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
-                end
-                row.tierText:SetText(si.tier)
-            else
-                row.tierText:SetText("")
-            end
-            row:Show()
-        else
-            row.tierText:SetText("")
-            row:Hide()
-        end
-    end
+local function DelveRow_Toggle(self)
+    local d = self.delve
+    if not d then return end
+    expandedDelve[d.name] = not expandedDelve[d.name]
+    if UpdateRows then UpdateRows() end
 end
 
-------------------------------------------------------------------------
--- Create a single bountiful delve row
-------------------------------------------------------------------------
-local function CreateRow(parent, index)
-    local row = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+local function BossRow_OnClick(self)
+    if not self.bossKey then return end
+    expandedBoss[self.bossKey] = not expandedBoss[self.bossKey]
+    if UpdateRows then UpdateRows() end
+end
+
+--------------------------------------------------------------------
+-- Delve row factory (two-line: name + variant subtext, plus columns).
+--------------------------------------------------------------------
+local function CreateDelveRow()
+    local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
     row:SetHeight(ROW_HEIGHT)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * ROW_HEIGHT))
-    row:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
     row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
     row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-    row:EnableMouse(true)
-    -- RegisterForClicks on a non-Button frame isn't needed - we use
-    -- OnMouseUp to detect right-clicks for manual-complete.
+    row:RegisterForClicks("LeftButtonUp")
+    row:SetScript("OnClick", DelveRow_Toggle)
 
-    -- Delve name (top line)
+    -- Delve name (top line; caret prefix baked into the text)
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -3)
     nameText:SetFont(nameText:GetFont(), 11)
@@ -611,7 +571,7 @@ local function CreateRow(parent, index)
     nameText:SetWordWrap(false)
     row.nameText = nameText
 
-    -- Story variant (second line, smaller muted text)
+    -- Story variant (second line)
     local variantText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     variantText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -1)
     variantText:SetFont(variantText:GetFont(), 9)
@@ -620,7 +580,7 @@ local function CreateRow(parent, index)
     variantText:SetWordWrap(false)
     row.variantText = variantText
 
-    -- Zone (width trimmed to make room for tier badge)
+    -- Zone
     local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     zoneText:SetPoint("LEFT", row, "LEFT", 230, 0)
     zoneText:SetFont(zoneText:GetFont(), 11)
@@ -629,7 +589,7 @@ local function CreateRow(parent, index)
     zoneText:SetWordWrap(false)
     row.zoneText = zoneText
 
-    -- Tier badge (S / A / B / C / D / F)
+    -- Tier badge
     local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     tierText:SetPoint("LEFT", row, "LEFT", 335, 0)
     tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
@@ -637,7 +597,7 @@ local function CreateRow(parent, index)
     tierText:SetJustifyH("CENTER")
     row.tierText = tierText
 
-    -- [Waypoint] button
+    -- [Pin] button
     local wpBtn = E:CreateButton(row, 32, 20, "Pin")
     wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
     wpBtn:SetPoint("LEFT", row, "LEFT", 370, 0)
@@ -690,13 +650,9 @@ local function CreateRow(parent, index)
     end)
     row.ttBtn = ttBtn
 
-    -- Hover tooltip (no background colour change — rows stay neutral
-    -- on hover/click/select, matching the Delve Locations tab).
+    -- Hover tooltip (anchored to the right of the TomTom button)
     row:SetScript("OnEnter", function(self)
         if self.delve then
-            -- Anchor the tooltip to the right of the TomTom button so it
-            -- sits just outside the action buttons instead of crowding
-            -- the row text or floating off-screen.
             local anchorTo = self.ttBtn or self
             GameTooltip:SetOwner(anchorTo, "ANCHOR_NONE")
             GameTooltip:ClearAllPoints()
@@ -714,14 +670,235 @@ local function CreateRow(parent, index)
             end
             GameTooltip:AddLine(self.delve.storyVariant,
                                 0.88, 0.88, 0.88, true)
+            local bosses = E.GetDelveBosses and E:GetDelveBosses(self.delve.name)
+            if bosses then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(expandedDelve[self.delve.name]
+                    and "Click to hide boss tactics"
+                    or  "Click to show boss tactics", 0.55, 0.55, 0.55, true)
+            end
             GameTooltip:Show()
         end
     end)
-    row:SetScript("OnLeave", function(self)
+    row:SetScript("OnLeave", function()
         E:HideTooltip()
     end)
 
     return row
+end
+
+local function AcquireDelveRow(i)
+    local row = delveRowPool[i]
+    if not row then
+        row = CreateDelveRow()
+        delveRowPool[i] = row
+    end
+    row:ClearAllPoints()
+    return row
+end
+
+--------------------------------------------------------------------
+-- Boss sub-row factory (caret + name on line 1, brief on line 2).
+--------------------------------------------------------------------
+local function CreateBossRow()
+    local row = CreateFrame("Button", nil, sc)
+    row:RegisterForClicks("LeftButtonUp")
+    row:SetScript("OnClick", BossRow_OnClick)
+
+    local caretFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    caretFS:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2)
+    caretFS:SetFont(caretFS:GetFont(), 11, "OUTLINE")
+    row.caretFS = caretFS
+
+    local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    nameFS:SetPoint("TOPLEFT", caretFS, "TOPRIGHT", 6, 0)
+    nameFS:SetFont(nameFS:GetFont(), 11, "OUTLINE")
+    nameFS:SetJustifyH("LEFT")
+    row.nameFS = nameFS
+
+    local briefFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    briefFS:SetPoint("TOPLEFT", row, "TOPLEFT", 18, -17)
+    briefFS:SetFont(briefFS:GetFont(), 10)
+    briefFS:SetJustifyH("LEFT")
+    briefFS:SetSpacing(2)
+    row.briefFS = briefFS
+
+    return row
+end
+
+local function AcquireBossRow(i)
+    local row = bossRowPool[i]
+    if not row then
+        row = CreateBossRow()
+        bossRowPool[i] = row
+    end
+    row:ClearAllPoints()
+    return row
+end
+
+local function AcquireNoteLine(i)
+    local fs = noteLinePool[i]
+    if not fs then
+        fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fs:SetFont(fs:GetFont(), 10)
+        fs:SetJustifyH("LEFT")
+        fs:SetSpacing(2)
+        noteLinePool[i] = fs
+    end
+    fs:ClearAllPoints()
+    return fs
+end
+
+--------------------------------------------------------------------
+-- Reflow the bountiful list + any expanded boss tactics.
+--------------------------------------------------------------------
+function UpdateRows()
+    if not sc then return end
+
+    for _, r in ipairs(delveRowPool) do r:Hide() end
+    for _, r in ipairs(bossRowPool)  do r:Hide() end
+    for _, r in ipairs(noteLinePool) do r:Hide() end
+
+    local dUsed, bUsed, nUsed = 0, 0, 0
+    local yCur = 2
+
+    local function PlaceRow(row, x, h)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
+        row:SetPoint("RIGHT",   sc, "RIGHT",  -2, 0)
+        row:Show()
+        yCur = yCur + h
+    end
+
+    for _, delve in ipairs(bountifulList) do
+        dUsed = dUsed + 1
+        local row = AcquireDelveRow(dUsed)
+        row:SetParent(sc)
+        row.delve = delve
+
+        local caret = (delve.completed and E.CC.muted or E.CC.gold)
+            .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
+
+        if delve.completed then
+            row.nameText:SetText(
+                caret .. " "
+                .. E.CC.muted .. "\226\156\147 " .. delve.name .. E.CC.close
+            )
+            row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
+            local completedPrefix = delve.overcharged
+                and (E.CC.muted .. "Overcharged" .. E.CC.close
+                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
+                or ""
+            row.variantText:SetText(
+                completedPrefix
+                .. E.CC.muted .. delve.storyVariant .. E.CC.close
+            )
+            row:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
+        else
+            row.nameText:SetText(
+                caret .. " " .. E.CC.gold .. delve.name .. E.CC.close
+            )
+            row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
+
+            -- Check if normal (non-bountiful) version is also active
+            local normalNote = ""
+            if delve.normalPoiID and delve.mapID
+                    and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo then
+                local nPoi = C_AreaPoiInfo.GetAreaPOIInfo(
+                                 delve.mapID, delve.normalPoiID)
+                if nPoi then
+                    normalNote = E.CC.muted
+                        .. " (Normal version available)" .. E.CC.close
+                end
+            end
+
+            local overchargedPrefix = delve.overcharged
+                and (E.CC.yellow .. "Overcharged" .. E.CC.close
+                     .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
+                or ""
+            row.variantText:SetText(
+                overchargedPrefix
+                .. E.CC.muted .. delve.storyVariant .. E.CC.close
+                .. normalNote
+            )
+            -- Neutral row tint (matches Delve Locations tab).
+            row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
+        end
+
+        local si = GetStoryTier(delve.storyVariant)
+        if si then
+            local tc = TIER_COLORS[si.tier]
+            if delve.completed then
+                row.tierText:SetTextColor(0.40, 0.40, 0.40)
+            elseif tc then
+                row.tierText:SetTextColor(tc[1], tc[2], tc[3])
+            else
+                row.tierText:SetTextColor(0.60, 0.60, 0.60)
+            end
+            row.tierText:SetText(si.tier)
+        else
+            row.tierText:SetText("")
+        end
+
+        PlaceRow(row, 0, ROW_HEIGHT)
+
+        -- Expanded: this delve's boss tactics (rendered identically to
+        -- the Delve Locations tab — brief line + expandable full notes).
+        if expandedDelve[delve.name] then
+            local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
+            if bosses then
+                local todaysBoss = E.GetTodaysBossName
+                    and E:GetTodaysBossName(delve.name)
+                for bi, boss in ipairs(bosses) do
+                    bUsed = bUsed + 1
+                    local brow = AcquireBossRow(bUsed)
+                    brow:SetParent(sc)
+                    local bossKey = delve.name .. "##" .. bi
+                    brow.bossKey = bossKey
+
+                    local bExpanded = expandedBoss[bossKey]
+                    brow.caretFS:SetText(E.CC.muted
+                        .. (bExpanded and "v" or ">") .. E.CC.close)
+                    if todaysBoss and boss.name == todaysBoss then
+                        brow.nameFS:SetText(
+                            "|TInterface\\Common\\FavoritesIcon:14:14|t "
+                            .. E.CC.gold .. boss.name .. E.CC.close
+                            .. E.CC.muted .. "   (today's boss)" .. E.CC.close)
+                    else
+                        brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
+                    end
+
+                    local briefW = math_max(150, (sc:GetWidth() or 600) - 18 - 16)
+                    brow.briefFS:SetWidth(briefW)
+                    brow.briefFS:SetText(E.CC.muted .. (boss.brief or "") .. E.CC.close)
+
+                    local bh = 18 + (brow.briefFS:GetStringHeight() or 12) + 6
+                    brow:SetHeight(bh)
+                    PlaceRow(brow, 24, bh)
+
+                    if bExpanded and boss.notes then
+                        for _, note in ipairs(boss.notes) do
+                            nUsed = nUsed + 1
+                            local nl = AcquireNoteLine(nUsed)
+                            nl:SetParent(sc)
+                            local w = math_max(150, (sc:GetWidth() or 600) - 48 - 12)
+                            nl:SetWidth(w)
+                            nl:SetText(
+                                RoleCC(note.role) .. RoleLabel(note.role) .. "|r  "
+                                .. E.CC.body .. note.text .. E.CC.close)
+                            local h = (nl:GetStringHeight() or 12) + 5
+                            nl:SetPoint("TOPLEFT", sc, "TOPLEFT", 48, -yCur)
+                            nl:Show()
+                            yCur = yCur + h
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    sc:SetHeight(yCur + 8)
+    if UpdateScrollRange then UpdateScrollRange() end
 end
 
 ------------------------------------------------------------------------
@@ -957,7 +1134,7 @@ E:RegisterModule(function()
     refreshBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 2)
     refreshBtn:SetScript("OnClick", function()
         RefreshBountifulData(true)
-        UpdateRows(frame.listFrame)
+        UpdateRows()
         UpdateBestPick()
         RefreshStats()
         -- Update progress bar
@@ -994,18 +1171,62 @@ E:RegisterModule(function()
         E:StyleAccentHeader(fs, col.label)
     end
 
-    -- List frame (static - no scroll needed for live bountiful list)
-    local listFrame = CreateFrame("Frame", nil, frame)
-    listFrame:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4, COL_Y - 16)
-    listFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
-    frame.listFrame = listFrame
+    -- Scrollable list (boss tactics expand inline, so the list can grow
+    -- past the visible area).
+    scrollFrame = CreateFrame("ScrollFrame", nil, frame)
+    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",  4, COL_Y - 16)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
+    scrollFrame:EnableMouseWheel(true)
+    frame.listFrame = scrollFrame
+    local listFrame = scrollFrame
 
-    -- Create recycled rows
-    for i = 1, VISIBLE_ROWS do
-        rows[i] = CreateRow(listFrame, i)
+    sc = CreateFrame("Frame")
+    sc:SetSize(1, 1)
+    scrollFrame:SetScrollChild(sc)
+    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
+    sc:SetHeight(1)
+
+    scrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
+    scrollBar:SetWidth(14)
+    scrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
+    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
+    scrollBar:SetBackdrop({
+        bgFile   = "Interface\\Buttons\\WHITE8x8",
+        edgeFile = "Interface\\Buttons\\WHITE8x8",
+        edgeSize = 1,
+    })
+    scrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
+    scrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
+    local sbThumb = scrollBar:CreateTexture(nil, "OVERLAY")
+    sbThumb:SetSize(12, 40)
+    E:StyleAccentThumb(sbThumb)
+    scrollBar:SetThumbTexture(sbThumb)
+    scrollBar:SetOrientation("VERTICAL")
+    scrollBar:SetMinMaxValues(0, 1)
+    scrollBar:SetValue(0)
+    scrollBar:SetValueStep(1)
+    scrollBar:SetObeyStepOnDrag(true)
+    scrollBar:SetScript("OnValueChanged", function(_, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
+        local newVal = math_max(0, math.min(
+            self:GetVerticalScroll() - delta * 30, maxScroll))
+        self:SetVerticalScroll(newVal)
+        scrollBar:SetValue(newVal)
+    end)
+    function UpdateScrollRange()
+        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
+        scrollBar:SetMinMaxValues(0, maxScroll)
+        if maxScroll <= 0 then
+            scrollBar:Hide()
+        else
+            scrollBar:Show()
+        end
     end
 
-    -- Store progressBar reference on listFrame for row right-click access
+    -- Store progressBar reference for compatibility with existing hooks
     listFrame.progressBar = progressBar
 
     --------------------------------------------------------------------
@@ -1037,7 +1258,7 @@ E:RegisterModule(function()
         end
         progressBar:SetProgress(done, math_max(1, #bountifulList))
 
-        UpdateRows(listFrame)
+        UpdateRows()
         UpdateBestPick()
     end)
 
@@ -1082,7 +1303,7 @@ E:RegisterModule(function()
                 if d.completed then done = done + 1 end
             end
             progressBar:SetProgress(done, math_max(1, #bountifulList))
-            UpdateRows(listFrame)
+            UpdateRows()
             UpdateBestPick()
         end
     end)

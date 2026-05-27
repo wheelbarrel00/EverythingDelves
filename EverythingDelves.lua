@@ -66,6 +66,12 @@ local DEFAULTS = {
     -- key) so the alt rollup can see every character at once — you can't
     -- read an alt's quest log, so each character snapshots its own state.
     delversCallRoster      = {},
+    -- Account-wide learned boss map: delveName → { [storyVariant] = bossName }.
+    -- Populated live from ENCOUNTER_END as delves are completed, so the
+    -- "today's boss" highlight knows which boss a multi-boss delve fields
+    -- for the current story variant. Account-wide because the variant→boss
+    -- pairing is region-wide and identical for every character.
+    delveBossMap           = {},
 }
 
 -- Keys that are profile-scoped rather than account-wide. The E.db
@@ -345,6 +351,10 @@ end
 E:RegisterEvent("PLAYER_LOGIN", function(self)
     self:InitDB()
 
+    -- Clean up any runs logged with an absurd duration by the old
+    -- GetTime() staleness bug (safe + idempotent).
+    self:RepairAbsurdDurations()
+
     -- Build the main window (defined in UI/MainFrame.lua)
     if self.InitMainFrame then
         self:InitMainFrame()
@@ -480,6 +490,13 @@ end)
 
 local COFFER_KEY_CURRENCY = 2915  -- Restored Coffer Key
 local MAX_RECENT_RUNS     = 20
+-- A persisted activeRun is only resumed on /reload if it began within this
+-- many seconds of wall-clock time. GetTime() is SYSTEM uptime (it does NOT
+-- reset when the WoW client restarts — only on a reboot), so the old
+-- "startTime <= GetTime()" check alone let a run saved in a previous
+-- session look valid and get resumed, logging a fresh run as 26h+. time()
+-- is real epoch seconds, so this catches a stale cross-session activeRun.
+local MAX_RESUME_AGE      = 6 * 3600  -- 6 hours
 
 -- Single reusable scratch table for the active run â€” never replaced.
 E.delveRunState = {
@@ -492,6 +509,7 @@ E.delveRunState = {
     tier           = 0,     -- captured at entry via C_DelvesUI
     wasBountiful   = false, -- snapshot at BeginDelveRun
     story          = nil,   -- story variant, read from the delve's POI tooltip
+    boss           = nil,   -- end-boss name, captured live via ENCOUNTER_END
     trovehunterPopupShown = false, -- one-shot guard for the reminder popup
 }
 
@@ -796,6 +814,7 @@ local function BeginDelveRun(name, kind)
     -- value read at entry matches completion. Re-read at completion too as
     -- a fallback in case the POI cache was cold here.
     runState.story         = E:GetDelveStoryVariant(name)
+    runState.boss          = nil
     runState.trovehunterPopupShown = false
     -- Persist run start to SavedVariables so duration survives /reload
     -- and brief disconnects. GetTime() is continuous across /reload.
@@ -804,6 +823,7 @@ local function BeginDelveRun(name, kind)
             name          = name,
             kind          = kind,
             startTime     = runState.startTime,
+            startedAt     = time(),  -- wall-clock; used for staleness check
             deaths        = 0,
             startKeyCount = runState.startKeyCount,
             tier          = 0,
@@ -855,6 +875,7 @@ local function EndDelveRun()
     runState.tier          = 0
     runState.wasBountiful  = false
     runState.story         = nil
+    runState.boss          = nil
     runState.trovehunterPopupShown = false
     -- Cancel popup heartbeat — nothing for it to do once the run ends.
     if E._popupHeartbeat then
@@ -872,7 +893,7 @@ end
 --- `story` (optional) is the detected story variant for THIS run (e.g.
 --- "Invasive Glow"); stored only when non-empty so the History tab can
 --- show the actual variant instead of the delve's signature story.
-function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story)
+function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story, boss)
     if not name or not self.db then
         return
     end
@@ -925,10 +946,116 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         timestamp    = now,
         wasBountiful = wasBountiful and true or false,
         story        = (story and story ~= "") and story or nil,
+        boss         = (boss and boss ~= "") and boss or nil,
     })
     while #recent > MAX_RECENT_RUNS do
         recent[#recent] = nil
     end
+end
+
+--- Attach (or clear) a free-form note on a single logged run, located by
+--- its delve name + timestamp. Passing an empty/whitespace string removes
+--- the note. Returns true if a matching run was found and updated.
+function E:SetRunNote(delveName, timestamp, text)
+    if not (delveName and timestamp and self.db and self.db.delveHistory) then
+        return false
+    end
+    local entry = self.db.delveHistory[delveName]
+    local recent = entry and entry.recentRuns
+    if not recent then return false end
+    local clean = text and strtrim(text) or ""
+    for _, run in ipairs(recent) do
+        if run.timestamp == timestamp then
+            run.note = (clean ~= "") and clean or nil
+            return true
+        end
+    end
+    return false
+end
+
+--- Record which boss a delve fields for a given story variant. Stored
+--- account-wide (the variant→boss pairing is region-wide), so the
+--- "today's boss" highlight on the Delve Locations / Bountiful tabs can
+--- light up the correct boss for multi-boss delves once learned.
+function E:RecordDelveBoss(delveName, variant, bossName)
+    if not (delveName and variant and variant ~= ""
+            and bossName and bossName ~= "" and self.db) then
+        return
+    end
+    local map = self.db.delveBossMap
+    if not map then
+        map = {}
+        self.db.delveBossMap = map
+    end
+    local byVariant = map[delveName]
+    if not byVariant then
+        byVariant = {}
+        map[delveName] = byVariant
+    end
+    byVariant[variant] = bossName
+end
+
+--- Return the learned boss name for a delve + story variant, or nil.
+function E:GetRecordedBoss(delveName, variant)
+    if not (delveName and variant and variant ~= "") then return nil end
+    local map = self.db and self.db.delveBossMap
+    local byVariant = map and map[delveName]
+    return byVariant and byVariant[variant] or nil
+end
+
+--- Resolve today's boss for a delve. Single-boss delves always return
+--- their lone boss; multi-boss delves resolve via today's live story
+--- variant against the learned map (nil until that variant is recorded).
+function E:GetTodaysBossName(delveName)
+    if not delveName then return nil end
+    local bosses = self.GetDelveBosses and self:GetDelveBosses(delveName)
+    if not bosses then return nil end
+    if #bosses == 1 then
+        return bosses[1].name
+    end
+    local variant = self.GetDelveStoryVariant and self:GetDelveStoryVariant(delveName)
+    if not variant or variant == "" then return nil end
+    -- Live-learned mapping wins (so a real run auto-corrects the table if
+    -- it ever disagrees); otherwise fall back to the verified static
+    -- variant->boss table for day-one coverage.
+    local live = self:GetRecordedBoss(delveName, variant)
+    if live then return live end
+    return self.GetStaticBoss and self:GetStaticBoss(delveName, variant) or nil
+end
+
+--- One-time-safe cleanup for the old GetTime() staleness bug, which could
+--- log a run with an absurd (multi-hour) duration. Any logged run longer
+--- than MAX_RESUME_AGE is capped to 0 (unknown) and its excess removed from
+--- the delve's lifetime total so the average is no longer skewed. Idempotent
+--- — once run, nothing exceeds the cap, so a second pass is a no-op.
+function E:RepairAbsurdDurations()
+    if not (self.db and self.db.delveHistory) then return 0 end
+    local fixed = 0
+    for _, entry in pairs(self.db.delveHistory) do
+        local recent = entry.recentRuns
+        local life   = entry.lifetime
+        if recent then
+            for _, run in ipairs(recent) do
+                if (run.duration or 0) > MAX_RESUME_AGE then
+                    if life and life.totalDuration then
+                        life.totalDuration =
+                            math.max(0, life.totalDuration - run.duration)
+                    end
+                    run.duration = 0
+                    fixed = fixed + 1
+                end
+            end
+        end
+    end
+    if fixed > 0 then
+        print(self.CC.header .. "Everything Delves|r: Cleaned up "
+            .. fixed .. " run" .. (fixed == 1 and "" or "s")
+            .. " with an invalid timer.")
+        if self.RefreshDelveHistoryTab then
+            self:RefreshDelveHistoryTab()
+        end
+    end
+    return fixed
 end
 
 --- Wipe all delve history for this character.
@@ -1004,6 +1131,7 @@ delveFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 delveFrame:RegisterEvent("SCENARIO_UPDATE")
 delveFrame:RegisterEvent("SCENARIO_COMPLETED")
 delveFrame:RegisterEvent("PLAYER_DEAD")
+delveFrame:RegisterEvent("ENCOUNTER_END")
 
 -- True only when the most recent PLAYER_ENTERING_WORLD was a UI reload
 -- (set in the event handler below). Gates the activeRun restore so a
@@ -1058,10 +1186,18 @@ local function TryBeginFromCurrentZone(source)
             -- T8 as a 1h+ T11). Extra guard: a full client restart resets
             -- GetTime() to near-zero, so a saved startTime in the "future"
             -- is treated as stale too.
+            -- Resume only a genuinely current run: it must be a /reload,
+            -- the same delve, its GetTime() start must not be in the future
+            -- (catches a computer reboot, which DOES reset GetTime()), and
+            -- its wall-clock start must be recent (catches a stale run saved
+            -- in a previous client session — GetTime() alone can't, since it
+            -- does not reset on a client restart, only on a reboot).
             local saved = E.db and E.db.activeRun
             if enteredViaReload and saved and saved.name == matchedName
                     and saved.startTime
-                    and saved.startTime <= GetTime() then
+                    and saved.startTime <= GetTime()
+                    and saved.startedAt
+                    and (time() - saved.startedAt) < MAX_RESUME_AGE then
                 runState.inDelve       = true
                 runState.delveName     = matchedName
                 runState.delveKind     = saved.kind
@@ -1138,6 +1274,17 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             runState.deaths = runState.deaths + 1
         end
 
+    elseif event == "ENCOUNTER_END" then
+        -- Capture the boss name live. Delves field a single end-boss
+        -- encounter; if more than one fires, the last (the end boss)
+        -- wins, which is exactly what we want recorded at completion.
+        if runState.inDelve then
+            local _, encounterName = ...
+            if encounterName and encounterName ~= "" then
+                runState.boss = encounterName
+            end
+        end
+
     elseif event == "SCENARIO_COMPLETED" then
         -- Resolve delve name from the most reliable still-available
         -- source, then fall back to whatever we captured at entry.
@@ -1150,6 +1297,12 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         local duration = (runState.startTime > 0)
             and math.max(0, math.floor(GetTime() - runState.startTime))
             or 0
+        -- Final safety net: no real delve runs longer than MAX_RESUME_AGE,
+        -- so an absurd duration means the start time was stale despite the
+        -- resume guard. Log it as unknown (0) rather than e.g. "26h 8m".
+        if duration > MAX_RESUME_AGE then
+            duration = 0
+        end
 
         -- Tier reconciliation before logging. The value captured at ENTRY
         -- is unreliable: at the moment we zone in, the objective tracker is
@@ -1186,8 +1339,13 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             end
             E:LogDelveRun(
                 matchedName, tier, duration, runState.deaths,
-                keyUsed, runState.wasBountiful, story
+                keyUsed, runState.wasBountiful, story, runState.boss
             )
+            -- Learn the variant→boss pairing for the "today's boss"
+            -- highlight (account-wide, only when both are known).
+            if runState.boss and story and story ~= "" then
+                E:RecordDelveBoss(matchedName, story, runState.boss)
+            end
             if E.RefreshDelveHistoryTab then
                 E:RefreshDelveHistoryTab()
             end
