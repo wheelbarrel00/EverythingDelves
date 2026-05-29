@@ -150,7 +150,7 @@ end
 -- MODULE INIT
 ------------------------------------------------------------------------
 E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTab5Content")
+    local frame = CreateFrame("Frame", "EverythingDelvesTabOptionsContent")
 
     -- Scrollable container so options aren't cut off
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
@@ -389,28 +389,6 @@ E:RegisterModule(function()
     )
     Y = Y - 20 - (#accentOptions * 24) - 4
 
-    -- Completed Display (radio group)
-    local compOptions = {
-        { value = "dim",    label = "Dim completed items" },
-        { value = "hide",   label = "Hide completed items" },
-        { value = "bottom", label = "Sort completed to bottom" },
-    }
-    local compRadios = CreateRadioGroup(
-        content, SECT_X, Y,
-        "Completed Delve Display",
-        "completedDisplay",
-        compOptions
-    )
-    Y = Y - 20 - (#compOptions * 24) - 4
-
-    -- Show Completed Items
-    local showCompCB = CreateCheckbox(
-        content, SECT_X, Y,
-        "Show Completed Items in Lists",
-        "showCompletedItems"
-    )
-    Y = Y - 28
-
     Y = Y - 28  -- breathing room above section divider
 
     --------------------------------------------------------------------
@@ -432,21 +410,6 @@ E:RegisterModule(function()
     E:StyleAccentHeader(alertHeader, "Alerts & Tracking")
     Y = Y - 20
 
-    -- Weekly Reset Alert
-    local resetCB = CreateCheckbox(
-        content, SECT_X, Y,
-        "Show Weekly Reset Alert on Login",
-        "showWeeklyResetAlert"
-    )
-    Y = Y - 26
-
-    -- Session Tracking
-    local sessCB = CreateCheckbox(
-        content, SECT_X, Y,
-        "Enable Session Tracking (Shard Tracker tab)",
-        "sessionTracking"
-    )
-    Y = Y - 26
 
     -- Low Shard Warning
     local lowWarnCB = CreateCheckbox(
@@ -645,14 +608,8 @@ E:RegisterModule(function()
         for _, cb in ipairs(accentRadios) do
             cb:SetChecked(E.db.accentColor == cb.optValue)
         end
-        for _, cb in ipairs(compRadios) do
-            cb:SetChecked(E.db.completedDisplay == cb.optValue)
-        end
-        showCompCB:SetChecked(E.db.showCompletedItems)
 
         -- Alerts
-        resetCB:SetChecked(E.db.showWeeklyResetAlert)
-        sessCB:SetChecked(E.db.sessionTracking)
         lowWarnCB:SetChecked(E.db.lowShardWarning)
         threshSlider:SetValue(E.db.lowShardThreshold or 100)
         bountAlertCB:SetChecked(E.db.alertNewBountiful)

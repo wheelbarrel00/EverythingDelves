@@ -137,6 +137,9 @@ local bestPickFS = nil
 local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
 local bountifulList  = {}   -- today's bountiful delves (reused)
 -- Bountiful count is derived dynamically from #bountifulList (no hardcoded constant)
+-- Scratch set (wiped per refresh) used to de-dupe the dropped-off completed
+-- delve re-add against what is already in bountifulList.
+local reAddSeen      = {}
 
 -- Entry pool: recycled delve entry tables to avoid allocating 6-8
 -- fresh tables every time the bountiful list is rebuilt (on OnShow,
@@ -412,25 +415,30 @@ local function RefreshBountifulData(force)
     -- using the entry pool - no table churn on the hot path).
     PopulateBountifulDelvesLive(bountifulList)
 
-    -- Completion is automatic: a bountiful delve counts as done if it has
-    -- a run logged since today's daily reset, so the checklist + progress
-    -- bar fill in when you finish one. (run.timestamp is written with
-    -- time(), so the daily reset boundary is computed in the same base.)
-    if E.db and E.db.delveHistory
-            and C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
+    -- Daily reset boundary (run.timestamp is time()-based; 0 if the API is
+    -- unavailable). Shared by the in-list completion sweep below and the
+    -- dropped-off re-add further down.
+    local dailyResetEpoch = 0
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
         local secs = C_DateAndTime.GetSecondsUntilDailyReset()
         if secs and secs > 0 then
-            local dailyResetEpoch = time() + secs - 86400
-            for _, delve in ipairs(bountifulList) do
-                if not delve.completed then
-                    local hist = E.db.delveHistory[delve.name]
-                    local runs = hist and hist.recentRuns
-                    if runs then
-                        for _, run in ipairs(runs) do
-                            if (run.timestamp or 0) >= dailyResetEpoch then
-                                delve.completed = true
-                                break
-                            end
+            dailyResetEpoch = time() + secs - 86400
+        end
+    end
+
+    -- Completion is automatic: a bountiful delve counts as done if it has
+    -- a run logged since today's daily reset, so the checklist + progress
+    -- bar fill in when you finish one.
+    if E.db and E.db.delveHistory and dailyResetEpoch > 0 then
+        for _, delve in ipairs(bountifulList) do
+            if not delve.completed then
+                local hist = E.db.delveHistory[delve.name]
+                local runs = hist and hist.recentRuns
+                if runs then
+                    for _, run in ipairs(runs) do
+                        if (run.timestamp or 0) >= dailyResetEpoch then
+                            delve.completed = true
+                            break
                         end
                     end
                 end
@@ -493,6 +501,57 @@ local function RefreshBountifulData(force)
         wipe(E.db.lastKnownBountifulIDs)
         for i = 1, #currentIDs do
             E.db.lastKnownBountifulIDs[i] = currentIDs[i]
+        end
+    end
+
+    -- Re-add today's COMPLETED bountiful delves that have dropped off the
+    -- live POI list. Completing a bountiful delve removes its
+    -- "delves-bountiful" atlas, so it vanishes from PopulateBountifulDelvesLive
+    -- above -- which made the checklist hide the finished delve and the
+    -- progress bar SHRINK its denominator (0/4 -> 0/3) instead of counting it
+    -- (1/4). We reconstruct the full daily set from delveHistory: any delve
+    -- with a bountiful run since today's reset that isn't already listed is
+    -- added back as a completed entry.
+    --
+    -- Deliberately added to bountifulList ONLY (drives the checklist + bar),
+    -- and AFTER the E.currentBountifulNames build above -- so a completed
+    -- delve is NOT treated as still-bountiful by the wasBountiful stamp at
+    -- delve entry or by AutoRepairBountifulHistory (which would re-inflate the
+    -- Gilded Stash counter). E.currentBountifulCount stays the live "active"
+    -- count for the minimap tooltip.
+    if E.db and E.db.delveHistory and dailyResetEpoch > 0 and E.DelveDataByName then
+        wipe(reAddSeen)
+        for _, d in ipairs(bountifulList) do reAddSeen[d.name] = true end
+        for delveName, hist in pairs(E.db.delveHistory) do
+            if not reAddSeen[delveName] then
+                local meta = E.DelveDataByName[delveName]
+                local runs = meta and hist.recentRuns
+                if runs then
+                    local runStory  -- nil unless a qualifying run is found
+                    for _, run in ipairs(runs) do
+                        if run.wasBountiful
+                                and (run.timestamp or 0) >= dailyResetEpoch then
+                            runStory = run.story or ""
+                            break
+                        end
+                    end
+                    if runStory ~= nil then
+                        local entry        = AcquireBountifulEntry()
+                        entry.name         = delveName
+                        entry.zone         = meta.zone
+                        entry.x            = meta.x
+                        entry.y            = meta.y
+                        entry.mapID        = meta.mapID
+                        entry.poiID        = meta.poiID
+                        entry.normalPoiID  = meta.normalPoiID
+                        entry.storyVariant = runStory
+                        entry.overcharged  = false
+                        entry.completed    = true
+                        table_insert(bountifulList, entry)
+                        reAddSeen[delveName] = true
+                    end
+                end
+            end
         end
     end
 
@@ -957,9 +1016,9 @@ E:RegisterModule(function()
     end
 
     --------------------------------------------------------------------
-    -- WEEKLY BOUNTIFUL PROGRESS BAR
+    -- DAILY BOUNTIFUL PROGRESS BAR (the bountiful set rotates daily)
     --------------------------------------------------------------------
-    local progressBar = E:CreateProgressBar(frame, 0, 14)
+    local progressBar = E:CreateProgressBar(frame, 0, 14, "Bountiful Delves Completed")
     progressBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, STAT_Y - 60)
     progressBar:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
     frame.progressBar = progressBar   -- ref for row right-click updates

@@ -5,24 +5,24 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.10.0"
+local WHATS_NEW_VERSION = "1.10.1"
 
 local ENTRIES = {
     {
-        title = "Run Notes",
-        desc  = "Attach a free-form note to any run on the Delve History tab \226\128\148 log a build you tested, a notable drop, or a curio idea. Click the note icon next to a run to add, edit, or clear it. Thanks to BanditC64 for the suggestion!",
+        title = "Labeled Progress Bars",
+        desc  = "Every progress bar now has a clear label, so you can tell at a glance what each one tracks \226\128\148 no more guessing what a bar is for. Thanks to BanditC64 for the suggestion!",
     },
     {
-        title = "Boss Tactics in the Delve Lists",
-        desc  = "Click any delve in Delve Locations or Current Bountiful to expand it and read each boss's mechanics: a one-line summary plus full role-by-role tips. Also suggested by BanditC64 \226\128\148 thank you!",
+        title = "More Reliable Trovehunter Reminder",
+        desc  = "The Trovehunter's Bounty reminder now detects your map correctly and still appears after a /reload partway through a delve, so it won't stay hidden when you have a bounty to use.",
     },
     {
-        title = "Today's Boss, Marked for You",
-        desc  = "Delves that field different bosses now mark today's boss with a star when you expand them, and every run in your Delve History records the boss you faced.",
+        title = "Accurate Bountiful Completion",
+        desc  = "The Current Bountiful Delves tracker now counts finished delves correctly \226\128\148 completing one reads 1/4 (25%) and the delve stays in the list, dimmed, instead of disappearing.",
     },
     {
-        title = "Delve History Accuracy",
-        desc  = "I've worked hard to get delve times and tiers recording correctly and believe it's finally there. Apologies if some older runs show an off time or tier \226\128\148 those tracking bugs are now fixed.",
+        title = "Cleaner UI",
+        desc  = "Removed a few leftover, non-functional bits \226\128\148 including an inactive PvP row in the Great Vault \226\128\148 and corrected day-vs-week wording for the daily delve rotation.",
     },
 }
 

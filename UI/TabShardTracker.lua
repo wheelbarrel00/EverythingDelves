@@ -198,7 +198,7 @@ E:RegisterModule(function()
     ucValueFS:SetFont(ucValueFS:GetFont(), 13, "OUTLINE")
 
     -- Progress bar: shards toward next key
-    local nextKeyBar = E:CreateProgressBar(sc, 0, 14)
+    local nextKeyBar = E:CreateProgressBar(sc, 0, 14, "Shards to Next Key")
     nextKeyBar:SetPoint("TOPLEFT", ucIcon, "BOTTOMLEFT", 0, -8)
     nextKeyBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 
@@ -207,7 +207,7 @@ E:RegisterModule(function()
     nextKeyNote:SetFont(nextKeyNote:GetFont(), 10)
 
     -- Weekly shard cap bar
-    local weeklyCapBar = E:CreateProgressBar(sc, 0, 14)
+    local weeklyCapBar = E:CreateProgressBar(sc, 0, 14, "Weekly Shard Cap")
     weeklyCapBar:SetPoint("TOPLEFT", nextKeyNote, "BOTTOMLEFT", 0, -6)
     weeklyCapBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 

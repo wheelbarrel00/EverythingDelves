@@ -137,6 +137,15 @@ end
 E.LoggableDelveNames[E.NemesisDelve.name] = "nemesis"
 
 ------------------------------------------------------------------------
+-- Name → DelveData entry. For callers that have a delve name and need its
+-- metadata (zone / mapID / poiID / coords) without scanning the array.
+------------------------------------------------------------------------
+E.DelveDataByName = {}
+for _, d in ipairs(E.DelveData) do
+    E.DelveDataByName[d.name] = d
+end
+
+------------------------------------------------------------------------
 -- Delve uiMapID → canonical delve name. Used as a fallback identifier
 -- when GetRealZoneText()/GetInstanceInfo() don't return a recognizable
 -- delve name at SCENARIO_COMPLETED time.

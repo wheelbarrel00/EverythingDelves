@@ -9,7 +9,8 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local TROVE_MAP_ITEM = 252415  -- map item id (bag check)
+-- Bag count comes from E:GetTrovehunterMapCount() (sums all known map
+-- item IDs); see Core/Utils.lua. We keep only the icon + aura IDs here.
 local TROVE_ICON     = 1064187 -- texture id
 local TROVE_AURA     = 1254631 -- buff spell id (active when consumed)
 
@@ -132,16 +133,27 @@ function E:MaybeShowTrovehunterReminder()
     if rs.trovehunterPopupShown then return end
     if not rs.wasBountiful then return end
 
-    -- Late-firing guard: if more than 60 seconds have elapsed since
-    -- entry, the player is already deep into the run and the reminder
+    -- Late-firing guard: if more than 60 seconds have elapsed since this
+    -- world-entry, the player is already deep into the run and the reminder
     -- is no longer useful (would just feel like a popup-on-exit bug).
     -- Skip it. The popup is meant to fire early.
-    if rs.startTime and rs.startTime > 0
-            and (GetTime() - rs.startTime) > 60 then
+    --
+    -- Keyed off popupWindowStart (reset on every entry, including /reload
+    -- resume) rather than startTime (the ORIGINAL run start). GetTime() is
+    -- continuous across /reload, so using startTime would make any reload
+    -- more than 60s into a run trip this guard instantly and permanently
+    -- suppress the reminder. popupWindowStart restarts the window from the
+    -- moment we re-enter the world.
+    local windowStart = rs.popupWindowStart or rs.startTime
+    if windowStart and windowStart > 0
+            and (GetTime() - windowStart) > 60 then
         return
     end
 
-    local count = C_Item.GetItemCount(TROVE_MAP_ITEM)
+    -- Sum across every known map item ID (see E:GetTrovehunterMapCount).
+    -- The old single-ID check missed players carrying the other variant,
+    -- so the reminder never fired for them even with a map in their bag.
+    local count = E:GetTrovehunterMapCount()
     if not count or count <= 0 then return end
 
     local aura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
@@ -165,7 +177,11 @@ function E:MaybeShowTrovehunterReminder()
         local rs2 = E.delveRunState
         if not rs2 or not rs2.inDelve then return end
         if rs2.trovehunterPopupShown then return end
-        local _, _, instanceType = IsInInstance()
+        -- IsInInstance() returns (isInstance, instanceType) — only two
+        -- values. The 3rd-return read here was always nil, collapsing this
+        -- guard to "diffID == 208" only and silently suppressing the popup
+        -- in any scenario-typed delve that isn't difficulty 208.
+        local _, instanceType = IsInInstance()
         local _, _, diffID = GetInstanceInfo()
         if instanceType ~= "scenario" and diffID ~= 208 then return end
         local nowAura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID

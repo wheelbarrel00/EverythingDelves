@@ -184,6 +184,14 @@ RefreshBubbleState = function()
     if selectiveOK ~= false
             and C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles
             and C_Timer and C_Timer.NewTicker then
+        -- Only run the 0.2s bubble scrubber while actually inside a delve.
+        -- Outside one there are no companion bubbles to hide, so cancel it —
+        -- otherwise it leaks and ticks 5x/sec in the open world for the rest
+        -- of the session (it was previously never stopped on delve exit).
+        if not isInDelve then
+            StopBubbleTicker()
+            return
+        end
         if not bubbleTicker then
             bubbleTicker = C_Timer.NewTicker(0.2, function()
                 local worked = TickSelectiveBubbles()

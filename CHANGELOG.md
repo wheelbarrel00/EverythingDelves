@@ -5,6 +5,24 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-05-28
+
+### Bug Fixes
+
+- **Trovehunter's Bounty reminder reliability** &mdash; The reminder now detects your Bounty Map correctly and still appears after a `/reload` partway through a delve, fixing cases where it could stay hidden even with an unused bounty in your bags.
+- **Accurate Bountiful completion count** &mdash; The Current Bountiful Delves progress bar now counts finished delves correctly &mdash; completing one reads "1 / 4 (25%)" instead of dropping the delve off the list and shrinking the total. Finished delves now stay in the checklist, dimmed, so you can see the full day at a glance.
+- **Bountiful history accuracy** &mdash; A one-time history repair was checking a weekly window for the daily-rotating Bountiful set, which could mislabel older runs as Bountiful and inflate the Gilded Stash counter. It now uses the correct daily window.
+- **Trovehunter status wording** &mdash; The Tier Guide no longer reads "looted and used this week" while a Bounty Map is still in your bags; the status line and the reminder now agree.
+- **Companion bubble muting** &mdash; The chat-bubble suppression for Valeera no longer keeps running in the open world after you leave a delve.
+
+### Improvements
+
+- **Labeled progress bars** &mdash; Every progress bar now has a clear caption so you can tell at a glance what it tracks &mdash; the Bountiful completion bar, the Shard Tracker's "Shards to Next Key" and "Weekly Shard Cap" bars, and the rest. Thanks to BanditC64 for the suggestion!
+- **Great Vault cleanup** &mdash; Removed the PvP row from the Great Vault section. PvP no longer contributes to the Great Vault, so that bar could only ever read 0 / 3; the section now shows just the Mythic+ Dungeons and Delves / World Content rows that actually apply.
+- **Options tidy-up** &mdash; Removed several settings that no longer had any effect, so every control in the Options panel now does what it says.
+- **Delve History legend** &mdash; The "B" marker on a run (Bountiful) now shows a tooltip explaining what it means.
+- **Daily wording** &mdash; Cleaned up the last few "this week" references that should read "today" for the daily Bountiful rotation.
+
 ## [1.10.0] - 2026-05-26
 
 ### New Features

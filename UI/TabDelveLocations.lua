@@ -31,6 +31,10 @@ local expandedBoss   = {}
 local todayStoryByName = {}
 local todayTierByName  = {}
 
+-- Reused scratch buffer for the row hover tooltip lines, wiped per hover
+-- instead of allocating a fresh table on every OnEnter.
+local hoverTipLines = {}
+
 -- Cache of lower-cased / trimmed delve names so the sort comparator
 -- never has to allocate ":lower()" strings inside the hot path.
 local delveLowerName = {}  -- [delve] = lower(name)
@@ -73,7 +77,7 @@ local DELVE_NOTES = {
     ["Atal'Aman"]           = { tier="B", story="Toadly Unbecoming",   note="Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss." },
     ["The Shadow Enclave"]  = { tier="C", story="Traitor's Due",       note="Large unwalkable map — slow regardless of story. Use the Eye of Antenorian buff whenever it's available." },
     ["The Grudge Pit"]      = { tier="D", story="Arena Champion",      note="Compact and mountable but long RP transitions and non-combat objectives in all three variants hurt efficiency." },
-    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note="Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful this week." },
+    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note="Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today." },
 }
 
 -- Publish the signature story name for each delve so other tabs (the
@@ -345,7 +349,8 @@ E:RegisterModule(function()
         -- Row hover tooltip
         row:SetScript("OnEnter", function(self)
             if self.delve then
-                local tipLines = {}
+                local tipLines = hoverTipLines
+                wipe(tipLines)
                 if self.isBountiful then
                     table_insert(tipLines, E.CC.gold .. "* Bountiful Delve today!" .. E.CC.close)
                 end
@@ -353,7 +358,10 @@ E:RegisterModule(function()
                     E.CC.muted .. "Zone: " .. E.CC.close
                         .. E.CC.body .. self.delve.zone .. E.CC.close)
 
-                local todayStory = E.GetDelveStoryVariant and E:GetDelveStoryVariant(self.delve.name)
+                -- Use the value RefreshFilteredData already cached (the row
+                -- column and sort read the same table) instead of a fresh
+                -- live POI read on every mouse-over.
+                local todayStory = todayStoryByName[self.delve.name]
                 if todayStory and todayStory ~= "" then
                     local si = E.GetStoryTier and E:GetStoryTier(todayStory)
                     table_insert(tipLines, "")

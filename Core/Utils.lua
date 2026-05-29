@@ -155,13 +155,18 @@ end
 ------------------------------------------------------------------------
 -- Progress bar factory (shared by multiple tabs)
 ------------------------------------------------------------------------
---- Create a themed progress bar with a fill texture and centered label.
+--- Create a themed progress bar with a fill texture and a value label.
 --- The returned frame has a :SetProgress(current, max) method.
+--- When `caption` is supplied, a left-aligned title is drawn inside the
+--- bar (e.g. "Weekly Bountiful") and the numeric value moves to the
+--- right so the two never overlap; without it the value stays centered
+--- (backward-compatible with existing call sites).
 --- @param parent Frame
 --- @param width  number  Bar width in pixels, or 0 for anchor-based sizing
 --- @param height number
+--- @param caption string|nil  Optional left-aligned bar title
 --- @return Frame
-function E:CreateProgressBar(parent, width, height)
+function E:CreateProgressBar(parent, width, height, caption)
     local bar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     if width and width > 0 then
         bar:SetSize(width, height)
@@ -192,9 +197,23 @@ function E:CreateProgressBar(parent, width, height)
     end)
 
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("CENTER")
     label:SetFont(label:GetFont(), 10, "OUTLINE")
     bar.label = label
+
+    -- With a caption, draw the title on the left and push the numeric
+    -- value to the right edge so they share the bar without overlapping.
+    -- Without one, keep the value centered (legacy behaviour).
+    if caption and caption ~= "" then
+        local cap = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        cap:SetPoint("LEFT", bar, "LEFT", 6, 0)
+        cap:SetFont(cap:GetFont(), 10, "OUTLINE")
+        cap:SetText("|cFFFFFFFF" .. caption .. "|r")
+        bar.caption = cap
+
+        label:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
+    else
+        label:SetPoint("CENTER")
+    end
 
     --- Update the bar to show current / max progress.
     function bar:SetProgress(current, max)
@@ -207,6 +226,31 @@ function E:CreateProgressBar(parent, width, height)
     end
 
     return bar
+end
+
+------------------------------------------------------------------------
+-- Trovehunter's Bounty map detection
+------------------------------------------------------------------------
+-- Single source of truth for "does the player hold a bounty map", shared
+-- by the entry popup and the Tier Guide status line so they can never
+-- disagree. Kept as a list so a second ID can be added trivially if one
+-- is ever confirmed -- a previously-suspected alternate (265714) was
+-- ruled out by /dump (returns 0 for a confirmed map holder), so only the
+-- proven map item (252415) is checked.
+E.TROVE_MAP_ITEM_IDS = { 252415 }
+
+--- Total count of Trovehunter's Bounty maps held across all known item
+--- IDs. Bags only (not bank) on purpose: the map can only be used from
+--- bags inside a delve, so a banked copy must not trip the reminder.
+--- @return number
+function E:GetTrovehunterMapCount()
+    if not (C_Item and C_Item.GetItemCount) then return 0 end
+    local total = 0
+    for _, id in ipairs(E.TROVE_MAP_ITEM_IDS) do
+        ---@diagnostic disable-next-line: deprecated
+        total = total + (C_Item.GetItemCount(id) or 0)
+    end
+    return total
 end
 
 ------------------------------------------------------------------------

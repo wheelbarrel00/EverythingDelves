@@ -32,7 +32,7 @@ end
 -- Default SavedVariables structure
 ------------------------------------------------------------------------
 -- Account-wide settings only. Per-character gameplay data
--- (delveHistory, manualComplete, activeRun) is NOT here — it lives in
+-- (delveHistory, activeRun) is NOT here — it lives in
 -- per-character profiles, resolved in InitDB and reached transparently
 -- through the E.db proxy. lastKnownBountifulIDs / lastKnownActiveSAs
 -- stay account-wide because the bountiful / Special Assignment rotation
@@ -44,12 +44,11 @@ local DEFAULTS = {
     },
     framePosition    = nil,       -- { point, relPoint, x, y }
     defaultTab       = 1,
-    completedDisplay = "dim",     -- "hide" | "dim" | "bottom"
     uiScale          = 1.0,
     accentColor      = "gold",    -- "red" | "gold" | "purple" | "green" | "darkblue"
-    showWeeklyResetAlert   = true,
-    sessionTracking        = true,
-    showCompletedItems     = true,
+    -- (completedDisplay / showCompletedItems / showWeeklyResetAlert /
+    --  sessionTracking removed — their Options controls were non-functional;
+    --  re-add here when the backing behavior is actually implemented.)
     lowShardWarning        = true,
     lowShardThreshold      = 100,
     alertNewBountiful      = false,
@@ -78,8 +77,10 @@ local DEFAULTS = {
 -- proxy redirects reads/writes of these to the active profile.
 local PROFILE_KEYS = {
     delveHistory   = true,
-    manualComplete = true,
     activeRun      = true,
+    -- manualComplete retired: manual completion was replaced by daily-bounded
+    -- auto-completion and nothing reads/writes it anymore. The migration below
+    -- still preserves any legacy data into the "Original" profile.
 }
 
 --- "Name - Realm" key identifying the current character.
@@ -96,7 +97,7 @@ E.CharKey = CharKey
 --- Ensure a profile table has all required sub-tables.
 local function NormalizeProfile(p)
     p.delveHistory   = p.delveHistory   or {}
-    p.manualComplete = p.manualComplete or {}
+    -- manualComplete intentionally not normalized — the feature is retired.
     -- activeRun intentionally left nil when absent.
     return p
 end
@@ -511,6 +512,10 @@ E.delveRunState = {
     story          = nil,   -- story variant, read from the delve's POI tooltip
     boss           = nil,   -- end-boss name, captured live via ENCOUNTER_END
     trovehunterPopupShown = false, -- one-shot guard for the reminder popup
+    popupWindowStart = 0,   -- GetTime() at THIS world-entry; the popup's
+                            -- 60s late-firing window is keyed off this, NOT
+                            -- startTime, so a /reload deep into a run still
+                            -- gets a fresh window and the popup can fire.
 }
 
 local runState = E.delveRunState
@@ -805,14 +810,16 @@ local function BeginDelveRun(name, kind)
     runState.delveName     = name
     runState.delveKind     = kind
     runState.startTime     = GetTime()
+    runState.popupWindowStart = GetTime()  -- fresh popup window on entry
     runState.deaths        = 0
     runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
     runState.tier          = 0
     runState.wasBountiful  = false
     -- Story variant for this run, read from the delve's POI tooltip. Works
-    -- for bountiful and non-bountiful delves; it is weekly-stable, so the
-    -- value read at entry matches completion. Re-read at completion too as
-    -- a fallback in case the POI cache was cold here.
+    -- for bountiful and non-bountiful delves; the variant is stable for the
+    -- day (it rotates on the daily reset), so the value read at entry matches
+    -- completion. Re-read at completion too as a fallback in case the POI
+    -- cache was cold here.
     runState.story         = E:GetDelveStoryVariant(name)
     runState.boss          = nil
     runState.trovehunterPopupShown = false
@@ -1041,6 +1048,15 @@ function E:RepairAbsurdDurations()
                         life.totalDuration =
                             math.max(0, life.totalDuration - run.duration)
                     end
+                    -- Deliberately do NOT decrement life.totalRuns here. The
+                    -- run stays in recentRuns (we only zero its duration), and
+                    -- a delve renders in the History tab / Locations badge only
+                    -- while totalRuns > 0 — decrementing could silently hide a
+                    -- delve whose only run was corrupted, even though its row
+                    -- still exists. Keeping the count also matches the live
+                    -- path (LogDelveRun counts a 0-duration run), so a scrubbed
+                    -- run is treated as a 0s run in the average — the same
+                    -- convention used everywhere else for unknown timers.
                     run.duration = 0
                     fixed = fixed + 1
                 end
@@ -1070,11 +1086,14 @@ function E:ClearDelveHistory()
 end
 
 --- One-time auto-repair of stale wasBountiful flags.
---- Cross-checks this week's recorded runs against the LIVE bountiful
---- list. Any run whose delve is currently bountiful but was logged
---- with wasBountiful=false (because the POI cache was cold at delve
---- entry) gets its flag corrected. Only repairs THIS WEEK's runs —
---- past weeks' bountifuls have rotated out and are unrecoverable.
+--- Cross-checks TODAY's recorded runs against the LIVE bountiful list.
+--- Any run whose delve is currently bountiful but was logged with
+--- wasBountiful=false (because the POI cache was cold at delve entry)
+--- gets its flag corrected. Only repairs TODAY's runs — the bountiful
+--- set rotates DAILY, so a run logged before today's reset cannot be
+--- validated against today's live list (the delve may be bountiful only
+--- today, or have rotated out since the run). Repairing across a wider
+--- window would corrupt history and inflate the Gilded Stash counter.
 ---
 --- Triggered once per session: PLAYER_LOGIN sets `_autoRepairPending`,
 --- then the next successful `RefreshBountifulData` calls this and
@@ -1087,12 +1106,15 @@ function E:AutoRepairBountifulHistory()
     -- for a later refresh rather than wasting our one-shot repair pass.
     if not next(self.currentBountifulNames) then return end
 
+    -- Bountiful rotates on the DAILY reset, so only today's runs can be
+    -- validated against today's live list. run.timestamp is written with
+    -- time(), so compute the boundary in the same base (mirrors the daily
+    -- logic in TabCurrentBountiful).
     local lastReset = 0
-    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
+        local secs = C_DateAndTime.GetSecondsUntilDailyReset()
         if secs and secs > 0 then
-            local now = (GetServerTime and GetServerTime()) or time()
-            lastReset = now + secs - 604800
+            lastReset = time() + secs - 86400
         end
     end
 
@@ -1114,7 +1136,7 @@ function E:AutoRepairBountifulHistory()
     if repaired > 0 then
         print(self.CC.header .. "Everything Delves|r: Repaired "
             .. repaired .. " mis-flagged bountiful run"
-            .. (repaired == 1 and "" or "s") .. " from this week.")
+            .. (repaired == 1 and "" or "s") .. " from today.")
         if self.RefreshDelveHistoryTab then
             self:RefreshDelveHistoryTab()
         end
@@ -1202,6 +1224,12 @@ local function TryBeginFromCurrentZone(source)
                 runState.delveName     = matchedName
                 runState.delveKind     = saved.kind
                 runState.startTime     = saved.startTime
+                -- Fresh popup window from THIS world-entry (not the original
+                -- run start): GetTime() is continuous across /reload, so
+                -- reusing saved.startTime would trip the 60s late-firing guard
+                -- immediately and permanently suppress the reminder after a
+                -- mid-run reload.
+                runState.popupWindowStart = GetTime()
                 runState.deaths        = saved.deaths or 0
                 runState.startKeyCount = saved.startKeyCount or 0
                 runState.tier          = saved.tier or 0

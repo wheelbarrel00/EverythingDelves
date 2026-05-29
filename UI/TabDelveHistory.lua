@@ -76,7 +76,7 @@ end
 -- MODULE INIT
 ------------------------------------------------------------------------
 E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTab5Content")
+    local frame = CreateFrame("Frame", "EverythingDelvesTabHistoryContent")
 
     --------------------------------------------------------------------
     -- Header: title + aggregate summary
@@ -456,6 +456,21 @@ E:RegisterModule(function()
         E:HideTooltip()
     end
 
+    -- Shared hover handlers for the "B" badge so the lone gold glyph has a
+    -- legend (it was ambiguous — Bountiful? Boss? Bonus?). Only explains
+    -- itself when the badge is actually shown (this run was bountiful).
+    local function BountBadge_OnEnter(self)
+        local row = self.row
+        if row and row.run and row.run.wasBountiful then
+            E:ShowTooltip(self, E.CC.gold .. "B" .. E.CC.close .. " = Bountiful",
+                "This run was in a Bountiful Delve.")
+        end
+    end
+
+    local function BountBadge_OnLeave()
+        E:HideTooltip()
+    end
+
     -- Pooled wrapped text line shown beneath a run that has a note.
     local function AcquireNoteLine(i)
         local fs = noteLinePool[i]
@@ -597,6 +612,15 @@ E:RegisterModule(function()
             return fs
         end
         row.bountFS  = col(0,   12)
+        -- Invisible hover target over the "B" badge so it can explain itself.
+        local bountHover = CreateFrame("Frame", nil, row)
+        bountHover:SetPoint("LEFT", row, "LEFT", 0, 0)
+        bountHover:SetSize(14, RUN_ROW_HEIGHT)
+        bountHover:EnableMouse(true)
+        bountHover.row = row
+        bountHover:SetScript("OnEnter", BountBadge_OnEnter)
+        bountHover:SetScript("OnLeave", BountBadge_OnLeave)
+        row.bountHover = bountHover
         row.tierFS   = col(14,  32)
         row.durFS    = col(48,  66)
         row.deathsFS = col(116, 74)

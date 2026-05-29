@@ -287,11 +287,13 @@ E:RegisterModule(function()
 
     -- Activity type ->display config
     -- Enum.WeeklyRewardChestThresholdType: Activities = Mythic+/Heroic+ dungeons,
-    -- World = Delves + world content, RankedPvP = rated PvP.
+    -- World = Delves + world content. Rated PvP was removed from the Great
+    -- Vault in The War Within (World Content replaced the old PvP slot), so
+    -- C_WeeklyRewards.GetActivities never returns a RankedPvP row in Midnight
+    -- — a PvP bar here could only ever show 0/3, so it is not displayed.
     local GV_ROWS = {
         { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Mythic+ Dungeons",       max = 8 },
         { type = Enum.WeeklyRewardChestThresholdType.World,      label = "Delves / World Content", max = 8 },
-        { type = Enum.WeeklyRewardChestThresholdType.RankedPvP,  label = "PvP",                    max = 3 },
     }
 
     local gvBars = {}
@@ -360,8 +362,8 @@ E:RegisterModule(function()
                     local current = math_min(data.completed, data.total)
                     bar:SetProgress(current, data.total)
                     -- Always use the accent colour, regardless of whether
-                    -- the bar is full. This keeps World Content / Delves /
-                    -- PvP bars consistent with the rest of the UI.
+                    -- the bar is full. This keeps the Dungeon / Delves bars
+                    -- consistent with the rest of the UI.
                     local p = E:GetAccentPreset()
                     bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
                                              p.progressFill.b, p.progressFill.a)
@@ -442,8 +444,8 @@ E:RegisterModule(function()
 
     local TROVE_QUEST_ID = 86371   -- weekly loot check quest
     local TROVE_USED_ID  = 92887   -- bounty consumed quest
-    local TROVE_MAP_ITEM = 252415  -- map item (bag check)
-    local TROVE_ITEM_ID  = 265714  -- actual item ID
+    -- Bag count comes from E:GetTrovehunterMapCount() (single source of
+    -- truth for known map item IDs); see Core/Utils.lua.
     local TROVE_ICON     = 1064187 -- texture ID
     local TROVE_AURA     = 1254631 -- buff spell ID
 
@@ -469,10 +471,9 @@ E:RegisterModule(function()
             bountyUsed = C_QuestLog.IsQuestFlaggedCompleted(TROVE_USED_ID)
         end
 
-        local inBag = 0
-        if C_Item and C_Item.GetItemCount then
-            inBag = C_Item.GetItemCount(TROVE_MAP_ITEM)
-        end
+        -- Sum across every known map item ID so the variant the old
+        -- single-ID check missed still registers (E:GetTrovehunterMapCount).
+        local inBag = E:GetTrovehunterMapCount()
 
         local auraActive = false
         if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
@@ -480,7 +481,12 @@ E:RegisterModule(function()
         end
 
         if weeklyDone then
-            if bountyUsed then
+            -- Only claim "used / [Done]" when no map remains in the bag.
+            -- The "used" quest flag (92887) has proven unreliable — it can
+            -- read as used while an unused map is still in the bag — so bag
+            -- presence wins: if you're still holding one, you still have a
+            -- bounty to use, and the detail line below nudges you to use it.
+            if bountyUsed and inBag <= 0 then
                 troveStatusFS:SetText(
                     E.CC.muted .. "Bounty looted and used this week. [Done]"
                     .. E.CC.close
