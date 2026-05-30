@@ -144,6 +144,71 @@ E:RegisterModule(function()
     end)
 
     --------------------------------------------------------------------
+    -- History retention slider (top band, left of Clear History).
+    -- Sets how many recent runs are kept per delve. Default = floor = 20;
+    -- raising it keeps more history going forward. Placed in the FIXED
+    -- header (not by the scrolling "Midnight Delves" header) so it stays
+    -- put and never scrolls out of reach.
+    --------------------------------------------------------------------
+    local CAP_MIN  = E.HISTORY_CAP_MIN or 20
+    local CAP_MAX  = E.HISTORY_CAP_MAX or 100
+    local CAP_STEP = 10
+
+    local function ClampCap(v)
+        v = math_floor((v / CAP_STEP) + 0.5) * CAP_STEP
+        if v < CAP_MIN then v = CAP_MIN elseif v > CAP_MAX then v = CAP_MAX end
+        return v
+    end
+
+    local capValFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    capValFS:SetPoint("RIGHT", clearBtn, "LEFT", -14, 0)
+    capValFS:SetFont(capValFS:GetFont(), 11)
+
+    local capSlider = CreateFrame("Slider", nil, frame, "OptionsSliderTemplate")
+    capSlider:SetSize(110, 16)
+    capSlider:SetPoint("RIGHT", capValFS, "LEFT", -8, 0)
+    capSlider:SetMinMaxValues(CAP_MIN, CAP_MAX)
+    capSlider:SetValueStep(CAP_STEP)
+    capSlider:SetObeyStepOnDrag(true)
+    if capSlider.Low  then capSlider.Low:SetText("")  end
+    if capSlider.High then capSlider.High:SetText("") end
+    if capSlider.Text then capSlider.Text:SetText("") end
+
+    local capLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    capLabel:SetPoint("RIGHT", capSlider, "LEFT", -8, 0)
+    capLabel:SetFont(capLabel:GetFont(), 11)
+    capLabel:SetText(E.CC.body .. "Runs kept per delve:" .. E.CC.close)
+
+    capSlider:SetScript("OnValueChanged", function(_, val)
+        val = ClampCap(val)
+        if E.db then E.db.historyCap = val end
+        capValFS:SetText(E.CC.gold .. val .. E.CC.close)
+    end)
+
+    local function CapTooltip(self)
+        E:ShowTooltip(self, "History kept per delve",
+            "How many recent runs to store for each delve (newest first).",
+            E.CC.muted .. "Default 20, up to " .. CAP_MAX
+            .. ". Raising it keeps more history from now on; runs already "
+            .. "trimmed can't be recovered. Lowering it trims a delve's "
+            .. "oldest runs the next time you run it." .. E.CC.close)
+    end
+    capSlider:SetScript("OnEnter", CapTooltip)
+    capSlider:SetScript("OnLeave", function() E:HideTooltip() end)
+
+    -- Sync the slider to the saved value (re-synced on OnShow so a profile
+    -- switch is reflected). Set the readout explicitly too: when the saved
+    -- value matches the slider's current value, SetValue won't fire
+    -- OnValueChanged, so the number could otherwise stay blank.
+    local function SyncHistoryCap()
+        local v = ClampCap((E.db and E.db.historyCap) or CAP_MIN)
+        capSlider:SetValue(v)
+        capValFS:SetText(E.CC.gold .. v .. E.CC.close)
+    end
+    SyncHistoryCap()
+    frame.SyncHistoryCap = SyncHistoryCap
+
+    --------------------------------------------------------------------
     -- Scroll frame + scroll child
     --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
@@ -911,6 +976,7 @@ E:RegisterModule(function()
         Refresh()
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)
+        if frame.SyncHistoryCap then frame.SyncHistoryCap() end
     end)
 
     --------------------------------------------------------------------

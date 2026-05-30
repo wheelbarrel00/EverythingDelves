@@ -263,6 +263,12 @@ local function PopulateBountifulDelvesLive(out)
 
                 local entry        = AcquireBountifulEntry()
                 entry.name         = poi.name or delve.name
+                -- Canonical DelveData name kept alongside the (display) POI
+                -- name: the live POI name can differ from the addon's
+                -- canonical name -- e.g. the POI "Twilight Crypts" vs the
+                -- canonical "Twilight Crypt" that MatchDelveName resolves to.
+                -- Lookups elsewhere use the canonical name, so we key on both.
+                entry.canonicalName = delve.name
                 entry.zone         = delve.zone
                 entry.x            = delve.x
                 entry.y            = delve.y
@@ -460,6 +466,17 @@ local function RefreshBountifulData(force)
         -- Also store normalized name for fuzzy matching
         local norm = strtrim(delve.name):lower()
         E.currentBountifulNames[norm] = true
+        -- Key by the canonical DelveData name too. delve.name above is the
+        -- live POI label, which can differ from the canonical name the rest
+        -- of the addon resolves to (e.g. POI "Twilight Crypts" vs canonical
+        -- "Twilight Crypt"). Callers that look up by canonical name -- the
+        -- delve-entry reminder's wasBountiful check, the Delve Locations
+        -- bountiful highlight, AutoRepairBountifulHistory -- would otherwise
+        -- miss and treat a bountiful delve as non-bountiful.
+        if delve.canonicalName and delve.canonicalName ~= delve.name then
+            E.currentBountifulNames[delve.canonicalName] = true
+            E.currentBountifulNames[strtrim(delve.canonicalName):lower()] = true
+        end
         if delve.poiID then
             E.currentBountifulPOIs[delve.poiID] = true
         end
@@ -839,9 +856,14 @@ function UpdateRows()
             .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
 
         if delve.completed then
+            -- Completed marker: a ready-check texture, NOT a Unicode check
+            -- (U+2713) -- the default game font has no glyph for it and it
+            -- renders as a grey missing-glyph box. Same lesson as the boss
+            -- star: use an |T...|t texture for any non-ASCII marker.
             row.nameText:SetText(
                 caret .. " "
-                .. E.CC.muted .. "\226\156\147 " .. delve.name .. E.CC.close
+                .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t "
+                .. E.CC.muted .. delve.name .. E.CC.close
             )
             row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
             local completedPrefix = delve.overcharged

@@ -5,6 +5,17 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-05-29
+
+### New Features
+
+- **Choose how much delve history to keep** &mdash; By popular request, a new slider in the Delve History tab lets you set how many recent runs are stored per delve, from 20 up to 100 (default 20). Raise it to keep a longer record going forward; the runs already saved are unaffected.
+
+### Bug Fixes
+
+- **Trovehunter's Bounty reminder now works in Twilight Crypts** &mdash; The entry reminder could silently skip a delve whose in-game name differs slightly from the addon's internal name (such as Twilight Crypts), so the popup never appeared there even with an unused Bounty Map in your bags. These delves are now matched correctly &mdash; which also fixes their Bountiful status feeding the Gilded Stash progress and the Delve Locations highlight.
+- **Completed Bountiful delves show a checkmark** &mdash; Finished delves in the Current Bountiful Delves tab displayed a grey box where the game font had no matching character; they now use a proper checkmark icon.
+
 ## [1.10.1] - 2026-05-28
 
 ### Bug Fixes

@@ -44,6 +44,7 @@ local DEFAULTS = {
     },
     framePosition    = nil,       -- { point, relPoint, x, y }
     defaultTab       = 1,
+    historyCap       = 20,        -- recentRuns kept per delve (History tab slider)
     uiScale          = 1.0,
     accentColor      = "gold",    -- "red" | "gold" | "purple" | "green" | "darkblue"
     -- (completedDisplay / showCompletedItems / showWeeklyResetAlert /
@@ -486,11 +487,16 @@ end)
 -- handler-per-event dispatcher above.
 --
 -- Memory: single persistent `runState` table wiped in-place on entry.
--- Saved recentRuns capped at 20 per delve; lifetime = fixed numbers.
+-- Saved recentRuns capped per delve (configurable, default 20); lifetime = fixed numbers.
 ------------------------------------------------------------------------
 
 local COFFER_KEY_CURRENCY = 2915  -- Restored Coffer Key
-local MAX_RECENT_RUNS     = 20
+-- recentRuns retention per delve. User-configurable via the History tab
+-- slider, clamped to [MIN, MAX]; MIN is also the default and floor. Raising
+-- it keeps more runs going forward (already-trimmed runs can't be recovered).
+E.HISTORY_CAP_MIN = 20
+E.HISTORY_CAP_MAX = 100
+local MAX_RECENT_RUNS     = E.HISTORY_CAP_MIN
 -- A persisted activeRun is only resumed on /reload if it began within this
 -- many seconds of wall-clock time. GetTime() is SYSTEM uptime (it does NOT
 -- reset when the WoW client restarts — only on a reboot), so the old
@@ -740,8 +746,23 @@ local function RefreshBountifulSnapshot()
 
     E:RefreshBountifulData(true)
 
-    if E.currentBountifulNames
-            and E.currentBountifulNames[runState.delveName] then
+    -- Match the live bountiful set by name OR by the delve's POI id. The
+    -- name lookup alone is fragile: E.currentBountifulNames is keyed off the
+    -- live POI label, which can differ from runState.delveName (the canonical
+    -- MatchDelveName result) -- e.g. POI "Twilight Crypts" vs canonical
+    -- "Twilight Crypt" -- so a bountiful delve could silently fail the check
+    -- and the reminder would never fire there. The POI-id leg is identity-
+    -- stable and immune to any name-spelling drift; it mirrors the robust
+    -- lookup the Delve Locations tab already uses.
+    local cbn  = E.currentBountifulNames
+    local cbp  = E.currentBountifulPOIs
+    local meta = E.DelveDataByName and E.DelveDataByName[runState.delveName]
+    local isBountiful =
+        (cbn and (cbn[runState.delveName]
+                  or cbn[strtrim(runState.delveName):lower()]))
+        or (meta and meta.poiID and cbp and cbp[meta.poiID])
+
+    if isBountiful then
         runState.wasBountiful = true
         if E.db and E.db.activeRun then
             E.db.activeRun.wasBountiful = true
@@ -896,7 +917,8 @@ local function EndDelveRun()
 end
 
 --- Append a completed run to the SavedVariables history.
---- Updates lifetime counters in-place and caps recentRuns at 20.
+--- Updates lifetime counters in-place and caps recentRuns at the
+--- user-configured retention (E.db.historyCap, default 20).
 --- `story` (optional) is the detected story variant for THIS run (e.g.
 --- "Invasive Glow"); stored only when non-empty so the History tab can
 --- show the actual variant instead of the delve's signature story.
@@ -955,7 +977,16 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         story        = (story and story ~= "") and story or nil,
         boss         = (boss and boss ~= "") and boss or nil,
     })
-    while #recent > MAX_RECENT_RUNS do
+    -- Cap retention at the user-configured limit. Clamp to [MIN, MAX] so a
+    -- bad saved value can't shrink history below the floor or grow it without
+    -- bound. Only inserts trigger trimming, so raising the cap keeps more from
+    -- here on; lowering it trims a delve's tail the next time that delve runs.
+    local cap = MAX_RECENT_RUNS
+    local hc  = E.db and E.db.historyCap
+    if type(hc) == "number" then
+        cap = math.max(E.HISTORY_CAP_MIN, math.min(hc, E.HISTORY_CAP_MAX))
+    end
+    while #recent > cap do
         recent[#recent] = nil
     end
 end
