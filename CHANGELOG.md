@@ -5,6 +5,16 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-06-01
+
+### New Features
+
+- **Join our Discord!** &mdash; Everything Delves now has a community Discord for help, feedback, suggestions, and update news. A "Join our Discord!" link sits in the top-left of the main window (and in the What's New popup); since the game can't open a browser, clicking it pops a pre-selected invite link you can copy with Ctrl+C. Come say hi!
+
+### Bug Fixes
+
+- **"Default Tab" option now works every time** &mdash; The Default Tab setting only took effect the first time the window was built; afterward it reopened to whatever tab you last viewed. The window now opens to your chosen default tab every time.
+
 ## [1.11.0] - 2026-05-29
 
 ### New Features

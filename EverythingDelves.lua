@@ -18,6 +18,45 @@ E.name = "EverythingDelves"
 E.version = C_AddOns.GetAddOnMetadata("EverythingDelves", "Version") or "1.0.0"
 
 ------------------------------------------------------------------------
+-- Community Discord
+-- WoW can't open a web browser, so the "Join our Discord!" links (main
+-- window title bar + What's New popup) pop a copyable invite instead. The
+-- edit box is pre-selected so the player just presses Ctrl+C.
+------------------------------------------------------------------------
+E.DISCORD_URL = "https://discord.gg/vm8K2WfQUE"
+
+StaticPopupDialogs["EVERYTHINGDELVES_DISCORD"] = {
+    text = "Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):",
+    button1 = "Close",
+    hasEditBox = true,
+    editBoxWidth = 220,
+    OnShow = function(self)
+        local eb = self.editBox or (self.EditBox)
+        if eb then
+            eb:SetText(E.DISCORD_URL)
+            eb:HighlightText()
+            eb:SetFocus()
+            eb:SetScript("OnEscapePressed", function(box) box:GetParent():Hide() end)
+            -- Keep the link intact: re-fill + re-select if the player edits it.
+            eb:SetScript("OnTextChanged", function(box)
+                if box:GetText() ~= E.DISCORD_URL then
+                    box:SetText(E.DISCORD_URL)
+                    box:HighlightText()
+                end
+            end)
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+function E:ShowDiscord()
+    StaticPopup_Show("EVERYTHINGDELVES_DISCORD")
+end
+
+------------------------------------------------------------------------
 -- Module registration
 -- Tab files call RegisterModule() at load time to queue an init callback.
 -- All callbacks run inside InitMainFrame() after the main window exists.

@@ -67,6 +67,15 @@ function E:InitMainFrame()
         }
     end)
 
+    -- Always open to the player's chosen default tab. The window is built
+    -- once and reused, so applying the default tab only at creation made it
+    -- stick on whatever tab was last viewed. Re-apply on every Show. (The
+    -- broker right-click path calls SelectTab(8) AFTER Show returns, so it
+    -- still wins and lands on Options.)
+    frame:SetScript("OnShow", function()
+        E:SelectTab(E.db.defaultTab or 1)
+    end)
+
     -- Let the Escape key close the window without tainting
     -- UISpecialFrames is a Blizzard global table; frames listed here
     -- automatically hide when the player presses Escape.
@@ -111,6 +120,45 @@ function E:CreateTitleBar(parent)
     ver:SetPoint("RIGHT")
     ver:SetText(E.CC.muted .. "v" .. E.version .. E.CC.close)
     parent.versionText = ver
+
+    -- "Join our Discord!" link, top-left — mirrors the version label on the
+    -- right and flanks the centered title. The Discord logo chip sits before
+    -- the text as a brand accent. Click pops a copyable invite
+    -- (E:ShowDiscord) — WoW can't open a web browser.
+    local discord = CreateFrame("Button", nil, parent)
+    discord:SetFrameStrata("HIGH")
+    discord.icon = discord:CreateTexture(nil, "OVERLAY")
+    discord.icon:SetSize(16, 16)
+    discord.icon:SetPoint("LEFT", 0, 0)
+    -- White 64x64 TGA with alpha at Media\Textures\discord.tga. If the file
+    -- is ever missing, WoW draws a placeholder square — replace the asset.
+    discord.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
+    discord.text = discord:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    discord.text:SetPoint("LEFT", discord.icon, "RIGHT", 5, 0)
+    discord.text:SetText("Join our Discord!")
+    discord:SetSize(16 + 5 + discord.text:GetStringWidth() + 4, 18)
+    discord:SetPoint("TOPLEFT", parent, "TOPLEFT", 14, -12)
+    discord:SetScript("OnClick", function() E:ShowDiscord() end)
+    discord:SetScript("OnEnter", function(self)
+        self.text:SetTextColor(1, 1, 1)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        local ac = E:GetAccentPreset().header
+        GameTooltip:SetText("Join our Discord", ac.r, ac.g, ac.b)
+        GameTooltip:AddLine("Click to copy the invite link.", 0.8, 0.8, 0.8)
+        GameTooltip:Show()
+    end)
+    discord:SetScript("OnLeave", function(self)
+        local ac = E:GetAccentPreset().header
+        self.text:SetTextColor(ac.r, ac.g, ac.b)
+        GameTooltip:Hide()
+    end)
+    -- Keep the link text in the same bright accent header color as the
+    -- "Everything Delves" title (preset.header), not the dimmer body accent.
+    E:RegisterThemed(function()
+        local ac = E:GetAccentPreset().header
+        discord.text:SetTextColor(ac.r, ac.g, ac.b)
+    end)
+    parent.discordButton = discord
 end
 
 ------------------------------------------------------------------------

@@ -5,24 +5,16 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.10.1"
+local WHATS_NEW_VERSION = "1.12.0"
 
 local ENTRIES = {
     {
-        title = "Labeled Progress Bars",
-        desc  = "Every progress bar now has a clear label, so you can tell at a glance what each one tracks \226\128\148 no more guessing what a bar is for. Thanks to BanditC64 for the suggestion!",
+        title = "We have a Discord!",
+        desc  = "Everything Delves now has a community Discord for help, feedback, suggestions, and update news. Click \"Join our Discord!\" below (or the link in the top-left of the main window) to copy the invite \226\128\148 come say hi!",
     },
     {
-        title = "More Reliable Trovehunter Reminder",
-        desc  = "The Trovehunter's Bounty reminder now detects your map correctly and still appears after a /reload partway through a delve, so it won't stay hidden when you have a bounty to use.",
-    },
-    {
-        title = "Accurate Bountiful Completion",
-        desc  = "The Current Bountiful Delves tracker now counts finished delves correctly \226\128\148 completing one reads 1/4 (25%) and the delve stays in the list, dimmed, instead of disappearing.",
-    },
-    {
-        title = "Cleaner UI",
-        desc  = "Removed a few leftover, non-functional bits \226\128\148 including an inactive PvP row in the Great Vault \226\128\148 and corrected day-vs-week wording for the daily delve rotation.",
+        title = "Default Tab now sticks",
+        desc  = "The \"Default Tab\" option in Options now works every time you open the window, not just the first time \226\128\148 the addon now opens to your chosen tab on every open.",
     },
 }
 
@@ -87,12 +79,43 @@ E:RegisterModule(function()
         Y = Y - ENTRY_H
     end
 
-    -- Dismiss button
+    -- Dismiss button (sits right-of-center so the Discord link fits beside it)
     local btn = E:CreateButton(popup, 100, 24, "Got it")
-    btn:SetPoint("BOTTOM", popup, "BOTTOM", 0, 16)
+    btn:SetPoint("BOTTOM", popup, "BOTTOM", 60, 16)
     btn:SetScript("OnClick", function()
         E.db.seenWhatsNewVersion = WHATS_NEW_VERSION
         popup:Hide()
+    end)
+
+    -- "Join our Discord!" to the left of "Got it" — same look as the main
+    -- window title-bar link (logo chip + accent text). Does NOT mark the
+    -- popup as seen, so the player can copy the invite and keep reading.
+    -- Opens the same copyable invite popup (E:ShowDiscord).
+    local discordBtn = CreateFrame("Button", nil, popup, "BackdropTemplate")
+    discordBtn:SetHeight(24)
+    local dBg = discordBtn:CreateTexture(nil, "BACKGROUND")
+    dBg:SetAllPoints()
+    dBg:SetColorTexture(0.10, 0.10, 0.10, 0.95)
+    discordBtn.icon = discordBtn:CreateTexture(nil, "OVERLAY")
+    discordBtn.icon:SetSize(16, 16)
+    discordBtn.icon:SetPoint("LEFT", 10, 0)
+    discordBtn.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
+    discordBtn.text = discordBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    discordBtn.text:SetPoint("LEFT", discordBtn.icon, "RIGHT", 6, 0)
+    discordBtn.text:SetText("Join our Discord!")
+    discordBtn:SetWidth(10 + 16 + 6 + discordBtn.text:GetStringWidth() + 12)
+    discordBtn:SetPoint("RIGHT", btn, "LEFT", -10, 0)
+    discordBtn:SetScript("OnClick", function() E:ShowDiscord() end)
+    discordBtn:SetScript("OnEnter", function(self)
+        self.text:SetTextColor(1, 1, 1)
+    end)
+    discordBtn:SetScript("OnLeave", function(self)
+        local ac = E:GetAccentColor()
+        self.text:SetTextColor(ac.r, ac.g, ac.b)
+    end)
+    E:RegisterThemed(function()
+        local ac = E:GetAccentColor()
+        discordBtn.text:SetTextColor(ac.r, ac.g, ac.b)
     end)
     btn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
