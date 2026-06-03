@@ -19,6 +19,14 @@ jobs:
         with:
           fetch-depth: 0  # full history so the packager can read all tags
 
+      - name: Restore annotated tags
+        # actions/checkout rewrites the triggering tag as a *lightweight* tag
+        # inside the runner, even when it is annotated on the remote. That
+        # makes both the check below and the packager treat the build as an
+        # alpha. Force-fetch the real tag objects so the annotated tag is
+        # restored before the type check and packaging run.
+        run: git fetch --tags --force
+
       - name: Verify required secrets
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
