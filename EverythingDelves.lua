@@ -1370,6 +1370,16 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
     elseif event == "PLAYER_DEAD" then
         if runState.inDelve then
             runState.deaths = runState.deaths + 1
+            -- Mirror the new count into the persisted run so a mid-run
+            -- /reload (or disconnect+relog) restores the real death total
+            -- instead of the stale deaths=0 written at BeginDelveRun. Without
+            -- this, the resume path (runState.deaths = saved.deaths) silently
+            -- discarded every death that happened before the reload. tier and
+            -- wasBountiful are persisted the same way; deaths was the one
+            -- live-updated field left out.
+            if E.db and E.db.activeRun then
+                E.db.activeRun.deaths = runState.deaths
+            end
         end
 
     elseif event == "ENCOUNTER_END" then
