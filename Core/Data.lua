@@ -356,6 +356,16 @@ E.DelveBosses = {
                 { role = "dps",       text = "Kill all Voidcallers before Gorge — each one consumed grants Esuritus a damage buff. Interrupt their Commune with the Void channel." },
             },
         },
+        {
+            name  = "Corrupted Umbraroot",
+            brief = "Three elites instead of a single boss — pull them one at a time, interrupt Lightbloom Beam, and dodge Blooming Bile and Rotting Charge.",
+            notes = {
+                { role = "general",   text = "Three Corrupted Umbraroot elites end this story — pull them one at a time, never all at once." },
+                { role = "interrupt", text = "Lightbloom Beam — finishes into a channel that hits one player for heavy damage." },
+                { role = "general",   text = "Dodge the Blooming Bile frontal cone — heavy damage and it summons voidspawn; kill the adds quickly." },
+                { role = "general",   text = "Sidestep Rotting Charge and stay out of the puddle it leaves behind." },
+            },
+        },
     },
     ["Shadowguard Point"] = {
         {
@@ -390,8 +400,8 @@ function E:GetDelveBosses(delveName)
 end
 
 ------------------------------------------------------------------------
--- Static story-variant -> boss map for the three multi-boss delves
--- (the other seven only ever field one boss). Verified against multiple
+-- Static story-variant -> boss map for the four multi-boss delves
+-- (the other six only ever field one boss). Verified against multiple
 -- public guides; gives correct "today's boss" coverage from the first
 -- login, before any live ENCOUNTER_END capture has happened.
 --
@@ -416,6 +426,11 @@ E.DelveBossByVariant = {
         ["Sporasaur Special"]     = "Lumenia",
         ["Sporasaurus Surprise"]  = "Lumenia",
         ["Descent of the Haranir"] = "Mul'tha'ul",
+    },
+    ["Sunkiller Sanctum"] = {
+        ["Core of the Problem"]      = "Esuritus",
+        ["The Gravitational Effect"] = "Esuritus",
+        ["Not What I Expected"]      = "Corrupted Umbraroot",
     },
 }
 

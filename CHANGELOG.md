@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.2] - 2026-06-03
+
+### Bug Fixes
+
+- **Sunkiller Sanctum now shows the correct boss on its "Not What I Expected" day** &mdash; This delve fields a different finale depending on the story variant, but it was always marking Esuritus as today's boss. On the "Not What I Expected" variant the run instead ends with three Corrupted Umbraroot, and the "today's boss" highlight now points to them, with their own tactics (pull one at a time, interrupt Lightbloom Beam, dodge Blooming Bile and Rotting Charge). The other two variants still correctly show Esuritus.
+
 ## [1.12.1] - 2026-06-03
 
 ### Bug Fixes
