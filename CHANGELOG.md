@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-06-07
+
+### New Features
+
+- **Quickest Delve & Best Value** &mdash; The Delve Locations tab now shows an expected clear time for every delve in a new **Speed** column you can sort by, so you can line up your fastest runs first. Once you've run a delve it shows your own average time; until then it shows a pace-calibrated estimate (marked with `*`) based on how quickly you clear other delves &mdash; so a geared main and a levelling alt each see realistic numbers. Times are colour-graded relative to your own pace (Fast &rarr; Long). A new summary line at the top of the tab calls out today's **Quickest** delve and the **Best value** pick &mdash; the most reward for your time, weighing the tier, your clear speed, and whether it's bountiful today.
+
 ## [1.12.2] - 2026-06-03
 
 ### Bug Fixes

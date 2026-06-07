@@ -5,22 +5,22 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.12.0"
+local WHATS_NEW_VERSION = "1.13.0"
 
 local ENTRIES = {
     {
-        title = "We have a Discord!",
-        desc  = "Everything Delves now has a community Discord for help, feedback, suggestions, and update news. Click \"Join our Discord!\" below (or the link in the top-left of the main window) to copy the invite \226\128\148 come say hi!",
+        title = "Quickest Delve at a glance",
+        desc  = "Delve Locations now shows an expected clear time for every delve, plus a Speed column you can sort by to line up your fastest runs first. It uses your own average once you've run a delve, or a pace-calibrated estimate (marked *) until then.",
     },
     {
-        title = "Default Tab now sticks",
-        desc  = "The \"Default Tab\" option in Options now works every time you open the window, not just the first time \226\128\148 the addon now opens to your chosen tab on every open.",
+        title = "Best value pick",
+        desc  = "A new line at the top of Delve Locations highlights today's Quickest delve and the Best value pick \226\128\148 the most reward for your time, weighing the tier, how fast you clear it, and whether it's bountiful today.",
     },
 }
 
 local POPUP_W  = 460
 local PAD      = 12
-local ENTRY_H  = 66
+local ENTRY_H  = 74
 local HEADER_H = 40
 local FOOTER_H = 50
 local popupH   = HEADER_H + (#ENTRIES * ENTRY_H) + FOOTER_H

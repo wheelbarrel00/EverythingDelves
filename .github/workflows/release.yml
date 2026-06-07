@@ -50,6 +50,9 @@ jobs:
             echo "For a stable CurseForge release use: git tag -a $TAG -m \"$TAG\" && git push origin $TAG"
           fi
 
+      - name: Build per-release changelog
+        run: awk '/^## / { if (seen) exit; seen=1 } seen' CHANGELOG.md > .release_changelog.md
+
       - name: Package and release
         uses: BigWigsMods/packager@v2
         env:
