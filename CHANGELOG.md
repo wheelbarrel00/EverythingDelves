@@ -5,120 +5,127 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1] - 2026-06-07
+
+### Bug Fixes
+
+- **The Grudge Pit now logs the correct boss** - Its Arena Champion is shown in-game as Gyrospore, but the encounter reports a different internal name, so Delve History recorded the wrong boss. Runs now record and show "Gyrospore", and the fix also corrects the name on runs you already have saved. Thanks to BanditC64 for the report.
+- **Delve runs survive a disconnect** - If you got disconnected partway through a delve, the timer restarted when you logged back in and recorded a much-too-fast time for that run. A run interrupted by a disconnect now keeps its original start time and records its real elapsed time. (A run interrupted by a full game restart is still timed fresh, as before.) Thanks to BanditC64 for the report.
+
 ## [1.13.0] - 2026-06-07
 
 ### New Features
 
-- **Quickest Delve & Best Value** &mdash; The Delve Locations tab now shows an expected clear time for every delve in a new **Speed** column you can sort by, so you can line up your fastest runs first. Once you've run a delve it shows your own average time; until then it shows a pace-calibrated estimate (marked with `*`) based on how quickly you clear other delves &mdash; so a geared main and a levelling alt each see realistic numbers. Times are colour-graded relative to your own pace (Fast &rarr; Long). A new summary line at the top of the tab calls out today's **Quickest** delve and the **Best value** pick &mdash; the most reward for your time, weighing the tier, your clear speed, and whether it's bountiful today.
+- **Quickest Delve & Best Value** - The Delve Locations tab now shows an expected clear time for every delve in a new **Speed** column you can sort by, so you can line up your fastest runs first. Once you've run a delve it shows your own average time; until then it shows a pace-calibrated estimate (marked with `*`) based on how quickly you clear other delves - so a geared main and a levelling alt each see realistic numbers. Times are colour-graded relative to your own pace (Fast to Long). A new summary line at the top of the tab calls out today's **Quickest** delve and the **Best value** pick - the most reward for your time, weighing the tier, your clear speed, and whether it's bountiful today.
 
 ## [1.12.2] - 2026-06-03
 
 ### Bug Fixes
 
-- **Sunkiller Sanctum now shows the correct boss on its "Not What I Expected" day** &mdash; This delve fields a different finale depending on the story variant, but it was always marking Esuritus as today's boss. On the "Not What I Expected" variant the run instead ends with three Corrupted Umbraroot, and the "today's boss" highlight now points to them, with their own tactics (pull one at a time, interrupt Lightbloom Beam, dodge Blooming Bile and Rotting Charge). The other two variants still correctly show Esuritus.
+- **Sunkiller Sanctum now shows the correct boss on its "Not What I Expected" day** - This delve fields a different finale depending on the story variant, but it was always marking Esuritus as today's boss. On the "Not What I Expected" variant the run instead ends with three Corrupted Umbraroot, and the "today's boss" highlight now points to them, with their own tactics (pull one at a time, interrupt Lightbloom Beam, dodge Blooming Bile and Rotting Charge). The other two variants still correctly show Esuritus.
 
 ## [1.12.1] - 2026-06-03
 
 ### Bug Fixes
 
-- **Deaths now survive a mid-run `/reload`** &mdash; If you died during a delve and then reloaded your UI (or reconnected) before finishing the run, the death was dropped and Delve History recorded "Deaths: 0". Your death count is now saved the moment it happens, so it survives a reload and is logged correctly when the run completes.
+- **Deaths now survive a mid-run `/reload`** - If you died during a delve and then reloaded your UI (or reconnected) before finishing the run, the death was dropped and Delve History recorded "Deaths: 0". Your death count is now saved the moment it happens, so it survives a reload and is logged correctly when the run completes.
 
 ## [1.12.0] - 2026-06-01
 
 ### New Features
 
-- **Join our Discord!** &mdash; Everything Delves now has a community Discord for help, feedback, suggestions, and update news. A "Join our Discord!" link sits in the top-left of the main window (and in the What's New popup); since the game can't open a browser, clicking it pops a pre-selected invite link you can copy with Ctrl+C. Come say hi!
+- **Join our Discord!** - Everything Delves now has a community Discord for help, feedback, suggestions, and update news. A "Join our Discord!" link sits in the top-left of the main window (and in the What's New popup); since the game can't open a browser, clicking it pops a pre-selected invite link you can copy with Ctrl+C. Come say hi!
 
 ### Bug Fixes
 
-- **"Default Tab" option now works every time** &mdash; The Default Tab setting only took effect the first time the window was built; afterward it reopened to whatever tab you last viewed. The window now opens to your chosen default tab every time.
+- **"Default Tab" option now works every time** - The Default Tab setting only took effect the first time the window was built; afterward it reopened to whatever tab you last viewed. The window now opens to your chosen default tab every time.
 
 ## [1.11.0] - 2026-05-29
 
 ### New Features
 
-- **Choose how much delve history to keep** &mdash; By popular request, a new slider in the Delve History tab lets you set how many recent runs are stored per delve, from 20 up to 100 (default 20). Raise it to keep a longer record going forward; the runs already saved are unaffected.
+- **Choose how much delve history to keep** - By popular request, a new slider in the Delve History tab lets you set how many recent runs are stored per delve, from 20 up to 100 (default 20). Raise it to keep a longer record going forward; the runs already saved are unaffected.
 
 ### Bug Fixes
 
-- **Trovehunter's Bounty reminder now works in Twilight Crypts** &mdash; The entry reminder could silently skip a delve whose in-game name differs slightly from the addon's internal name (such as Twilight Crypts), so the popup never appeared there even with an unused Bounty Map in your bags. These delves are now matched correctly &mdash; which also fixes their Bountiful status feeding the Gilded Stash progress and the Delve Locations highlight.
-- **Completed Bountiful delves show a checkmark** &mdash; Finished delves in the Current Bountiful Delves tab displayed a grey box where the game font had no matching character; they now use a proper checkmark icon.
+- **Trovehunter's Bounty reminder now works in Twilight Crypts** - The entry reminder could silently skip a delve whose in-game name differs slightly from the addon's internal name (such as Twilight Crypts), so the popup never appeared there even with an unused Bounty Map in your bags. These delves are now matched correctly - which also fixes their Bountiful status feeding the Gilded Stash progress and the Delve Locations highlight.
+- **Completed Bountiful delves show a checkmark** - Finished delves in the Current Bountiful Delves tab displayed a grey box where the game font had no matching character; they now use a proper checkmark icon.
 
 ## [1.10.1] - 2026-05-28
 
 ### Bug Fixes
 
-- **Trovehunter's Bounty reminder reliability** &mdash; The reminder now detects your Bounty Map correctly and still appears after a `/reload` partway through a delve, fixing cases where it could stay hidden even with an unused bounty in your bags.
-- **Accurate Bountiful completion count** &mdash; The Current Bountiful Delves progress bar now counts finished delves correctly &mdash; completing one reads "1 / 4 (25%)" instead of dropping the delve off the list and shrinking the total. Finished delves now stay in the checklist, dimmed, so you can see the full day at a glance.
-- **Bountiful history accuracy** &mdash; A one-time history repair was checking a weekly window for the daily-rotating Bountiful set, which could mislabel older runs as Bountiful and inflate the Gilded Stash counter. It now uses the correct daily window.
-- **Trovehunter status wording** &mdash; The Tier Guide no longer reads "looted and used this week" while a Bounty Map is still in your bags; the status line and the reminder now agree.
-- **Companion bubble muting** &mdash; The chat-bubble suppression for Valeera no longer keeps running in the open world after you leave a delve.
+- **Trovehunter's Bounty reminder reliability** - The reminder now detects your Bounty Map correctly and still appears after a `/reload` partway through a delve, fixing cases where it could stay hidden even with an unused bounty in your bags.
+- **Accurate Bountiful completion count** - The Current Bountiful Delves progress bar now counts finished delves correctly - completing one reads "1 / 4 (25%)" instead of dropping the delve off the list and shrinking the total. Finished delves now stay in the checklist, dimmed, so you can see the full day at a glance.
+- **Bountiful history accuracy** - A one-time history repair was checking a weekly window for the daily-rotating Bountiful set, which could mislabel older runs as Bountiful and inflate the Gilded Stash counter. It now uses the correct daily window.
+- **Trovehunter status wording** - The Tier Guide no longer reads "looted and used this week" while a Bounty Map is still in your bags; the status line and the reminder now agree.
+- **Companion bubble muting** - The chat-bubble suppression for Valeera no longer keeps running in the open world after you leave a delve.
 
 ### Improvements
 
-- **Labeled progress bars** &mdash; Every progress bar now has a clear caption so you can tell at a glance what it tracks &mdash; the Bountiful completion bar, the Shard Tracker's "Shards to Next Key" and "Weekly Shard Cap" bars, and the rest. Thanks to BanditC64 for the suggestion!
-- **Great Vault cleanup** &mdash; Removed the PvP row from the Great Vault section. PvP no longer contributes to the Great Vault, so that bar could only ever read 0 / 3; the section now shows just the Mythic+ Dungeons and Delves / World Content rows that actually apply.
-- **Options tidy-up** &mdash; Removed several settings that no longer had any effect, so every control in the Options panel now does what it says.
-- **Delve History legend** &mdash; The "B" marker on a run (Bountiful) now shows a tooltip explaining what it means.
-- **Daily wording** &mdash; Cleaned up the last few "this week" references that should read "today" for the daily Bountiful rotation.
+- **Labeled progress bars** - Every progress bar now has a clear caption so you can tell at a glance what it tracks - the Bountiful completion bar, the Shard Tracker's "Shards to Next Key" and "Weekly Shard Cap" bars, and the rest. Thanks to BanditC64 for the suggestion!
+- **Great Vault cleanup** - Removed the PvP row from the Great Vault section. PvP no longer contributes to the Great Vault, so that bar could only ever read 0 / 3; the section now shows just the Mythic+ Dungeons and Delves / World Content rows that actually apply.
+- **Options tidy-up** - Removed several settings that no longer had any effect, so every control in the Options panel now does what it says.
+- **Delve History legend** - The "B" marker on a run (Bountiful) now shows a tooltip explaining what it means.
+- **Daily wording** - Cleaned up the last few "this week" references that should read "today" for the daily Bountiful rotation.
 
 ## [1.10.0] - 2026-05-26
 
 ### New Features
 
-- **Run notes** &mdash; Attach a free-form note to any run in the Delve History tab to jot down a build you tested, a notable drop, or a curio experiment. Click the note icon beside a run to add, edit, or clear it. Thanks to BanditC64 for the suggestion!
-- **Boss tactics in the delve lists** &mdash; Click any delve in Delve Locations or Current Bountiful Delves to expand it and read each boss's mechanics: a one-line summary plus a full role-by-role breakdown. Multi-boss delves list every boss. Also suggested by BanditC64.
-- **Today's boss** &mdash; Delves that field different bosses depending on the story variant now mark today's boss with a star when expanded, using a verified variant-to-boss table so it is correct from the first login.
+- **Run notes** - Attach a free-form note to any run in the Delve History tab to jot down a build you tested, a notable drop, or a curio experiment. Click the note icon beside a run to add, edit, or clear it. Thanks to BanditC64 for the suggestion!
+- **Boss tactics in the delve lists** - Click any delve in Delve Locations or Current Bountiful Delves to expand it and read each boss's mechanics: a one-line summary plus a full role-by-role breakdown. Multi-boss delves list every boss. Also suggested by BanditC64.
+- **Today's boss** - Delves that field different bosses depending on the story variant now mark today's boss with a star when expanded, using a verified variant-to-boss table so it is correct from the first login.
 
 ### Improvements
 
-- **Delve History detail** &mdash; Each run now records the boss you faced in its own column, the summary line shows the latest run's time and date, run rows are aligned into clean columns, and run dates now include the time of day.
-- **Delve Locations cleanup** &mdash; Removed the search box and zone filter; sort by clicking the Name, Zone, or Tier column headers instead. Rows now expand to show boss tactics.
+- **Delve History detail** - Each run now records the boss you faced in its own column, the summary line shows the latest run's time and date, run rows are aligned into clean columns, and run dates now include the time of day.
+- **Delve Locations cleanup** - Removed the search box and zone filter; sort by clicking the Name, Zone, or Tier column headers instead. Rows now expand to show boss tactics.
 
 ### Bug Fixes
 
-- **No more 26-hour runs** &mdash; A run could occasionally be logged with a wildly inflated duration when an in-progress run saved in a previous session was resumed onto a new one. Run start times are now validated against the wall clock, and any existing run with an impossible duration is cleaned up automatically on login.
-- **Steady section dividers in Delve History** &mdash; The divider lines between the Seasonal Nemesis and Midnight Delves sections no longer float over your runs as you scroll &mdash; they now scroll with their section.
+- **No more 26-hour runs** - A run could occasionally be logged with a wildly inflated duration when an in-progress run saved in a previous session was resumed onto a new one. Run start times are now validated against the wall clock, and any existing run with an impossible duration is cleaned up automatically on login.
+- **Steady section dividers in Delve History** - The divider lines between the Seasonal Nemesis and Midnight Delves sections no longer float over your runs as you scroll - they now scroll with their section.
 
 ## [1.9.2] - 2026-05-25
 
 ### Bug Fixes
 
-- **Accurate time on back-to-back delves** &mdash; Running the same delve twice in a row no longer records an inflated time on the second run. Previously, when a run ended without fully resetting &mdash; for example re-entering the same delve without passing through the open world &mdash; the next run's timer could carry over the previous run's start time, logging a far longer duration than the run actually took.
-- **Accurate tier on every delve** &mdash; Each completed run now records the tier you actually played. The tier is now confirmed when the run completes, fixing cases where a run could be stamped with the previous delve's tier (for example a Tier 8 run recorded as a Tier 11).
+- **Accurate time on back-to-back delves** - Running the same delve twice in a row no longer records an inflated time on the second run. Previously, when a run ended without fully resetting - for example re-entering the same delve without passing through the open world - the next run's timer could carry over the previous run's start time, logging a far longer duration than the run actually took.
+- **Accurate tier on every delve** - Each completed run now records the tier you actually played. The tier is now confirmed when the run completes, fixing cases where a run could be stamped with the previous delve's tier (for example a Tier 8 run recorded as a Tier 11).
 
 ## [1.9.1] - 2026-05-25
 
 ### Improvements
 
-- **Daily rotation accuracy** &mdash; Delve story variants and Bountiful delves rotate daily, not weekly. Wording across the addon now says "Today" instead of "this week", the Current Bountiful tab shows a daily reset countdown, and the Delve Locations tier badge, tier sort, and hover tooltip now reflect today's actual story variant (with its strategy note) instead of a static "best variant". Thanks to BanditC64 for the reports.
-- **Automatic Bountiful completion** &mdash; The Current Bountiful Delves checklist and progress bar now fill in automatically from your completed runs. The manual right-click "mark complete" option has been removed, and the internal completion history is now recorded in a single consistent format.
-- **Delve Locations run count** &mdash; The "(Nx)" run-count beside each delve now reflects your actual logged runs.
+- **Daily rotation accuracy** - Delve story variants and Bountiful delves rotate daily, not weekly. Wording across the addon now says "Today" instead of "this week", the Current Bountiful tab shows a daily reset countdown, and the Delve Locations tier badge, tier sort, and hover tooltip now reflect today's actual story variant (with its strategy note) instead of a static "best variant". Thanks to BanditC64 for the reports.
+- **Automatic Bountiful completion** - The Current Bountiful Delves checklist and progress bar now fill in automatically from your completed runs. The manual right-click "mark complete" option has been removed, and the internal completion history is now recorded in a single consistent format.
+- **Delve Locations run count** - The "(Nx)" run-count beside each delve now reflects your actual logged runs.
 
 ### Bug Fixes
 
-- **Curio recommendations popup** &mdash; No longer overlaps the companion configuration window in the default UI layout; it now opens on whichever side of the frame has room.
+- **Curio recommendations popup** - No longer overlaps the companion configuration window in the default UI layout; it now opens on whichever side of the frame has room.
 
 ## [1.9.0] - 2026-05-24
 
 ### New Features
 
-- **Story variant on every delve** &mdash; Delve History now records the actual story variant for every completed run, not just Bountiful ones, by reading it from the delve's map POI. The Delve Locations tab also gained a "This Week's Story" column showing each delve's current rotation at a glance. Thanks to BanditC64 for the suggestion and for helping track down where the data lived.
+- **Story variant on every delve** - Delve History now records the actual story variant for every completed run, not just Bountiful ones, by reading it from the delve's map POI. The Delve Locations tab also gained a "This Week's Story" column showing each delve's current rotation at a glance. Thanks to BanditC64 for the suggestion and for helping track down where the data lived.
 
 ### Bug Fixes
 
-- **Tab row no longer overflows the window** &mdash; The main window now sizes itself to fit the full row of tabs, so the rightmost tab (Profiles) no longer spills outside the frame in the default UI font.
-- **Correct tier and time on re-entered delves** &mdash; A persisted in-progress run is now only resumed after a genuine `/reload`, not whenever you re-enter a delve. Previously a leftover run could be restored onto a fresh entry, logging the old start time and tier (e.g. a fresh Tier 8 recorded as a 1h+ Tier 11). `/reload` mid-delve still preserves the timer as before.
+- **Tab row no longer overflows the window** - The main window now sizes itself to fit the full row of tabs, so the rightmost tab (Profiles) no longer spills outside the frame in the default UI font.
+- **Correct tier and time on re-entered delves** - A persisted in-progress run is now only resumed after a genuine `/reload`, not whenever you re-enter a delve. Previously a leftover run could be restored onto a fresh entry, logging the old start time and tier (e.g. a fresh Tier 8 recorded as a 1h+ Tier 11). `/reload` mid-delve still preserves the timer as before.
 
 ## [1.8.0] - 2026-05-24
 
 ### New Features
 
-- **Story variants in Delve History** &mdash; Each run in the Delve History tab now shows its story variant. Older runs display the delve's signature story, while runs you finish while a delve is Bountiful from now on record the actual variant you played that week. Thanks to BanditC64 for the suggestion!
+- **Story variants in Delve History** - Each run in the Delve History tab now shows its story variant. Older runs display the delve's signature story, while runs you finish while a delve is Bountiful from now on record the actual variant you played that week. Thanks to BanditC64 for the suggestion!
 
 ### Improvements
 
-- **Nullaeus rewards & mechanics refresh** &mdash; The Nullaeus tab now lists the real season rewards &mdash; the Nullaeus Domaneye helm, Dominating Victory toy, and Arcanovoid Construct mount each show their item icon with a live tooltip on hover, alongside the Ominous and Fabled Vanquisher titles and their unlock conditions. The boss ability list and the three phase intermissions (Null Zone, Gravity Well, Umbral Rage) have been corrected to match the actual encounter.
+- **Nullaeus rewards & mechanics refresh** - The Nullaeus tab now lists the real season rewards - the Nullaeus Domaneye helm, Dominating Victory toy, and Arcanovoid Construct mount each show their item icon with a live tooltip on hover, alongside the Ominous and Fabled Vanquisher titles and their unlock conditions. The boss ability list and the three phase intermissions (Null Zone, Gravity Well, Umbral Rage) have been corrected to match the actual encounter.
 
 ## [1.7.1] - 2026-05-22
 
@@ -130,39 +137,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
-- **Delver's Call quest tracker** &mdash; A new Delver's Call tab tracks all 10 weekly World Tour quests across four states: Available, In Progress, Banked, and Turned In. State is auto-detected from your quest log. Bank the quests and hold them until you are near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account.
-- **Nullaeus tab** &mdash; A new tab dedicated to the weekly Nullaeus Nemesis boss delve: a Beacon of Hope inventory and Undercoin tracker, the full boss mechanics list, phase transitions, and the reward track. Pin the location on your map or send it to TomTom in one click.
+- **Delver's Call quest tracker** - A new Delver's Call tab tracks all 10 weekly World Tour quests across four states: Available, In Progress, Banked, and Turned In. State is auto-detected from your quest log. Bank the quests and hold them until you are near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account.
+- **Nullaeus tab** - A new tab dedicated to the weekly Nullaeus Nemesis boss delve: a Beacon of Hope inventory and Undercoin tracker, the full boss mechanics list, phase transitions, and the reward track. Pin the location on your map or send it to TomTom in one click.
 
 ### Improvements
 
-- **Sortable tier column** &mdash; The tier column header on the Delve Locations tab is now clickable to sort by tier, alongside the existing Name and Zone sorting. A small hint above the list reminds you the column headers are sortable.
-- **Live bountiful story in tooltips** &mdash; Hovering a delve that is currently bountiful on the Delve Locations tab now shows the active story variant and its tier badge.
+- **Sortable tier column** - The tier column header on the Delve Locations tab is now clickable to sort by tier, alongside the existing Name and Zone sorting. A small hint above the list reminds you the column headers are sortable.
+- **Live bountiful story in tooltips** - Hovering a delve that is currently bountiful on the Delve Locations tab now shows the active story variant and its tier badge.
 
 ### Bug Fixes
 
-- **Minimap right-click** &mdash; Right-clicking the minimap button now correctly opens the Options tab instead of the Delve History tab.
+- **Minimap right-click** - Right-clicking the minimap button now correctly opens the Options tab instead of the Delve History tab.
 
 ## [1.6.1] - 2026-05-21
 
 ### New Features
 
-- **Tier badges on Bountiful tab** &mdash; Each row on the Current Bountiful Delves tab now shows a color-coded tier badge (S/A/B/C/D/F) based on the active story variant. The list is sorted by tier (best first), and hovering a row shows the tier letter plus a quick strategy tip for that story.
-- **Best Pick banner** &mdash; A "Best Pick" line below the Bountiful tab header highlights the highest-tier non-completed delve at a glance, showing delve name, story variant, and tier.
-- **Tier badges on Delve Locations tab** &mdash; A color-coded tier column (S/A/B/C/D) has been added to the Delve Locations tab, showing the best achievable tier for each delve.
-- **Delve rundown tooltips** &mdash; Hovering any row on the Delve Locations tab now shows the best story name and a quick strategy note for that delve.
+- **Tier badges on Bountiful tab** - Each row on the Current Bountiful Delves tab now shows a color-coded tier badge (S/A/B/C/D/F) based on the active story variant. The list is sorted by tier (best first), and hovering a row shows the tier letter plus a quick strategy tip for that story.
+- **Best Pick banner** - A "Best Pick" line below the Bountiful tab header highlights the highest-tier non-completed delve at a glance, showing delve name, story variant, and tier.
+- **Tier badges on Delve Locations tab** - A color-coded tier column (S/A/B/C/D) has been added to the Delve Locations tab, showing the best achievable tier for each delve.
+- **Delve rundown tooltips** - Hovering any row on the Delve Locations tab now shows the best story name and a quick strategy note for that delve.
 
 ## [1.6.0] - 2026-05-21
 
 ### New Features
 
-- **Companion Audio** &mdash; New section in the Options tab with three independent toggles: mute Valeera's companion voice lines, suppress her in-delve speech bubbles, and mute Dundun's voice lines. Bubble suppression uses selective per-companion hiding when the client supports it, with a fallback that disables all chat bubbles while inside a delve.
-- **Curio Reminder** &mdash; A popup now appears automatically when you open the companion configuration screen inside a delve, showing which combat and utility curios to bring for your current role. Highlights your role and shows live bag counts in green (have it) or red (missing). Also accessible at any time via `/ed curios` or `/ed curios valeera`.
-- **Overcharged Bountiful** &mdash; Overcharged delves are highlighted with a gold "Overcharged" prefix on the Bountiful tab. Active overcharged delves show the prefix in gold; completed ones in muted grey. The hover tooltip also reflects overcharged status.
-- **What's New popup** &mdash; A brief popup now appears on first login after each feature release summarising what changed. Dismiss it once and it never shows again for that version. Re-open it any time with `/ed whatsnew`.
+- **Companion Audio** - New section in the Options tab with three independent toggles: mute Valeera's companion voice lines, suppress her in-delve speech bubbles, and mute Dundun's voice lines. Bubble suppression uses selective per-companion hiding when the client supports it, with a fallback that disables all chat bubbles while inside a delve.
+- **Curio Reminder** - A popup now appears automatically when you open the companion configuration screen inside a delve, showing which combat and utility curios to bring for your current role. Highlights your role and shows live bag counts in green (have it) or red (missing). Also accessible at any time via `/ed curios` or `/ed curios valeera`.
+- **Overcharged Bountiful** - Overcharged delves are highlighted with a gold "Overcharged" prefix on the Bountiful tab. Active overcharged delves show the prefix in gold; completed ones in muted grey. The hover tooltip also reflects overcharged status.
+- **What's New popup** - A brief popup now appears on first login after each feature release summarising what changed. Dismiss it once and it never shows again for that version. Re-open it any time with `/ed whatsnew`.
 
 ### Bug Fixes
 
-- **Great Vault bar labels** &mdash; The progress bars on the Tier Guide tab now correctly label the activity types. Delves count toward "Delves / World Content", not "Mythic+ Dungeons". The previous labels were causing confusion about which activities fed which vault slot.
+- **Great Vault bar labels** - The progress bars on the Tier Guide tab now correctly label the activity types. Delves count toward "Delves / World Content", not "Mythic+ Dungeons". The previous labels were causing confusion about which activities fed which vault slot.
 
 ## [1.5.0] - 2026-05-12
 
@@ -172,47 +179,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
-- **Per-character profiles** &mdash; Delve history, completion marks, and Gilded Stash progress are now tracked **per character** instead of being shared account-wide. Previously every character on your account read the same history, so an alt could show "3/4 Gilded Stash" from your main's runs. A new **Profiles** tab lets you see the active profile, switch profiles, create a fresh empty one, duplicate the current one, or delete an unused one. UI settings (accent color, scale, minimap button, alert toggles, the Trovehunter reminder) intentionally stay account-wide so you only configure them once.
-- **Non-destructive migration** &mdash; Your existing history is **never deleted**. On first login after updating, the old account-wide data is moved intact into a profile named "Original", and the first character you log in claims it automatically (log in your main first and it keeps everything with zero clicks). Every other character starts with its own fresh profile. If an alt ever inherits the wrong data, just switch its profile on the Profiles tab &mdash; nothing is lost.
+- **Per-character profiles** - Delve history, completion marks, and Gilded Stash progress are now tracked **per character** instead of being shared account-wide. Previously every character on your account read the same history, so an alt could show "3/4 Gilded Stash" from your main's runs. A new **Profiles** tab lets you see the active profile, switch profiles, create a fresh empty one, duplicate the current one, or delete an unused one. UI settings (accent color, scale, minimap button, alert toggles, the Trovehunter reminder) intentionally stay account-wide so you only configure them once.
+- **Non-destructive migration** - Your existing history is **never deleted**. On first login after updating, the old account-wide data is moved intact into a profile named "Original", and the first character you log in claims it automatically (log in your main first and it keeps everything with zero clicks). Every other character starts with its own fresh profile. If an alt ever inherits the wrong data, just switch its profile on the Profiles tab - nothing is lost.
 
 ### Internal
 
-- `E.db` is now a transparent proxy: profile-scoped keys (`delveHistory`, `manualComplete`, `activeRun`) redirect to the active profile while everything else maps to the account-wide SavedVariables table. All existing call sites are unchanged &mdash; the per-character behavior is contained in one place.
+- `E.db` is now a transparent proxy: profile-scoped keys (`delveHistory`, `manualComplete`, `activeRun`) redirect to the active profile while everything else maps to the account-wide SavedVariables table. All existing call sites are unchanged - the per-character behavior is contained in one place.
 - `/ed reset` and the "Reset All Settings" button now reset **only account-wide settings**. They no longer touch profiles, so a settings reset can never wipe delve history.
 
 ## [1.4.10] - 2026-05-12
 
 ### Bug Fixes
 
-- **Tier detection regression from 1.4.9** &mdash; The ObjectiveTracker scrape in `AutoDetectDelveTier` was modified in 1.4.9 to fix a misfire where the player's lives counter was being read as the tier. The change accidentally broke tier detection entirely: Methods 1 and 2 (`GetInstanceInfo().difficultyName` and `C_Scenario.GetInfo().scenarioName`) both just return `"Delves"` in Midnight with no tier number, leaving the modified Method 3 with nothing useful to fall back on. Every run was logged as `tier=0`, breaking the Delve History tier display and zeroing out the Gilded Stash counter (which requires `tier >= 11`). Restored Method 3 to its exact pre-1.4.9 behavior &mdash; the original implementation's first-match heuristic is imperfect but reliably captures tier in the vast majority of runs, which is far better than logging tier=0 across the board.
+- **Tier detection regression from 1.4.9** - The ObjectiveTracker scrape in `AutoDetectDelveTier` was modified in 1.4.9 to fix a misfire where the player's lives counter was being read as the tier. The change accidentally broke tier detection entirely: Methods 1 and 2 (`GetInstanceInfo().difficultyName` and `C_Scenario.GetInfo().scenarioName`) both just return `"Delves"` in Midnight with no tier number, leaving the modified Method 3 with nothing useful to fall back on. Every run was logged as `tier=0`, breaking the Delve History tier display and zeroing out the Gilded Stash counter (which requires `tier >= 11`). Restored Method 3 to its exact pre-1.4.9 behavior - the original implementation's first-match heuristic is imperfect but reliably captures tier in the vast majority of runs, which is far better than logging tier=0 across the board.
 
 ## [1.4.9] - 2026-05-12
 
 ### Bug Fixes
 
-- **Gilded Stash counter undercount** &mdash; Fixed the root cause where Tier 11 Bountiful runs sometimes failed to register toward the Gilded Stash counter. The `wasBountiful` flag was being stamped `false` on runs entered before the AreaPOI cache was loaded for that delve's zone. The bountiful snapshot now retries on every `SCENARIO_UPDATE` and at `SCENARIO_COMPLETED`, locking to `true` the moment the data becomes available. Captured tier now also persists to SavedVariables so `/reload` mid-delve no longer loses it. Combined with a new one-time auto-repair pass at login, this week's misflagged runs heal silently &mdash; your Gilded Stash counter will correct itself the next time you log in. Thanks to everyone who reported the undercount.
-- **Trovehunter's Bounty popup not firing reliably** &mdash; The popup added in v1.4.8 had several races with delve entry: it depended on `SCENARIO_UPDATE` firing (sparse in quiet delves, silent after `/reload`), its `Show()` was called too early during the loading-screen-clear window so the frame was sometimes shown-but-invisible, and tier detection was occasionally matching the lives counter as "Tier 3". Rewrote the firing logic with a 1Hz heartbeat that runs for 30 seconds after delve entry, a 2-second deferred Show that lets the UI settle, a live game-state re-check at fire time that prevents the popup from appearing as you exit a delve, and a 60-second elapsed guard. Also dropped the tier-8+ requirement &mdash; Trovehunter maps work in any Tier 4+ delve and nobody with a map is running sub-T8 anyway.
+- **Gilded Stash counter undercount** - Fixed the root cause where Tier 11 Bountiful runs sometimes failed to register toward the Gilded Stash counter. The `wasBountiful` flag was being stamped `false` on runs entered before the AreaPOI cache was loaded for that delve's zone. The bountiful snapshot now retries on every `SCENARIO_UPDATE` and at `SCENARIO_COMPLETED`, locking to `true` the moment the data becomes available. Captured tier now also persists to SavedVariables so `/reload` mid-delve no longer loses it. Combined with a new one-time auto-repair pass at login, this week's misflagged runs heal silently - your Gilded Stash counter will correct itself the next time you log in. Thanks to everyone who reported the undercount.
+- **Trovehunter's Bounty popup not firing reliably** - The popup added in v1.4.8 had several races with delve entry: it depended on `SCENARIO_UPDATE` firing (sparse in quiet delves, silent after `/reload`), its `Show()` was called too early during the loading-screen-clear window so the frame was sometimes shown-but-invisible, and tier detection was occasionally matching the lives counter as "Tier 3". Rewrote the firing logic with a 1Hz heartbeat that runs for 30 seconds after delve entry, a 2-second deferred Show that lets the UI settle, a live game-state re-check at fire time that prevents the popup from appearing as you exit a delve, and a 60-second elapsed guard. Also dropped the tier-8+ requirement - Trovehunter maps work in any Tier 4+ delve and nobody with a map is running sub-T8 anyway.
 
 ### Improvements
 
-- **Delve History &mdash; bountiful indicator** &mdash; Each run row now shows a gold **B** to its left when the run was flagged bountiful. Previously there was no way to see which runs counted toward the Gilded Stash without running diagnostic commands. If a run ever does fail to flag correctly going forward, you'll spot it immediately on this tab.
+- **Delve History - bountiful indicator** - Each run row now shows a gold **B** to its left when the run was flagged bountiful. Previously there was no way to see which runs counted toward the Gilded Stash without running diagnostic commands. If a run ever does fail to flag correctly going forward, you'll spot it immediately on this tab.
 
 ### Internal
 
 - AreaPOI cache for every delve zone is pre-warmed at `PLAYER_LOGIN` via `C_AreaPoiInfo.GetAreaPOIForMap`, eliminating the cold-cache race that caused `wasBountiful=false` for players teleporting directly into a delve from an unrelated zone.
 - New helper `E:AutoRepairBountifulHistory` cross-checks this week's recorded runs against the live bountiful list and corrects any `wasBountiful=false` flag that should have been `true`. Runs once per session after the first `RefreshBountifulData`. Past weeks' runs are unrecoverable (the live bountiful list rotates weekly) and irrelevant anyway since the Gilded Stash counter only counts the current week.
-- Removed the standalone-number fallback in `AutoDetectDelveTier`'s ObjectiveTracker scrape &mdash; it was misidentifying the player's "lives remaining" counter as a tier value. Only the explicit `"Tier N"` pattern is now accepted.
+- Removed the standalone-number fallback in `AutoDetectDelveTier`'s ObjectiveTracker scrape - it was misidentifying the player's "lives remaining" counter as a tier value. Only the explicit `"Tier N"` pattern is now accepted.
 
 ## [1.4.8] - 2026-05-10
 
 ### New Features
 
-- **Trovehunter's Bounty Reminder** — A small popup now appears when you enter a Tier 8+ Bountiful Delve while you have an unused Trovehunter's Bounty Map in your bags and the bounty buff is not already active. Includes a dismiss button, a "Don't show this reminder again" checkbox (which disables the popup globally), and the actual in-game item icon so you know what to look for. Toggle is in **Options &rarr; General** and is enabled by default. Thanks to **herky4life** for the suggestion!
+- **Trovehunter's Bounty Reminder** — A small popup now appears when you enter a Tier 8+ Bountiful Delve while you have an unused Trovehunter's Bounty Map in your bags and the bounty buff is not already active. Includes a dismiss button, a "Don't show this reminder again" checkbox (which disables the popup globally), and the actual in-game item icon so you know what to look for. Toggle is in **Options > General** and is enabled by default. Thanks to **herky4life** for the suggestion!
 
 ### Improvements
 
 - **Section spacing across the last four tabs** — Added significant breathing room between every section on the **Tier Guide**, **Shard Tracker**, **Delve History**, and **Options** tabs. Sections were previously cramped against each other; the new uniform spacing makes everything much easier to scan.
-- **Options &mdash; General layout** — The Trovehunter reminder toggle is anchored to the right side of the General section (inline with the Default Tab readout) so it doesn't add another row to the General block.
+- **Options - General layout** — The Trovehunter reminder toggle is anchored to the right side of the General section (inline with the Default Tab readout) so it doesn't add another row to the General block.
 
 ## [1.4.7] - 2026-05-08
 

@@ -839,8 +839,12 @@ E:RegisterModule(function()
                 and (E.CC.body .. storyTxt .. E.CC.close)
                 or  (E.CC.muted .. "--" .. E.CC.close))
 
-            rrow.bossFS:SetText(run.boss
-                and (E.CC.body .. run.boss .. E.CC.close) or "")
+            -- Correct legacy entries whose boss was logged under its live
+            -- encounter name (e.g. "Spinshroom" -> "Gyrospore") so already
+            -- saved runs display the boss the player actually fought.
+            local bossName = run.boss and E:NormalizeLiveBoss(key, run.boss)
+            rrow.bossFS:SetText(bossName
+                and (E.CC.body .. bossName .. E.CC.close) or "")
 
             rrow.dateFS:SetText(E.CC.muted .. FormatDateTime(run.timestamp) .. E.CC.close)
 

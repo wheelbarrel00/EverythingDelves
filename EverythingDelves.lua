@@ -1077,7 +1077,11 @@ function E:GetRecordedBoss(delveName, variant)
     if not (delveName and variant and variant ~= "") then return nil end
     local map = self.db and self.db.delveBossMap
     local byVariant = map and map[delveName]
-    return byVariant and byVariant[variant] or nil
+    local learned = byVariant and byVariant[variant] or nil
+    -- Correct a value learned under its live encounter name (e.g.
+    -- "Spinshroom" -> "Gyrospore") so the "today's boss" highlight matches
+    -- the boss the player actually fights.
+    return learned and self:NormalizeLiveBoss(delveName, learned) or nil
 end
 
 --- Resolve today's boss for a delve. Single-boss delves always return
@@ -1225,11 +1229,19 @@ delveFrame:RegisterEvent("SCENARIO_COMPLETED")
 delveFrame:RegisterEvent("PLAYER_DEAD")
 delveFrame:RegisterEvent("ENCOUNTER_END")
 
--- True only when the most recent PLAYER_ENTERING_WORLD was a UI reload
--- (set in the event handler below). Gates the activeRun restore so a
--- stale saved run is never resumed onto a fresh delve entry — only a
--- genuine /reload mid-delve resumes the timer.
+-- Flags describing the most recent PLAYER_ENTERING_WORLD (set in the event
+-- handler below). Together they gate the activeRun restore so a stale saved
+-- run is never resumed onto a brand-new delve entry.
+--   enteredViaReload — the world-entry was a UI /reload.
+--   enteredViaLogin  — the world-entry was a fresh login (isInitialLogin).
+-- A server disconnect drops the player to character-select and logs them
+-- back in, which fires PLAYER_ENTERING_WORLD with isInitialLogin (NOT
+-- isReloadingUi). Resuming on that flag too lets a run survive a mid-delve
+-- disconnect instead of restarting the clock from the reconnect moment
+-- (which logged an artificially fast time). Plain zone-in to a new delve
+-- instance sets neither flag, so it still starts a fresh run.
 local enteredViaReload = false
+local enteredViaLogin  = false
 
 --- Try to start tracking if we're currently inside a delve.
 local function TryBeginFromCurrentZone(source)
@@ -1271,21 +1283,27 @@ local function TryBeginFromCurrentZone(source)
         if not runState.inDelve or runState.delveName ~= matchedName
                 or freshEntry then
             -- Resume a persisted run ONLY when this world-entry was a
-            -- genuine /reload (enteredViaReload). On a fresh delve entry we
-            -- must start a new run even if a stale activeRun for the same
-            -- delve is still saved — otherwise its old start time and tier
-            -- get restored onto the new run (the bug that logged a fresh
-            -- T8 as a 1h+ T11). Extra guard: a full client restart resets
-            -- GetTime() to near-zero, so a saved startTime in the "future"
-            -- is treated as stale too.
-            -- Resume only a genuinely current run: it must be a /reload,
-            -- the same delve, its GetTime() start must not be in the future
-            -- (catches a computer reboot, which DOES reset GetTime()), and
-            -- its wall-clock start must be recent (catches a stale run saved
-            -- in a previous client session — GetTime() alone can't, since it
-            -- does not reset on a client restart, only on a reboot).
+            -- genuine /reload (enteredViaReload) OR a fresh login
+            -- (enteredViaLogin — i.e. a reconnect after a mid-delve
+            -- disconnect). On a plain zone-in to a new delve we must start a
+            -- new run even if a stale activeRun for the same delve is still
+            -- saved — otherwise its old start time and tier get restored onto
+            -- the new run (the bug that logged a fresh T8 as a 1h+ T11). The
+            -- same guards below keep the login path safe: a full client
+            -- restart resets GetTime() to near-zero, so a saved startTime in
+            -- the "future" is treated as stale (startTime <= GetTime()), and
+            -- a run begun too long ago is rejected by the wall-clock age
+            -- check — so only a genuinely current run survives.
+            -- Resume only a genuinely current run: it must be a /reload or
+            -- reconnect, the same delve, its GetTime() start must not be in
+            -- the future (catches a computer reboot, which DOES reset
+            -- GetTime()), and its wall-clock start must be recent (catches a
+            -- stale run saved in a previous client session — GetTime() alone
+            -- can't, since it does not reset on a client restart, only on a
+            -- reboot).
             local saved = E.db and E.db.activeRun
-            if enteredViaReload and saved and saved.name == matchedName
+            if (enteredViaReload or enteredViaLogin)
+                    and saved and saved.name == matchedName
                     and saved.startTime
                     and saved.startTime <= GetTime()
                     and saved.startedAt
@@ -1338,13 +1356,14 @@ local function TryBeginFromCurrentZone(source)
 end
 
 delveFrame:SetScript("OnEvent", function(_, event, ...)
-    -- Record whether this world-entry is a UI reload before any delve
-    -- detection runs. Re-set on every PLAYER_ENTERING_WORLD, so a fresh
-    -- delve entry (which always fires PEW with isReloadingUi=false) clears
-    -- a reload flag left over from an earlier /reload.
+    -- Record how this world-entry happened before any delve detection runs.
+    -- Re-set on every PLAYER_ENTERING_WORLD, so a plain zone-in (which fires
+    -- PEW with both flags false) clears a reload/login flag left over from an
+    -- earlier /reload or reconnect.
     if event == "PLAYER_ENTERING_WORLD" then
-        local _, isReloadingUi = ...
+        local isInitialLogin, isReloadingUi = ...
         enteredViaReload = isReloadingUi and true or false
+        enteredViaLogin  = isInitialLogin and true or false
     end
 
     if event == "PLAYER_ENTERING_WORLD"
@@ -1444,6 +1463,13 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             local story = runState.story
             if not story or story == "" then
                 story = E:GetDelveStoryVariant(matchedName)
+            end
+            -- Correct the live-captured boss name to the unit the player
+            -- actually fought before it is logged or learned (e.g. The
+            -- Grudge Pit's Arena Champion reports as "Spinshroom" but is
+            -- shown as "Gyrospore"). Scoped per delve in Data.lua.
+            if runState.boss then
+                runState.boss = E:NormalizeLiveBoss(matchedName, runState.boss)
             end
             E:LogDelveRun(
                 matchedName, tier, duration, runState.deaths,

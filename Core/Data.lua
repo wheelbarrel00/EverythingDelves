@@ -458,3 +458,34 @@ function E:GetStaticBoss(delveName, variant)
     end
     return nil
 end
+
+------------------------------------------------------------------------
+-- Live end-boss name corrections.
+--
+-- The boss recorded in history is captured live from ENCOUNTER_END, which
+-- carries the encounter-journal name rather than the unit the player sees.
+-- For most delves these match, but The Grudge Pit's Arena Champion is shown
+-- in-game (and in every guide) as "Gyrospore" while its fight reuses a
+-- different encounter under the hood — so ENCOUNTER_END reports that
+-- encounter's name instead. (This same reused, non-player-facing unit is
+-- why the champion has no health bar and can't be targeted.) Normalize the
+-- live name to the boss the player actually fought, scoped per delve so a
+-- name that is correct elsewhere is never rewritten.
+E.LiveBossNameFix = {
+    ["The Grudge Pit"] = {
+        ["Spinshroom"] = "Gyrospore",
+    },
+}
+
+--- Correct a live-captured end-boss name to the canonical visible boss for
+--- a delve. Returns bossName unchanged when no correction is defined.
+function E:NormalizeLiveBoss(delveName, bossName)
+    if not (delveName and bossName) then return bossName end
+    local fixes = E.LiveBossNameFix[delveName]
+    if not fixes then
+        local alias = BOSS_NAME_ALIASES[delveName]
+        fixes = alias and E.LiveBossNameFix[alias] or nil
+    end
+    if fixes and fixes[bossName] then return fixes[bossName] end
+    return bossName
+end
