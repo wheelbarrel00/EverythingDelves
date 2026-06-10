@@ -484,10 +484,18 @@ E:RegisterModule(function()
 
     local muteDundunCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Mute Dundun voice lines",
+        "Mute Dundun (Abundance event rat) voice lines",
         "muteDundun",
         function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
     )
+    muteDundunCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Who is Dundun?",
+            "Dundun is the rat loa who hosts the Abundance",
+            "cave events and repeats his voice lines endlessly.",
+            "Muting only silences his audio - the event",
+            "itself is unaffected.")
+    end)
+    muteDundunCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     Y = Y - 28  -- breathing room above section divider

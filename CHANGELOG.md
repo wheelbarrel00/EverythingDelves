@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-06-10
+
+### New Features
+
+- **Exact Gilded Stash count** - The Tier Guide's Gilded Stash bar now reads the exact weekly count straight from the game whenever you're inside a delve, and remembers it until the weekly reset - so the bar matches the server even for runs done before the addon was installed or that it missed logging. Until your first delve of the week it still estimates from your logged T11 Bountiful runs, and the note under the bar tells you which source you're seeing.
+- **Dawncrest tracker** - The Shard Tracker tab has a new Dawncrests section listing all five crest tiers (Adventurer through Myth) with the amount on hand and your season total, right alongside your keys and shards.
+- **Companion level at a glance** - The Tier Guide's companion row now shows Valeera's level and an XP progress bar inline, so you can check how close the next companion unlock is without opening her menu. Built to pick up future expansions' companions automatically.
+- **Delete a single run** - Each run row in Delve History now has a small X button. Remove a bogus run (a disconnect artifact, a test run) and its time, deaths, and key usage are subtracted from that delve's lifetime stats - no more clearing the entire history over one bad entry. Record stats like fastest time recalculate automatically if the deleted run held them.
+
+### Bug Fixes
+
+- **"Key used" is now detected** - Run logging watched the wrong currency to decide whether you spent a Restored Coffer Key during a run, so the gold "Key" tag in Delve History never appeared and lifetime key counts stayed at zero. Runs from now on record key usage correctly. (Displayed key counts were always right - only the per-run detection was affected.)
+
+### Improvements
+
+- **Dundun, explained** - The "Mute Dundun voice lines" option now says who Dundun is (the Abundance event rat loa) and a hover tooltip explains that muting only silences his audio, not the event.
+
 ## [1.13.1] - 2026-06-07
 
 ### Bug Fixes

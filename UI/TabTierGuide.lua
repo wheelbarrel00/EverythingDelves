@@ -420,6 +420,41 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
+    -- Companion level + XP, inline to the right of the button. Data via
+    -- E:GetCompanionData() (Core/Utils.lua) — expansion-agnostic
+    -- friendship-faction scan, so this needs no per-expansion edits.
+    local compLevelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    compLevelFS:SetPoint("TOPLEFT", valeeraBtn, "TOPRIGHT", 16, -4)
+    compLevelFS:SetFont(compLevelFS:GetFont(), 11)
+    compLevelFS:SetJustifyH("LEFT")
+
+    local compBar = E:CreateProgressBar(sc, 0, 12)
+    compBar:SetPoint("TOPLEFT", valeeraBtn, "TOPRIGHT", 16, -22)
+    compBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
+
+    local function RefreshCompanion()
+        local comp = E.GetCompanionData and E:GetCompanionData()
+        if not comp then
+            compLevelFS:SetText(
+                E.CC.muted .. "Companion level unavailable." .. E.CC.close)
+            compBar:Hide()
+            return
+        end
+        if comp.isMaxLevel then
+            compLevelFS:SetText(
+                E.CC.body .. comp.name .. E.CC.close .. "   "
+                .. E.CC.gold .. "Level " .. comp.level .. " - Max"
+                .. E.CC.close)
+            compBar:Hide()
+        else
+            compLevelFS:SetText(
+                E.CC.body .. comp.name .. E.CC.close .. "   "
+                .. E.CC.gold .. "Level " .. comp.level .. E.CC.close)
+            compBar:SetProgress(comp.xpCurrent, comp.xpMax)
+            compBar:Show()
+        end
+    end
+
     --------------------------------------------------------------------
     -- Thin red divider
     --------------------------------------------------------------------
@@ -533,9 +568,11 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- GILDED STASH PROGRESS
-    -- 4x T11 Bountiful Delves this week. Counted from our own
-    -- delveHistory SavedVariables since Blizzard does not expose the
-    -- live counter via any client API.
+    -- 4x T11 Bountiful Delves this week. Prefers the EXACT counter from
+    -- the in-delve UI widget (captured + persisted per character in
+    -- EverythingDelves.lua — only readable while inside a delve); falls
+    -- back to counting our own logged T11 bountiful runs until the
+    -- first in-delve sync of the week.
     --------------------------------------------------------------------
     local GILDED_MAX     = 4
 
@@ -572,36 +609,46 @@ E:RegisterModule(function()
     end)
 
     local function RefreshGildedStash()
-        -- Count Bountiful T11+ delve runs we recorded this week.
-        --
-        -- Blizzard does not expose the live in-progress Gilded Stash
-        -- counter via any client API (no widget, no quest, no
-        -- C_WeeklyRewards activity tracks it during the week — the
-        -- counter is server-side until the 4th run unlocks the chest).
-        --
-        -- We approximate it from our own SavedVariables: each recorded
-        -- run has a timestamp, tier, and wasBountiful flag (snapshotted
-        -- at delve entry, since completed bountifuls drop off the
-        -- live POI list mid-week and can't be checked retroactively).
-        local progress = 0
-        local lastReset = 0
-        if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-            local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
-            if secs and secs > 0 then
-                local now = (GetServerTime and GetServerTime()) or time()
-                lastReset = now + secs - 604800
-            end
+        -- Two sources, best first:
+        --  1. LIVE: the exact weekly counter from the in-delve stash
+        --     widget, captured and persisted per character by
+        --     E:CaptureGildedStash(). Server-authoritative — preferred
+        --     whenever a reading exists this week.
+        --  2. ESTIMATE: count Bountiful T11+ runs from our own
+        --     SavedVariables (wasBountiful snapshotted at delve entry,
+        --     since completed bountifuls drop off the live POI list
+        --     mid-week). Used until the first in-delve sync of the week.
+        local liveCol, liveTot
+        if E.GetLiveGildedStash then
+            liveCol, liveTot = E:GetLiveGildedStash()
         end
+        local isLive   = liveCol ~= nil
+        local maxCount = (isLive and liveTot and liveTot > 0)
+            and liveTot or GILDED_MAX
 
-        local history = E.db and E.db.delveHistory
-        if history then
-            for _, entry in pairs(history) do
-                if entry.recentRuns then
-                    for _, run in ipairs(entry.recentRuns) do
-                        if (run.tier or 0) >= 11
-                                and run.wasBountiful
-                                and (run.timestamp or 0) >= lastReset then
-                            progress = progress + 1
+        local progress = 0
+        if isLive then
+            progress = liveCol
+        else
+            local lastReset = 0
+            if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+                local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+                if secs and secs > 0 then
+                    local now = (GetServerTime and GetServerTime()) or time()
+                    lastReset = now + secs - 604800
+                end
+            end
+
+            local history = E.db and E.db.delveHistory
+            if history then
+                for _, entry in pairs(history) do
+                    if entry.recentRuns then
+                        for _, run in ipairs(entry.recentRuns) do
+                            if (run.tier or 0) >= 11
+                                    and run.wasBountiful
+                                    and (run.timestamp or 0) >= lastReset then
+                                progress = progress + 1
+                            end
                         end
                     end
                 end
@@ -609,32 +656,40 @@ E:RegisterModule(function()
         end
 
         -- Clamp
-        if progress > GILDED_MAX then progress = GILDED_MAX end
+        if progress > maxCount then progress = maxCount end
 
-        gildedBar:SetProgress(progress, GILDED_MAX)
+        gildedBar:SetProgress(progress, maxCount)
 
-        if progress >= GILDED_MAX then
+        if progress >= maxCount then
             gildedStatusFS:SetText(
                 E.CC.gold .. "[Done] Gilded Stash earned! ("
-                .. progress .. " / " .. GILDED_MAX .. ")" .. E.CC.close
+                .. progress .. " / " .. maxCount .. ")" .. E.CC.close
             )
             gildedNoteFS:SetText(
-                E.CC.muted .. "All T11 Bountiful Delve runs complete this week."
+                E.CC.muted .. (isLive
+                    and "All Gilded Stashes looted this week."
+                    or  "All T11 Bountiful Delve runs complete this week.")
                 .. E.CC.close
             )
         elseif progress > 0 then
             gildedStatusFS:SetText(
-                E.CC.yellow .. progress .. " / " .. GILDED_MAX
-                .. " T11 runs this week" .. E.CC.close
+                E.CC.yellow .. progress .. " / " .. maxCount
+                .. (isLive and " Gilded Stashes looted this week"
+                            or  " T11 runs this week") .. E.CC.close
             )
             gildedNoteFS:SetText(
-                E.CC.body .. (GILDED_MAX - progress)
-                .. " more T11 Bountiful Delve runs needed." .. E.CC.close
+                E.CC.body .. (maxCount - progress) .. " more to go."
+                .. E.CC.close .. "  " .. E.CC.muted
+                .. (isLive
+                    and "Exact count, synced in-delve."
+                    or  "Estimate - enter a delve to sync the exact count.")
+                .. E.CC.close
             )
         else
             gildedStatusFS:SetText(
-                E.CC.btnText .. "0 / " .. GILDED_MAX
-                .. " - no T11 runs yet this week" .. E.CC.close
+                E.CC.btnText .. "0 / " .. maxCount
+                .. (isLive and " - no Gilded Stashes looted yet this week"
+                            or  " - no T11 runs yet this week") .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.muted
@@ -750,6 +805,7 @@ E:RegisterModule(function()
         RefreshRecommendation()
         RefreshGreatVault()
         RefreshTrovehunter()
+        RefreshCompanion()
         RefreshGildedStash()
         RefreshRenown()
         -- Recompute content height after frames are laid out so the
@@ -772,6 +828,9 @@ E:RegisterModule(function()
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsShown() then
             RefreshTrovehunter()
+            -- Companion XP ticks during delve play; QUEST_LOG_UPDATE
+            -- fires often enough to keep the bar fresh while visible.
+            RefreshCompanion()
         end
     end)
 

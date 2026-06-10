@@ -5,16 +5,24 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.13.0"
+local WHATS_NEW_VERSION = "1.14.0"
 
 local ENTRIES = {
     {
-        title = "Quickest Delve at a glance",
-        desc  = "Delve Locations now shows an expected clear time for every delve, plus a Speed column you can sort by to line up your fastest runs first. It uses your own average once you've run a delve, or a pace-calibrated estimate (marked *) until then.",
+        title = "Exact Gilded Stash count",
+        desc  = "The Tier Guide's Gilded Stash bar now syncs the exact weekly count straight from the game whenever you're inside a delve \226\128\148 no more guessing from logged runs. Until your first delve of the week, it still estimates from your history.",
     },
     {
-        title = "Best value pick",
-        desc  = "A new line at the top of Delve Locations highlights today's Quickest delve and the Best value pick \226\128\148 the most reward for your time, weighing the tier, how fast you clear it, and whether it's bountiful today.",
+        title = "Dawncrest tracker",
+        desc  = "The Shard Tracker tab has a new Dawncrests section: all five crest tiers with what's on hand and your season total, alongside your keys and shards.",
+    },
+    {
+        title = "Valeera's level at a glance",
+        desc  = "The Tier Guide's companion row now shows Valeera's level and an XP bar, so you can see how close the next companion unlock is without opening her menu.",
+    },
+    {
+        title = "Delete a single run",
+        desc  = "Each run in Delve History now has a small X button \226\128\148 remove a bogus run (and its time, deaths, and key usage) from your stats without clearing the whole history.",
     },
 }
 

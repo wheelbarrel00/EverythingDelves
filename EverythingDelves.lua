@@ -111,6 +111,12 @@ local DEFAULTS = {
     -- for the current story variant. Account-wide because the variant→boss
     -- pairing is region-wide and identical for every character.
     delveBossMap           = {},
+    -- Account-wide live Gilded Stash readings: charKey → { collected,
+    -- total, validUntil }. The exact counter is only readable from the
+    -- in-delve UI widget, so each successful read is cached here until
+    -- the weekly reset. Keyed per character (NOT a profile key) because
+    -- stash progress is live per-character server data.
+    gildedStashByChar      = {},
 }
 
 -- Keys that are profile-scoped rather than account-wide. The E.db
@@ -377,6 +383,64 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
                 .. ". Run two delves back-to-back, then send me every line"
                 .. " that starts with |cFFFFD700[ED tier]|r.")
         end
+    elseif msg == "gilded" then
+        -- Hidden diagnostic: dump the in-delve Gilded Stash UI widget.
+        -- The scenario UI exposes the weekly stash counter as a
+        -- spell-display widget; this confirms the widget ID and tooltip
+        -- format on the live client before we wire it into the Gilded
+        -- Stash bar. Run it once INSIDE a delve and once outside to
+        -- compare (expected: fraction tooltip inside, nil outside).
+        if not (C_UIWidgetManager
+                and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
+            print("|cFFFF2222Everything Delves|r: widget API unavailable"
+                .. " on this client.")
+            return
+        end
+        local GILDED_WIDGET = 7591
+        local function ReadWidget(id)
+            local ok, info = pcall(
+                C_UIWidgetManager.GetSpellDisplayVisualizationInfo, id)
+            if not ok or not info then return nil end
+            return info, info.spellInfo and info.spellInfo.tooltip
+        end
+        local info, tip = ReadWidget(GILDED_WIDGET)
+        if info then
+            -- shownState is a real field on widget vis-info structs; the
+            -- IDE's bundled API stubs just don't declare it on this type.
+            ---@diagnostic disable-next-line: undefined-field
+            print(string.format(
+                "|cFFFF2222Everything Delves|r: widget %d shownState=%s",
+                GILDED_WIDGET, tostring(info.shownState)))
+            print("  tooltip: " .. tostring(tip))
+        else
+            print(string.format(
+                "|cFFFF2222Everything Delves|r: widget %d returned nil.",
+                GILDED_WIDGET))
+        end
+        -- Sweep nearby spell-display widgets for any with a fraction
+        -- tooltip ("x/y"), in case the ID moved in a patch.
+        local hits = 0
+        for id = 7400, 7800 do
+            if id ~= GILDED_WIDGET then
+                local _, t2 = ReadWidget(id)
+                if t2 and t2:match("%d+%s*/%s*%d+") then
+                    hits = hits + 1
+                    print(string.format("  candidate widget %d: %s",
+                        id, t2:sub(1, 120)))
+                end
+            end
+        end
+        print(string.format(
+            "|cFFFF2222Everything Delves|r: sweep done - %d candidate(s)"
+            .. " in 7400-7800. Screenshot/paste me the output.", hits))
+        -- Also show what the capture system has persisted for this
+        -- character (should match the widget after any in-delve visit).
+        if E.GetLiveGildedStash then
+            local col, tot = E:GetLiveGildedStash()
+            print("  saved this week: " .. (col
+                and (col .. " / " .. tostring(tot))
+                or "none"))
+        end
     else
         E:ToggleMainFrame()
     end
@@ -529,7 +593,10 @@ end)
 -- Saved recentRuns capped per delve (configurable, default 20); lifetime = fixed numbers.
 ------------------------------------------------------------------------
 
-local COFFER_KEY_CURRENCY = 2915  -- Restored Coffer Key
+-- Restored Coffer Key. Must match E.CurrencyIDs.bountifulKeys (3028) in
+-- Core/Constants.lua — repeated as a literal because this file loads first.
+-- (Was 2915, a TWW crest ID, which made key-usage detection never fire.)
+local COFFER_KEY_CURRENCY = 3028
 -- recentRuns retention per delve. User-configurable via the History tab
 -- slider, clamped to [MIN, MAX]; MIN is also the default and floor. Raising
 -- it keeps more runs going forward (already-trimmed runs can't be recovered).
@@ -864,6 +931,75 @@ function E:GetDelveStoryVariant(delveName)
     return CleanStoryName(raw)
 end
 
+------------------------------------------------------------------------
+-- LIVE GILDED STASH CAPTURE
+-- The in-delve scenario UI exposes the weekly Gilded Stash counter as
+-- spell-display widget 7591; its tooltip ends in "Gilded Stash looted:
+-- x/4". Confirmed in-game 2026-06-10: data inside a delve, nil outside.
+-- Each successful read is persisted per character (account-wide, keyed
+-- by CharKey) and expires at the weekly reset. The Tier Guide bar
+-- prefers this exact value and falls back to the run-log estimate.
+------------------------------------------------------------------------
+local GILDED_WIDGET_ID = 7591
+
+--- Read collected, total from the live widget, or nil outside a delve
+--- (the widget only returns data while inside one).
+local function ReadGildedWidget()
+    if not (C_UIWidgetManager
+            and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
+        return nil
+    end
+    local ok, info = pcall(
+        C_UIWidgetManager.GetSpellDisplayVisualizationInfo, GILDED_WIDGET_ID)
+    if not ok or not info or not info.spellInfo then return nil end
+    local tip = info.spellInfo.tooltip
+    if type(tip) ~= "string" then return nil end
+    local col, tot = tip:match("(%d+)%s*/%s*(%d+)")
+    if not col then return nil end
+    return tonumber(col), tonumber(tot)
+end
+
+--- Try to read the live widget and persist the result for this
+--- character. Safe to call any time; silently no-ops outside a delve.
+function E:CaptureGildedStash()
+    local col, tot = ReadGildedWidget()
+    if not col then return end
+    local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
+        and C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if not secs or secs <= 0 then return end
+    local store = self.db and self.db.gildedStashByChar
+    if not store then return end
+    local key = CharKey()
+    local entry = store[key]
+    if not entry then
+        entry = {}
+        store[key] = entry
+    end
+    entry.collected  = col
+    entry.total      = tot
+    entry.validUntil = time() + secs
+end
+
+--- Most recent in-delve widget reading for THIS character, or nil when
+--- none has been captured since the weekly reset.
+function E:GetLiveGildedStash()
+    local store = self.db and self.db.gildedStashByChar
+    local entry = store and store[CharKey()]
+    if not entry then return nil end
+    if not entry.validUntil or time() >= entry.validUntil then return nil end
+    return entry.collected, entry.total
+end
+
+-- Re-read whenever the stash widget itself updates: fires when the
+-- widget appears on delve entry and again when the count increments
+-- after looting a stash. The widgetID guard keeps the handler cheap
+-- despite UPDATE_UI_WIDGET's high fire rate.
+E:RegisterEvent("UPDATE_UI_WIDGET", function(self, _, widgetInfo)
+    if widgetInfo and widgetInfo.widgetID == GILDED_WIDGET_ID then
+        self:CaptureGildedStash()
+    end
+end)
+
 --- Reset the active-run state for a newly-entered delve.
 local function BeginDelveRun(name, kind)
     runState.inDelve       = true
@@ -904,6 +1040,11 @@ local function BeginDelveRun(name, kind)
     -- moment the data is available.
     RefreshBountifulSnapshot()
     TryCaptureTier("BeginDelveRun")
+
+    -- Capture the live Gilded Stash counter shortly after entry — the
+    -- widget needs a moment to exist after the loading screen, and the
+    -- UPDATE_UI_WIDGET event for its creation may predate this run.
+    C_Timer.After(2, function() E:CaptureGildedStash() end)
 
     -- Popup heartbeat: SCENARIO_UPDATE only fires on objective changes,
     -- which can be sparse (especially right after a /reload or in a
@@ -1048,6 +1189,70 @@ function E:SetRunNote(delveName, timestamp, text)
         end
     end
     return false
+end
+
+--- Permanently remove a single logged run, located by delve name +
+--- timestamp, and subtract its contribution from the delve's lifetime
+--- totals. highestTier / fastestTime are recomputed from the remaining
+--- recent runs only when the deleted run held the record (the usual
+--- reason to delete is precisely a bogus record run; a record set by an
+--- already-trimmed run can't be recovered either way). Drops the whole
+--- delve entry when nothing remains. Returns true on success.
+function E:DeleteRun(delveName, timestamp)
+    if not (delveName and timestamp and self.db and self.db.delveHistory) then
+        return false
+    end
+    local entry  = self.db.delveHistory[delveName]
+    local recent = entry and entry.recentRuns
+    if not recent then return false end
+
+    local run, idx
+    for i, r in ipairs(recent) do
+        if r.timestamp == timestamp then
+            run, idx = r, i
+            break
+        end
+    end
+    if not run then return false end
+    table.remove(recent, idx)
+
+    local life = entry.lifetime
+    if life then
+        -- totalRuns also counts runs already trimmed past the retention
+        -- cap, so keep it >= the rows still on display — the History
+        -- tab hides a delve entirely once totalRuns reaches 0.
+        life.totalRuns     = math.max(#recent, (life.totalRuns or 1) - 1)
+        life.totalDeaths   = math.max(0,
+            (life.totalDeaths or 0) - (run.deaths or 0))
+        life.totalDuration = math.max(0,
+            (life.totalDuration or 0) - (run.duration or 0))
+        if run.keyUsed then
+            life.totalKeysUsed = math.max(0, (life.totalKeysUsed or 0) - 1)
+        end
+        if (run.tier or 0) >= (life.highestTier or 0) then
+            local best = 0
+            for _, r in ipairs(recent) do
+                if (r.tier or 0) > best then best = r.tier end
+            end
+            life.highestTier = best
+        end
+        if run.duration and run.duration > 0
+                and run.duration == life.fastestTime then
+            local fastest = 0
+            for _, r in ipairs(recent) do
+                if (r.duration or 0) > 0
+                        and (fastest == 0 or r.duration < fastest) then
+                    fastest = r.duration
+                end
+            end
+            life.fastestTime = fastest
+        end
+    end
+
+    if #recent == 0 and (not life or (life.totalRuns or 0) <= 0) then
+        self.db.delveHistory[delveName] = nil
+    end
+    return true
 end
 
 --- Record which boss a delve fields for a given story variant. Stored

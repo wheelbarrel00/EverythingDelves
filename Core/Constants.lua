@@ -189,12 +189,26 @@ E.ShardSources = {
 ------------------------------------------------------------------------
 -- Currency IDs (Midnight 12.0 Season 1)
 -- Queryable via C_CurrencyInfo.GetCurrencyInfo(id)
--- Currency IDs (confirmed from BountifulDelvesHunter-Midnight reference)
 ------------------------------------------------------------------------
 E.CurrencyIDs = {
     cofferKeyShards = 3310,
     bountifulKeys   = 3028,
     undercoins      = 2803,
+}
+
+------------------------------------------------------------------------
+-- Dawncrest currency IDs (Midnight 12.0 Season 1 upgrade crests)
+-- Ordered lowest -> highest tier. Dawncrests have no weekly cap;
+-- info.totalEarned on the same ID is the season-lifetime total.
+-- The display name is read live from the currency API; the label here
+-- is only a fallback for undiscovered currencies.
+------------------------------------------------------------------------
+E.Dawncrests = {
+    { id = 3383, label = "Adventurer Dawncrest" },
+    { id = 3341, label = "Veteran Dawncrest"    },
+    { id = 3343, label = "Champion Dawncrest"   },
+    { id = 3345, label = "Hero Dawncrest"       },
+    { id = 3347, label = "Myth Dawncrest"       },
 }
 
 ------------------------------------------------------------------------

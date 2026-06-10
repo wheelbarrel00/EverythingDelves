@@ -28,7 +28,11 @@ local VALEERA_SOUNDS = {
 }
 
 ------------------------------------------------------------------------
--- Dundun (rat companion) voice line sound IDs — Midnight 12.0 Season 1
+-- Dundun voice line sound IDs — Midnight 12.0 Season 1
+-- Dundun is NOT a delve companion: he is the rat loa ("Loa of
+-- Abundance") who hosts the Abundance cave events and repeats his
+-- voice lines constantly. MuteSoundFile is global, so the mute applies
+-- everywhere he speaks, not just in delves.
 ------------------------------------------------------------------------
 local DUNDUN_SOUNDS = {
     7249707, 7251759, 7251762, 7251765, 7251768, 7251771, 7251774, 7251777,

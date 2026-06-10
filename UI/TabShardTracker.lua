@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- UI/TabShardTracker.lua - Tab 4: Shard Tracker
--- Tracks Coffer Key Shards, Bountiful Keys, weekly shard income from
--- every known source, and session-level earnings.
+-- Tracks Coffer Key Shards, Bountiful Keys, Dawncrests, weekly shard
+-- income from every known source, and session-level earnings.
 --
 -- Display-only: reads C_CurrencyInfo, quest completion status, and
 -- session counters. No gameplay automation.
@@ -226,11 +226,97 @@ E:RegisterModule(function()
     E:StyleAccentDivider(div1)
 
     --------------------------------------------------------------------
+    -- SECTION 1b: Dawncrests
+    -- Season upgrade crests. No weekly cap; "Season Total" is the
+    -- lifetime amount earned this season (info.totalEarned).
+    --------------------------------------------------------------------
+    local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
+    crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+    E:StyleAccentHeader(crestHeader, "Dawncrests")
+
+    -- Permanent grey line under the section header (matches the Weekly
+    -- Shard Sources styling below).
+    local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
+    crestHeaderDiv:SetHeight(1)
+    crestHeaderDiv:SetPoint("TOPLEFT",  crestHeader, "BOTTOMLEFT",  0,  -2)
+    crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 445, -2)
+    E:StyleGreyLine(crestHeaderDiv)
+
+    -- Column headers
+    local CREST_COL_Y = -12
+    for _, col in ipairs({
+        { label = "Crest",        x = 0   },
+        { label = "On Hand",      x = 260 },
+        { label = "Season Total", x = 360 },
+    }) do
+        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fs:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", col.x, CREST_COL_Y)
+        fs:SetFont(fs:GetFont(), 10, "OUTLINE")
+        fs:SetText(E.CC.muted .. col.label .. E.CC.close)
+    end
+
+    local CREST_ROW_H  = 20
+    local CREST_ROW_Y  = CREST_COL_Y - 16
+    local crestRows    = {}
+
+    for i, crest in ipairs(E.Dawncrests) do
+        local rowY = CREST_ROW_Y - ((i - 1) * CREST_ROW_H)
+
+        -- Alternating row background
+        if i % 2 == 0 then
+            local rowBg = sc:CreateTexture(nil, "BACKGROUND")
+            rowBg:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", -2, rowY + 2)
+            rowBg:SetSize(500, CREST_ROW_H)
+            rowBg:SetColorTexture(0.08, 0.08, 0.08, 0.50)
+        end
+
+        local icon = sc:CreateTexture(nil, "ARTWORK")
+        icon:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 0, rowY + 1)
+        icon:SetSize(14, 14)
+
+        local nameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        nameFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 20, rowY)
+        nameFS:SetFont(nameFS:GetFont(), 10)
+        nameFS:SetWidth(235)
+        nameFS:SetJustifyH("LEFT")
+
+        local handFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        handFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 260, rowY)
+        handFS:SetFont(handFS:GetFont(), 10)
+
+        local seasonFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        seasonFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 360, rowY)
+        seasonFS:SetFont(seasonFS:GetFont(), 10)
+
+        crestRows[i] = {
+            id       = crest.id,
+            label    = crest.label,
+            icon     = icon,
+            nameFS   = nameFS,
+            handFS   = handFS,
+            seasonFS = seasonFS,
+            iconSet  = false,
+        }
+    end
+
+    --------------------------------------------------------------------
+    -- Thin red divider after crest list
+    --------------------------------------------------------------------
+    local crestBottomY = CREST_ROW_Y - ((#E.Dawncrests - 1) * CREST_ROW_H)
+        - CREST_ROW_H
+    local div1b = sc:CreateTexture(nil, "ARTWORK")
+    div1b:SetHeight(1)
+    div1b:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 0, crestBottomY - 16)
+    div1b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+    E:StyleAccentDivider(div1b)
+
+    --------------------------------------------------------------------
     -- SECTION 2: Weekly Shard Sources
     -- Scrollable list of every shard source with earned/available status
     --------------------------------------------------------------------
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    srcHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
+    srcHeader:SetPoint("TOPLEFT", div1b, "BOTTOMLEFT", 0, -32)
     srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
 
@@ -959,6 +1045,35 @@ E:RegisterModule(function()
             weeklyCapNote:SetText(
                 E.CC.muted .. "Weekly shard cap data unavailable" .. E.CC.close
             )
+        end
+
+        ----------------------------------------------------------------
+        -- Section 1b: Dawncrests
+        ----------------------------------------------------------------
+        for _, row in ipairs(crestRows) do
+            local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+                         and C_CurrencyInfo.GetCurrencyInfo(row.id)
+            if info then
+                -- Icon and live name resolve once; they never change.
+                if not row.iconSet and info.iconFileID then
+                    row.icon:SetTexture(info.iconFileID)
+                    row.iconSet = true
+                end
+                local crestName = (info.name and info.name ~= "")
+                    and info.name or row.label
+                local qty    = info.quantity or 0
+                local season = info.totalEarned or 0
+                row.nameFS:SetText(E.CC.body .. crestName .. E.CC.close)
+                row.handFS:SetText(E.CC.gold .. FormatNumber(qty) .. E.CC.close)
+                row.seasonFS:SetText(season > 0
+                    and (E.CC.body .. FormatNumber(season) .. E.CC.close)
+                    or  (E.CC.muted .. "-" .. E.CC.close))
+            else
+                -- Currency not yet discovered on this character
+                row.nameFS:SetText(E.CC.muted .. row.label .. E.CC.close)
+                row.handFS:SetText(E.CC.muted .. "-" .. E.CC.close)
+                row.seasonFS:SetText(E.CC.muted .. "-" .. E.CC.close)
+            end
         end
 
         ----------------------------------------------------------------

@@ -292,6 +292,89 @@ function E:StyleGreyLine(tex)
     tex:SetColorTexture(g.r, g.g, g.b, g.a)
 end
 
+------------------------------------------------------------------------
+-- Delve companion level / XP
+------------------------------------------------------------------------
+-- The companion's progression is a friendship reputation whose reaction
+-- string reads "Level N" (each expansion's companion follows the same
+-- pattern). Rather than hardcoding a faction ID per expansion, scan the
+-- friendship faction ID range once and cache the hit account-wide; the
+-- cache invalidates when the account's expansion level changes so a new
+-- expansion's companion replaces the old one automatically.
+-- LIMITATION: the "Level %d" reaction match is English-only (same
+-- limitation as the deferred companion-localization audit finding).
+
+local COMPANION_SCAN_FROM = 3100  -- scan DESCENDING so the newest
+local COMPANION_SCAN_TO   = 2600  -- expansion's companion wins
+
+local function ScanForCompanionFaction()
+    if not (C_GossipInfo and C_GossipInfo.GetFriendshipReputation) then
+        return nil
+    end
+    for id = COMPANION_SCAN_FROM, COMPANION_SCAN_TO, -1 do
+        local ok, d = pcall(C_GossipInfo.GetFriendshipReputation, id)
+        if ok and d and d.friendshipFactionID and d.friendshipFactionID > 0
+                and type(d.reaction) == "string"
+                and d.reaction:match("^Level %d+") then
+            return id
+        end
+    end
+    return nil
+end
+
+--- Friendship faction ID of the current expansion's delve companion.
+--- Resolved by scan once, then cached account-wide (the ID itself is
+--- global; only the standing is per character). Returns nil when the
+--- companion isn't found (e.g. not unlocked yet) — re-scans next call.
+function E:GetCompanionFactionID()
+    local xpac = GetAccountExpansionLevel and GetAccountExpansionLevel() or 0
+    local db = self.db
+    if db and db.companionFactionID and db.companionFactionXpac == xpac then
+        return db.companionFactionID
+    end
+    local id = ScanForCompanionFaction()
+    if id and db then
+        db.companionFactionID   = id
+        db.companionFactionXpac = xpac
+    end
+    return id
+end
+
+--- Live companion progression for this character.
+--- @return table|nil  { name, level, xpCurrent, xpMax, isMaxLevel }
+function E:GetCompanionData()
+    local id = self:GetCompanionFactionID()
+    if not id then return nil end
+    local ok, d = pcall(C_GossipInfo.GetFriendshipReputation, id)
+    if not (ok and d and d.friendshipFactionID
+            and d.friendshipFactionID > 0) then
+        return nil
+    end
+
+    -- Level: prefer the ranks API; fall back to parsing the reaction.
+    local level = 0
+    if C_GossipInfo.GetFriendshipReputationRanks then
+        local ok2, ranks = pcall(
+            C_GossipInfo.GetFriendshipReputationRanks, id)
+        if ok2 and ranks and ranks.currentLevel then
+            level = ranks.currentLevel
+        end
+    end
+    if level == 0 and type(d.reaction) == "string" then
+        level = tonumber(d.reaction:match("(%d+)")) or 0
+    end
+
+    local floor = d.reactionThreshold or 0
+    local ceil  = d.nextThreshold              -- nil at max level
+    return {
+        name       = (d.name and d.name ~= "") and d.name or "Companion",
+        level      = level,
+        xpCurrent  = (d.standing or floor) - floor,
+        xpMax      = ceil and math.max(1, ceil - floor) or 0,
+        isMaxLevel = (ceil == nil),
+    }
+end
+
 --- Color a scrollbar thumb texture and register for repaint.
 function E:StyleAccentThumb(tex)
     if not tex or not tex.SetColorTexture then return end

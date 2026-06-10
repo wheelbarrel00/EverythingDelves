@@ -521,6 +521,48 @@ E:RegisterModule(function()
         E:HideTooltip()
     end
 
+    -- Delete-run confirmation. The run is identified by delve key +
+    -- timestamp (same addressing as run notes); E:DeleteRun also
+    -- subtracts the run's contribution from lifetime stats.
+    StaticPopupDialogs["EVERYTHINGDELVES_DELETE_RUN"] = {
+        text = "Delete this %s run?\n\n%s\n\nIts time, deaths, and key"
+            .. " usage are removed from the delve's lifetime stats."
+            .. " This cannot be undone.",
+        button1 = "Delete",
+        button2 = "Cancel",
+        OnAccept = function(_, data)
+            if data and E:DeleteRun(data.key, data.timestamp) then
+                Refresh()
+            end
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+
+    local function DelBtn_OnClick(self)
+        local row = self.row
+        local run = row and row.run
+        if not (run and run.timestamp) then return end
+        local desc = "T" .. (run.tier or 0) .. "  -  "
+            .. FormatDateTime(run.timestamp)
+        StaticPopup_Show("EVERYTHINGDELVES_DELETE_RUN",
+            row.niceName or row.delveKey, desc,
+            { key = row.delveKey, timestamp = run.timestamp })
+    end
+
+    local function DelBtn_OnEnter(self)
+        self:SetAlpha(1)
+        E:ShowTooltip(self, "Delete Run",
+            "Permanently remove this run and its\ncontribution to lifetime stats.")
+    end
+
+    local function DelBtn_OnLeave(self)
+        self:SetAlpha(0.40)
+        E:HideTooltip()
+    end
+
     -- Shared hover handlers for the "B" badge so the lone gold glyph has a
     -- legend (it was ambiguous — Bountiful? Boss? Bonus?). Only explains
     -- itself when the badge is actually shown (this run was bountiful).
@@ -664,6 +706,22 @@ E:RegisterModule(function()
         noteBtn:SetScript("OnEnter", NoteBtn_OnEnter)
         noteBtn:SetScript("OnLeave", NoteBtn_OnLeave)
         row.noteBtn = noteBtn
+
+        -- Delete button: small red X left of the note button. Faint
+        -- until hovered; removes the run after a confirmation popup.
+        local delBtn = CreateFrame("Button", nil, row)
+        delBtn:SetSize(15, 15)
+        delBtn:SetPoint("RIGHT", noteBtn, "LEFT", -4, 0)
+        local dtex = delBtn:CreateTexture(nil, "ARTWORK")
+        dtex:SetAllPoints()
+        dtex:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+        delBtn.tex = dtex
+        delBtn.row = row
+        delBtn:SetAlpha(0.40)
+        delBtn:SetScript("OnClick", DelBtn_OnClick)
+        delBtn:SetScript("OnEnter", DelBtn_OnEnter)
+        delBtn:SetScript("OnLeave", DelBtn_OnLeave)
+        row.delBtn = delBtn
 
         -- Fixed-position columns so every run lines up into a grid
         -- regardless of field width (proportional font).
