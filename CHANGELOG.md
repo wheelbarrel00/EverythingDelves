@@ -5,6 +5,22 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-06-11
+
+### New Features
+
+- **Bonus Spoils tracker** - An optional on-screen tracker for a delve's two bonus chests: the Nemesis Strongbox packs (from clearing the Pactsworn groups) and the Sanctified Banner. It shows at a glance when you've secured the extra loot so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default - turn it on under Options, then drag it wherever you like. Suggested by Puzzleheaded-Pie-506.
+- **Achievements on map tooltips** - Hovering a delve's pin on the world map now lists its achievements right in the tooltip: a quick summary by default, or hold Shift for the full criteria and progress. Choose summary, full details, or off in Options. Thanks to 8six753o9 for the idea.
+
+### Bug Fixes
+
+- **Delve run times are accurate again** - Some runs logged a wildly inflated time - a 15 minute delve showing up as over an hour - because a run could carry over the start time of the previous run instead of timing from its own entry. Runs are now always timed from the moment you enter, so the duration, average, and fastest-time stats stay correct. Any bad entries you already have can be removed with the per-run delete button, which also repairs that delve's averages. Thanks to BanditC64 for the detailed report.
+- **"Key used" tag now appears** - The gold "Key" tag in Delve History still wasn't showing up. A bountiful coffer's key is spent when you loot it, which happens just after the run is marked complete, so the old check ran a moment too early and always missed it. Key usage is now watched across the whole run and the post-clear looting, so spending a key on the bountiful coffer reliably tags the run.
+
+### Improvements
+
+- **Dawncrest season cap** - The Dawncrests panel now shows your season maximum for each crest tier alongside the amount on hand. Crest caps are currently lifted for the rest of the season, so it reads "Uncapped".
+
 ## [1.14.0] - 2026-06-10
 
 ### New Features

@@ -227,8 +227,10 @@ E:RegisterModule(function()
 
     --------------------------------------------------------------------
     -- SECTION 1b: Dawncrests
-    -- Season upgrade crests. No weekly cap; "Season Total" is the
-    -- lifetime amount earned this season (info.totalEarned).
+    -- Season upgrade crests. "Season Total" is the lifetime amount
+    -- earned this season (info.totalEarned); "Season Max" is the live
+    -- per-tier seasonal earning cap (info.maxQuantity — Blizzard raises
+    -- it weekly via hotfix, so it must be read live, never hardcoded).
     --------------------------------------------------------------------
     local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
@@ -240,7 +242,7 @@ E:RegisterModule(function()
     local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     crestHeaderDiv:SetHeight(1)
     crestHeaderDiv:SetPoint("TOPLEFT",  crestHeader, "BOTTOMLEFT",  0,  -2)
-    crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 445, -2)
+    crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 545, -2)
     E:StyleGreyLine(crestHeaderDiv)
 
     -- Column headers
@@ -248,7 +250,8 @@ E:RegisterModule(function()
     for _, col in ipairs({
         { label = "Crest",        x = 0   },
         { label = "On Hand",      x = 260 },
-        { label = "Season Total", x = 360 },
+        { label = "Season Max",   x = 360 },
+        { label = "Season Total", x = 460 },
     }) do
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", col.x, CREST_COL_Y)
@@ -267,7 +270,7 @@ E:RegisterModule(function()
         if i % 2 == 0 then
             local rowBg = sc:CreateTexture(nil, "BACKGROUND")
             rowBg:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", -2, rowY + 2)
-            rowBg:SetSize(500, CREST_ROW_H)
+            rowBg:SetSize(550, CREST_ROW_H)
             rowBg:SetColorTexture(0.08, 0.08, 0.08, 0.50)
         end
 
@@ -285,8 +288,12 @@ E:RegisterModule(function()
         handFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 260, rowY)
         handFS:SetFont(handFS:GetFont(), 10)
 
+        local maxFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        maxFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 360, rowY)
+        maxFS:SetFont(maxFS:GetFont(), 10)
+
         local seasonFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        seasonFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 360, rowY)
+        seasonFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 460, rowY)
         seasonFS:SetFont(seasonFS:GetFont(), 10)
 
         crestRows[i] = {
@@ -295,6 +302,7 @@ E:RegisterModule(function()
             icon     = icon,
             nameFS   = nameFS,
             handFS   = handFS,
+            maxFS    = maxFS,
             seasonFS = seasonFS,
             iconSet  = false,
         }
@@ -1063,15 +1071,32 @@ E:RegisterModule(function()
                     and info.name or row.label
                 local qty    = info.quantity or 0
                 local season = info.totalEarned or 0
+                -- Live per-tier season cap. Zero means uncapped — the
+                -- launch caps (+100/week onto maxQuantity via hotfix)
+                -- were removed entirely in the 2026-05-19 hotfix "for
+                -- the rest of Season 1". Kept as a live read so a cap
+                -- reintroduced next season shows up with no addon
+                -- update.
+                local seasonMax = info.maxQuantity or 0
                 row.nameFS:SetText(E.CC.body .. crestName .. E.CC.close)
                 row.handFS:SetText(E.CC.gold .. FormatNumber(qty) .. E.CC.close)
+                row.maxFS:SetText(seasonMax > 0
+                    and (E.CC.body .. FormatNumber(seasonMax) .. E.CC.close)
+                    or  (E.CC.muted .. "Uncapped" .. E.CC.close))
+                -- Season total goes red once the cap is hit — further
+                -- crests from capped sources are lost.
+                local seasonColor = E.CC.body
+                if seasonMax > 0 and season >= seasonMax then
+                    seasonColor = E.CC.red
+                end
                 row.seasonFS:SetText(season > 0
-                    and (E.CC.body .. FormatNumber(season) .. E.CC.close)
+                    and (seasonColor .. FormatNumber(season) .. E.CC.close)
                     or  (E.CC.muted .. "-" .. E.CC.close))
             else
                 -- Currency not yet discovered on this character
                 row.nameFS:SetText(E.CC.muted .. row.label .. E.CC.close)
                 row.handFS:SetText(E.CC.muted .. "-" .. E.CC.close)
+                row.maxFS:SetText(E.CC.muted .. "-" .. E.CC.close)
                 row.seasonFS:SetText(E.CC.muted .. "-" .. E.CC.close)
             end
         end

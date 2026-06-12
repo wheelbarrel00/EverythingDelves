@@ -5,24 +5,24 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.14.0"
+local WHATS_NEW_VERSION = "1.15.0"
 
 local ENTRIES = {
     {
-        title = "Exact Gilded Stash count",
-        desc  = "The Tier Guide's Gilded Stash bar now syncs the exact weekly count straight from the game whenever you're inside a delve \226\128\148 no more guessing from logged runs. Until your first delve of the week, it still estimates from your history.",
+        title = "Bonus Spoils tracker",
+        desc  = "An optional on-screen tracker for a delve's two bonus chests: the Nemesis Strongbox packs and the Sanctified Banner. See at a glance when you've grabbed the extra loot before the boss. Off by default. Suggested by Puzzleheaded-Pie-506.",
     },
     {
-        title = "Dawncrest tracker",
-        desc  = "The Shard Tracker tab has a new Dawncrests section: all five crest tiers with what's on hand and your season total, alongside your keys and shards.",
+        title = "Achievements on map tooltips",
+        desc  = "Hovering a delve's map pin now lists its achievements right in the tooltip. A quick summary by default; hold Shift for full details, or pick summary/full/off in Options. Thanks to 8six753o9 for the idea.",
     },
     {
-        title = "Valeera's level at a glance",
-        desc  = "The Tier Guide's companion row now shows Valeera's level and an XP bar, so you can see how close the next companion unlock is without opening her menu.",
+        title = "Dawncrest season cap",
+        desc  = "The Dawncrests panel now shows your season maximum for each crest tier alongside what's on hand. Caps are currently lifted for the rest of the season, so it reads Uncapped.",
     },
     {
-        title = "Delete a single run",
-        desc  = "Each run in Delve History now has a small X button \226\128\148 remove a bogus run (and its time, deaths, and key usage) from your stats without clearing the whole history.",
+        title = "Delve History timing fix",
+        desc  = "Fixed a bug where a run could log a wildly inflated time (a 15 minute delve showing as over an hour) by carrying over the previous run's start. Runs are now always timed from their own entry. Thanks to BanditC64 for the detailed report.",
     },
 }
 

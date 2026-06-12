@@ -198,8 +198,13 @@ E.CurrencyIDs = {
 
 ------------------------------------------------------------------------
 -- Dawncrest currency IDs (Midnight 12.0 Season 1 upgrade crests)
--- Ordered lowest -> highest tier. Dawncrests have no weekly cap;
--- info.totalEarned on the same ID is the season-lifetime total.
+-- Ordered lowest -> highest tier. Seasonal cap mechanics: the cap
+-- rides on info.maxQuantity and counts info.totalEarned (the
+-- season-lifetime total; info.useTotalEarnedForMaxQty), with no
+-- separate weekly field. Season 1 launched with +100/week escalating
+-- caps, but the 2026-05-19 hotfix removed them for the rest of the
+-- season — maxQuantity reads 0 (uncapped) live since then. Always
+-- read the cap live; never hardcode it.
 -- The display name is read live from the currency API; the label here
 -- is only a fallback for undiscovered currencies.
 ------------------------------------------------------------------------
