@@ -66,6 +66,7 @@ E.TAB_NAMES = {
     "Delver's Call",
     "Options",
     "Profiles",
+    "About",
 }
 E.NUM_TABS = #E.TAB_NAMES
 
@@ -123,23 +124,42 @@ end
 ------------------------------------------------------------------------
 E.ShardSources = {
     {
-        name         = "Haradar's Legend Relics",
+        -- "Legends of the Haranir" weekly world event (Harandar zone): the
+        -- weekly "Lost Legends" relic scenario grants 100 shards, ONCE per
+        -- week (weeklyMax=1) - NOT 7. The old "7" mistook the 7 seasonal
+        -- Hara'ti relics for a weekly count, producing a bogus "700" that
+        -- exceeds the 600/wk cap. questLine 6015 IS those 7 relics, so the
+        -- Status column reads SEASONAL relic progress (X/7) - cumulative,
+        -- does not reset weekly.
+        name         = "Legends of the Haranir",
         shardsEach   = 100,
-        weeklyMax    = 7,
+        weeklyMax    = 1,
         trackable    = true,
-        questLineID  = 6015,  -- C_QuestLine.GetQuestLineQuests(6015)
+        questLineID  = 6015,  -- C_QuestLine.GetQuestLineQuests(6015) = 7 relics
     },
     {
-        name         = "Saltheril's Haven Weekly",
-        shardsEach   = 100,
-        weeklyMax    = 4,
-        trackable    = true,
-        questIDs     = { 90573, 90574, 90575, 90576 },
+        -- Saltheril's Soiree: favors at the Soiree give ~30 shards each
+        -- (~3/wk = ~90 total). The shard-granting favor quests are per-
+        -- faction and aren't cleanly indexed, so we track the WEEKLY META
+        -- instead: "Midnight: Saltheril's Soiree" (93889), completed by
+        -- doing those favors (analogous to "Midnight: Delves" 93909).
+        -- 91966 is the DAILY activity (resets daily), not a weekly source,
+        -- so it is NOT tracked here. Status reflects the weekly meta
+        -- (0/1 -> done); the "3x" cap is the favor estimate. Confirm 93889
+        -- resets on the weekly reset in-game.
+        name        = "Saltheril's Soiree",
+        shardsEach  = 30,
+        weeklyMax   = 3,
+        trackable   = true,
+        questIDs    = { 93889 },
     },
     {
         name         = "Prey Quests",
         shardsEach   = 75,
-        weeklyMax    = 8,
+        -- 75/hunt confirmed (all difficulties). No documented per-week
+        -- count - repeatable, bounded only by the 600/wk cap - so no
+        -- per-source cap is shown (the old "8" was just 600/75).
+        weeklyMax    = nil,
         trackable    = true,
         questLineID  = 5945,  -- C_QuestLine.GetQuestLineQuests(5945)
     },
@@ -150,36 +170,21 @@ E.ShardSources = {
         trackable   = false,
     },
     {
+        name        = "World Quests",
+        shardsEach  = 50,   -- when shards are the listed reward
+        weeklyMax   = nil,
+        trackable   = false,
+    },
+    {
         name        = "World Map Treasures",
-        shardsEach  = "3–15",
+        shardsEach  = "11-14",   -- farming-guide range (wiki cited ~5)
         weeklyMax   = nil,
         unconfirmed = true,
         trackable   = false,
     },
     {
-        name        = "Preyseeker's Satchels (Uncommon)",
-        shardsEach  = 50,
-        weeklyMax   = nil,
-        unconfirmed = true,
-        trackable   = false,
-    },
-    {
-        name        = "Preyseeker's Satchels (Rare)",
-        shardsEach  = 60,
-        weeklyMax   = nil,
-        unconfirmed = true,
-        trackable   = false,
-    },
-    {
-        name        = "Preyseeker's Satchels (Epic)",
-        shardsEach  = 80,
-        weeklyMax   = nil,
-        unconfirmed = true,
-        trackable   = false,
-    },
-    {
-        name        = "Blue Fly-through Stars",
-        shardsEach  = "1–3",
+        name        = "Abundance Events",
+        shardsEach  = 13,   -- ~13/run with the Shard of Dundun
         weeklyMax   = nil,
         unconfirmed = true,
         trackable   = false,

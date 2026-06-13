@@ -57,6 +57,47 @@ function E:ShowDiscord()
 end
 
 ------------------------------------------------------------------------
+--- Generic copyable-link popup. WoW can't open a web browser, so any
+--- external link (GitHub, CurseForge, a bug report, ...) is shown as a
+--- pre-selected box you copy with Ctrl+C - same UX as the Discord popup
+--- above. Call E:ShowURL("https://...").
+------------------------------------------------------------------------
+StaticPopupDialogs["EVERYTHINGDELVES_URL"] = {
+    text = "Copy the link below (it's pre-selected - just press Ctrl+C):",
+    button1 = "Close",
+    hasEditBox = true,
+    editBoxWidth = 260,
+    OnShow = function(self)
+        local url = E._pendingURL or ""
+        local eb = self.editBox or self.EditBox
+        if eb then
+            eb:SetText(url)
+            eb:HighlightText()
+            eb:SetFocus()
+            eb:SetScript("OnEscapePressed", function(box) box:GetParent():Hide() end)
+            -- Keep the link intact: re-fill + re-select if the player edits it.
+            eb:SetScript("OnTextChanged", function(box)
+                if box:GetText() ~= url then
+                    box:SetText(url)
+                    box:HighlightText()
+                end
+            end)
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+--- Show a copyable-link popup for any URL.
+function E:ShowURL(url)
+    if not url or url == "" then return end
+    E._pendingURL = url
+    StaticPopup_Show("EVERYTHINGDELVES_URL")
+end
+
+------------------------------------------------------------------------
 -- Module registration
 -- Tab files call RegisterModule() at load time to queue an init callback.
 -- All callbacks run inside InitMainFrame() after the main window exists.
@@ -519,6 +560,12 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
                 and (col .. " / " .. tostring(tot))
                 or "none"))
         end
+    elseif msg == "about" then
+        -- Open the window and jump to the About tab (the last tab).
+        E:ToggleMainFrame()
+        if E.MainFrame and E.MainFrame:IsShown() then
+            E:SelectTab(E.NUM_TABS)
+        end
     else
         E:ToggleMainFrame()
     end
@@ -940,6 +987,45 @@ local function TryCaptureTier(source)
     end
 end
 
+--- After entry OR a /reload-resume the ObjectiveTracker can briefly still
+--- show the PREVIOUS run's tier, so the value latched by TryCaptureTier may
+--- be stale. Re-detect on a short ticker and overwrite the latch with the
+--- live value, then lock once it has settled. A run's tier never changes,
+--- so the latest good read is authoritative. This keeps the mid-run widget
+--- AND the completion-time fallback (runState.tier) correct even on a
+--- resumed run, which has no popup heartbeat. The completion handler still
+--- re-reads and prefers the live value; this only fixes the stale mid-run
+--- value and the torn-down-tracker fallback.
+local function SettleTier()
+    if E._tierSettle then E._tierSettle:Cancel(); E._tierSettle = nil end
+    local ticks, stable = 0, 0
+    E._tierSettle = C_Timer.NewTicker(2, function(self)
+        ticks = ticks + 1
+        if not runState.inDelve then
+            self:Cancel(); E._tierSettle = nil
+            return
+        end
+        local detected = AutoDetectDelveTier()
+        if detected and detected > 0 then
+            if detected ~= (runState.tier or 0) then
+                DebugTier("settle: tier %d -> %d", runState.tier or 0, detected)
+                runState.tier = detected
+                if E.db and E.db.activeRun then
+                    E.db.activeRun.tier = detected
+                end
+                stable = 0
+            else
+                stable = stable + 1
+            end
+        end
+        -- Lock once the live read agrees twice running, or the window ends.
+        if stable >= 2 or ticks >= 8 then
+            DebugTier("settle: locked tier=%d (ticks=%d)", runState.tier or 0, ticks)
+            self:Cancel(); E._tierSettle = nil
+        end
+    end)
+end
+
 --- Re-check bountiful status and flip runState.wasBountiful to true if
 --- the current delve is on the live bountiful list. NEVER flips back
 --- to false once set — once detected as bountiful, it stays locked.
@@ -1146,6 +1232,7 @@ local function BeginDelveRun(name, kind)
     -- moment the data is available.
     RefreshBountifulSnapshot()
     TryCaptureTier("BeginDelveRun")
+    SettleTier()   -- correct an entry-stale tier over the next few seconds
 
     -- Capture the live Gilded Stash counter shortly after entry — the
     -- widget needs a moment to exist after the loading screen, and the
@@ -1541,10 +1628,10 @@ delveFrame:RegisterEvent("SCENARIO_UPDATE")
 delveFrame:RegisterEvent("SCENARIO_COMPLETED")
 delveFrame:RegisterEvent("PLAYER_DEAD")
 delveFrame:RegisterEvent("ENCOUNTER_END")
--- Coffer-key spend detection: the bountiful coffer's key is spent on LOOT,
--- which can land after SCENARIO_COMPLETED, so we watch currency + bag changes.
+-- Coffer-key spend detection: the bountiful coffer's key (currency 3028) is
+-- spent on LOOT, which can land after SCENARIO_COMPLETED, so we watch the
+-- currency's signed delta both in-delve and through the post-completion keyWatch.
 delveFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-delveFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 
 -- Flags describing the most recent PLAYER_ENTERING_WORLD (set in the event
 -- handler below). Together they gate the activeRun restore so a stale saved
@@ -1601,16 +1688,23 @@ local function TryBeginFromCurrentZone(source)
         return
     end
 
-    -- Post-completion looting window: a run was just logged for the instance
-    -- we are still standing in (runCompleted, set right after EndDelveRun in
-    -- the SCENARIO_COMPLETED handler). Never begin or resume here. A stray
-    -- SCENARIO_UPDATE / ZONE_CHANGED in this window used to fire a phantom
-    -- BeginDelveRun — runState.inDelve had just been cleared, so the old
-    -- "not runState.inDelve" begin-condition was true — stamping a startTime
-    -- at the completion moment that then leaked into the NEXT run's duration
-    -- (the "each run used the previous run's start time" chain). The latch is
-    -- released the instant the player leaves the delve (isDelve goes false,
-    -- above) or on the next genuine entry PEW.
+    -- Post-completion looting window: a run was just logged for the instance we
+    -- are still standing in (runCompleted, set right after EndDelveRun in the
+    -- SCENARIO_COMPLETED handler). Never begin or resume here. A stray
+    -- SCENARIO_UPDATE / ZONE_CHANGED in this window would otherwise fire a
+    -- phantom BeginDelveRun (runState.inDelve was just cleared), stamping a
+    -- startTime at the completion moment that then leaks into the NEXT run's
+    -- duration — the "each run used the previous run's start time" chain.
+    --
+    -- This window INCLUDES the post-boss TREASURE ROOM where the Gilded Stash
+    -- and Bountiful Coffer are looted. That room is still the SAME delve instance
+    -- (difficulty 208) yet the scenario can read as "in progress" there, so a
+    -- scenario-freshness heuristic CANNOT be used to release the latch: doing so
+    -- begins a phantom run mid-loot that also steals the coffer-key spend from
+    -- the just-completed run (confirmed in-game). The latch is released ONLY when
+    -- the player genuinely leaves the delve (isDelve goes false, above) or on the
+    -- next loading-screen PEW — real transitions out of this instance, neither of
+    -- which the treasure room triggers.
     if runCompleted then
         return
     end
@@ -1687,6 +1781,10 @@ local function TryBeginFromCurrentZone(source)
                 if E.MaybeShowTrovehunterReminder then
                     E:MaybeShowTrovehunterReminder()
                 end
+                -- A resumed run has no popup heartbeat and restored a
+                -- possibly-stale saved.tier; settle it against the live
+                -- tracker (the /reload case that logged a T11 as a T8).
+                SettleTier()
             else
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)
@@ -1748,64 +1846,79 @@ local function TryBeginFromCurrentZone(source)
                 }
             end
             TryCaptureTier("provisional")
+            SettleTier()   -- cold-cache entry: settle the tier as the UI populates
         else
             TryCaptureTier(source or "retry")
         end
     end
 end
 
---- Detect a Restored Coffer Key being spent. The bountiful coffer is looted —
---- and its key consumed — AFTER SCENARIO_COMPLETED fires, so a one-shot
---- before/after check at completion always missed it (the v1.14.0 currency-ID
---- fix was necessary but not sufficient). Instead we watch the key (currency
---- 3028 AND bag item 224172) for a decrease across the whole in-delve AND
---- post-completion looting window, flagging the run the instant it drops.
---- Watching both forms means detection doesn't hinge on which one the live
---- client uses. Cheap: a no-op unless inside a delve or a keyWatch is armed.
-local function CheckKeySpend()
+--- Detect a Restored Coffer Key being spent (opening the Bountiful Coffer).
+---
+--- THE ONLY signal is the event delta: in Midnight the key is a CURRENCY (3028),
+--- and since patch 11.0.2 CURRENCY_DISPLAY_UPDATE carries a SIGNED quantityChange
+--- that goes NEGATIVE when a currency is spent. A negative delta on 3028 = a key
+--- was spent; we read it straight from the payload and attribute it to the live
+--- run (or, post-completion, the just-logged run via keyWatch).
+---
+--- The old "count at entry" snapshot comparison was REMOVED because it produced
+--- FALSE positives: entering a delve AUTO-CONVERTS 100 Coffer Key Shards into a
+--- key (3028 changes at entry) and a mid-run /reload restores a stale baseline,
+--- so "current < baseline" could fire on a non-bountiful run that spent nothing
+--- (confirmed in-game: a key falsely logged after a reload). The signed delta
+--- fires only on a real movement, so there is nothing to false-positive on; a
+--- gain (the entry conversion) is a POSITIVE delta and is ignored.
+---
+--- The coffer is usually looted AFTER SCENARIO_COMPLETED, so detection runs both
+--- in-delve and through a post-completion keyWatch. Cheap: a no-op unless the
+--- event is for the key currency.
+local function CheckKeySpend(currencyType, quantityChange, destroyReason)
+    if currencyType ~= COFFER_KEY_CURRENCY then return end
+    if type(quantityChange) ~= "number" then return end
+
+    -- Full visibility while debugging: every key-currency movement (the entry
+    -- conversion is a positive delta; the coffer spend is negative).
+    DebugTier("key currency(3028): delta=%d qty=%d reason=%s inDelve=%s keyWatch=%s",
+        quantityChange, GetCurrencyQty(COFFER_KEY_CURRENCY),
+        tostring(destroyReason), tostring(runState.inDelve),
+        tostring(keyWatch ~= nil))
+
+    if quantityChange >= 0 then return end   -- a gain (e.g. the entry conversion)
+
+    -- A key was spent. Attribute to the live run, else the just-completed one.
     if runState.inDelve then
-        local dropped =
-            ((runState.startKeyCount or 0) > 0
-                and GetCurrencyQty(COFFER_KEY_CURRENCY) < runState.startKeyCount)
-            or ((runState.startKeyItems or 0) > 0
-                and GetKeyItemCount() < runState.startKeyItems)
-        if dropped and not runState.keyUsed then
+        if not runState.keyUsed then
             runState.keyUsed = true
             if E.db and E.db.activeRun then E.db.activeRun.keyUsed = true end
-            DebugTier("coffer key spend detected mid-run")
+            DebugTier("coffer key spend detected mid-run (delta=%d, reason=%s)",
+                quantityChange, tostring(destroyReason))
         end
-        return
-    end
-    if keyWatch then
-        local dropped =
-            ((keyWatch.startCount or 0) > 0
-                and GetCurrencyQty(COFFER_KEY_CURRENCY) < keyWatch.startCount)
-            or ((keyWatch.startItems or 0) > 0
-                and GetKeyItemCount() < keyWatch.startItems)
-        if dropped then
-            local r = keyWatch.run
-            if r and not r.keyUsed then
-                r.keyUsed = true
-                local hist = E.db and E.db.delveHistory
-                    and E.db.delveHistory[keyWatch.name]
-                if hist and hist.lifetime then
-                    hist.lifetime.totalKeysUsed =
-                        (hist.lifetime.totalKeysUsed or 0) + 1
-                end
-                if E.RefreshDelveHistoryTab then E:RefreshDelveHistoryTab() end
-                DebugTier("coffer key spend detected post-completion -> %s",
-                    tostring(keyWatch.name))
+    elseif keyWatch then
+        local r = keyWatch.run
+        if r and not r.keyUsed then
+            r.keyUsed = true
+            local hist = E.db and E.db.delveHistory
+                and E.db.delveHistory[keyWatch.name]
+            if hist and hist.lifetime then
+                hist.lifetime.totalKeysUsed =
+                    (hist.lifetime.totalKeysUsed or 0) + 1
             end
-            keyWatch = nil
+            if E.RefreshDelveHistoryTab then E:RefreshDelveHistoryTab() end
+            DebugTier("coffer key spend detected post-completion -> %s (delta=%d)",
+                tostring(keyWatch.name), quantityChange)
         end
+        keyWatch = nil
     end
 end
 
 delveFrame:SetScript("OnEvent", function(_, event, ...)
-    -- Coffer-key spend watcher: fires on currency/bag changes. Cheap no-op
-    -- unless we're in a delve or in the post-completion looting window.
-    if event == "CURRENCY_DISPLAY_UPDATE" or event == "BAG_UPDATE_DELAYED" then
-        CheckKeySpend()
+    -- Coffer-key spend watcher: the Restored Coffer Key is currency 3028, and
+    -- CURRENCY_DISPLAY_UPDATE carries a SIGNED delta (11.0.2+). Forward the
+    -- payload so a key spend is detected from the event itself — no entry
+    -- snapshot baseline, which is what removed the false positives.
+    if event == "CURRENCY_DISPLAY_UPDATE" then
+        local currencyType, _, quantityChange, _, destroyReason = ...
+        CheckKeySpend(currencyType, quantityChange, destroyReason)
         return
     end
     -- Record how this world-entry happened before any delve detection runs.
@@ -1816,14 +1929,19 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         local isInitialLogin, isReloadingUi = ...
         enteredViaReload = isReloadingUi and true or false
         enteredViaLogin  = isInitialLogin and true or false
-        -- A genuine new world-entry (a real loading screen that is NOT a
-        -- /reload or a relog/reconnect) arms the next delve detection to stamp
-        -- a FRESH run start and releases the post-completion latch. /reload and
-        -- relog are deliberately NOT armed so the resume path restores the
-        -- saved run's original start instead of restarting its clock.
+        -- Any world-entry (a real loading screen) is a transition OUT of the
+        -- just-completed instance, so always release the post-completion latch.
+        -- The stray events the latch guards against — SCENARIO_UPDATE /
+        -- ZONE_CHANGED during looting — never carry a PEW, so suppression is
+        -- preserved. This also frees a genuine new run after a login/reconnect-
+        -- flagged PEW, which the old conditional-clear could leave blocked.
+        runCompleted = false
+        -- Only a GENUINE new world-entry (NOT a /reload or relog/reconnect) arms
+        -- the next delve detection to stamp a FRESH run start. /reload and relog
+        -- are deliberately NOT armed so the resume path restores the saved run's
+        -- original start instead of restarting its clock.
         if not isReloadingUi and not isInitialLogin then
-            entryArmed   = true
-            runCompleted = false
+            entryArmed = true
         end
     end
 
@@ -1882,9 +2000,54 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         end
         local matchedName = MatchDelveName(candidate or "")
 
-        local duration = (runState.startTime > 0)
-            and math.max(0, math.floor(GetTime() - runState.startTime))
-            or 0
+        -- Recover the run's start when the live tracker lost it. A genuine run
+        -- always has runState.startTime stamped by BeginDelveRun; but a
+        -- completion can arrive while runState is in the EndDelveRun-zeroed
+        -- state — e.g. a cold-cache / reconnect entry whose begin never re-
+        -- stamped runState. The real start may still live in the persisted
+        -- activeRun, so fall back to it — but ONLY when it is for THIS delve and
+        -- recent (mirrors the resume guard). On a match, hydrate runState so the
+        -- rest of the handler logs the run's real deaths / tier / key / story.
+        local saved = E.db and E.db.activeRun
+        if (not runState.inDelve
+                or not (runState.startTime and runState.startTime > 0))
+                and saved and saved.name == matchedName
+                and saved.startTime and saved.startTime > 0
+                and saved.startTime <= GetTime()
+                and saved.startedAt
+                and (time() - saved.startedAt) < MAX_RESUME_AGE then
+            runState.inDelve       = true
+            runState.delveName     = matchedName
+            runState.startTime     = saved.startTime
+            runState.deaths        = saved.deaths or runState.deaths or 0
+            runState.tier          = saved.tier or runState.tier or 0
+            runState.keyUsed       = saved.keyUsed or runState.keyUsed or false
+            runState.wasBountiful  = saved.wasBountiful or runState.wasBountiful or false
+            runState.story         = runState.story or saved.story
+            runState.startKeyCount = saved.startKeyCount or runState.startKeyCount or 0
+            runState.startKeyItems = saved.startKeyItems or runState.startKeyItems or 0
+            DebugTier("completion: recovered start from activeRun (start=%.0f)",
+                saved.startTime)
+        end
+
+        -- A completion with NO tracked run and NO recoverable saved start is a
+        -- PHANTOM: a stray/duplicate SCENARIO_COMPLETED, or a completion whose
+        -- BeginDelveRun never ran (e.g. a phase-based re-entry whose begin was
+        -- latch-suppressed) and nothing was ever stamped. Logging it appends a
+        -- bogus "--" (duration 0) row whose timestamp can even precede the prior
+        -- run's end — the reported bug. Do NOT log it; just clean up and re-latch
+        -- the post-loot window so a trailing stray event can't begin a phantom.
+        if not (matchedName and runState.inDelve
+                and runState.startTime and runState.startTime > 0) then
+            DebugTier("completion ignored (no tracked run): matched=%s inDelve=%s start=%.0f",
+                tostring(matchedName), tostring(runState.inDelve),
+                runState.startTime or 0)
+            EndDelveRun()
+            runCompleted = true
+            return
+        end
+
+        local duration = math.max(0, math.floor(GetTime() - runState.startTime))
         -- Final safety net: no real delve runs longer than MAX_RESUME_AGE,
         -- so an absurd duration means the start time was stale despite the
         -- resume guard. Log it as unknown (0) rather than e.g. "26h 8m".
@@ -1899,9 +2062,10 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         -- logging the tier of the run before it). A run's tier never changes
         -- mid-run, and by the time we complete, the tracker is reliably
         -- showing THIS run's tier — so we re-read now and PREFER that value.
-        -- We fall back to the entry-latched value only if the re-read comes
-        -- up empty (e.g. the tracker was already torn down), which is no
-        -- worse than the old behaviour.
+        -- We fall back to runState.tier only if the re-read comes up empty
+        -- (e.g. the tracker was already torn down). SettleTier keeps that
+        -- latch corrected to the live value during the run, so even this
+        -- fallback is now reliable rather than the stale entry value.
         local latched   = runState.tier or 0
         local confirmed = AutoDetectDelveTier()      -- current run's tier
         local tier      = (confirmed and confirmed > 0) and confirmed or latched
@@ -1910,17 +2074,13 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             latched, tostring(confirmed), tier)
         RefreshBountifulSnapshot()
 
-        -- Key-usage: prefer the live watcher, which flags runState.keyUsed the
-        -- instant the currency/item drops (covers a spend during the run). Fall
-        -- back to a direct before/after compare here. The bountiful coffer's key
-        -- is usually spent AFTER this event (looted from the coffer), so an
-        -- unresolved case arms a post-completion keyWatch (below) to catch it.
-        local keyUsed = runState.keyUsed
-            or ((runState.startKeyCount or 0) > 0
-                and GetCurrencyQty(COFFER_KEY_CURRENCY) < runState.startKeyCount)
-            or ((runState.startKeyItems or 0) > 0
-                and GetKeyItemCount() < runState.startKeyItems)
-            or false
+        -- Key-usage: flagged live by CheckKeySpend's currency-delta detector
+        -- (the snapshot before/after compare was removed — it false-positived
+        -- across the entry shard->key conversion and mid-run reloads). The
+        -- bountiful coffer's key is usually spent AFTER this event (looted from
+        -- the coffer), so an as-yet-unflagged run arms a post-completion keyWatch
+        -- (below) that flags it the instant the key currency drops.
+        local keyUsed = runState.keyUsed or false
 
         if matchedName then
             -- Story variant for this run. Captured at entry into
@@ -1954,24 +2114,19 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         end
 
         -- Arm a post-completion key watch: the bountiful coffer is looted (and
-        -- its Restored Coffer Key spent) AFTER this event. If we haven't already
-        -- detected the spend and the player actually held a key, watch for the
-        -- currency/item to drop while looting and flag the just-logged run in
-        -- place when it does.
+        -- its Restored Coffer Key spent) AFTER this event. Arm on EVERY logged
+        -- run whose key we haven't already flagged — we no longer gate on the
+        -- entry snapshot (it's unreliable thanks to the shards->key auto-
+        -- conversion at entry). CheckKeySpend's payload-delta detector flags the
+        -- run the instant the key currency drops while looting; for a non-coffer
+        -- run nothing drops and the watch is simply cleared on delve exit.
         keyWatch = nil
-        if matchedName and not keyUsed
-                and ((runState.startKeyCount or 0) > 0
-                    or (runState.startKeyItems or 0) > 0) then
+        if matchedName and not keyUsed then
             local hist = E.db and E.db.delveHistory
                 and E.db.delveHistory[matchedName]
             local loggedRun = hist and hist.recentRuns and hist.recentRuns[1]
             if loggedRun then
-                keyWatch = {
-                    run        = loggedRun,
-                    name       = matchedName,
-                    startCount = runState.startKeyCount or 0,
-                    startItems = runState.startKeyItems or 0,
-                }
+                keyWatch = { run = loggedRun, name = matchedName }
             end
         end
 

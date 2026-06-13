@@ -405,8 +405,10 @@ E:RegisterModule(function()
     Y = Y - 20 - (#achTipOptions * 24) - 4
     Y = Y - 8
 
-    -- Bonus Spoils tracker (off by default)
-    CreateCheckbox(
+    -- Bonus Spoils tracker (off by default). The longer explanation now
+    -- lives in a hover tooltip rather than an inline wrapped paragraph,
+    -- keeping the Options list compact.
+    local objCB = CreateCheckbox(
         content, SECT_X, Y,
         "Show Bonus Spoils Tracker",
         "showDelveObjectives",
@@ -416,28 +418,17 @@ E:RegisterModule(function()
             end
         end
     )
-    Y = Y - 24
-
-    local objHint = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    objHint:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X + 28, Y)
-    -- Fixed wrap width so the description never runs off in the (wider)
-    -- default Blizzard font, where it used to truncate mid-sentence and
-    -- read as unfinished. An explicit numeric width also makes the
-    -- GetStringHeight measurement below reliable at module-init time,
-    -- when the scroll child's width isn't resolved yet. Y is then
-    -- advanced by the measured height so the divider never overlaps.
-    objHint:SetWidth(560)
-    objHint:SetJustifyH("LEFT")
-    objHint:SetWordWrap(true)
-    objHint:SetFont(objHint:GetFont(), 10)
-    objHint:SetText(E.CC.body .. "While inside a delve, tracks the two"
-        .. " bonus-chest objectives - Nemesis Strongbox packs and the"
-        .. " Sanctified Banner - so you know you've grabbed the extra"
-        .. " loot before pulling the boss. Drag the tracker to move it."
-        .. E.CC.close)
-    local hintH = objHint:GetStringHeight() or 0
-    if hintH < 28 then hintH = 28 end   -- floor at ~2 lines
-    Y = Y - hintH - 4
+    objCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Bonus Spoils Tracker",
+            "While inside a delve, tracks the two bonus-chest",
+            "objectives - Nemesis Strongbox packs and the",
+            "Sanctified Banner - so you know you've grabbed the",
+            "extra loot before pulling the boss.",
+            " ",
+            "Drag the tracker to move it.")
+    end)
+    objCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 30
 
     Y = Y - 28  -- breathing room above section divider
 

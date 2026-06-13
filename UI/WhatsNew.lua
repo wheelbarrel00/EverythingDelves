@@ -5,24 +5,28 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.15.0"
+local WHATS_NEW_VERSION = "1.16.0"
 
 local ENTRIES = {
     {
-        title = "Bonus Spoils tracker",
-        desc  = "An optional on-screen tracker for a delve's two bonus chests: the Nemesis Strongbox packs and the Sanctified Banner. See at a glance when you've grabbed the extra loot before the boss. Off by default. Suggested by Puzzleheaded-Pie-506.",
+        title = "New: About tab",
+        desc  = "A new About tab gathers the addon's info, a command reference, and handy links in one place - and it keeps the full changelog. Miss one of these What's New popups? Just open the About tab to catch up on everything that's changed.",
     },
     {
-        title = "Achievements on map tooltips",
-        desc  = "Hovering a delve's map pin now lists its achievements right in the tooltip. A quick summary by default; hold Shift for full details, or pick summary/full/off in Options. Thanks to 8six753o9 for the idea.",
+        title = "\"Keys used\" counter",
+        desc  = "Delve History now shows how many Restored Coffer Keys you've spent on each delve, right on its header row.",
     },
     {
-        title = "Dawncrest season cap",
-        desc  = "The Dawncrests panel now shows your season maximum for each crest tier alongside what's on hand. Caps are currently lifted for the rest of the season, so it reads Uncapped.",
+        title = "Weekly Shard Sources, verified",
+        desc  = "The Shard Tracker's source list was rebuilt and fact-checked, including the correct 600-per-week cap read live from the game. A couple of unconfirmed sources were removed and two confirmed ones added.",
     },
     {
-        title = "Delve History timing fix",
-        desc  = "Fixed a bug where a run could log a wildly inflated time (a 15 minute delve showing as over an hour) by carrying over the previous run's start. Runs are now always timed from their own entry. Thanks to BanditC64 for the detailed report.",
+        title = "Dawncrest column tooltips",
+        desc  = "Hover the On Hand, Season Max, or Season Total headers on the Dawncrests panel for a plain explanation of what each one means.",
+    },
+    {
+        title = "Fixes",
+        desc  = "Delve runs no longer log \"--\" or an inflated time after a reload, the bountiful coffer \"Key\" tag is reliably detected, and the Nemesis Strongbox pack counter is accurate again. Thanks to BanditC64.",
     },
 }
 

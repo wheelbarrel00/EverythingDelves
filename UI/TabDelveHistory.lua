@@ -641,9 +641,20 @@ E:RegisterModule(function()
         hdeathsFS:SetWordWrap(false)
         row.hdeathsFS = hdeathsFS
 
+        -- Lifetime coffer keys spent on this delve, pinned just left of Total
+        -- Deaths (blank when none have ever been used, so non-key delves stay
+        -- uncluttered). Latest flexes into whatever space remains to its left.
+        local keysFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        keysFS:SetPoint("RIGHT", hdeathsFS, "LEFT", -10, 0)
+        keysFS:SetFont(keysFS:GetFont(), 10)
+        keysFS:SetWidth(92)
+        keysFS:SetJustifyH("LEFT")
+        keysFS:SetWordWrap(false)
+        row.keysFS = keysFS
+
         local latestFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         latestFS:SetPoint("LEFT",  row, "LEFT", 534, 0)
-        latestFS:SetPoint("RIGHT", hdeathsFS, "LEFT", -8, 0)
+        latestFS:SetPoint("RIGHT", keysFS, "LEFT", -8, 0)
         latestFS:SetFont(latestFS:GetFont(), 10)
         latestFS:SetJustifyH("LEFT")
         latestFS:SetWordWrap(false)
@@ -680,6 +691,11 @@ E:RegisterModule(function()
         else
             row.latestFS:SetText("")
         end
+        local keysUsed = life.totalKeysUsed or 0
+        row.keysFS:SetText(keysUsed > 0
+            and (E.CC.muted .. "Keys used: " .. E.CC.close
+                 .. E.CC.gold .. string_format("%d", keysUsed) .. E.CC.close)
+            or "")
         row.hdeathsFS:SetText(
             E.CC.muted .. "Total Deaths: " .. E.CC.close
             .. E.CC.body .. string_format("%d", life.totalDeaths or 0) .. E.CC.close)

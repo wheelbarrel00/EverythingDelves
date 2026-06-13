@@ -5,6 +5,24 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-06-13
+
+### New Features
+
+- **About tab** - A new About tab brings the addon's info, a slash-command reference, and handy links (Discord, CurseForge, GitHub, and a bug-report link) together in one place - and it keeps the full changelog so you can catch up on anything you missed. Find it as the last tab, or type `/ed about`.
+- **"Keys used" counter** - Delve History now shows how many Restored Coffer Keys you've spent on each delve, right on its header row.
+
+### Improvements
+
+- **Weekly Shard Sources rebuilt and verified** - The Shard Tracker's source list was fact-checked against the live game: the weekly shard cap now reads the correct 600 per week straight from the game, Saltheril's Soiree and the Haranir relic weekly are named and valued correctly, World Quests and Abundance were added, and a few unconfirmed sources were removed.
+- **Dawncrest column tooltips** - Hovering the On Hand, Season Max, or Season Total headers on the Dawncrests panel now explains what each one means.
+
+### Bug Fixes
+
+- **Delve run times after a reload** - A run could log "--" or an inflated time if you reloaded or reconnected partway through; runs are now recovered and timed from their real start. Thanks to BanditC64 for the report.
+- **Bountiful coffer "Key" tag** - Spending a Restored Coffer Key on a bountiful coffer is now reliably detected and tagged on the run (and counted by the new "Keys used" stat).
+- **Nemesis Strongbox pack counter** - The Bonus Spoils tracker now counts every Nemesis Strongbox pack instead of getting stuck at "1 / 3".
+
 ## [1.15.0] - 2026-06-11
 
 ### New Features

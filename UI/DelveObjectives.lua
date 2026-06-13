@@ -223,12 +223,16 @@ E:RegisterModule(function()
     local ScanVignettes      -- defined after SetBannerState; called from
                              -- RefreshContent via this forward local
     -- Nemesis pack counting (vignette 7531 instances = packs remaining).
-    -- highWater = most packs seen at once this run; the line renders
-    -- only after a pack has actually been seen, which both avoids a
-    -- false "done" before vignettes load and self-hides in delves
-    -- without the affix.
+    -- Packs can spawn/appear ONE AT A TIME (kill one, the next shows), so the
+    -- most-seen-at-once count undercounts kills — it stays at 1 and renders
+    -- "1/3" even after all three die. Instead accumulate the DISTINCT pack-
+    -- vignette GUIDs ever seen this run; killed = seenCount - remaining. The
+    -- line renders only after a pack has actually been seen, which avoids a
+    -- false "done" before vignettes load and self-hides in delves without the
+    -- affix.
     local nemesisRemaining = nil
-    local nemesisHighWater = 0
+    local nemesisSeen      = {}   -- vguid -> true (distinct packs seen this run)
+    local nemesisSeenCount = 0
     -- Recent player casts (spell IDs, newest last). The banner interact
     -- is expected to surface here even when it grants no buff and
     -- spawns no elite — and the ring doubles as an objdump diagnostic.
@@ -359,7 +363,8 @@ E:RegisterModule(function()
             if runKey ~= lastRunKey then
                 lastRunKey = runKey
                 bannerState, ragerGUID = nil, nil
-                nemesisRemaining, nemesisHighWater = nil, 0
+                nemesisRemaining, nemesisSeenCount = nil, 0
+                wipe(nemesisSeen)
                 wipe(msgLog)
                 wipe(stickyMsgs)
                 wipe(castLog)
@@ -397,7 +402,7 @@ E:RegisterModule(function()
         --     strongbox, so the counter must never appear there.
         SetSection(nil)
         if rs and rs.inDelve and rs.delveKind ~= "nemesis"
-                and nemesisHighWater > 0 then
+                and nemesisSeenCount > 0 then
             local tierNow = liveTier or (rs.tier or 0)
             local expected = 0
             if     tierNow >= 10 then expected = 4
@@ -405,14 +410,14 @@ E:RegisterModule(function()
             elseif tierNow >= 6  then expected = 2
             elseif tierNow >= 4  then expected = 1
             end
-            local total  = math.max(expected, nemesisHighWater)
-            -- killed = packs that have VANISHED since the peak seen, NOT
-            -- (total - remaining): before all packs have loaded as
-            -- vignettes on entry, highWater < total and total-remaining
-            -- would show a false kill (e.g. "1/3" with nothing killed).
-            -- highWater-remaining is the true count and stays 0 until a
-            -- pack actually disappears.
-            local killed = math.max(0, nemesisHighWater - (nemesisRemaining or 0))
+            -- killed = (distinct packs ever seen) - (currently remaining).
+            -- Counting distinct GUIDs rather than the peak seen at once means
+            -- packs that appear one-at-a-time still tally: each is added to the
+            -- seen set when its vignette shows, and counted as killed once that
+            -- vignette is gone. Total is the tier's expected count, raised to
+            -- seenCount only if more packs somehow appear than the table predicts.
+            local total  = math.max(expected, nemesisSeenCount)
+            local killed = math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
             EmitObjective(
                 "Nemesis Strongbox: " .. killed .. "/" .. total .. " packs",
                 killed >= total, false, nil)
@@ -586,6 +591,12 @@ E:RegisterModule(function()
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
             if ok2 and v and v.vignetteID == NEMESIS_PACK_VIGNETTE then
                 packCount = packCount + 1
+                -- Accumulate distinct pack GUIDs (one per pack) so kills are
+                -- counted even when packs are never all on the map at once.
+                if not nemesisSeen[vguid] then
+                    nemesisSeen[vguid] = true
+                    nemesisSeenCount = nemesisSeenCount + 1
+                end
             end
             local nm = ok2 and v and v.name
             if type(nm) == "string" then
@@ -611,9 +622,6 @@ E:RegisterModule(function()
             SetBannerState("grand")
         end
         nemesisRemaining = packCount
-        if packCount > nemesisHighWater then
-            nemesisHighWater = packCount
-        end
     end
 
     --- Broadcast/system text: catches the banner manifest announcement
@@ -701,6 +709,14 @@ E:RegisterModule(function()
                 or event == "VIGNETTE_MINIMAP_UPDATED"
                 or event == "VIGNETTES_UPDATED")
                 and not win:IsShown() then
+            -- Keep the nemesis pack tally accurate even while the window is
+            -- hidden, so opening it mid-run shows the right count (packs can be
+            -- killed before the window is ever shown). ScanVignettes self-gates
+            -- to PlayerInDelve(), so this is cheap; no redraw needed when hidden.
+            if (event == "VIGNETTE_MINIMAP_UPDATED" or event == "VIGNETTES_UPDATED")
+                    and ScanVignettes then
+                pcall(ScanVignettes)
+            end
             return
         end
         QueueRefresh()
@@ -952,7 +968,7 @@ E:RegisterModule(function()
             .. " ragerGUID=" .. tostring(ragerGUID)
             .. " ragerNpcID=" .. tostring(ragerNpcID))
         out("  nemesisPacksRemaining=" .. tostring(nemesisRemaining)
-            .. " highWater=" .. tostring(nemesisHighWater))
+            .. " seenCount=" .. tostring(nemesisSeenCount))
         out("=== keyword-matched delve messages ===")
         if #stickyMsgs == 0 then out("  none captured") end
         for _, m in ipairs(stickyMsgs) do out("  " .. esc(m)) end

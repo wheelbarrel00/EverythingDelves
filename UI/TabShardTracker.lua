@@ -245,8 +245,40 @@ E:RegisterModule(function()
     crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 545, -2)
     E:StyleGreyLine(crestHeaderDiv)
 
-    -- Column headers
+    -- Column headers. Each data column also gets a transparent hover
+    -- frame carrying an explanation tooltip - FontStrings can't take
+    -- OnEnter scripts, and several users have asked what "Season Total"
+    -- (and "Season Max") actually mean.
     local CREST_COL_Y = -12
+    local CREST_COL_TIPS = {
+        ["On Hand"] = {
+            title = "On Hand",
+            lines = {
+                "How many of this crest you currently have",
+                "available to spend on gear upgrades.",
+            },
+        },
+        ["Season Max"] = {
+            title = "Season Max",
+            lines = {
+                "The most of this crest you're allowed to earn",
+                "this season - the seasonal earning cap.",
+                " ",
+                "Shows \"Uncapped\" when Blizzard has lifted the",
+                "cap for the rest of the season.",
+            },
+        },
+        ["Season Total"] = {
+            title = "Season Total",
+            lines = {
+                "How many of this crest you've earned in total",
+                "this season - including any you've already",
+                "spent on upgrades.",
+                " ",
+                "Usually higher than \"On Hand\" for that reason.",
+            },
+        },
+    }
     for _, col in ipairs({
         { label = "Crest",        x = 0   },
         { label = "On Hand",      x = 260 },
@@ -257,6 +289,18 @@ E:RegisterModule(function()
         fs:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", col.x, CREST_COL_Y)
         fs:SetFont(fs:GetFont(), 10, "OUTLINE")
         fs:SetText(E.CC.muted .. col.label .. E.CC.close)
+
+        local tip = CREST_COL_TIPS[col.label]
+        if tip then
+            -- Invisible hover target sized to the header label text.
+            local hover = CreateFrame("Button", nil, sc)
+            hover:SetPoint("TOPLEFT", fs, "TOPLEFT", -3, 2)
+            hover:SetSize((fs:GetStringWidth() or 60) + 8, 16)
+            hover:SetScript("OnEnter", function(self)
+                E:ShowTooltip(self, tip.title, unpack(tip.lines))
+            end)
+            hover:SetScript("OnLeave", function() E:HideTooltip() end)
+        end
     end
 
     local CREST_ROW_H  = 20
@@ -1104,8 +1148,6 @@ E:RegisterModule(function()
         ----------------------------------------------------------------
         -- Section 2: Weekly shard sources
         ----------------------------------------------------------------
-        local weeklyTotal = 0
-
         for _, row in ipairs(sourceRows) do
             local src = row.src
 
@@ -1137,9 +1179,6 @@ E:RegisterModule(function()
                         or "")
                     .. E.CC.close
                 )
-                if type(src.shardsEach) == "number" then
-                    weeklyTotal = weeklyTotal + maxShards
-                end
             else
                 row.capFS:SetText(E.CC.muted .. "-" .. E.CC.close)
             end
@@ -1191,11 +1230,19 @@ E:RegisterModule(function()
             end
         end
 
-        weeklyTotalFS:SetText(
-            E.CC.muted .. "Max trackable: " .. E.CC.close
-            .. E.CC.gold .. FormatNumber(weeklyTotal) .. " shards/week"
-            .. E.CC.close
-        )
+        -- Show the LIVE weekly shard cap (read from the currency API
+        -- above) rather than a sum of the source rows. The cap is the
+        -- real ceiling (600 in S1) and reads live, so it never goes
+        -- stale if Blizzard changes it.
+        if weeklyCap and weeklyCap > 0 then
+            weeklyTotalFS:SetText(
+                E.CC.muted .. "Weekly cap: " .. E.CC.close
+                .. E.CC.gold .. FormatNumber(weeklyCap) .. " shards/week"
+                .. E.CC.close
+            )
+        else
+            weeklyTotalFS:SetText("")
+        end
 
         -- Session tracker is updated separately by RefreshSessionTimer()
         RefreshSessionTimer()
