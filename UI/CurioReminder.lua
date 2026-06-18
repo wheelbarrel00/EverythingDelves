@@ -83,6 +83,30 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
+    -- Hover the title bar: explain what this reminder is and how to read it.
+    local titleHit = CreateFrame("Frame", nil, popup)
+    titleHit:SetPoint("TOPLEFT",     popup,    "TOPLEFT",  1, -1)
+    titleHit:SetPoint("BOTTOMRIGHT", titleDiv, "TOPRIGHT", 0,  0)
+    titleHit:EnableMouse(true)
+    titleHit:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Companion Curios",
+            "The Combat and Utility curios your delve companion needs, "
+            .. "listed for each role (Tank / Healer / Damage).",
+            "Your current role is highlighted in " .. E.CC.gold .. "gold"
+            .. E.CC.close .. " with a \"" .. E.CC.gold .. ">" .. E.CC.close .. "\".",
+            "Slot these curios on your companion to boost her in delves.")
+    end)
+    titleHit:SetScript("OnLeave", function() E:HideTooltip() end)
+
+    -- Shared tooltip for the per-curio bag counts (the green/red numbers).
+    local function ShowCountTip(self)
+        E:ShowTooltip(self, "Currently in your bags",
+            "How many of this curio you have on you right now.",
+            E.CC.green .. "Green" .. E.CC.close .. " = you have at least one.",
+            E.CC.red .. "Red" .. E.CC.close .. " = you have none yet \226\128\148 "
+            .. "pick one up before your next delve.")
+    end
+
     -- Build one set of UI rows for the 3 roles (reused for both companions)
     local roleRows = {}
     for i = 1, 3 do
@@ -108,6 +132,25 @@ E:RegisterModule(function()
         rf.utilFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         rf.utilFS:SetPoint("LEFT", rf.utilIcon, "RIGHT", 3, 0)
         rf.utilFS:SetFont(rf.utilFS:GetFont(), 9)
+
+        -- Bag counts live in their own FontStrings (anchored after each
+        -- curio name) so each green/red number gets its own hover zone.
+        rf.combatCountFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        rf.combatCountFS:SetPoint("LEFT", rf.combatFS, "RIGHT", 4, 0)
+        rf.combatCountFS:SetFont(rf.combatCountFS:GetFont(), 9)
+
+        rf.utilCountFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        rf.utilCountFS:SetPoint("LEFT", rf.utilFS, "RIGHT", 4, 0)
+        rf.utilCountFS:SetFont(rf.utilCountFS:GetFont(), 9)
+
+        for _, cfs in ipairs({ rf.combatCountFS, rf.utilCountFS }) do
+            local hit = CreateFrame("Frame", nil, popup)
+            hit:SetPoint("LEFT", cfs, "LEFT", -3, 0)
+            hit:SetSize(30, 16)
+            hit:EnableMouse(true)
+            hit:SetScript("OnEnter", ShowCountTip)
+            hit:SetScript("OnLeave", function() E:HideTooltip() end)
+        end
 
         if i < 3 then
             local divLine = popup:CreateTexture(nil, "ARTWORK")
@@ -148,13 +191,13 @@ E:RegisterModule(function()
             rf.combatFS:SetText(
                 E.CC.muted .. "Combat: "  .. E.CC.close
                 .. E.CC.body .. row.combat.name  .. E.CC.close
-                .. "  " .. cCountCC .. cCount .. E.CC.close
             )
+            rf.combatCountFS:SetText(cCountCC .. cCount .. E.CC.close)
             rf.utilFS:SetText(
                 E.CC.muted .. "Utility: " .. E.CC.close
                 .. E.CC.body .. row.utility.name .. E.CC.close
-                .. "  " .. uCountCC .. uCount .. E.CC.close
             )
+            rf.utilCountFS:SetText(uCountCC .. uCount .. E.CC.close)
 
             if C_Item and C_Item.GetItemIconByID then
                 rf.combatIcon:SetTexture(C_Item.GetItemIconByID(row.combat.id))

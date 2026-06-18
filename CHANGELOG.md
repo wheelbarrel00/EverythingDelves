@@ -5,6 +5,14 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-06-17
+
+### New Features
+
+- **Delver's Journey on the Tier Guide** - The Tier Guide tab now shows your Delver's Journey right under Great Vault Progress: your current Journey level, a progress bar toward the next level, and a row of milestone reward icons for each level - the current level highlighted, earned levels bright, locked levels dimmed. Hover an icon to see its reward.
+- **Companion curio tooltips** - The companion curio reminder now has hover help: mouse over its title for a plain explanation of what it shows, or over any bag-count number to learn that it is how many of that curio you currently have (green means you have at least one, red means none yet).
+- **Map achievement tooltips redesigned** - The delve achievements shown on a map pin (hold Shift to expand) now list every related achievement - Stories, Discoveries, and Delver of the Depths - in a clean two-column layout, with each criterion coloured green when earned and red when still needed.
+
 ## [1.16.0] - 2026-06-13
 
 ### New Features

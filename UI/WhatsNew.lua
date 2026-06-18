@@ -5,28 +5,20 @@
 ------------------------------------------------------------------------
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.16.0"
+local WHATS_NEW_VERSION = "1.17.0"
 
 local ENTRIES = {
     {
-        title = "New: About tab",
-        desc  = "A new About tab gathers the addon's info, a command reference, and handy links in one place - and it keeps the full changelog. Miss one of these What's New popups? Just open the About tab to catch up on everything that's changed.",
+        title = "New: Delver's Journey",
+        desc  = "The Tier Guide tab now shows your Delver's Journey right under Great Vault: your current level, progress toward the next, and a row of milestone reward icons. Hover an icon to see its reward.",
     },
     {
-        title = "\"Keys used\" counter",
-        desc  = "Delve History now shows how many Restored Coffer Keys you've spent on each delve, right on its header row.",
+        title = "Curio reminder tooltips",
+        desc  = "The companion curio reminder now has hover help - mouse over its title to learn what it shows, or over any count to see it's how many of that curio you're carrying (green means you have one, red means none yet).",
     },
     {
-        title = "Weekly Shard Sources, verified",
-        desc  = "The Shard Tracker's source list was rebuilt and fact-checked, including the correct 600-per-week cap read live from the game. A couple of unconfirmed sources were removed and two confirmed ones added.",
-    },
-    {
-        title = "Dawncrest column tooltips",
-        desc  = "Hover the On Hand, Season Max, or Season Total headers on the Dawncrests panel for a plain explanation of what each one means.",
-    },
-    {
-        title = "Fixes",
-        desc  = "Delve runs no longer log \"--\" or an inflated time after a reload, the bountiful coffer \"Key\" tag is reliably detected, and the Nemesis Strongbox pack counter is accurate again. Thanks to BanditC64.",
+        title = "Map achievement tooltips, redesigned",
+        desc  = "Delve achievements on a map pin (hold Shift to expand) now list every related achievement - Stories, Discoveries, and Delver of the Depths - in a clean two-column layout with green/red criteria.",
     },
 }
 

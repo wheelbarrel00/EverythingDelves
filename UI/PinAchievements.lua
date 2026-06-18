@@ -34,6 +34,17 @@ local E = EverythingDelves
 
 local GameTooltip, IsShiftKeyDown = GameTooltip, IsShiftKeyDown
 
+-- Native achievement-tooltip styling: a two-column "Achievement | Name"
+-- header with each criterion right-aligned and coloured green (earned) /
+-- red (still needed), matching the look of the game's own achievement
+-- tooltips. GREEN_FONT_COLOR / RED_FONT_COLOR and the BATTLE_PET_SOURCE_6
+-- ("Achievement") / PVP_PROGRESS_REWARDS_HEADER ("Progress") strings are
+-- standard globals; the fallbacks keep us safe if any is ever absent.
+local GREEN_C        = GREEN_FONT_COLOR or CreateColor(0.12, 1.00, 0.12)
+local RED_C          = RED_FONT_COLOR   or CreateColor(1.00, 0.24, 0.24)
+local ACH_LABEL      = _G.BATTLE_PET_SOURCE_6      or "Achievement"
+local PROGRESS_LABEL = _G.PVP_PROGRESS_REWARDS_HEADER or "Progress"
+
 ------------------------------------------------------------------------
 -- areaPoiID → canonical delve name (both bountiful and normal POIs)
 ------------------------------------------------------------------------
@@ -122,29 +133,56 @@ local expandedDelve
 -- so the held key is ignored as an expand request for a beat.
 local suppressShiftUntil = 0
 
+--- One criterion line. A counter criterion (reqQuantity > 1, e.g. the
+--- chest discoveries) shows its name on the left and "x / y" on the
+--- right; a plain criterion shows its name right-aligned. Both are
+--- coloured green (earned) / red (still needed).
+local function AddCriterion(c)
+    local cr, cg, cb = (c.completed and GREEN_C or RED_C):GetRGB()
+    if (c.reqQuantity or 0) > 1 then
+        local label = (c.name and c.name ~= "") and c.name or PROGRESS_LABEL
+        GameTooltip:AddDoubleLine(
+            label, ("%d / %d"):format(c.quantity or 0, c.reqQuantity),
+            cr, cg, cb, cr, cg, cb)
+    else
+        GameTooltip:AddDoubleLine(" ", c.name or "?", nil, nil, nil, cr, cg, cb)
+    end
+end
+
+--- One achievement group: an "Achievement | <name>" header coloured by
+--- completion, then every criterion below it.
+local function AddGroup(name, done, criteria)
+    local hr, hg, hb = (done and GREEN_C or RED_C):GetRGB()
+    GameTooltip:AddDoubleLine(ACH_LABEL, name or "?", nil, nil, nil, hr, hg, hb)
+    for _, c in ipairs(criteria or {}) do
+        if (c.name and c.name ~= "") or (c.reqQuantity or 0) > 1 then
+            AddCriterion(c)
+        end
+    end
+end
+
+--- The full achievement list for this delve: every group (Stories,
+--- Discoveries, Delver of the Depths) with all of its criteria, complete
+--- or not, so the whole picture shows at once.
 local function AddDetailLines(status)
-    local s = status.stories
-    if s and not s.done then
-        GameTooltip:AddLine(
-            E.CC.body .. "Stories" .. E.CC.close
-                .. E.CC.muted .. " — missing: " .. E.CC.close
-                .. E.CC.white .. table.concat(s.missing, ", ") .. E.CC.close,
-            nil, nil, nil, true)
+    if status.stories then
+        AddGroup(status.stories.name, status.stories.done, status.stories.criteria)
     end
-    local d = status.discoveries
-    if d and not d.done then
-        GameTooltip:AddLine(
-            E.CC.body .. "Sturdy Chests" .. E.CC.close
-                .. E.CC.muted .. (" — %d/%d found"):format(d.found, d.total)
-                .. E.CC.close)
+
+    if status.discoveries then
+        AddGroup(status.discoveries.name, status.discoveries.done,
+            status.discoveries.criteria)
     end
-    if #status.depthsMissing > 0 then
-        GameTooltip:AddLine(
-            E.CC.body .. "Delver of the Depths" .. E.CC.close
-                .. E.CC.muted .. " — clear on: " .. E.CC.close
-                .. E.CC.white .. table.concat(status.depthsMissing, ", ")
-                .. E.CC.close,
-            nil, nil, nil, true)
+
+    if status.depths and #status.depths > 0 then
+        -- The tier brackets are this delve's criteria across the "Delver
+        -- of the Depths" series — present them as one group.
+        local crit = {}
+        for _, t in ipairs(status.depths) do
+            crit[#crit + 1] = { name = t.label, completed = t.completed }
+        end
+        local allDone = (status.depthsMissing and #status.depthsMissing == 0)
+        AddGroup("Delver of the Depths", allDone, crit)
     end
 end
 

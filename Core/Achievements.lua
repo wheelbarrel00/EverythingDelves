@@ -152,16 +152,21 @@ function E:GetDelveAchievementStatus(delveName)
     -- Stories: which of the 3 variants are still missing
     local done, name = AchievementCompleted(ids.stories)
     if done ~= nil then
-        local s = { id = ids.stories, name = name, done = done, missing = {} }
-        if not done then
-            local crit = ReadCriteria(ids.stories)
-            if crit then
-                for _, c in ipairs(crit) do
-                    if not c.completed and c.name ~= "" then
-                        s.missing[#s.missing + 1] = c.name
-                    end
+        local s = { id = ids.stories, name = name, done = done, missing = {}, criteria = {} }
+        -- Read criteria whether or not the achievement is done, so the
+        -- tooltip can list every variant green/red (a completed group still
+        -- shows its criteria). `missing` is the short unmet-only list other
+        -- callers rely on.
+        local crit = ReadCriteria(ids.stories)
+        if crit then
+            s.criteria = crit
+            for _, c in ipairs(crit) do
+                if not c.completed and c.name ~= "" then
+                    s.missing[#s.missing + 1] = c.name
                 end
             end
+        end
+        if not done then
             status.summaryCount = status.summaryCount + 1
         end
         status.stories = s
@@ -173,10 +178,12 @@ function E:GetDelveAchievementStatus(delveName)
     -- if a build ever splits them into one criterion per chest.
     done, name = AchievementCompleted(ids.discoveries)
     if done ~= nil then
-        local d = { id = ids.discoveries, name = name, done = done, found = 0, total = 0 }
+        local d = { id = ids.discoveries, name = name, done = done, found = 0, total = 0, criteria = {} }
         local crit = ReadCriteria(ids.discoveries)
         if crit then
+            d.criteria = crit
             if #crit == 1 and crit[1].reqQuantity > 1 then
+                d.isProgressBar = true
                 d.found = crit[1].quantity
                 d.total = crit[1].reqQuantity
             else
@@ -192,21 +199,32 @@ function E:GetDelveAchievementStatus(delveName)
         status.discoveries = d
     end
 
-    -- Delver of the Depths: this delve's criterion in each series entry
+    -- Delver of the Depths: this delve's criterion in each series entry.
+    -- `depths` keeps every tier bracket (each {label, completed}) for the
+    -- tooltip's green/red list; `depthsMissing` keeps just the unmet ones.
     status.depthsMissing = {}
+    status.depths = {}
     for _, series in ipairs(E.DelveDepthsSeries) do
         local seriesDone = AchievementCompleted(series.id)
-        if seriesDone == false then
+        local critDone
+        if seriesDone then
+            critDone = true   -- whole series earned => this delve's tier is too
+        elseif seriesDone == false then
             local crit = ReadCriteria(series.id)
             if crit then
                 for _, c in ipairs(crit) do
                     if NamesMatch(c.name, canonical) then
-                        if not c.completed then
-                            status.depthsMissing[#status.depthsMissing + 1] = series.label
-                        end
+                        critDone = c.completed and true or false
                         break
                     end
                 end
+            end
+        end
+        if critDone ~= nil then
+            status.depths[#status.depths + 1] =
+                { label = series.label, completed = critDone }
+            if not critDone then
+                status.depthsMissing[#status.depthsMissing + 1] = series.label
             end
         end
     end

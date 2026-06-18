@@ -39,6 +39,97 @@ local function GetRecommendedTier(ilvl)
     return best
 end
 
+------------------------------------------------------------------------
+-- Delver's Journey (season Delves track)
+--
+-- In Midnight the season Delves track is presented as a "Journey", but
+-- under the hood it is the season Delves faction's renown:
+--   * C_DelvesUI.GetDelvesFactionForSeason() -> the faction ID
+--   * C_MajorFactions.GetMajorFactionRenownInfo(id) -> level + progress
+--   * C_MajorFactions.GetRenownRewardsForLevel(id, lvl) -> milestone art
+-- Kept self-contained here (mirrors GetJourneyProgress in the Current
+-- Bountiful tab) so neither tab depends on the other's file-local.
+------------------------------------------------------------------------
+
+--- Current Journey level + progress.
+--- @return number level, number current, number threshold, number|nil factionID, boolean ok
+local function GetDelverJourney()
+    if C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
+            and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo then
+        local factionID = C_DelvesUI.GetDelvesFactionForSeason()
+        if factionID and factionID > 0 then
+            local info = C_MajorFactions.GetMajorFactionRenownInfo(factionID)
+            if info then
+                -- Floor the rep values: the progress bar formats them with
+                -- %d, and it keeps the "cur / threshold" text clean.
+                return info.renownLevel or 0,
+                       math_floor(info.renownReputationEarned or 0),
+                       math_floor(info.renownLevelThreshold or 1),
+                       factionID, true
+            end
+        end
+    end
+    -- ok=false -> RefreshJourney hides the section instead of drawing a
+    -- meaningless 0 / 1 bar (renown data isn't loaded yet).
+    return 0, 0, 1, nil, false
+end
+
+--- True when the player has reached the Journey's final renown level.
+local function IsJourneyMaxed(factionID)
+    if factionID and C_MajorFactions and C_MajorFactions.HasMaximumRenown then
+        local ok, maxed = pcall(C_MajorFactions.HasMaximumRenown, factionID)
+        if ok then return maxed and true or false end
+    end
+    return false
+end
+
+--- Highest level the Journey track defines, so we never request art for
+--- levels past the end of the track. Returns nil when unknown.
+local function GetJourneyMaxLevel(factionID)
+    if not (factionID and C_MajorFactions and C_MajorFactions.GetRenownLevels) then
+        return nil
+    end
+    local ok, levels = pcall(C_MajorFactions.GetRenownLevels, factionID)
+    if not ok or type(levels) ~= "table" then return nil end
+    local maxLevel = 0
+    for _, lv in ipairs(levels) do
+        if type(lv) == "table" and (lv.level or 0) > maxLevel then
+            maxLevel = lv.level
+        end
+    end
+    return (maxLevel > 0) and maxLevel or nil
+end
+
+--- Best-effort milestone artwork for a Journey level. The node art is the
+--- level's renown reward icon (.icon fileID); fall back to the reward's
+--- item / spell / mount icon when the curated fileID is absent. Fully
+--- pcall-guarded: returns nil on any failure so the icon row can hide and
+--- the section degrades to just the level + progress bar.
+--- @return number|string|nil iconFile, string|nil rewardName
+local function GetJourneyNodeIcon(factionID, level)
+    if not (factionID and C_MajorFactions
+            and C_MajorFactions.GetRenownRewardsForLevel) then
+        return nil
+    end
+    local ok, rewards = pcall(C_MajorFactions.GetRenownRewardsForLevel, factionID, level)
+    if not ok or type(rewards) ~= "table" then return nil end
+    local r = rewards[1]
+    if type(r) ~= "table" then return nil end
+
+    local icon = r.icon
+    if not icon and r.itemID and C_Item and C_Item.GetItemIconByID then
+        icon = C_Item.GetItemIconByID(r.itemID)
+    end
+    if not icon and r.spellID and C_Spell and C_Spell.GetSpellTexture then
+        icon = C_Spell.GetSpellTexture(r.spellID)
+    end
+    if not icon and r.mountID and C_MountJournal
+            and C_MountJournal.GetMountInfoByID then
+        local ok2, _, _, mIcon = pcall(C_MountJournal.GetMountInfoByID, r.mountID)
+        if ok2 and mIcon then icon = mIcon end
+    end
+    return icon, r.name
+end
 
 ------------------------------------------------------------------------
 -- MODULE INIT
@@ -375,12 +466,171 @@ E:RegisterModule(function()
         end
     end
 
+    --------------------------------------------------------------------
+    -- DELVER'S JOURNEY
+    -- The season Delves track ("Journey"): the Journey level, the
+    -- current-level progress bar, and a best-effort row of milestone
+    -- reward icons (the node artwork from the in-game Journeys panel).
+    -- Sits directly under Great Vault, above the Valeera companion row.
+    --------------------------------------------------------------------
+    local DJ_NODE_POOL = 12    -- max milestone icons laid out (one per level)
+    local DJ_NODE_SIZE = 36
+
+    local djHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    djHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -32)
+    djHeader:SetFont(djHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
+    E:StyleAccentHeader(djHeader, "Delver's Journey")
+
+    djHeader:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Delver's Journey",
+            "Your progress through this season's Delves track.",
+            "Each level unlocks a milestone reward - hover an icon to see it.")
+    end)
+    djHeader:SetScript("OnLeave", function() E:HideTooltip() end)
+
+    -- Level / progress line (doubles as the "unavailable" fallback line)
+    local djLevelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    djLevelFS:SetPoint("TOPLEFT", djHeader, "BOTTOMLEFT", 0, -6)
+    djLevelFS:SetFont(djLevelFS:GetFont(), 12)
+
+    local djBar = E:CreateProgressBar(sc, 0, 14)
+    djBar:SetPoint("TOPLEFT", djLevelFS, "BOTTOMLEFT", 0, -4)
+    djBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
+
+    -- Milestone node row. Fixed height so the divider below keeps a stable
+    -- position whether or not the icons resolve (graceful degrade).
+    local djIconRow = CreateFrame("Frame", nil, sc)
+    djIconRow:SetHeight(DJ_NODE_SIZE + 16)
+    djIconRow:SetPoint("TOPLEFT", djBar, "BOTTOMLEFT", 0, -10)
+    djIconRow:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
+
+    local djNodes = {}
+    for i = 1, DJ_NODE_POOL do
+        -- Card: dark backdrop + border so each icon reads as a node.
+        local card = CreateFrame("Frame", nil, djIconRow, "BackdropTemplate")
+        card:SetSize(DJ_NODE_SIZE + 4, DJ_NODE_SIZE + 4)
+        if i == 1 then
+            card:SetPoint("LEFT", djIconRow, "LEFT", 2, 6)
+        else
+            card:SetPoint("LEFT", djNodes[i - 1].card, "RIGHT", 18, 0)
+        end
+        card:SetBackdrop({
+            bgFile   = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8",
+            edgeSize = 1,
+        })
+        card:SetBackdropColor(0.10, 0.10, 0.10, 1)
+        card:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
+        card:EnableMouse(true)
+
+        local tex = card:CreateTexture(nil, "ARTWORK")
+        tex:SetPoint("CENTER")
+        tex:SetSize(DJ_NODE_SIZE - 2, DJ_NODE_SIZE - 2)
+        tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)  -- trim the default icon border
+
+        local lvlFS = djIconRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        lvlFS:SetPoint("TOP", card, "BOTTOM", 0, -1)
+        lvlFS:SetFont(lvlFS:GetFont(), 9, "OUTLINE")
+
+        djNodes[i] = { card = card, tex = tex, lvlFS = lvlFS }
+    end
+
+    -- Trailing divider, anchored to the fixed-height icon row so the
+    -- Valeera row below never shifts based on icon availability.
+    local djDiv = sc:CreateTexture(nil, "ARTWORK")
+    djDiv:SetHeight(1)
+    djDiv:SetPoint("TOPLEFT", djIconRow, "BOTTOMLEFT", 0, -10)
+    djDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+    E:StyleAccentDivider(djDiv)
+
+    local function RefreshJourney()
+        local level, cur, threshold, factionID, ok = GetDelverJourney()
+
+        if not ok then
+            djLevelFS:SetText(
+                E.CC.muted .. "Delver's Journey data not available yet "
+                .. "- open the Journeys panel once to sync." .. E.CC.close)
+            djBar:Hide()
+            djIconRow:Hide()
+            return
+        end
+
+        local maxed = IsJourneyMaxed(factionID)
+        if maxed then
+            djLevelFS:SetText(
+                E.CC.gold .. "Level " .. level .. E.CC.close
+                .. E.CC.green .. "   Complete - all milestones earned!" .. E.CC.close)
+        else
+            djLevelFS:SetText(
+                E.CC.gold .. "Level " .. level .. E.CC.close
+                .. E.CC.muted .. "   " .. cur .. " / " .. threshold .. E.CC.close)
+        end
+        -- At max renown the API reports renownReputationEarned = 0, so
+        -- fill the bar to match the "Complete" state instead of showing 0%.
+        if maxed then
+            djBar:SetProgress(threshold, threshold)
+        else
+            djBar:SetProgress(cur, threshold)
+        end
+        djBar:Show()
+
+        -- Show the whole journey: every level from 1 to the end of the
+        -- track. If a future track is ever longer than the node pool, fall
+        -- back to a trailing window so the most recent levels still show.
+        local maxLevel  = GetJourneyMaxLevel(factionID)
+        local topLevel  = maxLevel or (maxed and level) or (level + 1)
+        if topLevel < 1 then topLevel = 1 end
+        local startLevel = 1
+        if topLevel - startLevel + 1 > DJ_NODE_POOL then
+            startLevel = topLevel - DJ_NODE_POOL + 1
+        end
+
+        local shown = 0
+        for i = 1, DJ_NODE_POOL do
+            local node = djNodes[i]
+            local nodeLevel = startLevel + (i - 1)
+            local icon, rewardName
+            if nodeLevel <= topLevel then
+                icon, rewardName = GetJourneyNodeIcon(factionID, nodeLevel)
+            end
+            if icon then
+                local earned    = nodeLevel <= level
+                local isCurrent = nodeLevel == level
+                node.tex:SetTexture(icon)
+                node.tex:SetDesaturated(not earned)  -- dim not-yet-earned levels
+                if isCurrent then
+                    node.card:SetBackdropBorderColor(1, 0.84, 0, 1)      -- gold
+                else
+                    node.card:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
+                end
+                node.lvlFS:SetText(
+                    (isCurrent and E.CC.gold or E.CC.muted)
+                    .. nodeLevel .. E.CC.close)
+                node.card:Show()
+                node.lvlFS:Show()
+                node.card:SetScript("OnEnter", function(self)
+                    E:ShowTooltip(self,
+                        "Level " .. nodeLevel
+                        .. (earned and "  (earned)" or "  (locked)"),
+                        rewardName and (E.CC.body .. rewardName .. E.CC.close) or nil)
+                end)
+                node.card:SetScript("OnLeave", function() E:HideTooltip() end)
+                shown = shown + 1
+            else
+                node.card:Hide()
+                node.lvlFS:Hide()
+            end
+        end
+
+        if shown > 0 then djIconRow:Show() else djIconRow:Hide() end
+    end
+
     local VALEERA_ICON  = "Interface\\Icons\\Achievement_Character_BloodElf_Female"
     local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
     local valeeraRow = CreateFrame("Frame", nil, sc)
     valeeraRow:SetHeight(40)
-    valeeraRow:SetPoint("TOPLEFT",  gvDiv, "BOTTOMLEFT", 0, -8)
+    valeeraRow:SetPoint("TOPLEFT",  djDiv, "BOTTOMLEFT", 0, -8)
     valeeraRow:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -20, 4)
 
     local valeeraIcon = sc:CreateTexture(nil, "ARTWORK")
@@ -804,6 +1054,7 @@ E:RegisterModule(function()
     frame:SetScript("OnShow", function()
         RefreshRecommendation()
         RefreshGreatVault()
+        RefreshJourney()
         RefreshTrovehunter()
         RefreshCompanion()
         RefreshGildedStash()
@@ -831,6 +1082,8 @@ E:RegisterModule(function()
             -- Companion XP ticks during delve play; QUEST_LOG_UPDATE
             -- fires often enough to keep the bar fresh while visible.
             RefreshCompanion()
+            -- Journey renown also ticks up during delves.
+            RefreshJourney()
         end
     end)
 

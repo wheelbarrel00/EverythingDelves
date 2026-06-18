@@ -14,6 +14,16 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.17.0", date = "2026-06-17",
+        sections = {
+            { head = "New", items = {
+                "Delver's Journey on the Tier Guide - your level, a progress bar, and the milestone reward icons for each level.",
+                "Hover help on the companion curio reminder - the title and each bag-count number now explain themselves.",
+                "Map achievement tooltips redesigned - the full Stories / Discoveries / Delver of the Depths list, each criterion green when earned and red when still needed.",
+            }},
+        },
+    },
+    {
         version = "1.16.0", date = "2026-06-13",
         sections = {
             { head = "New", items = {
