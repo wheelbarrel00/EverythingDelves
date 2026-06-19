@@ -1,82 +1,37 @@
-------------------------------------------------------------------------
--- UI/DelveObjectives.lua — "Bonus Spoils" tracker
--- Optional (off by default) on-screen window that tracks ONLY the two
--- bonus-chest mechanics a player sets up during a delve and collects
--- after the boss:
---   1. Nemesis Strongbox — kill all the Pactsworn "Nullaeus' Minions"
---      packs (counted via their map vignettes) to max the strongbox.
---   2. Sanctified Banner — find/click the banner (bountiful delves) for
---      bonus Sanctified Spoils, upgraded to Grand Spoils if its elite
---      (Voidfused Rager) is slain.
--- Each gets a checkbox line; a green footer ("Bonus loot secured") shows
--- the moment both are done, so a player knows they can safely pull the
--- boss. Regular scenario objectives are intentionally NOT listed.
--- Toggled in Options -> Display or via /ed obj; position saved on drag.
--- Detection is lockdown-safe (no combat log / no enemy nameplates — see
--- the banner/nemesis notes below) and fully pcall-guarded.
--- /ed objdump dumps the raw scenario/widget/vignette data for diagnosis.
-------------------------------------------------------------------------
+-- "Bonus Spoils" tracker: optional, off-by-default window that tracks only
+-- the two bonus-chest mechanics (Nemesis Strongbox packs, Sanctified Banner)
+-- a player collects after the delve boss. Detection is lockdown-safe (no
+-- combat log / no enemy nameplates — see banner/nemesis notes) and pcall-guarded.
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Tunables
-------------------------------------------------------------------------
 local WIN_W      = 290
 local PAD        = 10
 local MAX_LINES  = 40
 local MAX_CRIT   = 25   -- criteria iteration cap per step (safety)
-local MAX_BONUS  = 15   -- criteria cap per bonus step
+local MAX_BONUS  = 15
 
--- The weekly Gilded Stash spell-display widget (already captured by the
--- core file). Skipped in the generic widget pass and rendered as its
--- own clearly-labeled weekly line instead.
+-- Already captured by the core file; skipped in the generic widget pass.
 local GILDED_WIDGET_ID = 7591
 
-------------------------------------------------------------------------
--- Researched IDs — client build 12.0.5.67823 (wago.tools SpellName +
--- UiWidget tables). Do not trim "duplicate" spell IDs: each mechanic
--- ships trigger/aura pairs and either one may be what the combat log
--- carries on the live realm.
-------------------------------------------------------------------------
+-- Nemesis Strongbox affix (Tier 4+): no in-delve progress widget (the Nemesis
+-- spell-display widgets live ONLY on the entrance picker), so in-delve progress
+-- is read by counting "Nullaeus' Minions" map vignettes (NEMESIS_PACK_VIGNETTE).
 
--- Nemesis Strongbox affix (Tier 4+): defeating Pactsworn packs upgrades
--- the strongbox at the end of the delve (1 pack at T4-5, 2 at T6-7, 3
--- at T8-9, 4 at T10+). There is NO in-delve progress widget — the
--- Nemesis spell-display widgets (spellIDs 1239535 / 1270179 / 472952)
--- live ONLY on the entrance picker. In-delve, progress is read by
--- counting the "Nullaeus' Minions" map vignettes (NEMESIS_PACK_VIGNETTE
--- below).
-
--- Sanctified Banner (bountiful delves): clicking the banner grants a
--- Light buff and/or spawns a Voidfused Rager elite; either way bonus
--- Sanctified Spoils drop at the end — Grand Sanctified Spoils if the
--- Rager is killed. Blizzard ships NO tracker for it; this is ours.
--- MIDNIGHT LOCKDOWN NOTES (both confirmed live 2026-06-10):
---   * COMBAT_LOG_EVENT_UNFILTERED registration is a PROTECTED action
---     (ADDON_ACTION_FORBIDDEN).
---   * UnitName() on enemy units in delves returns a SECRET string —
---     any string method on it errors ("secret string value, while
---     execution tainted").
--- So banner detection runs entirely on APIs proven unrestricted:
--- player auras (UNIT_AURA + GetPlayerAuraBySpellID) and VIGNETTES
--- (C_VignetteInfo names print clean in delves — the gray-helm pack
--- icons, rares and treasures are all vignettes).
+-- Midnight lockdown (both confirmed live 2026-06-10): COMBAT_LOG_EVENT_UNFILTERED
+-- registration is forbidden, and UnitName() on delve enemies returns a SECRET
+-- string that errors on any string method. So banner detection runs only on
+-- unrestricted APIs: player auras and vignettes (names print clean in delves).
 local BANNER_INTERACT_SPELLS = {
     [1269411] = true, [1269412] = true, [1269416] = true,  -- Sanctified Banner
 }
 local RAGER_SPAWN_SPELL = 1271184  -- "Voidfused Rager Spawn" (aura sweep only)
 local RAGER_SPELL       = 1271189  -- "Voidfused Rager" (aura sweep only)
--- The Rager is spotted via its vignette name for now (EN clients); its
--- vignetteID isn't known yet — /ed objdump prints every vignette's
--- vignetteID so it can be hardcoded (localization-free) next pass.
+-- Rager spotted via vignette name (EN clients); its vignetteID isn't known yet.
 local RAGER_NAME_MATCH = "Voidfused"
 
--- Nemesis pack map vignette ("Nullaeus' Minions", the gray helm icons):
--- one vignette per REMAINING pack, gone when the pack dies. Confirmed
--- live on a T11 (objdump 2026-06-10): 4 at entry -> 3 -> 2 after each
--- kill. No widget exposes this — vignette counting IS the data source.
--- vignetteID is localization-free. NOTE: the Nullaeus delve reuses the
--- same vignette for its own minions; the counter is suppressed there.
+-- Nemesis pack vignette ("Nullaeus' Minions"): one per REMAINING pack, gone when
+-- the pack dies — vignette counting IS the only data source. The Nullaeus delve
+-- reuses the same vignette for its own minions; the counter is suppressed there.
 local NEMESIS_PACK_VIGNETTE = 7531
 local BANNER_BUFFS = {             -- any of these on the player = banner used
     1271918, 1271945,                      -- Sanctified Touch
@@ -86,15 +41,12 @@ local BANNER_BUFFS = {             -- any of these on the player = banner used
     1273058, 1273066,                      -- Holy Reinforcements
 }
 
--- Delve scenario-header icon widgets (the 'delveDifficultyScaling' /
--- VisID 2350 family). These turned out to be ENTRANCE-ONLY — gone once
--- inside a delve — so they no longer drive the window; kept solely for
+-- Entrance-only header widgets (gone once inside a delve); kept solely for
 -- the /ed objdump probe section.
 local DELVE_TRACKER_WIDGETS = { 7526, 7592, 7624, 7761, 7764, 7861 }
 
--- Message events that can carry delve broadcast text ("A Sanctified
--- Banner has manifested within."). The exact carrier event is captured
--- live via the /ed objdump message log.
+-- Events that can carry the banner-manifest broadcast; exact carrier captured
+-- live via /ed objdump.
 local MSG_EVENTS = {
     CHAT_MSG_RAID_BOSS_EMOTE = true,
     CHAT_MSG_MONSTER_YELL    = true,
@@ -104,17 +56,11 @@ local MSG_EVENTS = {
     CHAT_MSG_SYSTEM          = true,
 }
 
--- Inline status icons (texture escapes render in any font)
 local ICON_DONE = "|TInterface\\RaidFrame\\ReadyCheck-Ready:11:11:0:-1|t "
 local ICON_FAIL = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:11:11:0:-1|t "
 local ICON_TODO = "|TInterface\\Buttons\\UI-CheckBox-Up:13:13:-1:-1|t "
 
-------------------------------------------------------------------------
--- Small helpers
-------------------------------------------------------------------------
-
---- Strip color / texture / atlas escapes so our own line coloring isn't
---- broken by codes embedded in widget text.
+-- Strip color/texture/atlas escapes so embedded codes don't break line coloring.
 local function StripEscapes(s)
     if not s then return nil end
     return (s:gsub("|c%x%x%x%x%x%x%x%x", "")
@@ -123,23 +69,13 @@ local function StripEscapes(s)
              :gsub("|A.-|a", ""))
 end
 
---- True only while the player is PHYSICALLY inside a delve instance
---- (difficulty 208 = Delves). This is the live, authoritative test:
---- GetInstanceInfo flips the moment the player zones out, so the window
---- disappears on exit instead of lingering until the next /reload. It
---- deliberately does NOT consult runState.inDelve — that tracked-run
---- flag can be left stale on some exit paths, and OR-ing it in kept the
---- window up until a reload cleared it. The difficulty check already
---- spans the entire time the player is inside: the whole tracked run AND
---- the post-SCENARIO_COMPLETED looting window (still 208 while looting
---- chests), so nothing is lost by dropping the runState term.
+-- Difficulty 208 = Delves. Live, authoritative test that flips the moment the
+-- player zones out; deliberately ignores runState.inDelve (can be left stale on
+-- some exit paths). Spans the whole run plus the post-completion looting window.
 local function PlayerInDelve()
     return select(3, GetInstanceInfo()) == 208
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local win = CreateFrame("Frame", "EverythingDelvesObjectivesWindow",
         UIParent, "BackdropTemplate")
@@ -161,7 +97,6 @@ E:RegisterModule(function()
     end)
     win:Hide()
 
-    -- Saved (or default) position
     local pos = E.db and E.db.delveObjectivesPos
     if pos and pos.point then
         win:SetPoint(pos.point, UIParent, pos.relPoint or pos.point,
@@ -190,7 +125,6 @@ E:RegisterModule(function()
     end)
     win:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    -- Title + divider
     local titleFS = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", win, "TOPLEFT", PAD, -8)
     titleFS:SetWidth(WIN_W - 2 * PAD)
@@ -204,45 +138,25 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", win, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
-    --------------------------------------------------------------------
-    -- Sanctified Banner state machine (module-local, mirrored into
-    -- E.db.activeRun so a mid-run /reload doesn't lose it — the same
-    -- pattern the core uses for deaths/tier). States only move forward:
-    --   announced -> clicked -> buffed -> eliteUp -> grand
-    -- "announced" = the manifest broadcast was seen; "clicked" = a
-    -- lingering banner-interact aura on the player; "buffed" = a banner
-    -- Light buff landed on the player; "eliteUp" = the Voidfused
-    -- Rager's nameplate appeared; "grand" = its plate went away with
-    -- the unit dead (Grand Sanctified Spoils earned).
-    --------------------------------------------------------------------
+    -- Sanctified Banner state machine, mirrored into E.db.activeRun so a mid-run
+    -- /reload doesn't lose it. Forward-only: announced -> clicked -> buffed ->
+    -- eliteUp -> grand (Grand Sanctified Spoils earned).
     local bannerState = nil
     local ragerGUID   = nil  -- the Rager's VIGNETTE guid once spotted
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
     local stickyMsgs  = {}   -- keyword-matched messages, never rotated out
-    local ScanVignettes      -- defined after SetBannerState; called from
-                             -- RefreshContent via this forward local
-    -- Nemesis pack counting (vignette 7531 instances = packs remaining).
-    -- Packs can spawn/appear ONE AT A TIME (kill one, the next shows), so the
-    -- most-seen-at-once count undercounts kills — it stays at 1 and renders
-    -- "1/3" even after all three die. Instead accumulate the DISTINCT pack-
-    -- vignette GUIDs ever seen this run; killed = seenCount - remaining. The
-    -- line renders only after a pack has actually been seen, which avoids a
-    -- false "done" before vignettes load and self-hides in delves without the
-    -- affix.
+    local ScanVignettes      -- forward local; defined after SetBannerState
+    -- Packs can appear ONE AT A TIME, so the peak-seen-at-once count undercounts
+    -- kills. Instead accumulate distinct pack-vignette GUIDs ever seen this run;
+    -- killed = seenCount - remaining. Rendering waits for a pack to be seen to
+    -- avoid a false "done" before vignettes load / in delves without the affix.
     local nemesisRemaining = nil
     local nemesisSeen      = {}   -- vguid -> true (distinct packs seen this run)
     local nemesisSeenCount = 0
-    -- Recent player casts (spell IDs, newest last). The banner interact
-    -- is expected to surface here even when it grants no buff and
-    -- spawns no elite — and the ring doubles as an objdump diagnostic.
-    local castLog = {}
+    local castLog = {}            -- recent player casts (newest last); objdump diag
 
-    --------------------------------------------------------------------
-    -- Line pool + streaming layout state (reset every refresh).
-    -- FontStrings are created once and reused; SetText only fires when
-    -- a line actually changed, keeping per-update garbage near zero.
-    --------------------------------------------------------------------
+    -- FontStrings created once and reused; SetText only fires on change.
     local linePool = {}
     local seen     = {}    -- dedupe across data sources, wiped per refresh
     local lineIdx  = 0
@@ -278,8 +192,7 @@ E:RegisterModule(function()
         yOff = yOff - math.max(13, (fs:GetStringHeight() or 11) + 4)
     end
 
-    --- Section headers are lazy: only written when the section turns
-    --- out to have at least one line.
+    -- Lazy: only written once the section has at least one line.
     local function SetSection(title)
         pendingHeader = title
     end
@@ -290,8 +203,6 @@ E:RegisterModule(function()
         end
     end
 
-    --- Emit one objective line with check state + progress, and count
-    --- it toward the everything-done footer.
     local function EmitObjective(desc, done, failed, progress)
         desc = StripEscapes(desc)
         if not desc or desc == "" then return end
@@ -317,10 +228,8 @@ E:RegisterModule(function()
         AddLine(text)
     end
 
-    --- Read the live delve tier from the scenario-header widget
-    --- (ScenarioHeaderDelves, e.g. 6183) — its tierText is more reliable
-    --- than runState.tier (the core's entry latch can hold the previous
-    --- delve's tier until completion re-reads it).
+    -- ScenarioHeaderDelves tierText is more reliable than runState.tier (the
+    -- core's entry latch can hold the previous delve's tier until completion).
     local function ReadLiveTier(stepInfo)
         if not (stepInfo and stepInfo.widgetSetID and C_UIWidgetManager
                 and C_UIWidgetManager.GetAllWidgetsBySetID) then return nil end
@@ -341,9 +250,6 @@ E:RegisterModule(function()
         return nil
     end
 
-    --------------------------------------------------------------------
-    -- Content refresh
-    --------------------------------------------------------------------
     local function RefreshContent()
         wipe(seen)
         lineIdx, yOff = 0, -32
@@ -352,12 +258,10 @@ E:RegisterModule(function()
 
         local rs = E.delveRunState
 
-        -- New tracked run: reset the banner machine, then restore the
-        -- persisted state when this is a /reload-resumed run (the saved
-        -- activeRun carries the same startTime). After SCENARIO_COMPLETED
-        -- rs.inDelve goes false but the player is still inside looting —
-        -- deliberately no reset on that path, so "Grand Spoils earned!"
-        -- survives until the next real run begins.
+        -- New tracked run: reset the banner machine, then restore persisted state
+        -- on a /reload-resumed run (same startTime). After SCENARIO_COMPLETED
+        -- rs.inDelve is false but the player is still looting — no reset on that
+        -- path, so "Grand Spoils earned!" survives until the next real run.
         if rs and rs.inDelve then
             local runKey = (rs.delveName or "?") .. "#" .. tostring(rs.startTime or 0)
             if runKey ~= lastRunKey then
@@ -376,8 +280,7 @@ E:RegisterModule(function()
             end
         end
 
-        -- Fresh vignette pass before any line renders: feeds both the
-        -- nemesis pack counter and the banner state machine.
+        -- Fresh vignette pass before rendering: feeds nemesis counter + banner.
         if ScanVignettes then pcall(ScanVignettes) end
 
         local name = (rs and rs.delveName) or GetRealZoneText() or "Delve"
@@ -386,20 +289,10 @@ E:RegisterModule(function()
             local ok, si = pcall(C_ScenarioInfo.GetScenarioStepInfo)
             if ok then stepInfo = si end
         end
-        -- Live tier for the title (beats the core's entry latch).
         local liveTier = ReadLiveTier(stepInfo)
 
-        -- (1) Nemesis Strongbox packs, counted via their map vignettes
-        --     (one vignette per remaining pack; killed = peak - left).
-        --     Total = max(tier table, most packs seen at once); renders
-        --     only after a pack has been SEEN this run, so no false
-        --     "done" before vignettes load and nothing in delves
-        --     without the affix. Every standard delve (incl. The Shadow
-        --     Enclave) is delveKind "regular" and counts normally. The
-        --     seasonal Nullaeus delve (Torment's Rise, delveKind
-        --     "nemesis") is excluded by design: user-confirmed it's a
-        --     straight-to-boss fight with NO Pactsworn packs / no
-        --     strongbox, so the counter must never appear there.
+        -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
+        -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
         if rs and rs.inDelve and rs.delveKind ~= "nemesis"
                 and nemesisSeenCount > 0 then
@@ -410,12 +303,6 @@ E:RegisterModule(function()
             elseif tierNow >= 6  then expected = 2
             elseif tierNow >= 4  then expected = 1
             end
-            -- killed = (distinct packs ever seen) - (currently remaining).
-            -- Counting distinct GUIDs rather than the peak seen at once means
-            -- packs that appear one-at-a-time still tally: each is added to the
-            -- seen set when its vignette shows, and counted as killed once that
-            -- vignette is gone. Total is the tier's expected count, raised to
-            -- seenCount only if more packs somehow appear than the table predicts.
             local total  = math.max(expected, nemesisSeenCount)
             local killed = math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
             EmitObjective(
@@ -423,8 +310,6 @@ E:RegisterModule(function()
                 killed >= total, false, nil)
         end
 
-        -- (2) Sanctified Banner (bountiful delves; Blizzard ships no
-        --     tracker). State from the aura/cast/vignette machine.
         if bannerState == "grand" then
             EmitObjective("Sanctified Banner - Grand Spoils earned!",
                 true, false, nil)
@@ -440,19 +325,16 @@ E:RegisterModule(function()
                 false, false, nil)
         end
 
-        -- Footer: the one-glance answer for the two bonus objectives.
         if objTotal > 0 and objDone >= objTotal then
             AddLine(ICON_DONE .. E.CC.green
                 .. "Bonus loot secured - go get the boss!" .. E.CC.close, true)
         elseif objTotal == 0 then
-            -- Shown both when a delve has no bonus-spoils mechanics at all
-            -- AND after the boss is down / rewards collected (the tracked
-            -- objectives drop off once the run ends). Phrased to fit both.
+            -- Phrased to fit both "no bonus mechanics" and "run already ended".
             AddLine(ICON_DONE .. E.CC.green
                 .. "All bonus loot accounted for." .. E.CC.close)
         end
 
-        -- Title (rendered last so the live widget tier can win)
+        -- Rendered last so the live widget tier can win.
         local tier = liveTier or (rs and rs.tier) or 0
         local title = E.CC.header .. name .. E.CC.close
         if tier > 0 then
@@ -469,25 +351,17 @@ E:RegisterModule(function()
         win:SetHeight(math.max(64, -yOff + 8))
     end
 
-    --------------------------------------------------------------------
-    -- Visibility + throttled refresh
-    --------------------------------------------------------------------
     local refreshPending = false
-    local ef = CreateFrame("Frame")  -- event frame; handlers wired below
+    local ef = CreateFrame("Frame")
 
     local function DoRefresh()
         refreshPending = false
         local shouldShow = E.db and E.db.showDelveObjectives and PlayerInDelve()
         if shouldShow then
-            -- Banner buff watcher only while active in a delve — zero
-            -- cost in raids/dungeons/world. (COMBAT_LOG_EVENT_UNFILTERED
-            -- and enemy nameplates are deliberately NOT used: the former
-            -- is a protected registration in Midnight, the latter's
-            -- UnitName returns a secret string.)
+            -- Register the buff/cast watchers only while active in a delve.
             ef:RegisterUnitEvent("UNIT_AURA", "player")
             ef:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-            -- pcall so one bad API read can't error out of an event
-            -- handler and kill the window for the rest of the session.
+            -- pcall so one bad API read can't kill the window for the session.
             local ok, err = pcall(RefreshContent)
             if not ok and E.db and E.db.debugTier then
                 print("|cFFFFD700[ED obj]|r refresh error: " .. tostring(err))
@@ -506,9 +380,6 @@ E:RegisterModule(function()
         C_Timer.After(0.25, DoRefresh)
     end
 
-    --------------------------------------------------------------------
-    -- Banner state transitions (forward-only, persisted into activeRun)
-    --------------------------------------------------------------------
     local BANNER_RANK = {
         announced = 1, clicked = 2, buffed = 3, eliteUp = 4, grand = 5,
     }
@@ -527,10 +398,6 @@ E:RegisterModule(function()
         QueueRefresh()
     end
 
-    --- Player-aura driven detection (UNIT_AURA, "player"-filtered):
-    --- any banner Light buff = "buffed"; a lingering banner interact
-    --- aura (if one exists — the objdump sweep confirms) = "clicked".
-    --- Early-outs keep this cheap during combat aura churn.
     local function HandleUnitAura()
         if not PlayerInDelve() then return end
         if bannerState and BANNER_RANK[bannerState] >= BANNER_RANK.buffed then
@@ -555,16 +422,12 @@ E:RegisterModule(function()
         end
     end
 
-    --- Player-cast driven detection (UNIT_SPELLCAST_SUCCEEDED, player-
-    --- filtered): interacting with the banner is expected to fire one
-    --- of the Sanctified Banner spells as a player cast — the only
-    --- signal that covers the no-buff/no-elite outcome. Every cast is
-    --- also ring-logged for the objdump diagnostic.
+    -- The banner interact fires one of the Sanctified Banner spells as a player
+    -- cast — the only signal covering the no-buff/no-elite outcome.
     local function HandlePlayerCast(spellID)
         if not spellID or not PlayerInDelve() then return end
-        -- 60 deep: an elite fight right after a banner click can burn
-        -- 25+ GCDs, and the interact cast must survive until a safe
-        -- post-fight /ed objdump.
+        -- 60 deep: a post-click elite fight can burn 25+ GCDs and the interact
+        -- cast must survive until a post-fight /ed objdump.
         if #castLog >= 60 then table.remove(castLog, 1) end
         castLog[#castLog + 1] = spellID
         if BANNER_INTERACT_SPELLS[spellID] then
@@ -572,14 +435,9 @@ E:RegisterModule(function()
         end
     end
 
-    --- Vignette-driven detection (UnitName on delve enemies returns a
-    --- SECRET string in Midnight, so nameplates are unusable — vignette
-    --- names are proven clean). The Rager, the banner, and the Spoils
-    --- chests all surface as vignettes when relevant. A Rager vignette
-    --- that vanishes after being seen = killed (vignettes in a delve
-    --- are zone-wide in GetVignettes, so disappearance isn't a range
-    --- artifact). Name matching is EN-only until vignetteIDs are
-    --- captured via /ed objdump and hardcoded.
+    -- Vignette-driven (nameplates unusable: UnitName on delve enemies is secret).
+    -- Vignettes in a delve are zone-wide, so a Rager vignette that vanishes after
+    -- being seen = killed, not out of range. Name matching is EN-only for now.
     ScanVignettes = function()
         if not PlayerInDelve() then return end
         if not (C_VignetteInfo and C_VignetteInfo.GetVignettes) then return end
@@ -591,8 +449,6 @@ E:RegisterModule(function()
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
             if ok2 and v and v.vignetteID == NEMESIS_PACK_VIGNETTE then
                 packCount = packCount + 1
-                -- Accumulate distinct pack GUIDs (one per pack) so kills are
-                -- counted even when packs are never all on the map at once.
                 if not nemesisSeen[vguid] then
                     nemesisSeen[vguid] = true
                     nemesisSeenCount = nemesisSeenCount + 1
@@ -624,8 +480,6 @@ E:RegisterModule(function()
         nemesisRemaining = packCount
     end
 
-    --- Broadcast/system text: catches the banner manifest announcement
-    --- and feeds the diagnostic message log for /ed objdump.
     local function HandleMessage(event, a1, a2)
         if not PlayerInDelve() then return end
         local text = (event == "UI_INFO_MESSAGE") and a2 or a1
@@ -646,8 +500,7 @@ E:RegisterModule(function()
         end
     end
 
-    -- Safety-net ticker while shown: catches widget tooltip changes
-    -- that arrive without a scenario event.
+    -- Safety net: catches widget tooltip changes that arrive with no event.
     local ticker
     win:SetScript("OnShow", function()
         if not ticker then
@@ -661,13 +514,9 @@ E:RegisterModule(function()
         end
     end)
 
-    -- Event wiring (the core dispatcher is single-handler-per-event,
-    -- and the delve lifecycle frame already owns these events; frames
-    -- receive events in registration order, so the core handlers have
-    -- already updated E.delveRunState by the time these fire).
-    -- UNIT_AURA (player) and the nameplate events are registered
-    -- dynamically in DoRefresh, only while the window is active inside
-    -- a delve.
+    -- Frames receive events in registration order, so the core handlers have
+    -- already updated E.delveRunState by the time these fire. UNIT_AURA and the
+    -- cast event are registered dynamically in DoRefresh, only while shown.
     for _, ev in ipairs({
         "PLAYER_ENTERING_WORLD",
         "ZONE_CHANGED_NEW_AREA",
@@ -698,21 +547,17 @@ E:RegisterModule(function()
             return
         end
         if MSG_EVENTS[event] then
-            -- pcall: chat/system text could be a Midnight secret string
-            -- in some future context; never let that kill the handler.
+            -- pcall: chat/system text could be a Midnight secret string.
             pcall(HandleMessage, event, ...)
             return
         end
-        -- High-frequency world events: only react while the window is
-        -- actually up (vignette updates fire constantly in the world).
+        -- High-frequency world events fire constantly; only react while shown.
         if (event == "UPDATE_UI_WIDGET"
                 or event == "VIGNETTE_MINIMAP_UPDATED"
                 or event == "VIGNETTES_UPDATED")
                 and not win:IsShown() then
-            -- Keep the nemesis pack tally accurate even while the window is
-            -- hidden, so opening it mid-run shows the right count (packs can be
-            -- killed before the window is ever shown). ScanVignettes self-gates
-            -- to PlayerInDelve(), so this is cheap; no redraw needed when hidden.
+            -- Still keep the nemesis tally accurate while hidden (packs can die
+            -- before the window is shown). ScanVignettes self-gates and is cheap.
             if (event == "VIGNETTE_MINIMAP_UPDATED" or event == "VIGNETTES_UPDATED")
                     and ScanVignettes then
                 pcall(ScanVignettes)
@@ -722,18 +567,12 @@ E:RegisterModule(function()
         QueueRefresh()
     end)
 
-    --------------------------------------------------------------------
-    -- Public: re-evaluate visibility now (Options checkbox / slash)
-    --------------------------------------------------------------------
     function E:UpdateDelveObjectivesWindow()
         DoRefresh()
     end
 
-    --------------------------------------------------------------------
-    -- Public: /ed objdump — raw dump of every objective-ish data source
-    -- so unknown counters (strongboxes, flags) can be located on the
-    -- live client and wired into the window precisely.
-    --------------------------------------------------------------------
+    -- /ed objdump — raw dump of every objective-ish data source so unknown
+    -- counters can be located on the live client and wired in precisely.
     function E:DumpDelveObjectiveData()
         local function out(s) print("|cFFFFD700[ED obj]|r " .. s) end
         local function esc(v)
@@ -741,7 +580,6 @@ E:RegisterModule(function()
             if #s > 90 then s = s:sub(1, 90) .. "..." end
             return (s:gsub("|", "||"))
         end
-        --- Flatten a viz-info table's scalar fields to one sorted line.
         local function sniff(t)
             local keys = {}
             for k, v in pairs(t) do
@@ -798,8 +636,7 @@ E:RegisterModule(function()
             end
         end
 
-        -- Widget sweep: the step's widget set plus the two standalone
-        -- HUD sets. Tries every known getter until one returns data.
+        -- Tries every known getter until one returns data.
         local GETTERS = {
             "GetTextWithStateWidgetVisualizationInfo",
             "GetIconAndTextWidgetVisualizationInfo",
@@ -880,8 +717,6 @@ E:RegisterModule(function()
                 local ok, viz = pcall(
                     C_UIWidgetManager.GetSpellDisplayVisualizationInfo, wid)
                 if ok and viz and viz.spellInfo then
-                    -- shownState is a real field on widget vis-info
-                    -- structs; the IDE's API stubs just omit it.
                     ---@diagnostic disable-next-line: undefined-field
                     local shown = tostring(viz.shownState)
                     out("  widget " .. wid
@@ -1004,10 +839,8 @@ E:RegisterModule(function()
             out("  API unavailable")
         end
 
-        -- Delve entrance picker: the modifier tooltips here state the
-        -- exact "Enemy groups affected: N" (authoritative nemesis total)
-        -- and whether a Sanctified Banner is present. Run /ed objdump
-        -- while the entrance screen is OPEN to capture it.
+        -- The entrance picker's modifier tooltips state the authoritative nemesis
+        -- total ("Enemy groups affected: N"); dump with the entrance screen OPEN.
         out("=== C_DelvesUI API + no-arg Get* returns ===")
         if C_DelvesUI then
             local duiNames = {}
@@ -1041,7 +874,7 @@ E:RegisterModule(function()
         end
         if not pShown then
             picker = nil
-            -- Fallback: scan for any shown frame named like the picker.
+            -- Fallback: any shown frame named like the picker.
             for nm, f in pairs(_G) do
                 if type(nm) == "string" and nm:find("Delve", 1, true)
                         and nm:find("Picker", 1, true)
@@ -1084,8 +917,8 @@ E:RegisterModule(function()
             out("  picker not shown — open a delve entrance, then /ed objdump")
         end
 
-        -- Whatever tooltip is up right now (hover the modifier icon and
-        -- run this if the FontString walk didn't surface the count).
+        -- Whatever tooltip is up now (hover the modifier icon if the FontString
+        -- walk didn't surface the count).
         if GameTooltip and GameTooltip.IsShown and GameTooltip:IsShown()
                 and GameTooltip.NumLines then
             out("=== GameTooltip currently shown ===")
@@ -1099,8 +932,6 @@ E:RegisterModule(function()
         out("=== end — screenshot/paste me everything above ===")
     end
 
-    -- Initial state (handles enabling the option, then /reload inside
-    -- a delve: PLAYER_ENTERING_WORLD also fires after login, but this
-    -- costs nothing and covers every path).
+    -- Covers enabling the option, then /reload inside a delve.
     QueueRefresh()
 end)

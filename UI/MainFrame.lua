@@ -1,19 +1,10 @@
-﻿------------------------------------------------------------------------
--- UI/MainFrame.lua
--- Main window, tab buttons, tab switching, minimap button
-------------------------------------------------------------------------
+﻿-- Main window: tab buttons, tab switching, broker, and minimap button.
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local pairs, ipairs = pairs, ipairs
 local math_floor = math.floor
 local string_format = string.format
 
-------------------------------------------------------------------------
--- MAIN FRAME
-------------------------------------------------------------------------
 function E:InitMainFrame()
     if self.MainFrame then return end
 
@@ -31,7 +22,6 @@ function E:InitMainFrame()
     frame:EnableMouse(true)
     frame:SetToplevel(true)
 
-    -- BackdropTemplate: flat near-black background, thin red 1px border
     frame:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -39,12 +29,10 @@ function E:InitMainFrame()
     })
     local bg = E.Colors.background
     frame:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
-    -- Border picks up the active accent and stays in sync with theme changes
     E:RegisterThemed(function(p)
         frame:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
     end)
 
-    -- Restore saved position or default to screen center
     if self.db.framePosition then
         local p = self.db.framePosition
         frame:SetPoint(p.point, UIParent, p.relPoint, p.x, p.y)
@@ -52,12 +40,10 @@ function E:InitMainFrame()
         frame:SetPoint("CENTER")
     end
 
-    -- Drag to move
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function(f) f:StartMoving() end)
     frame:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
-        -- Persist position so it survives /reload
         local point, _, relPoint, x, y = f:GetPoint()
         E.db.framePosition = {
             point    = point,
@@ -67,24 +53,18 @@ function E:InitMainFrame()
         }
     end)
 
-    -- Always open to the player's chosen default tab. The window is built
-    -- once and reused, so applying the default tab only at creation made it
-    -- stick on whatever tab was last viewed. Re-apply on every Show. (The
-    -- broker right-click path calls SelectTab(8) AFTER Show returns, so it
-    -- still wins and lands on Options.)
+    -- Window is built once and reused; re-apply default tab on every Show so it
+    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(8)
+    -- runs after Show returns, so it still wins.)
     frame:SetScript("OnShow", function()
         E:SelectTab(E.db.defaultTab or 1)
     end)
 
-    -- Let the Escape key close the window without tainting
-    -- UISpecialFrames is a Blizzard global table; frames listed here
-    -- automatically hide when the player presses Escape.
+    -- Frames in UISpecialFrames auto-hide on Escape without tainting.
     table.insert(UISpecialFrames, "EverythingDelvesFrame")
 
-    -- Hidden by default - player toggles with /ed or minimap button
     frame:Hide()
 
-    -- Build child components
     self:CreateTitleBar(frame)
     self:CreateCloseButton(frame)
     self:CreateTabButtons(frame)
@@ -92,18 +72,13 @@ function E:InitMainFrame()
     self:CreateBrokerObject()
     self:CreateMinimapButton()
 
-    -- Run every tab module's init callback (registered via RegisterModule)
     for _, callback in ipairs(self.modules) do
         callback()
     end
 
-    -- Open to the player's preferred default tab
     self:SelectTab(self.db.defaultTab or 1)
 end
 
-------------------------------------------------------------------------
--- TITLE BAR
-------------------------------------------------------------------------
 function E:CreateTitleBar(parent)
     local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", parent, "TOP", 0, -18)
@@ -111,7 +86,7 @@ function E:CreateTitleBar(parent)
     self:StyleAccentHeader(title, "Everything Delves")
     parent.titleText = title
 
-    -- Version label in its own high-strata frame so scrollbars never cover it
+    -- High-strata frame so scrollbars never cover the version label.
     local verFrame = CreateFrame("Frame", nil, parent)
     verFrame:SetSize(80, 16)
     verFrame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -6)
@@ -121,17 +96,12 @@ function E:CreateTitleBar(parent)
     ver:SetText(E.CC.muted .. "v" .. E.version .. E.CC.close)
     parent.versionText = ver
 
-    -- "Join our Discord!" link, top-left — mirrors the version label on the
-    -- right and flanks the centered title. The Discord logo chip sits before
-    -- the text as a brand accent. Click pops a copyable invite
-    -- (E:ShowDiscord) — WoW can't open a web browser.
+    -- Click pops a copyable invite (E:ShowDiscord) — WoW can't open a browser.
     local discord = CreateFrame("Button", nil, parent)
     discord:SetFrameStrata("HIGH")
     discord.icon = discord:CreateTexture(nil, "OVERLAY")
     discord.icon:SetSize(16, 16)
     discord.icon:SetPoint("LEFT", 0, 0)
-    -- White 64x64 TGA with alpha at Media\Textures\discord.tga. If the file
-    -- is ever missing, WoW draws a placeholder square — replace the asset.
     discord.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
     discord.text = discord:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     discord.text:SetPoint("LEFT", discord.icon, "RIGHT", 5, 0)
@@ -152,8 +122,6 @@ function E:CreateTitleBar(parent)
         self.text:SetTextColor(ac.r, ac.g, ac.b)
         GameTooltip:Hide()
     end)
-    -- Keep the link text in the same bright accent header color as the
-    -- "Everything Delves" title (preset.header), not the dimmer body accent.
     E:RegisterThemed(function()
         local ac = E:GetAccentPreset().header
         discord.text:SetTextColor(ac.r, ac.g, ac.b)
@@ -161,9 +129,6 @@ function E:CreateTitleBar(parent)
     parent.discordButton = discord
 end
 
-------------------------------------------------------------------------
--- CLOSE BUTTON (custom flat "X" - no Blizzard chrome)
-------------------------------------------------------------------------
 function E:CreateCloseButton(parent)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetSize(20, 20)
@@ -197,23 +162,17 @@ function E:CreateCloseButton(parent)
     end)
 end
 
-------------------------------------------------------------------------
--- TAB BUTTONS
-------------------------------------------------------------------------
 function E:CreateTabButtons(parent)
     self.tabButtons = {}
     self.tabFrames  = {}
 
     local TAB_HEIGHT  = 28
-    local TAB_Y       = -54   -- distance from top of the frame
-    local TAB_PADDING = 4     -- gap between tabs
-    local TAB_START_X = 10    -- x offset of the first tab from the frame edge
+    local TAB_Y       = -54
+    local TAB_PADDING = 4
+    local TAB_START_X = 10
 
-    -- Running total of the tab-row width so we can guarantee the frame is
-    -- wide enough to hold every tab (see the widen step after the loop).
     local rowContentWidth = 0
 
-    -- Reusable measurement FontString for tab width calculation
     local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     measure:Hide()
 
@@ -222,7 +181,6 @@ function E:CreateTabButtons(parent)
                                 parent, "BackdropTemplate")
         tab:SetHeight(TAB_HEIGHT)
 
-        -- Size each tab to fit its label with some horizontal padding
         measure:SetText(name)
         local tabWidth = measure:GetStringWidth() + 24
         tab:SetWidth(tabWidth)
@@ -231,7 +189,6 @@ function E:CreateTabButtons(parent)
             rowContentWidth = rowContentWidth + TAB_PADDING
         end
 
-        -- Anchor: first tab to frame corner, rest chain left-to-right
         if i == 1 then
             tab:SetPoint("TOPLEFT", parent, "TOPLEFT", TAB_START_X, TAB_Y)
         else
@@ -244,14 +201,12 @@ function E:CreateTabButtons(parent)
             edgeSize = 1,
         })
 
-        -- Label
         local label = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         label:SetPoint("CENTER")
         label:SetFont(label:GetFont(), 11)
         label:SetText(E.CC.body .. name .. E.CC.close)
         tab.label = label
 
-        -- Default to inactive look
         local ic = E.Colors.tabInactive
         tab:SetBackdropColor(ic.r, ic.g, ic.b, ic.a)
         tab:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
@@ -278,18 +233,13 @@ function E:CreateTabButtons(parent)
         self.tabButtons[i] = tab
     end
 
-    -- The tab row grew past the original 900px frame width as tabs were
-    -- added over time (most visibly the rightmost "Profiles" tab spilling
-    -- outside the frame in the default UI font). Widen the frame so it
-    -- always fits the whole row plus a matching right margin. Setups on a
-    -- narrower replacement font keep the original width; only those where
-    -- the row actually overflows get widened.
+    -- Tab row can outgrow the default 900px frame width on the stock UI font;
+    -- widen so the whole row fits plus a matching right margin.
     local neededWidth = TAB_START_X + rowContentWidth + TAB_START_X
     if parent:GetWidth() < neededWidth then
         parent:SetWidth(neededWidth)
     end
 
-    -- Thin accent horizontal divider between tab row and content
     local divider = parent:CreateTexture(nil, "ARTWORK")
     divider:SetHeight(1)
     divider:SetPoint("TOPLEFT",  parent, "TOPLEFT",  6, TAB_Y - TAB_HEIGHT - 4)
@@ -297,30 +247,18 @@ function E:CreateTabButtons(parent)
     self:StyleAccentDivider(divider)
     parent.divider = divider
 
-    -- When the accent changes, re-stamp the active tab's colors.
     E:RegisterThemed(function(_)
         if E.activeTab then E:SelectTab(E.activeTab) end
     end)
 end
 
-------------------------------------------------------------------------
--- CONTENT AREA  (child frame that tab content frames anchor to)
-------------------------------------------------------------------------
 function E:CreateContentArea(parent)
     local content = CreateFrame("Frame", "EverythingDelvesContent", parent)
-    -- Sits below the divider line, inside the main frame padding
     content:SetPoint("TOPLEFT",     parent, "TOPLEFT",      6, -90)
     content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT",  -6,   6)
     self.contentFrame = content
 end
 
-------------------------------------------------------------------------
--- TAB REGISTRATION & SWITCHING
-------------------------------------------------------------------------
-
---- Called by each tab module to hand its content frame to the main frame.
---- @param index number  Tab number (1-5, matching E.TAB_NAMES order)
---- @param frame Frame   The content frame for that tab
 function E:RegisterTab(index, frame)
     self.tabFrames[index] = frame
     frame:SetParent(self.contentFrame)
@@ -328,12 +266,10 @@ function E:RegisterTab(index, frame)
     frame:Hide()
 end
 
---- Show tab `index`, hide all others, update button highlights.
 function E:SelectTab(index)
     if not self.tabButtons then return end
     self.activeTab = index
 
-    -- Update button visuals
     local p = E:GetAccentPreset()
     for i, btn in ipairs(self.tabButtons) do
         if i == index then
@@ -350,7 +286,6 @@ function E:SelectTab(index)
         end
     end
 
-    -- Show / hide content frames
     for i, f in pairs(self.tabFrames) do
         if i == index then
             f:Show()
@@ -360,13 +295,6 @@ function E:SelectTab(index)
     end
 end
 
-------------------------------------------------------------------------
--- MINIMAP BUTTON - LibDBIcon (preferred) or manual fallback
-------------------------------------------------------------------------
-
-------------------------------------------------------------------------
--- Live tooltip stats (shared by broker + manual button)
-------------------------------------------------------------------------
 local function GetCurrencyQty(id)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(id)
@@ -377,7 +305,6 @@ end
 
 local function AddLiveStats(tip)
     tip:AddLine(" ")
-    -- Currency snapshot
     local shards = GetCurrencyQty(E.CurrencyIDs.cofferKeyShards)
     local keys   = GetCurrencyQty(E.CurrencyIDs.bountifulKeys)
     local uc     = GetCurrencyQty(E.CurrencyIDs.undercoins)
@@ -388,14 +315,12 @@ local function AddLiveStats(tip)
     tip:AddDoubleLine(E.CC.white .. "Undercoins:" .. E.CC.close,
                       E.CC.white .. uc .. E.CC.close)
 
-    -- Bountiful count from shared table
     if E.currentBountifulCount and E.currentBountifulCount > 0 then
         tip:AddLine(" ")
         tip:AddDoubleLine(E.CC.white .. "Active Bountiful:" .. E.CC.close,
                           E.CC.white .. E.currentBountifulCount .. E.CC.close)
     end
 
-    -- Weekly reset timer
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
         local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
         if secs and secs > 0 then
@@ -409,8 +334,6 @@ local function AddLiveStats(tip)
     end
 end
 
---- Create the LibDataBroker launcher object.
---- This is always created so broker display addons (ElvUI, Titan, etc.) can use it.
 function E:CreateBrokerObject()
     local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
     if not LDB then return end
@@ -439,7 +362,6 @@ function E:CreateBrokerObject()
     })
 end
 
---- Attempt to register with LibDBIcon. Returns true on success.
 function E:TryRegisterLibDBIcon()
     local LDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
     if LDBIcon and self.brokerObj then
@@ -453,25 +375,20 @@ function E:TryRegisterLibDBIcon()
     return false
 end
 
---- Create the minimap button using LibDBIcon if available, otherwise fall back
---- to a manual button parented directly to the Minimap frame.
 function E:CreateMinimapButton()
     if not self.db.minimapButton.show then return end
 
-    -- Try LibDBIcon first
     if self:TryRegisterLibDBIcon() then return end
 
-    -- Manual fallback (no LibDBIcon available)
     self.usingLibDBIcon = false
 
-    -- Listen for LibDBIcon loading later and upgrade if possible
+    -- Watch for LibDBIcon loading later and upgrade the manual button.
     local addonWatcher = CreateFrame("Frame")
     addonWatcher:RegisterEvent("ADDON_LOADED")
     addonWatcher:SetScript("OnEvent", function(watcher, event, addonName)
         if addonName == "LibDBIcon-1.0" then
             watcher:UnregisterEvent("ADDON_LOADED")
             if E:TryRegisterLibDBIcon() then
-                -- Hide the manual fallback button now that LibDBIcon is active
                 if E.minimapBtn then
                     E.minimapBtn:Hide()
                     E.minimapBtn = nil
@@ -489,31 +406,27 @@ function E:CreateMinimapButton()
     button:SetClampedToScreen(true)
     button:SetMovable(true)
     button:RegisterForDrag("LeftButton")
-    -- RegisterForClicks with the modern "Up" suffix required since 10.x
+    -- "Up" suffix required since 10.x.
     button:RegisterForClicks("AnyUp")
 
-    -- Main icon
     local icon = button:CreateTexture(nil, "BACKGROUND")
     icon:SetSize(20, 20)
     icon:SetPoint("CENTER")
     icon:SetTexture("Interface\\Icons\\INV_Misc_Key_15")
     button.icon = icon
 
-    -- Circular border overlay (Blizzard tracking button asset)
     local border = button:CreateTexture(nil, "OVERLAY")
     border:SetSize(54, 54)
     border:SetPoint("TOPLEFT")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     button.border = border
 
-    -- Highlight on hover
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetSize(16, 16)
     highlight:SetPoint("CENTER")
     highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight = highlight
 
-    -- Position the button around the minimap circumference
     local function UpdateMinimapPosition(angle)
         local rad = math.rad(angle)
         local x = math.cos(rad) * 80
@@ -524,7 +437,6 @@ function E:CreateMinimapButton()
 
     UpdateMinimapPosition(self.db.minimapButton.angle or 220)
 
-    -- Drag the button around the minimap edge
     button:SetScript("OnDragStart", function(self)
         self:SetScript("OnUpdate", function(self)
             local mx, my = Minimap:GetCenter()
@@ -540,7 +452,6 @@ function E:CreateMinimapButton()
         self:SetScript("OnUpdate", nil)
     end)
 
-    -- Click: left = toggle window, right = open straight to Options tab
     button:SetScript("OnClick", function(self, btn)
         if btn == "LeftButton" then
             E:ToggleMainFrame()
@@ -552,7 +463,6 @@ function E:CreateMinimapButton()
         end
     end)
 
-    -- Tooltip
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine(E.CC.header .. "Everything Delves" .. E.CC.close)
@@ -567,7 +477,6 @@ function E:CreateMinimapButton()
     end)
 end
 
---- Show or hide the minimap button (called from Options tab).
 function E:SetMinimapButtonVisible(show)
     self.db.minimapButton.show = show
     if show then

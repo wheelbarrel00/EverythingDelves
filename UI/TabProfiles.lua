@@ -1,14 +1,3 @@
-------------------------------------------------------------------------
--- UI/TabProfiles.lua — Tab 7: Profiles
---
--- Delve history / completion marks / mid-run state are per-character
--- (stored in EverythingDelvesDB.profiles, see InitDB). This tab lets a
--- player view the active profile, switch to another, create a fresh
--- one, duplicate the current one, or delete an unused one. Every
--- operation here is non-destructive to other profiles — switching
--- never erases data, it just changes which profile this character
--- reads/writes.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
 local math_max, math_min = math.max, math.min
@@ -16,9 +5,6 @@ local math_max, math_min = math.max, math.min
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTabProfilesContent")
 
-    --------------------------------------------------------------------
-    -- Scroll scaffolding (matches the other tabs)
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 4)
@@ -64,9 +50,6 @@ E:RegisterModule(function()
 
     local SECT_X = 8
 
-    --------------------------------------------------------------------
-    -- Header + readouts
-    --------------------------------------------------------------------
     local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, -6)
     header:SetFont(header:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -86,9 +69,6 @@ E:RegisterModule(function()
     div1:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
-    --------------------------------------------------------------------
-    -- Dynamic profile-row pool
-    --------------------------------------------------------------------
     local ROW_H = 26
     local rowPool = {}
 
@@ -113,17 +93,10 @@ E:RegisterModule(function()
         return row
     end
 
-    -- Forward declaration so popups can request a rebuild.
     local Rebuild
 
-    --------------------------------------------------------------------
-    -- Confirmation / input popups
-    --
-    -- WoW's GameDialog StaticPopup exposes the edit box as `.EditBox`
-    -- (capitalised) in modern clients; older clients used `.editBox`.
-    -- Resolve defensively so this works regardless of client version
-    -- and isn't broken by UI replacers (ElvUI/Eltruism etc.).
-    --------------------------------------------------------------------
+    -- StaticPopup edit box is `.EditBox` on modern clients, `.editBox` on
+    -- older ones; resolve defensively so UI replacers don't break it.
     local function PopupEditBox(dialog)
         if not dialog then return nil end
         return dialog.EditBox or dialog.editBox
@@ -225,9 +198,6 @@ E:RegisterModule(function()
         timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
     }
 
-    --------------------------------------------------------------------
-    -- Action buttons
-    --------------------------------------------------------------------
     local newBtn = E:CreateButton(content, 130, 24, "New Profile")
     newBtn:SetScript("OnClick", function()
         StaticPopup_Show("EVERYTHINGDELVES_NEWPROFILE")
@@ -251,9 +221,6 @@ E:RegisterModule(function()
         .. E.CC.close
     )
 
-    --------------------------------------------------------------------
-    -- Rebuild: redraw the profile list from current data
-    --------------------------------------------------------------------
     function Rebuild()
         charFS:SetText(
             E.CC.muted .. "This character: " .. E.CC.close
@@ -264,7 +231,6 @@ E:RegisterModule(function()
             .. E.CC.gold .. (E.activeProfileName or "?") .. E.CC.close
         )
 
-        -- Count how many character keys point at each profile.
         local usage = {}
         local sv = EverythingDelvesDB
         if sv and sv.profileKeys then
@@ -285,9 +251,7 @@ E:RegisterModule(function()
 
             local isActive = (name == E.activeProfileName)
             local count = usage[name] or 0
-            -- Active profile gets WoW's built-in green ready-check
-            -- texture (font-independent, always renders) instead of a
-            -- Unicode glyph that shows as a missing-character box.
+            -- Ready-check texture, not a Unicode glyph: font-independent, won't render as a missing-char box.
             local marker = isActive
                 and ("|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t " .. E.CC.gold)
                 or E.CC.body
@@ -315,12 +279,10 @@ E:RegisterModule(function()
             anchor = row
         end
 
-        -- Hide unused pooled rows.
         for i = #names + 1, #rowPool do
             if rowPool[i] then rowPool[i]:Hide() end
         end
 
-        -- Action buttons + note below the list.
         newBtn:ClearAllPoints()
         newBtn:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -16)
         copyBtn:ClearAllPoints()
@@ -329,7 +291,6 @@ E:RegisterModule(function()
         noteFS:SetPoint("TOPLEFT", newBtn, "BOTTOMLEFT", 0, -16)
         noteFS:SetPoint("RIGHT", content, "RIGHT", -8, 0)
 
-        -- Total content height for scrolling.
         local rows = #names
         local h = 6 + 20    -- header
             + 18 + 18       -- char + active readouts

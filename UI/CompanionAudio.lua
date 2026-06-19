@@ -1,14 +1,6 @@
-------------------------------------------------------------------------
--- UI/CompanionAudio.lua — Companion Voice & Bubble Settings
--- Applies MuteSoundFile/UnmuteSoundFile for Valeera and Dundun based
--- on E.db settings. Also handles Valeera speech bubble suppression via
--- selective C_ChatBubbles polling with a CVar fallback while in delves.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
 -- Valeera companion voice line sound IDs — Midnight 12.0 Season 1
-------------------------------------------------------------------------
 local VALEERA_SOUNDS = {
     7243762, 7243934, 7329273, 7430043, 7430047, 7430050, 7430053, 7430056, 7430059, 7430063,
     7430066, 7430069, 7430072, 7430075, 7430078, 7430082, 7430086, 7430089, 7430092, 7430095,
@@ -27,13 +19,8 @@ local VALEERA_SOUNDS = {
     7431093, 7431103, 7431106, 7431109, 7431112, 7431115, 7431119, 7431123, 7440991, 7461759,
 }
 
-------------------------------------------------------------------------
--- Dundun voice line sound IDs — Midnight 12.0 Season 1
--- Dundun is NOT a delve companion: he is the rat loa ("Loa of
--- Abundance") who hosts the Abundance cave events and repeats his
--- voice lines constantly. MuteSoundFile is global, so the mute applies
--- everywhere he speaks, not just in delves.
-------------------------------------------------------------------------
+-- Dundun voice line sound IDs — Midnight 12.0 Season 1. MuteSoundFile is global,
+-- so the mute applies everywhere he speaks (Abundance cave events), not just in delves.
 local DUNDUN_SOUNDS = {
     7249707, 7251759, 7251762, 7251765, 7251768, 7251771, 7251774, 7251777,
     7251784, 7251787, 7251790, 7251793, 7251796, 7251799,
@@ -55,9 +42,6 @@ local isInDelve         = false
 local suppressCVarEvent = false
 local selectiveOK       = nil   -- nil=untested, true=works, false=unsupported on this client
 
-------------------------------------------------------------------------
--- Delve detection
-------------------------------------------------------------------------
 local function CheckInDelve()
     local _, instType, diffID = GetInstanceInfo()
     if diffID == 208 then return true end
@@ -77,18 +61,12 @@ local function CheckInDelve()
     return false
 end
 
-------------------------------------------------------------------------
--- Sound list toggling
-------------------------------------------------------------------------
 local function ToggleSoundList(list, mute)
     if not MuteSoundFile or not UnmuteSoundFile then return end
     local fn = mute and MuteSoundFile or UnmuteSoundFile
     for _, id in ipairs(list) do fn(id) end
 end
 
-------------------------------------------------------------------------
--- Speech bubble suppression
-------------------------------------------------------------------------
 local function GetCompanionIdentity()
     for _, token in ipairs(COMPANION_TOKENS) do
         if UnitExists and UnitExists(token) then
@@ -144,14 +122,13 @@ end
 local function TickSelectiveBubbles()
     if not (C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles) then return false end
     local guid, token = GetCompanionIdentity()
-    if not guid and not token then return true end  -- no companion, nothing to do
+    if not guid and not token then return true end
 
     local ok, bubbles = pcall(C_ChatBubbles.GetAllChatBubbles)
     if not ok or type(bubbles) ~= "table" then return false end
 
-    if #bubbles == 0 then return true end  -- no bubbles at all, no verdict yet
+    if #bubbles == 0 then return true end
 
-    -- Check whether any bubble exposes owner metadata
     local sawOwnerAPI = false
     for _, b in ipairs(bubbles) do
         for _, m in ipairs(BUBBLE_GUID_METHODS) do
@@ -165,9 +142,8 @@ local function TickSelectiveBubbles()
         if sawOwnerAPI then break end
     end
 
-    if not sawOwnerAPI then return false end  -- selective unsupported on this client
+    if not sawOwnerAPI then return false end
 
-    -- Hide companion bubbles
     for _, b in ipairs(bubbles) do
         if IsBubbleFromCompanion(b, guid, token) then pcall(b.Hide, b) end
     end
@@ -184,14 +160,10 @@ RefreshBubbleState = function()
 
     isInDelve = CheckInDelve()
 
-    -- Selective ticker (preferred): hides only Valeera's bubbles
     if selectiveOK ~= false
             and C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles
             and C_Timer and C_Timer.NewTicker then
-        -- Only run the 0.2s bubble scrubber while actually inside a delve.
-        -- Outside one there are no companion bubbles to hide, so cancel it —
-        -- otherwise it leaks and ticks 5x/sec in the open world for the rest
-        -- of the session (it was previously never stopped on delve exit).
+        -- Cancel the ticker outside a delve, else it leaks and ticks 5x/sec in the open world.
         if not isInDelve then
             StopBubbleTicker()
             return
@@ -211,7 +183,6 @@ RefreshBubbleState = function()
         return
     end
 
-    -- Fallback: disable all chat bubbles while inside a delve
     if isInDelve then
         ApplyBubbleCVar()
     else
@@ -219,20 +190,13 @@ RefreshBubbleState = function()
     end
 end
 
-------------------------------------------------------------------------
--- Public entry point — called on login and when checkboxes change
-------------------------------------------------------------------------
 function E:ApplyCompanionAudio()
     ToggleSoundList(VALEERA_SOUNDS, self.db and self.db.muteValeera)
     ToggleSoundList(DUNDUN_SOUNDS,  self.db and self.db.muteDundun)
     RefreshBubbleState()
 end
 
-------------------------------------------------------------------------
--- Module init
-------------------------------------------------------------------------
 E:RegisterModule(function()
-    -- E.db is ready at module init time (InitDB runs before InitMainFrame)
     E:ApplyCompanionAudio()
 
     local ef = CreateFrame("Frame")

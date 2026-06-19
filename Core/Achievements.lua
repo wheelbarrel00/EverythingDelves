@@ -1,25 +1,7 @@
-------------------------------------------------------------------------
--- Core/Achievements.lua
--- Per-delve achievement lookups for the map-pin tooltip.
---
--- Only achievement IDs are hardcoded (verified against the live
--- achievement database, build 12.0.5). Criteria names and completion
--- states are read live via GetAchievementCriteriaInfo() at hover time,
--- so variant lists self-correct if Blizzard renames anything and
--- completion is never stale.
---
--- Per-delve achievement layout this season:
---   "<Delve> Stories"      — complete each of the delve's 3 story variants
---   "<Delve> Discoveries"  — open the delve's 3 hidden Sturdy Chests
---   "Delver of the Depths: Midnight" I–IV — complete every delve
---       (any tier / T4+ / T8+ / T11, with lives remaining); each delve
---       is one criterion of each series entry.
-------------------------------------------------------------------------
+-- Achievement IDs verified against the live achievement DB (build 12.0.5);
+-- criteria names/completion are read live each hover so they self-correct.
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Verified achievement IDs, keyed by the canonical E.DelveData name.
-------------------------------------------------------------------------
 E.DelveAchievements = {
     ["Parhelion Plaza"]     = { stories = 61725, discoveries = 61893 },
     ["The Shadow Enclave"]  = { stories = 61727, discoveries = 61892 },
@@ -33,9 +15,8 @@ E.DelveAchievements = {
     ["The Darkway"]         = { stories = 61728, discoveries = 61895 },
 }
 
--- "Delver of the Depths: Midnight" series. Each lists all 10 delves as
--- criteria; we surface only this delve's criterion. Ordered easiest
--- to hardest so the tooltip shows the next step first.
+-- Each series entry lists all 10 delves as criteria; ordered easiest-to-hardest
+-- so the tooltip surfaces the next step first.
 E.DelveDepthsSeries = {
     { id = 61707, label = "any tier" },
     { id = 61708, label = "Tier 4+"  },
@@ -43,14 +24,9 @@ E.DelveDepthsSeries = {
     { id = 61710, label = "Tier 11"  },
 }
 
-------------------------------------------------------------------------
--- Tolerant name matching.
--- The achievement DB and the POI widgets disagree on some spellings
--- ("Twilight Crypts" vs "Twilight Crypt", "Trapped!" vs "Trapped",
--- "Sporasaurus Surprise" vs "Sporasaur Special"), so all comparisons
--- go through a normalizer plus a small alias map of spellings the
--- game has been seen to use for the same variant.
-------------------------------------------------------------------------
+-- The achievement DB and POI widgets disagree on some spellings (e.g.
+-- "Twilight Crypts" vs "Twilight Crypt", "Sporasaurus Surprise" vs
+-- "Sporasaur Special"), so all name comparisons normalize + alias-map.
 local function Normalize(s)
     if type(s) ~= "string" then return "" end
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
@@ -59,7 +35,6 @@ local function Normalize(s)
     return s
 end
 
--- normalized in-game spelling → normalized achievement-DB spelling
 local VARIANT_ALIASES = {
     ["dastardlyrootstalks"] = "dastardlyrotstalk",
     ["sporasaurussurprise"] = "sporasaurspecial",
@@ -73,8 +48,7 @@ local function Canon(s)
     return VARIANT_ALIASES[n] or n
 end
 
---- True when two delve/variant/criteria names refer to the same thing.
---- Prefix matching absorbs singular/plural drift (crypt/crypts).
+-- Prefix matching absorbs singular/plural drift (crypt/crypts).
 local function NamesMatch(a, b)
     local na, nb = Canon(a), Canon(b)
     if na == "" or nb == "" then return false end
@@ -84,7 +58,6 @@ local function NamesMatch(a, b)
 end
 E.DelveNamesMatch = NamesMatch
 
---- Resolve any delve-name spelling to its E.DelveAchievements entry.
 local function ResolveDelve(delveName)
     if not delveName then return nil, nil end
     local entry = E.DelveAchievements[delveName]
@@ -95,19 +68,14 @@ local function ResolveDelve(delveName)
     return nil, nil
 end
 
-------------------------------------------------------------------------
--- Live achievement reads (all pcall-guarded — a bad ID must never
--- propagate a Lua error into a tooltip hook).
-------------------------------------------------------------------------
+-- pcall-guarded: a bad ID must never propagate a Lua error into a tooltip hook.
 local function AchievementCompleted(id)
     local ok, _, name, _, completed = pcall(GetAchievementInfo, id)
     if not ok then return nil, nil end
     return completed, name
 end
 
---- Iterate an achievement's criteria → { {name, completed, quantity,
---- reqQuantity}, ... }. quantity/reqQuantity matter for progressive
---- criteria (one bar counting 0→N) as opposed to per-item criteria.
+-- quantity/reqQuantity matter for progressive criteria (one bar 0→N) vs per-item.
 local function ReadCriteria(id)
     local okN, num = pcall(GetAchievementNumCriteria, id)
     if not okN or not num then return nil end
@@ -127,21 +95,6 @@ local function ReadCriteria(id)
     return out
 end
 
-------------------------------------------------------------------------
--- Public API
-------------------------------------------------------------------------
-
---- Full achievement status for one delve, or nil when the delve is
---- unknown or the achievement API is unavailable (e.g. mid-loading).
---- Returns:
----   {
----     delve        = canonical name,
----     allDone      = bool,
----     summaryCount = n,   -- incomplete groups (stories/discoveries/depths)
----     stories      = { id, name, done, missing = {variant, ...} },
----     discoveries  = { id, name, done, found, total },
----     depthsMissing = { "Tier 4+", ... },  -- tiers this delve still needs
----   }
 function E:GetDelveAchievementStatus(delveName)
     if not GetAchievementInfo then return nil end
     local canonical, ids = ResolveDelve(delveName)
@@ -149,14 +102,10 @@ function E:GetDelveAchievementStatus(delveName)
 
     local status = { delve = canonical, summaryCount = 0 }
 
-    -- Stories: which of the 3 variants are still missing
     local done, name = AchievementCompleted(ids.stories)
     if done ~= nil then
         local s = { id = ids.stories, name = name, done = done, missing = {}, criteria = {} }
-        -- Read criteria whether or not the achievement is done, so the
-        -- tooltip can list every variant green/red (a completed group still
-        -- shows its criteria). `missing` is the short unmet-only list other
-        -- callers rely on.
+        -- Read criteria even when done, so the tooltip lists every variant green/red.
         local crit = ReadCriteria(ids.stories)
         if crit then
             s.criteria = crit
@@ -172,10 +121,8 @@ function E:GetDelveAchievementStatus(delveName)
         status.stories = s
     end
 
-    -- Discoveries: chest count. Live clients implement this as ONE
-    -- progressive criterion (a 0→3 counter), so prefer its
-    -- quantity/reqQuantity; fall back to counting completed criteria
-    -- if a build ever splits them into one criterion per chest.
+    -- Live clients implement discoveries as ONE progressive 0→3 criterion;
+    -- fall back to counting completed criteria if a build ever splits them.
     done, name = AchievementCompleted(ids.discoveries)
     if done ~= nil then
         local d = { id = ids.discoveries, name = name, done = done, found = 0, total = 0, criteria = {} }
@@ -199,16 +146,13 @@ function E:GetDelveAchievementStatus(delveName)
         status.discoveries = d
     end
 
-    -- Delver of the Depths: this delve's criterion in each series entry.
-    -- `depths` keeps every tier bracket (each {label, completed}) for the
-    -- tooltip's green/red list; `depthsMissing` keeps just the unmet ones.
     status.depthsMissing = {}
     status.depths = {}
     for _, series in ipairs(E.DelveDepthsSeries) do
         local seriesDone = AchievementCompleted(series.id)
         local critDone
         if seriesDone then
-            critDone = true   -- whole series earned => this delve's tier is too
+            critDone = true   -- whole series earned implies this delve's tier is too
         elseif seriesDone == false then
             local crit = ReadCriteria(series.id)
             if crit then
@@ -236,9 +180,6 @@ function E:GetDelveAchievementStatus(delveName)
     return status
 end
 
---- If today's story variant for this delve is still an incomplete
---- Stories criterion, return the variant name — the "run it today and
---- it counts" signal. Accepts a precomputed status to avoid re-reading.
 function E:GetTodaysStoryCredit(delveName, status)
     status = status or self:GetDelveAchievementStatus(delveName)
     if not (status and status.stories and not status.stories.done) then
@@ -255,10 +196,7 @@ function E:GetTodaysStoryCredit(delveName, status)
     return nil
 end
 
-------------------------------------------------------------------------
--- Diagnostic: /ed ach — dump per-delve status to chat so the verified
--- IDs can be sanity-checked on a live client at a glance.
-------------------------------------------------------------------------
+-- /ed ach — dump per-delve status to chat for live ID sanity checks.
 function E:DebugPrintAchievements()
     print(E.CC.header .. "Everything Delves" .. E.CC.close
         .. ": delve achievement status")

@@ -1,26 +1,13 @@
-------------------------------------------------------------------------
--- UI/TabCurrentBountiful.lua - Tab 2: Current Bountiful Delves
--- Tracks the player's live bountiful delve status (bountiful rerolls
--- daily): currency stats, weekly reset timer, quick-action buttons, and
--- a scrollable list of today's bountiful delves.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local pairs, ipairs = pairs, ipairs
 local math_floor, math_max = math.floor, math.max
 local string_format = string.format
 local table_insert, table_sort, wipe = table.insert, table.sort, wipe
 local strtrim = strtrim
 
-------------------------------------------------------------------------
--- Load-on-demand helper
--- Several Blizzard UI frames live inside load-on-demand addons that
--- aren't in memory until the player opens them for the first time.
--- ElvUI preloads them, masking the issue. We force-load here.
-------------------------------------------------------------------------
+-- Several Blizzard UI frames live in load-on-demand addons not in memory
+-- until first opened; ElvUI preloads them, masking the issue. Force-load here.
 local function EnsureBlizzardAddon(addonName)
     ---@diagnostic disable-next-line: undefined-global
     local loader = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
@@ -29,11 +16,6 @@ local function EnsureBlizzardAddon(addonName)
     return ok and (loaded ~= false)
 end
 
-------------------------------------------------------------------------
--- Story tier data (Midnight Season 1)
--- Maps story variant name → { tier, note }. Used to sort the bountiful
--- list, badge each row, and populate hover tooltips.
-------------------------------------------------------------------------
 local TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
 local TIER_COLORS = {
     S = {1.00, 0.84, 0.00},
@@ -51,27 +33,22 @@ local function TierCC(tier)
 end
 
 local STORY_TIERS = {
-    -- S Tier
     ["Invasive Glow"]               = { tier="S", note="Bomb DoT scales with tier — keep it rolling and the clear is trivial." },
-    -- A Tier
     ["Ogre Powered"]                = { tier="A", note="Straight shot to boss. Kill Unstable Aberrations before moving on." },
     ["Sporasaur Special"]           = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
     ["Sporasaurus Surprise"]        = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
     ["Holding the Line"]            = { tier="A", note="Head down the staircase; kill enemies (not heal allies) for the fastest route." },
     ["Academy Under Siege"]         = { tier="A", note="Scattered powerful items help, but it can't match Invasive Glow." },
-    -- B Tier
     ["Core of the Problem"]         = { tier="B", note="Use portals to shortcut around the map. Kill enemies and collect orbs." },
     ["Faculty of Fear"]             = { tier="B", note="Revelation mechanic requires revealing many NPCs, adding significant time." },
     ["Party Crasher"]               = { tier="B", note="Hit levers to disable traps while defeating 4 Twilight Summoners." },
     ["Focusers Under Pressure"]     = { tier="B", note="Large crystal collection loop adds time compared to Ogre Powered." },
     ["Toadly Unbecoming"]           = { tier="B", note="Decurse frogs to spawn the boss. Open layout adds traverse time even when mounted." },
-    -- C Tier
     ["Alnmoth Munchies"]            = { tier="C", note="Same quick route as Sporasaur Special but extra objectives slow it down." },
     ["Not What I Expected"]         = { tier="C", note="Click Lightbloom crates and activate security. Displacement Portal clones help in combat." },
     ["Trapped"]                     = { tier="C", note="Teleported inside — must rescue hostages on the way back to the entrance." },
     ["Totem Annihilation"]          = { tier="C", note="Take the bird north. Avoid the captured loa's lightning — it hits hard." },
     ["Traitor's Due"]               = { tier="C", note="Large unwalkable map. Defeat void foci and elites with the Eye of Antenorian buff." },
-    -- D Tier
     ["Leyline Technician"]          = { tier="D", note="Inspecting every leyline adds a lot of time." },
     ["Descent of the Haranir"]      = { tier="D", note="Same quick pathing as Sporasaur but extra objectives add considerable time." },
     ["The Gravitational Effect"]    = { tier="D", note="Flying to collect Singularity Coils breaks the route significantly." },
@@ -80,7 +57,6 @@ local STORY_TIERS = {
     ["Ritual Interrupted"]          = { tier="D", note="Navigate south freeing furbolgs. Haunted weapons deal decent bonus damage." },
     ["Calamitous"]                  = { tier="D", note="Enormous mountable map with required secondary objectives in all three variants." },
     ["Arena Champion"]              = { tier="D", note="Defeat two named enemies then collect mold samples from Moldering Fighters." },
-    -- F Tier
     ["March of the Arcane Brigade"] = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
     ["Bombing Run"]                 = { tier="F", note="Destroying void portals makes for one of the slowest clears." },
     ["Mirror Shine"]                = { tier="F", note="Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs." },
@@ -94,25 +70,19 @@ local STORY_TIERS = {
     ["Dastardly Rootstalks"]        = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
 }
 
--- Strip color codes and "Story Variant:" prefix for clean display.
 local function StripStoryPrefix(s)
     if not s or s == "" then return "" end
     local plain = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
     return plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$") or plain
 end
 
--- Multi-strategy lookup: handles any prefix format, color codes, or spacing.
 local function GetStoryTier(storyVariant)
     if not storyVariant or storyVariant == "" then return nil end
-    -- 1) Direct exact match
     if STORY_TIERS[storyVariant] then return STORY_TIERS[storyVariant] end
-    -- 2) Strip color codes, try again
     local plain = storyVariant:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
     if STORY_TIERS[plain] then return STORY_TIERS[plain] end
-    -- 3) Extract everything after "Variant:" (handles any prefix format/spacing)
     local name = plain:match("[Vv]ariant:%s*(.-)%s*$")
     if name and STORY_TIERS[name] then return STORY_TIERS[name] end
-    -- 4) Substring scan — finds the story name anywhere in the string
     local lower = plain:lower()
     for key, data in pairs(STORY_TIERS) do
         if lower:find(key:lower(), 1, true) then return data end
@@ -120,45 +90,30 @@ local function GetStoryTier(storyVariant)
     return nil
 end
 
--- Expose the variant tier+note lookup so other tabs can reuse it (the
--- Delve Locations tab shows today's variant's note on hover). Returns the
--- { tier, note } table for a story-variant string, or nil.
 function E:GetStoryTier(storyVariant)
     return GetStoryTier(storyVariant)
 end
 
--- Set during RegisterModule init; read by UpdateBestPick (defined at file
--- scope, outside the RegisterModule body).
 local bestPickFS = nil
 
-------------------------------------------------------------------------
--- Local state
-------------------------------------------------------------------------
-local ROW_HEIGHT     = 36   -- taller rows to fit story variant sub-text
-local bountifulList  = {}   -- today's bountiful delves (reused)
--- Bountiful count is derived dynamically from #bountifulList (no hardcoded constant)
--- Scratch set (wiped per refresh) used to de-dupe the dropped-off completed
--- delve re-add against what is already in bountifulList.
+local ROW_HEIGHT     = 36
+local bountifulList  = {}
 local reAddSeen      = {}
 
--- Entry pool: recycled delve entry tables to avoid allocating 6-8
--- fresh tables every time the bountiful list is rebuilt (on OnShow,
--- area POI updates, and refresh button clicks).
+-- Recycled delve-entry tables: the bountiful list is rebuilt on every
+-- OnShow / area-POI update / refresh click, so pool to avoid churn.
 local bountifulEntryPool = {}
 
--- Expansion state for boss tactics (keyed by delve name / "name##idx").
--- The boss data + rendering match the Delve Locations tab exactly.
+-- Expansion state for boss tactics, keyed by delve name / "name##idx".
 local expandedDelve = {}
 local expandedBoss  = {}
 
--- Reflow pools + scroll widgets (assigned during init).
 local delveRowPool = {}
 local bossRowPool  = {}
 local noteLinePool = {}
 local sc, scrollFrame, scrollBar
 local UpdateScrollRange
 
--- Boss-note role colouring (mirrors the Delve Locations tab).
 local function RoleCC(role)
     local m = E.BossRoleMeta and E.BossRoleMeta[role]
     local rgb = m and m.rgb or {0.80, 0.80, 0.85}
@@ -187,22 +142,13 @@ local function ReleaseBountifulList(list)
     end
 end
 
-------------------------------------------------------------------------
--- Bountiful delve live detection
--- Uses C_AreaPoiInfo.GetAreaPOIInfo() to check each known delve's POI.
--- If atlasName == "delves-bountiful", the delve is bountiful today.
--- Also detects "overcharged" bountiful via iconWidgetSet widget count.
--- Populates `out` in place (reusing entries from the pool) so this
--- function allocates nothing on the steady path.
-------------------------------------------------------------------------
+-- A delve POI with atlasName "delves-bountiful" is bountiful today;
+-- two icon widgets in its iconWidgetSet means "overcharged".
 
--- C_UIWidgetManager.GetAllWidgetsBySetID() returns a fresh table on
--- every call. AREA_POIS_UPDATED fires several times during zone
--- transitions, and each fire calls this twice per bountiful POI
--- (icon set + tooltip set). Cache the results with a short TTL so
--- bursty events coalesce into a single API allocation per set.
-local widgetSetCache = {}        -- [setID] = { table, expires }
-local WIDGET_CACHE_TTL = 5       -- seconds
+-- GetAllWidgetsBySetID() allocates a fresh table per call, and AREA_POIS_UPDATED
+-- bursts during zone transitions (twice per POI: icon + tooltip set). Cache by TTL.
+local widgetSetCache = {}        -- [setID] = { widgets, expires }
+local WIDGET_CACHE_TTL = 5
 
 local function GetCachedWidgetsBySetID(setID)
     if not (setID and C_UIWidgetManager
@@ -242,7 +188,6 @@ local function PopulateBountifulDelvesLive(out)
                     end
                 end
 
-                -- Get story variant from tooltip widget
                 local storyVariant = ""
                 if poi.tooltipWidgetSet then
                     local tWidgets = GetCachedWidgetsBySetID(poi.tooltipWidgetSet)
@@ -263,11 +208,9 @@ local function PopulateBountifulDelvesLive(out)
 
                 local entry        = AcquireBountifulEntry()
                 entry.name         = poi.name or delve.name
-                -- Canonical DelveData name kept alongside the (display) POI
-                -- name: the live POI name can differ from the addon's
-                -- canonical name -- e.g. the POI "Twilight Crypts" vs the
-                -- canonical "Twilight Crypt" that MatchDelveName resolves to.
-                -- Lookups elsewhere use the canonical name, so we key on both.
+                -- Live POI name can differ from the canonical DelveData name
+                -- (POI "Twilight Crypts" vs canonical "Twilight Crypt"); lookups
+                -- elsewhere use the canonical name, so keep both.
                 entry.canonicalName = delve.name
                 entry.zone         = delve.zone
                 entry.x            = delve.x
@@ -284,15 +227,8 @@ local function PopulateBountifulDelvesLive(out)
     end
 end
 
-------------------------------------------------------------------------
--- Currency / stat queries
-------------------------------------------------------------------------
-
---- Query a currency amount by ID. C_CurrencyInfo.GetCurrencyInfo returns
---- a table with .quantity (current amount) and .maxQuantity.
---- @return number current, number max
 local function GetCurrencyAmount(currencyID)
-    -- C_CurrencyInfo.GetCurrencyInfo is confirmed in 12.0 (display-only, permitted).
+    -- C_CurrencyInfo.GetCurrencyInfo is display-only, permitted in 12.0.
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
         if info then
@@ -310,20 +246,13 @@ local function GetCofferShards()
     return GetCurrencyAmount(E.CurrencyIDs.cofferKeyShards)
 end
 
---- Compute how many full keys can be crafted from current shards.
 local function KeysFromShards(shards)
     return math_floor(shards / E.SHARDS_PER_KEY)
 end
 
-------------------------------------------------------------------------
--- Reset timer
--- Bountiful delves + story variants reroll on the DAILY reset; this tab
--- tracks today's bountiful set, so it shows the daily countdown. (The
--- weekly reset still governs the vault / Gilded Stash / bounties.)
-------------------------------------------------------------------------
-
+-- Bountiful delves + story variants reroll on the DAILY reset (vault /
+-- Gilded Stash / bounties are weekly), so this tab shows the daily countdown.
 local function GetResetTimeString()
-    -- Bountiful delves reroll on the daily reset (< 24h away).
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
         local secs = C_DateAndTime.GetSecondsUntilDailyReset()
         if secs and secs > 0 then
@@ -335,11 +264,6 @@ local function GetResetTimeString()
     return "Reset timer unavailable"
 end
 
-------------------------------------------------------------------------
--- Journey stage (Delver's Journey / Renown)
--- Uses C_DelvesUI.GetDelvesFactionForSeason() to get the faction ID,
--- then C_MajorFactions.GetMajorFactionRenownInfo() for progress.
-------------------------------------------------------------------------
 local function GetJourneyProgress()
     if C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
             and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo then
@@ -353,13 +277,9 @@ local function GetJourneyProgress()
             end
         end
     end
-    -- Fallback if APIs unavailable
     return 0, 0, 1
 end
 
-------------------------------------------------------------------------
--- Best Pick banner: show the highest-tier non-completed bountiful
-------------------------------------------------------------------------
 local function UpdateBestPick()
     if not bestPickFS then return end
     local best, bestOrder = nil, 8
@@ -390,9 +310,7 @@ local function UpdateBestPick()
     bestPickFS:SetText("")
 end
 
-------------------------------------------------------------------------
--- Sort bountiful list: incomplete first, then by tier, then alphabetical
-------------------------------------------------------------------------
+-- Incomplete first, then by tier, then alphabetical.
 local function SortBountifulList()
     table_sort(bountifulList, function(a, b)
         if a.completed ~= b.completed then
@@ -407,23 +325,16 @@ local function SortBountifulList()
     end)
 end
 
-------------------------------------------------------------------------
--- Refresh bountiful data from API (or fallback)
-------------------------------------------------------------------------
 local lastBountifulRefresh = 0
 local function RefreshBountifulData(force)
-    -- Debounce: skip if called again within 2 seconds (unless forced)
     local now = GetTime()
     if not force and (now - lastBountifulRefresh < 2) then return end
     lastBountifulRefresh = now
 
-    -- Live detection via C_AreaPoiInfo (populates bountifulList in-place
-    -- using the entry pool - no table churn on the hot path).
     PopulateBountifulDelvesLive(bountifulList)
 
-    -- Daily reset boundary (run.timestamp is time()-based; 0 if the API is
-    -- unavailable). Shared by the in-list completion sweep below and the
-    -- dropped-off re-add further down.
+    -- Daily reset boundary (run.timestamp is time()-based; 0 if API unavailable).
+    -- Shared by the completion sweep and the dropped-off re-add below.
     local dailyResetEpoch = 0
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
         local secs = C_DateAndTime.GetSecondsUntilDailyReset()
@@ -432,9 +343,7 @@ local function RefreshBountifulData(force)
         end
     end
 
-    -- Completion is automatic: a bountiful delve counts as done if it has
-    -- a run logged since today's daily reset, so the checklist + progress
-    -- bar fill in when you finish one.
+    -- A bountiful delve counts as done once it has a run logged since today's reset.
     if E.db and E.db.delveHistory and dailyResetEpoch > 0 then
         for _, delve in ipairs(bountifulList) do
             if not delve.completed then
@@ -451,7 +360,6 @@ local function RefreshBountifulData(force)
             end
         end
     end
-    -- Build lookup tables so other tabs can check bountiful status
     if not E.currentBountifulNames     then E.currentBountifulNames     = {} end
     if not E.currentBountifulPOIs      then E.currentBountifulPOIs      = {} end
     if not E.currentBountifulStory     then E.currentBountifulStory     = {} end
@@ -460,19 +368,14 @@ local function RefreshBountifulData(force)
     wipe(E.currentBountifulPOIs)
     wipe(E.currentBountifulStory)
     wipe(E.currentBountifulStoryTier)
-    E.currentBountifulCount = #bountifulList  -- actual count (not doubled)
+    E.currentBountifulCount = #bountifulList
     for _, delve in ipairs(bountifulList) do
         E.currentBountifulNames[delve.name] = true
-        -- Also store normalized name for fuzzy matching
         local norm = strtrim(delve.name):lower()
         E.currentBountifulNames[norm] = true
-        -- Key by the canonical DelveData name too. delve.name above is the
-        -- live POI label, which can differ from the canonical name the rest
-        -- of the addon resolves to (e.g. POI "Twilight Crypts" vs canonical
-        -- "Twilight Crypt"). Callers that look up by canonical name -- the
-        -- delve-entry reminder's wasBountiful check, the Delve Locations
-        -- bountiful highlight, AutoRepairBountifulHistory -- would otherwise
-        -- miss and treat a bountiful delve as non-bountiful.
+        -- Also key by canonical name: callers that look up by canonical
+        -- (wasBountiful check, Delve Locations highlight, AutoRepairBountifulHistory)
+        -- would otherwise miss when the POI label differs from canonical.
         if delve.canonicalName and delve.canonicalName ~= delve.name then
             E.currentBountifulNames[delve.canonicalName] = true
             E.currentBountifulNames[strtrim(delve.canonicalName):lower()] = true
@@ -480,16 +383,13 @@ local function RefreshBountifulData(force)
         if delve.poiID then
             E.currentBountifulPOIs[delve.poiID] = true
         end
-        -- Story variant + tier for today's rotation (used by Delve Locations tab)
         local si = GetStoryTier(delve.storyVariant)
         E.currentBountifulStory[delve.name]     = StripStoryPrefix(delve.storyVariant)
         E.currentBountifulStoryTier[delve.name] = si and si.tier or nil
     end
 
-    -- Bountiful rotation change alert (F6)
+    -- Alert when the daily rotation changes.
     if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
-        -- Reusable scratch buffer - avoids allocating a fresh table
-        -- every refresh just to detect a daily rotation change.
         if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
         local currentIDs = E._bountifulIDBuf
         wipe(currentIDs)
@@ -512,8 +412,6 @@ local function RefreshBountifulData(force)
         if changed and #storedIDs > 0 then
             print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available today! Open Everything Delves to see them.")
         end
-        -- Mutate the SavedVariables table in place instead of replacing
-        -- the reference each refresh (keeps the DB table stable).
         if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
         wipe(E.db.lastKnownBountifulIDs)
         for i = 1, #currentIDs do
@@ -521,21 +419,13 @@ local function RefreshBountifulData(force)
         end
     end
 
-    -- Re-add today's COMPLETED bountiful delves that have dropped off the
-    -- live POI list. Completing a bountiful delve removes its
-    -- "delves-bountiful" atlas, so it vanishes from PopulateBountifulDelvesLive
-    -- above -- which made the checklist hide the finished delve and the
-    -- progress bar SHRINK its denominator (0/4 -> 0/3) instead of counting it
-    -- (1/4). We reconstruct the full daily set from delveHistory: any delve
-    -- with a bountiful run since today's reset that isn't already listed is
-    -- added back as a completed entry.
-    --
-    -- Deliberately added to bountifulList ONLY (drives the checklist + bar),
-    -- and AFTER the E.currentBountifulNames build above -- so a completed
-    -- delve is NOT treated as still-bountiful by the wasBountiful stamp at
-    -- delve entry or by AutoRepairBountifulHistory (which would re-inflate the
-    -- Gilded Stash counter). E.currentBountifulCount stays the live "active"
-    -- count for the minimap tooltip.
+    -- Completing a bountiful delve removes its "delves-bountiful" atlas, so it
+    -- drops out of the live list and the progress bar would shrink its
+    -- denominator (0/4 -> 0/3) instead of counting it. Reconstruct the full
+    -- daily set from delveHistory. Added to bountifulList ONLY (not
+    -- E.currentBountifulNames) and AFTER the names build above, so a completed
+    -- delve is not treated as still-bountiful by the wasBountiful stamp or
+    -- AutoRepairBountifulHistory (which would re-inflate the Gilded Stash count).
     if E.db and E.db.delveHistory and dailyResetEpoch > 0 and E.DelveDataByName then
         wipe(reAddSeen)
         for _, d in ipairs(bountifulList) do reAddSeen[d.name] = true end
@@ -544,7 +434,7 @@ local function RefreshBountifulData(force)
                 local meta = E.DelveDataByName[delveName]
                 local runs = meta and hist.recentRuns
                 if runs then
-                    local runStory  -- nil unless a qualifying run is found
+                    local runStory
                     for _, run in ipairs(runs) do
                         if run.wasBountiful
                                 and (run.timestamp or 0) >= dailyResetEpoch then
@@ -576,20 +466,16 @@ local function RefreshBountifulData(force)
 end
 
 
-------------------------------------------------------------------------
--- Stat label factory (left label + right value)
-------------------------------------------------------------------------
 local function CreateStatRow(parent, labelText, yOffset, xOffset, itemIconID)
     xOffset = xOffset or 0
     local anchorX = 8 + xOffset
 
-    -- Optional item icon before the label
     local icon
     if itemIconID then
         icon = parent:CreateTexture(nil, "ARTWORK")
         icon:SetPoint("TOPLEFT", parent, "TOPLEFT", anchorX, yOffset + 2)
         icon:SetSize(14, 14)
-        anchorX = 0  -- label will anchor to icon instead
+        anchorX = 0
     end
 
     local lbl = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -605,12 +491,9 @@ local function CreateStatRow(parent, labelText, yOffset, xOffset, itemIconID)
     val:SetPoint("LEFT", lbl, "RIGHT", 6, 0)
     val:SetFont(val:GetFont(), 11)
 
-    return val, icon  -- caller sets text on val; icon needs SetTexture at runtime
+    return val, icon
 end
 
-------------------------------------------------------------------------
--- Row rendering (reflowed list with expandable boss tactics)
-------------------------------------------------------------------------
 -- Forward declaration so the row/boss toggle handlers can call it.
 local UpdateRows
 
@@ -627,9 +510,6 @@ local function BossRow_OnClick(self)
     if UpdateRows then UpdateRows() end
 end
 
---------------------------------------------------------------------
--- Delve row factory (two-line: name + variant subtext, plus columns).
---------------------------------------------------------------------
 local function CreateDelveRow()
     local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
     row:SetHeight(ROW_HEIGHT)
@@ -638,7 +518,6 @@ local function CreateDelveRow()
     row:RegisterForClicks("LeftButtonUp")
     row:SetScript("OnClick", DelveRow_Toggle)
 
-    -- Delve name (top line; caret prefix baked into the text)
     local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -3)
     nameText:SetFont(nameText:GetFont(), 11)
@@ -647,7 +526,6 @@ local function CreateDelveRow()
     nameText:SetWordWrap(false)
     row.nameText = nameText
 
-    -- Story variant (second line)
     local variantText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     variantText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -1)
     variantText:SetFont(variantText:GetFont(), 9)
@@ -656,7 +534,6 @@ local function CreateDelveRow()
     variantText:SetWordWrap(false)
     row.variantText = variantText
 
-    -- Zone
     local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     zoneText:SetPoint("LEFT", row, "LEFT", 230, 0)
     zoneText:SetFont(zoneText:GetFont(), 11)
@@ -665,7 +542,6 @@ local function CreateDelveRow()
     zoneText:SetWordWrap(false)
     row.zoneText = zoneText
 
-    -- Tier badge
     local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     tierText:SetPoint("LEFT", row, "LEFT", 335, 0)
     tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
@@ -673,7 +549,6 @@ local function CreateDelveRow()
     tierText:SetJustifyH("CENTER")
     row.tierText = tierText
 
-    -- [Pin] button
     local wpBtn = E:CreateButton(row, 32, 20, "Pin")
     wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
     wpBtn:SetPoint("LEFT", row, "LEFT", 370, 0)
@@ -696,7 +571,6 @@ local function CreateDelveRow()
     end)
     row.wpBtn = wpBtn
 
-    -- [TomTom] button
     local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
     ttBtn.label:SetFont(ttBtn.label:GetFont(), 10)
     ttBtn:SetPoint("LEFT", row, "LEFT", 408, 0)
@@ -726,7 +600,6 @@ local function CreateDelveRow()
     end)
     row.ttBtn = ttBtn
 
-    -- Hover tooltip (anchored to the right of the TomTom button)
     row:SetScript("OnEnter", function(self)
         if self.delve then
             local anchorTo = self.ttBtn or self
@@ -773,9 +646,6 @@ local function AcquireDelveRow(i)
     return row
 end
 
---------------------------------------------------------------------
--- Boss sub-row factory (caret + name on line 1, brief on line 2).
---------------------------------------------------------------------
 local function CreateBossRow()
     local row = CreateFrame("Button", nil, sc)
     row:RegisterForClicks("LeftButtonUp")
@@ -825,9 +695,6 @@ local function AcquireNoteLine(i)
     return fs
 end
 
---------------------------------------------------------------------
--- Reflow the bountiful list + any expanded boss tactics.
---------------------------------------------------------------------
 function UpdateRows()
     if not sc then return end
 
@@ -856,10 +723,8 @@ function UpdateRows()
             .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
 
         if delve.completed then
-            -- Completed marker: a ready-check texture, NOT a Unicode check
-            -- (U+2713) -- the default game font has no glyph for it and it
-            -- renders as a grey missing-glyph box. Same lesson as the boss
-            -- star: use an |T...|t texture for any non-ASCII marker.
+            -- Use a ready-check |T...|t texture, not a Unicode check (U+2713):
+            -- the default game font has no glyph and renders a missing-glyph box.
             row.nameText:SetText(
                 caret .. " "
                 .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t "
@@ -881,7 +746,6 @@ function UpdateRows()
             )
             row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
 
-            -- Check if normal (non-bountiful) version is also active
             local normalNote = ""
             if delve.normalPoiID and delve.mapID
                     and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo then
@@ -902,7 +766,6 @@ function UpdateRows()
                 .. E.CC.muted .. delve.storyVariant .. E.CC.close
                 .. normalNote
             )
-            -- Neutral row tint (matches Delve Locations tab).
             row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
         end
 
@@ -923,8 +786,6 @@ function UpdateRows()
 
         PlaceRow(row, 0, ROW_HEIGHT)
 
-        -- Expanded: this delve's boss tactics (rendered identically to
-        -- the Delve Locations tab — brief line + expandable full notes).
         if expandedDelve[delve.name] then
             local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
             if bosses then
@@ -982,40 +843,29 @@ function UpdateRows()
     if UpdateScrollRange then UpdateScrollRange() end
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab2Content")
 
-    -- Keep references for the OnUpdate timer and data refresh
     local statValues = {}
 
-    --------------------------------------------------------------------
-    -- HEADER STATS BLOCK (2-column grid)
-    --------------------------------------------------------------------
     local STAT_Y = -4
-    local COL2_X = 310  -- second column x-offset
+    local COL2_X = 310
 
-    -- Left column
     local keyIconTex, cofferShardIconTex
     statValues.bountifulKeys, keyIconTex   = CreateStatRow(frame, "Bountiful Keys:", STAT_Y, nil, E.ItemIcons.cofferKey)
     statValues.cofferShards, cofferShardIconTex = CreateStatRow(frame, "Coffer Key Shards:", STAT_Y - 18, nil, E.ItemIcons.cofferShard)
     statValues.keysFromShards= CreateStatRow(frame, "Keys from Shards:", STAT_Y - 36)
 
-    -- Right column
     statValues.journey       = CreateStatRow(frame, "Journey:", STAT_Y, COL2_X)
     statValues.resetTimer    = CreateStatRow(frame, "Bountiful Reset:", STAT_Y - 18, COL2_X)
     statValues.sessionCount  = CreateStatRow(frame, "Session Completions:", STAT_Y - 36, COL2_X)
 
-    -- Function to refresh all stat display values
     local function RefreshStats()
         local keys  = GetBountifulKeys()
         local shards, maxShards = GetCofferShards()
         local stage, cur, stageMax = GetJourneyProgress()
         local sessionDone = (E.sessionData and E.sessionData.bountifulCompleted) or 0
 
-        -- Set currency icons via modern API
         if keyIconTex then keyIconTex:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey)) end
         if cofferShardIconTex then cofferShardIconTex:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard)) end
 
@@ -1037,22 +887,13 @@ E:RegisterModule(function()
         statValues.sessionCount:SetText(E.CC.gold .. sessionDone .. E.CC.close)
     end
 
-    --------------------------------------------------------------------
-    -- DAILY BOUNTIFUL PROGRESS BAR (the bountiful set rotates daily)
-    --------------------------------------------------------------------
     local progressBar = E:CreateProgressBar(frame, 0, 14, "Bountiful Delves Completed")
     progressBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, STAT_Y - 60)
     progressBar:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    frame.progressBar = progressBar   -- ref for row right-click updates
+    frame.progressBar = progressBar
 
-    --------------------------------------------------------------------
-    -- QUICK ACTION BUTTONS ROW
-    --------------------------------------------------------------------
     local ACTIONS_Y = STAT_Y - 84
 
-    -- [Great Vault] - ToggleGreatVaultUI() opens the Great Vault panel.
-    -- This is a protected function that Blizzard exposes specifically for
-    -- addon use; it is NOT tainted.
     local gvBtn = E:CreateButton(frame, 90, 24, "Great Vault")
     gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
     gvBtn:SetScript("OnClick", function()
@@ -1085,13 +926,9 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- [Start LFG] - Opens the Group Finder directly to the Delves
-    -- category (121) and clicks "Start Group".
     local lfgStartBtn = E:CreateButton(frame, 90, 24, "Start LFG")
     lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
 
-    -- Shared LFG launcher used by both the initial OnClick and the
-    -- enabled-state refresher below.
     local function OpenDelveLFG()
         -- Blizzard_GroupFinder / Blizzard_PVPUI are load-on-demand.
         if not PVEFrame or not LFGListFrame then
@@ -1105,11 +942,10 @@ E:RegisterModule(function()
         if not PVEFrame:IsShown() then
             PVEFrame_ToggleFrame()
         end
-        -- Select the Group Finder tab
         if GroupFinderFrameGroupButton3 then
             GroupFinderFrameGroupButton3:Click()
         end
-        -- Select Delves category (121) and click Start Group
+        -- Category 121 is the Delves LFG category.
         if LFGListFrame and LFGListFrame.CategorySelection
                 and LFGListCategorySelection_SelectCategory then
             LFGListCategorySelection_SelectCategory(
@@ -1118,7 +954,6 @@ E:RegisterModule(function()
                 LFGListFrame.CategorySelection.StartGroupButton:Click()
             end
         end
-        -- Open the group type dropdown for convenience
         if LFGListFrame and LFGListFrame.EntryCreation
                 and LFGListFrame.EntryCreation.GroupDropdown
                 and LFGListFrame.EntryCreation.GroupDropdown.OpenMenu then
@@ -1147,7 +982,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Helper to update LFG button enabled/disabled state
     local function RefreshLFGButton()
         if IsInRaid() or (IsInGroup() and not UnitIsGroupLeader("player")) then
             lfgStartBtn:SetAlpha(0.40)
@@ -1160,56 +994,42 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- BOUNTIFUL DELVES LIST
-    --------------------------------------------------------------------
-    -- Pushed down further from the action button row for breathing room.
     local LIST_Y = ACTIONS_Y - 70
 
-    -- Accent-colour divider under the Great Vault / Start LFG buttons,
-    -- spanning the full UI width (matches the divider directly below
-    -- the tab row).
     local actionDiv = frame:CreateTexture(nil, "ARTWORK")
     actionDiv:SetHeight(1)
     actionDiv:SetPoint("TOPLEFT",  frame, "TOPLEFT",   8, ACTIONS_Y - 30)
     actionDiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, ACTIONS_Y - 30)
     E:StyleAccentDivider(actionDiv)
 
-    -- Permanent grey line ABOVE the section header (#4A4A4A,
-    -- not affected by accent colour). Stops at the right edge of TomTom.
     local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
     headerLineTop:SetHeight(1)
     headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y + 8)
     headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y + 8)
     E:StyleGreyLine(headerLineTop)
 
-    -- Section header
     local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
     listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(listHeader, "Today's Bountiful Delves")
 
-    -- Best Pick subtitle — updated by UpdateBestPick on each data refresh
     bestPickFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bestPickFS:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 2, -2)
     bestPickFS:SetFont(bestPickFS:GetFont(), 10)
     bestPickFS:SetJustifyH("LEFT")
 
-    -- Permanent grey line below the header + Best Pick line.
     local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
     headerLineBot:SetHeight(1)
     headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y - 44)
     headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y - 44)
     E:StyleGreyLine(headerLineBot)
 
-    -- Level 68 unlock warning (shown when player is too low level)
     local unlockWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     unlockWarning:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 0, -8)
     unlockWarning:SetFont(unlockWarning:GetFont(), 12)
     unlockWarning:SetText(E.CC.red .. "Delves unlock at Level 68" .. E.CC.close)
     unlockWarning:Hide()
 
-    -- [Refresh] button
     local refreshBtn = E:CreateButton(frame, 70, 22, "Refresh")
     refreshBtn.label:SetFont(refreshBtn.label:GetFont(), 10)
     refreshBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 2)
@@ -1218,7 +1038,6 @@ E:RegisterModule(function()
         UpdateRows()
         UpdateBestPick()
         RefreshStats()
-        -- Update progress bar
         local done = 0
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
@@ -1237,7 +1056,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Column headers
     local COL_Y = LIST_Y - 50
     for _, col in ipairs({
         { label = "Delve Name",  x = 8   },
@@ -1252,8 +1070,6 @@ E:RegisterModule(function()
         E:StyleAccentHeader(fs, col.label)
     end
 
-    -- Scrollable list (boss tactics expand inline, so the list can grow
-    -- past the visible area).
     scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",  4, COL_Y - 16)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
@@ -1307,14 +1123,10 @@ E:RegisterModule(function()
         end
     end
 
-    -- Store progressBar reference for compatibility with existing hooks
     listFrame.progressBar = progressBar
 
-    --------------------------------------------------------------------
-    -- OnShow: refresh everything when the tab becomes visible
-    --------------------------------------------------------------------
     frame:SetScript("OnShow", function(self)
-        -- Level 68 unlock gate
+        -- Delves unlock at level 68.
         if UnitLevel("player") < 68 then
             unlockWarning:Show()
             listFrame:Hide()
@@ -1332,7 +1144,6 @@ E:RegisterModule(function()
         RefreshStats()
         RefreshLFGButton()
 
-        -- Update progress bar
         local done = 0
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
@@ -1343,10 +1154,7 @@ E:RegisterModule(function()
         UpdateBestPick()
     end)
 
-    --------------------------------------------------------------------
-    -- Live-updating reset timer (runs while tab is visible)
-    -- OnUpdate fires every frame; we throttle to once per second.
-    --------------------------------------------------------------------
+    -- OnUpdate fires every frame; throttle the reset-timer refresh to 1/s.
     local elapsed = 0
     frame:SetScript("OnUpdate", function(self, dt)
         elapsed = elapsed + dt
@@ -1360,22 +1168,15 @@ E:RegisterModule(function()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- Register for currency update events so stats refresh automatically
-    --------------------------------------------------------------------
     E:RegisterCallback("CurrencyUpdate", function()
         if frame:IsShown() then
             RefreshStats()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- Register for area POI updates so bountiful list refreshes live
-    --------------------------------------------------------------------
     E:RegisterCallback("AreaPoisUpdated", function()
-        -- Always refresh the data so E.currentBountifulNames stays
-        -- current for other systems (Gilded Stash tracking, Delve
-        -- Locations gold asterisks) regardless of which tab is open.
+        -- Refresh regardless of which tab is open, so E.currentBountifulNames
+        -- stays current for other systems (Gilded Stash, Delve Locations).
         RefreshBountifulData()
         if frame:IsShown() then
             RefreshStats()
@@ -1389,27 +1190,18 @@ E:RegisterModule(function()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(2, frame)
 
-    -- Seed initial data
     RefreshBountifulData(true)
 end)
 
-------------------------------------------------------------------------
--- Public hook: let other modules force a bountiful-data refresh.
--- Used by BeginDelveRun in EverythingDelves.lua so the bountiful
--- lookup table is guaranteed current at delve entry, even if the
--- Bountiful tab has never been opened this session. Internally
--- debounced (2 s) so this is cheap to call repeatedly.
-------------------------------------------------------------------------
+-- Public hook for other modules (BeginDelveRun) to force the bountiful
+-- lookup current at delve entry even if this tab was never opened.
+-- Debounced (2 s) internally, so cheap to call repeatedly.
 function E:RefreshBountifulData(force)
     RefreshBountifulData(force)
-    -- One-shot per session: if PLAYER_LOGIN flagged a repair, fire it
-    -- now that the live bountiful names are populated. AutoRepair
-    -- internally clears the flag and no-ops on subsequent calls.
+    -- Fire a PLAYER_LOGIN-flagged repair once the live names exist;
+    -- AutoRepair clears the flag and no-ops on later calls.
     if E._autoRepairPending and E.AutoRepairBountifulHistory then
         E:AutoRepairBountifulHistory()
     end

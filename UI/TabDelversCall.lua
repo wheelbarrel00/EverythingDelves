@@ -1,20 +1,7 @@
-------------------------------------------------------------------------
--- UI/TabDelversCall.lua - Tab 7: Delver's Call
--- Weekly "World Tour" quest tracker. One rotational Delver's Call quest
--- per delve, auto-detected from the quest log (Available -> In Progress
--- -> Banked -> Turned In), plus a cross-character alt rollup.
---
--- "Banked" (objectives done, not yet turned in) is the leveling sweet
--- spot: turn-in XP scales to your level, so holding all 10 until you're
--- a few levels short of cap turns them into a burst to the finish.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
 local math_max, math_min = math.max, math.min
 
-------------------------------------------------------------------------
--- State model (in alt-leveling progression order)
-------------------------------------------------------------------------
 local ORANGE = "|cFFFF8800"
 local DC_STATE = {
     fresh      = { text = "Available",   cc = E.CC.muted },
@@ -23,9 +10,6 @@ local DC_STATE = {
     completed  = { text = "Turned In",   cc = E.CC.green  },
 }
 
---- Resolve the live quest state for a Delver's Call questID on the
---- CURRENT character. Other characters are read from the saved roster.
---- Returns one of: "fresh" | "inProgress" | "ready" | "completed".
 local function GetState(questID)
     if not questID or not C_QuestLog then return "fresh" end
     if C_QuestLog.IsQuestFlaggedCompleted
@@ -35,9 +19,7 @@ local function GetState(questID)
     local logIdx = C_QuestLog.GetLogIndexForQuestID
         and C_QuestLog.GetLogIndexForQuestID(questID)
     if logIdx then
-        -- In the log. Distinguish "ready to hand in" (banked) from "still
-        -- working objectives". pcall both APIs — their signatures have
-        -- shifted across patches.
+        -- pcall both turn-in APIs: their signatures have shifted across patches.
         local objectivesDone = false
         if C_QuestLog.ReadyForTurnIn then
             local ok, ready = pcall(C_QuestLog.ReadyForTurnIn, questID)
@@ -52,15 +34,9 @@ local function GetState(questID)
     return "fresh"
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTabDelversCallContent")
 
-    --------------------------------------------------------------------
-    -- SCROLLABLE AREA
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0,   0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
@@ -119,13 +95,11 @@ E:RegisterModule(function()
 
     local GRID_X = 8
 
-    -- Column offsets (relative to each row's left edge).
     local COL_NAME   = 12
     local COL_ZONE   = 230
     local COL_STATUS = 400
     local ROW_HEIGHT = 22
 
-    -- delve name -> zone, pulled from the shared directory for context.
     local delveZone = {}
     if E.DelveData then
         for _, d in ipairs(E.DelveData) do
@@ -135,9 +109,6 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- HEADER + STRATEGY
-    --------------------------------------------------------------------
     local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -173,9 +144,6 @@ E:RegisterModule(function()
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
-    --------------------------------------------------------------------
-    -- COLUMN HEADERS
-    --------------------------------------------------------------------
     local colHead = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colHead:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", COL_NAME, -8)
     colHead:SetFont(colHead:GetFont(), 10)
@@ -191,21 +159,15 @@ E:RegisterModule(function()
     colHeadStatus:SetFont(colHeadStatus:GetFont(), 10)
     colHeadStatus:SetText(E.CC.muted .. "Status" .. E.CC.close)
 
-    --------------------------------------------------------------------
-    -- PER-DELVE ROWS (one per E.DelversCall entry, built once)
-    --------------------------------------------------------------------
     local rowWidgets = {}
     local rowAnchor  = colHead
     for i, entry in ipairs(E.DelversCall) do
         local row = CreateFrame("Frame", nil, sc)
         row:SetHeight(ROW_HEIGHT)
-        -- First row hangs off the column header (which sits +COL_NAME in),
-        -- so pull back -COL_NAME to land on the divider's left margin;
-        -- later rows chain straight down at x=0 (no staircase).
+        -- First row pulls back -COL_NAME to undo the column header's indent; later rows chain at x=0.
         row:SetPoint("TOPLEFT",  rowAnchor, "BOTTOMLEFT", (i == 1) and -COL_NAME or 0, (i == 1) and -4 or -2)
         row:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 
-        -- Left accent bar, shown only for "Banked" rows (the do-this-next state).
         local bar = row:CreateTexture(nil, "ARTWORK")
         bar:SetPoint("LEFT", row, "LEFT", 0, 0)
         bar:SetSize(3, ROW_HEIGHT - 4)
@@ -241,15 +203,11 @@ E:RegisterModule(function()
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
-    --------------------------------------------------------------------
-    -- ALT ROLLUP
-    --------------------------------------------------------------------
     local rollupHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rollupHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", GRID_X, -16)
     rollupHeader:SetFont(rollupHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(rollupHeader, "Alt Rollup")
 
-    -- Pooled rollup lines (one per tracked character; count varies).
     local rollupPool = {}
     local function GetRollupLine(i)
         local fs = rollupPool[i]
@@ -262,13 +220,8 @@ E:RegisterModule(function()
         return fs
     end
 
-    -- Bottom-most visible element, used to size the scroll child.
     local rollupBottom = rollupHeader
 
-    --------------------------------------------------------------------
-    -- REFRESH
-    --------------------------------------------------------------------
-    --- Compute live state for every delve on the current character.
     local function ComputeStates()
         local states = {}
         local counts = { fresh = 0, inProgress = 0, ready = 0, completed = 0 }
@@ -280,9 +233,7 @@ E:RegisterModule(function()
         return states, counts
     end
 
-    --- Snapshot the current character's states into the account-wide
-    --- roster so the rollup can show this character alongside alts (whose
-    --- quest logs we can't read directly).
+    -- Alts' quest logs aren't readable, so each character snapshots its own states here.
     local function PersistRoster(states)
         local sv = EverythingDelvesDB
         if not sv then return end
@@ -341,7 +292,6 @@ E:RegisterModule(function()
             last = line
         end
 
-        -- Hide any pooled lines left over from a larger previous roster.
         for j = idx + 1, #rollupPool do
             rollupPool[j]:Hide()
         end
@@ -393,9 +343,6 @@ E:RegisterModule(function()
         C_Timer.After(0, UpdateContentHeight)
     end
 
-    --------------------------------------------------------------------
-    -- EVENTS
-    --------------------------------------------------------------------
     frame:SetScript("OnShow", function()
         RefreshAll()
         UpdateScrollRange()
@@ -403,8 +350,7 @@ E:RegisterModule(function()
         tabScrollBar:SetValue(0)
     end)
 
-    -- Keep the roster fresh even when the tab is closed, so the rollup is
-    -- accurate the moment it's opened. Only repaint the UI when visible.
+    -- Keep the roster current even while the tab is closed; only repaint when visible.
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsShown() then
             RefreshAll()
@@ -413,15 +359,10 @@ E:RegisterModule(function()
         end
     end)
 
-    -- Seed the roster shortly after login (quest data may not be ready at
-    -- module-init time) so this character appears in the rollup before the
-    -- first quest-log event or tab open.
+    -- Seed the roster after login; quest data may not be ready at module-init time.
     C_Timer.After(2, function()
         PersistRoster((ComputeStates()))
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(7, frame)
 end)

@@ -1,17 +1,8 @@
-------------------------------------------------------------------------
--- UI/TabAbout.lua - Tab 10: About
--- Addon info, slash-command reference, copyable links, credits, and the
--- in-addon changelog (E.Changelog). Static content, built once at init.
---
--- WoW can't open a web browser, so every external link opens a small
--- copyable box via E:ShowURL (same UX as the Discord popup).
-------------------------------------------------------------------------
 local E = EverythingDelves
 
 local ipairs = ipairs
 local math_max, math_min = math.max, math.min
 
--- User-facing slash commands only (diagnostics like /ed debug are omitted).
 local COMMANDS = {
     { cmd = "/ed",          desc = "Open or close the main window" },
     { cmd = "/ed obj",      desc = "Toggle the Bonus Spoils tracker (also /ed spoils)" },
@@ -39,9 +30,6 @@ local THANKS = "BanditC64, Puzzleheaded-Pie-506, 8six753o9, herky4life"
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab10Content")
 
-    --------------------------------------------------------------------
-    -- Scrollable area (mirrors the other tabs)
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
@@ -53,9 +41,8 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(_, w)
         sc:SetWidth(w)
     end)
-    sc:SetHeight(1)  -- recomputed after content is laid out
+    sc:SetHeight(1)
 
-    -- Themed scrollbar (dark track, accent thumb)
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
     tabScrollBar:SetWidth(14)
     tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
@@ -93,14 +80,10 @@ E:RegisterModule(function()
     end
     scrollFrame:SetScript("OnShow", UpdateScrollRange)
 
-    --------------------------------------------------------------------
-    -- Layout helpers (running Y cursor; shared upvalues sc + Y)
-    --------------------------------------------------------------------
     local LEFT = 10
     local WRAP = 540          -- fixed wrap width (sc width isn't resolved at init)
     local Y    = -8
 
-    -- Accent section header with a grey underline (matches other tabs).
     local function header(text)
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
@@ -114,7 +97,6 @@ E:RegisterModule(function()
         Y = Y - 24
     end
 
-    -- A wrapped body line. `indent` shifts x; advances Y by measured height.
     local function body(text, indent, size)
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT + (indent or 0), Y)
@@ -130,8 +112,6 @@ E:RegisterModule(function()
 
     local function gap(px) Y = Y - (px or 8) end
 
-    -- A clickable accent-colored text link (mirrors the title-bar Discord
-    -- link). Returns the button so callers can chain a row.
     local function makeLink(label, onClick)
         local b = CreateFrame("Button", nil, sc)
         b:SetHeight(16)
@@ -156,7 +136,6 @@ E:RegisterModule(function()
         return b
     end
 
-    -- Lay out a row of links at the current Y, separated by " | ".
     local function linkRow(links)
         local prev
         for i, lk in ipairs(links) do
@@ -175,9 +154,6 @@ E:RegisterModule(function()
         Y = Y - 24
     end
 
-    --------------------------------------------------------------------
-    -- 1. Title
-    --------------------------------------------------------------------
     local title = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
     title:SetFont(title:GetFont(), 22, "OUTLINE")
@@ -198,9 +174,6 @@ E:RegisterModule(function()
         .. " and more - all in one window." .. E.CC.close)
     gap(10)
 
-    --------------------------------------------------------------------
-    -- 2. Links
-    --------------------------------------------------------------------
     linkRow({
         { label = "Join our Discord", onClick = function() E:ShowDiscord() end },
         { label = "CurseForge",       onClick = function() E:ShowURL(CURSEFORGE_URL) end },
@@ -210,9 +183,6 @@ E:RegisterModule(function()
     })
     gap(8)
 
-    --------------------------------------------------------------------
-    -- 3. Commands
-    --------------------------------------------------------------------
     header("Commands")
     gap(2)
     for _, c in ipairs(COMMANDS) do
@@ -232,18 +202,12 @@ E:RegisterModule(function()
         .. E.CC.close, 0, 10)
     gap(10)
 
-    --------------------------------------------------------------------
-    -- 4. Tutorials
-    --------------------------------------------------------------------
     header("Tutorials")
     gap(2)
     body(E.CC.muted .. "Video tutorials are coming soon - watch this space."
         .. E.CC.close)
     gap(10)
 
-    --------------------------------------------------------------------
-    -- 5. More add-ons by this author
-    --------------------------------------------------------------------
     header("More Add-ons by Wheelbarrel00")
     gap(2)
     for _, a in ipairs(OTHER_ADDONS) do
@@ -263,9 +227,6 @@ E:RegisterModule(function()
     end
     gap(10)
 
-    --------------------------------------------------------------------
-    -- 6. Thanks
-    --------------------------------------------------------------------
     header("Thanks")
     gap(2)
     body(E.CC.body .. "Built with feedback, reports, and ideas from the"
@@ -273,9 +234,6 @@ E:RegisterModule(function()
         .. E.CC.body .. ". Thank you!" .. E.CC.close)
     gap(10)
 
-    --------------------------------------------------------------------
-    -- 7. Changelog (newest first; older versions on CurseForge)
-    --------------------------------------------------------------------
     header("Changelog")
     gap(2)
     for _, entry in ipairs(E.Changelog or {}) do
@@ -305,9 +263,6 @@ E:RegisterModule(function()
     older:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
     Y = Y - 28
 
-    --------------------------------------------------------------------
-    -- Finalize scroll height
-    --------------------------------------------------------------------
     sc:SetHeight(math_max(1, -Y + 10))
     UpdateScrollRange()
 

@@ -1,20 +1,9 @@
-------------------------------------------------------------------------
--- UI/TrovehunterReminder.lua
--- Floating reminder popup shown on entry to a Bountiful Delve when the
--- player has an unused Trovehunter's Bounty Map in bags and the
--- consumed-bounty aura is not active. The original spec gated this on
--- "tier 8+" but reliable tier detection inside a delve is fragile, and
--- in practice nobody who has a map is running sub-T8 delves anyway, so
--- the tier requirement was dropped in favour of the simpler rule.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
--- Bag count comes from E:GetTrovehunterMapCount() (sums all known map
--- item IDs); see Core/Utils.lua. We keep only the icon + aura IDs here.
-local TROVE_ICON     = 1064187 -- texture id
-local TROVE_AURA     = 1254631 -- buff spell id (active when consumed)
+local TROVE_ICON     = 1064187
+local TROVE_AURA     = 1254631 -- buff spell id, active once the bounty is consumed
 
-local frame  -- created lazily on first show
+local frame
 
 local function CreateReminderFrame()
     local f = CreateFrame(
@@ -41,7 +30,6 @@ local function CreateReminderFrame()
     local bd = E.Colors.border
     f:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
 
-    -- Title
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", f, "TOP", 0, -10)
     title:SetFont(title:GetFont(), 14, "OUTLINE")
@@ -51,7 +39,6 @@ local function CreateReminderFrame()
         .. E.CC.close
     )
 
-    -- Divider under title
     local div = f:CreateTexture(nil, "ARTWORK")
     div:SetHeight(1)
     div:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -32)
@@ -59,13 +46,11 @@ local function CreateReminderFrame()
     local dc = E.Colors.divider
     div:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
 
-    -- Item icon
     local icon = f:CreateTexture(nil, "ARTWORK")
     icon:SetSize(48, 48)
     icon:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -44)
     icon:SetTexture(TROVE_ICON)
 
-    -- Body text (right of icon)
     local body = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     body:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, 0)
     body:SetPoint("RIGHT", f, "RIGHT", -16, 0)
@@ -80,7 +65,6 @@ local function CreateReminderFrame()
     )
     body:SetWordWrap(true)
 
-    -- "Don't show this reminder again" checkbox (bottom-left)
     local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
     cb:SetSize(20, 20)
     cb:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 12)
@@ -102,30 +86,22 @@ local function CreateReminderFrame()
     end)
     f.dontShowCB = cb
 
-    -- Dismiss button (bottom-right)
     local dismissBtn = E:CreateButton(f, 80, 22, "Dismiss")
     dismissBtn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
     dismissBtn:SetScript("OnClick", function() f:Hide() end)
 
-    -- ESC closes the frame
-    tinsert(UISpecialFrames, "EverythingDelvesTrovehunterReminder")
+    tinsert(UISpecialFrames, "EverythingDelvesTrovehunterReminder") -- ESC closes the frame
 
     f:Hide()
     return f
 end
 
---- Show the trovehunter reminder popup unconditionally. Used by the
---- Maybe* gate below and available for manual testing.
 function E:ShowTrovehunterReminder()
     if not frame then frame = CreateReminderFrame() end
     frame.dontShowCB:SetChecked(false)
     frame:Show()
 end
 
---- Evaluate every condition and show the popup only if all pass.
---- Called after delve tier is captured. Idempotent within a single
---- run via runState.trovehunterPopupShown (also persisted to
---- E.db.activeRun so /reload mid-delve does not re-trigger it).
 function E:MaybeShowTrovehunterReminder()
     if not E.db or E.db.showTrovehunterReminder == false then return end
     local rs = E.delveRunState
@@ -133,26 +109,15 @@ function E:MaybeShowTrovehunterReminder()
     if rs.trovehunterPopupShown then return end
     if not rs.wasBountiful then return end
 
-    -- Late-firing guard: if more than 60 seconds have elapsed since this
-    -- world-entry, the player is already deep into the run and the reminder
-    -- is no longer useful (would just feel like a popup-on-exit bug).
-    -- Skip it. The popup is meant to fire early.
-    --
-    -- Keyed off popupWindowStart (reset on every entry, including /reload
-    -- resume) rather than startTime (the ORIGINAL run start). GetTime() is
-    -- continuous across /reload, so using startTime would make any reload
-    -- more than 60s into a run trip this guard instantly and permanently
-    -- suppress the reminder. popupWindowStart restarts the window from the
-    -- moment we re-enter the world.
+    -- Skip if >60s into the run (reminder is meant to fire early). Key off
+    -- popupWindowStart (reset per world-entry), not startTime: GetTime() is
+    -- continuous across /reload, so startTime would trip this on any reload.
     local windowStart = rs.popupWindowStart or rs.startTime
     if windowStart and windowStart > 0
             and (GetTime() - windowStart) > 60 then
         return
     end
 
-    -- Sum across every known map item ID (see E:GetTrovehunterMapCount).
-    -- The old single-ID check missed players carrying the other variant,
-    -- so the reminder never fired for them even with a map in their bag.
     local count = E:GetTrovehunterMapCount()
     if not count or count <= 0 then return end
 
@@ -160,15 +125,9 @@ function E:MaybeShowTrovehunterReminder()
         and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
     if aura then return end
 
-    -- All conditions met. Defer the actual Show by 2 seconds so the
-    -- popup doesn't race the loading-screen-clear / UI-settle period
-    -- on delve entry. Previously the Show was called fast enough that
-    -- the frame appeared (and immediately got covered) before the
-    -- player's UI was visible, leading to "popup never appears even
-    -- though popupShown=true is set" reports. The deferred design
-    -- also delays setting popupShown until the Show actually fires,
-    -- so a /reload mid-deferral doesn't strand the run with a stuck
-    -- flag and no popup.
+    -- Defer Show by 2s so it doesn't race the loading-screen-clear / UI-settle
+    -- on entry (else the frame shows then gets covered). popupShown is set only
+    -- when Show actually fires, so a /reload mid-deferral doesn't strand the run.
     if E._trovehunterDeferPending then return end
     E._trovehunterDeferPending = true
 
@@ -177,10 +136,8 @@ function E:MaybeShowTrovehunterReminder()
         local rs2 = E.delveRunState
         if not rs2 or not rs2.inDelve then return end
         if rs2.trovehunterPopupShown then return end
-        -- IsInInstance() returns (isInstance, instanceType) — only two
-        -- values. The 3rd-return read here was always nil, collapsing this
-        -- guard to "diffID == 208" only and silently suppressing the popup
-        -- in any scenario-typed delve that isn't difficulty 208.
+        -- IsInInstance() returns only (isInstance, instanceType); read diffID
+        -- from GetInstanceInfo() instead, or non-208 scenario delves get suppressed.
         local _, instanceType = IsInInstance()
         local _, _, diffID = GetInstanceInfo()
         if instanceType ~= "scenario" and diffID ~= 208 then return end

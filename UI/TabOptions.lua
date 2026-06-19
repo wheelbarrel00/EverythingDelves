@@ -1,37 +1,13 @@
-------------------------------------------------------------------------
--- UI/TabOptions.lua — Tab 5: Options
--- All user-configurable settings. Writes to EverythingDelvesDB (the
--- SavedVariables table aliased as E.db).
---
--- Display-only addon — no gameplay automation. Settings here control
--- the addon's own UI behaviour.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 
-------------------------------------------------------------------------
--- Widget factories (local to this file)
-------------------------------------------------------------------------
-
---- Create a themed checkbox with a label.
---- @param parent     Frame
---- @param x          number  X offset from parent TOPLEFT
---- @param y          number  Y offset from parent TOPLEFT
---- @param labelText  string
---- @param dbKey      string?  Key in E.db (nil when overridden manually)
---- @param onChange   function? Optional callback(newValue)
---- @return CheckButton
 local function CreateCheckbox(parent, x, y, labelText, dbKey, onChange)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     cb:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     cb:SetSize(24, 24)
     cb:SetChecked(E.db[dbKey] == true)
 
-    -- Label sits to the right of the check box
     local label = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
     label:SetFont(label:GetFont(), 11)
@@ -47,20 +23,7 @@ local function CreateCheckbox(parent, x, y, labelText, dbKey, onChange)
     return cb
 end
 
---- Create a themed slider with min/max/step and a value readout.
---- @param parent    Frame
---- @param x         number
---- @param y         number
---- @param labelText string
---- @param minVal    number
---- @param maxVal    number
---- @param step      number
---- @param dbKey     string
---- @param formatter function?  Optional display formatter (value)->string
---- @param onChange  function?  Optional callback(value)
---- @return Slider
 local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey, formatter, onChange)
-    -- Label
     local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     label:SetFont(label:GetFont(), 11)
@@ -74,11 +37,9 @@ local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey
     slider:SetObeyStepOnDrag(true)
     slider:SetValue(E.db[dbKey] or minVal)
 
-    -- Hide the default min/max labels — they're ugly
     if slider.Low  then slider.Low:SetText("")  end
     if slider.High then slider.High:SetText("") end
 
-    -- Value readout
     local valFS = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     valFS:SetPoint("LEFT", slider, "RIGHT", 8, 0)
     valFS:SetFont(valFS:GetFont(), 11)
@@ -94,7 +55,7 @@ local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey
     UpdateText(slider:GetValue())
 
     slider:SetScript("OnValueChanged", function(self, val)
-        val = math_floor(val / step + 0.5) * step  -- snap to step
+        val = math_floor(val / step + 0.5) * step
         E.db[dbKey] = val
         UpdateText(val)
         if onChange then onChange(val) end
@@ -103,15 +64,6 @@ local function CreateSlider(parent, x, y, labelText, minVal, maxVal, step, dbKey
     return slider
 end
 
---- Create a radio-button-style selector from a list of options.
---- @param parent    Frame
---- @param x         number
---- @param y         number
---- @param labelText string
---- @param dbKey     string
---- @param options   table   { { value=string, label=string }, ... }
---- @param onChange  function? Optional callback(value)
---- @return table    Array of CheckButtons (so caller can position them)
 local function CreateRadioGroup(parent, x, y, labelText, dbKey, options, onChange)
     local header = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
@@ -133,7 +85,6 @@ local function CreateRadioGroup(parent, x, y, labelText, dbKey, options, onChang
 
         cb:SetScript("OnClick", function()
             E.db[dbKey] = opt.value
-            -- Uncheck siblings
             for _, b in ipairs(buttons) do
                 b:SetChecked(E.db[dbKey] == b.optValue)
             end
@@ -146,13 +97,9 @@ local function CreateRadioGroup(parent, x, y, labelText, dbKey, options, onChang
     return buttons
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTabOptionsContent")
 
-    -- Scrollable container so options aren't cut off
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 4)
@@ -162,12 +109,10 @@ E:RegisterModule(function()
     scrollChild:SetWidth(scrollFrame:GetWidth() or 580)
     scrollFrame:SetScrollChild(scrollChild)
 
-    -- Ensure scrollChild width tracks the scrollFrame on resize
     scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
         scrollChild:SetWidth(w)
     end)
 
-    -- Custom themed scrollbar (matches Delve Locations, Tier Guide, Shard Tracker)
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
     tabScrollBar:SetWidth(14)
     tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
@@ -210,22 +155,18 @@ E:RegisterModule(function()
         end
     end
 
-    -- All content is parented to scrollChild instead of frame
     local content = scrollChild
 
     local SECT_X = 8
     local Y = -6
 
-    --------------------------------------------------------------------
-    -- SECTION HEADER: General
-    --------------------------------------------------------------------
+    -- General
     local genHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     genHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     genHeader:SetFont(genHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(genHeader, "General")
     Y = Y - 20
 
-    -- Default Tab
     local defaultTabSlider = CreateSlider(
         content, SECT_X, Y,
         "Default Tab (opens to this tab)",
@@ -235,7 +176,7 @@ E:RegisterModule(function()
     )
     Y = Y - 50
 
-    -- UI Scale  (integer 80-150 to avoid float step issues)
+    -- Scale stored as integer 80-150 to avoid float step issues
     local scaleLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     scaleLabel:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     scaleLabel:SetFont(scaleLabel:GetFont(), 11)
@@ -256,7 +197,6 @@ E:RegisterModule(function()
     _G[scaleSlider:GetName() .. "Text"]:SetText("")
     _G[scaleSlider:GetName() .. "Text"]:Hide()
 
-    -- EditBox for precise typed input
     local scaleInput = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
     scaleInput:SetPoint("LEFT", scaleSlider, "RIGHT", 12, 0)
     scaleInput:SetSize(50, 22)
@@ -270,7 +210,6 @@ E:RegisterModule(function()
     pctLabel:SetFont(pctLabel:GetFont(), 11)
     pctLabel:SetText(E.CC.body .. "%" .. E.CC.close)
 
-    -- Reset button
     local resetBtn = E:CreateButton(content, 50, 22, "Reset")
     resetBtn:SetPoint("LEFT", pctLabel, "RIGHT", 8, 0)
     resetBtn:SetScript("OnClick", function()
@@ -282,11 +221,9 @@ E:RegisterModule(function()
         if E.MainFrame then E.MainFrame:SetScale(scale) end
     end)
 
-    -- Apply scale from the input box
     local function ApplyFromInput()
         local raw = scaleInput:GetNumber()
         local pct = math_max(80, math_min(150, raw))
-        -- Snap to nearest step of 5
         pct = math_floor(pct / 5 + 0.5) * 5
         local scale = pct / 100
         E.db.uiScale = scale
@@ -312,13 +249,12 @@ E:RegisterModule(function()
     end)
     Y = Y - 50
 
-    -- Show Minimap / Broker Button
     local minimapCB = CreateCheckbox(
         content, SECT_X, Y,
         "Show Minimap / Broker Button",
-        nil  -- handled manually below
+        nil
     )
-    -- Override: minimap button lives in a sub-table
+    -- minimapButton.show lives in a sub-table, handled manually
     minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
     minimapCB:SetScript("OnClick", function(self)
         local checked = self:GetChecked()
@@ -326,10 +262,7 @@ E:RegisterModule(function()
     end)
     Y = Y - 28
 
-    -- Show Trovehunter's Bounty Reminder on Delve Entry
-    -- Anchored to the right side of the General section, vertically
-    -- inline with the Default Tab slider readout. Pulled out of the
-    -- vertical Y flow so it does not consume a row.
+    -- Anchored beside the Default Tab slider so it doesn't consume a Y row
     local troveCB = CreateCheckbox(
         content, SECT_X, Y,
         "Show Trovehunter's Bounty reminder on Delve entry",
@@ -337,8 +270,6 @@ E:RegisterModule(function()
     )
     troveCB:ClearAllPoints()
     troveCB:SetPoint("LEFT", defaultTabSlider, "RIGHT", 200, 0)
-    -- Insert the trove icon between the checkbox and its label so
-    -- players who don't recognise the name can identify the item.
     local troveIcon = content:CreateTexture(nil, "OVERLAY")
     troveIcon:SetSize(20, 20)
     troveIcon:SetPoint("LEFT", troveCB, "RIGHT", 4, 0)
@@ -346,28 +277,22 @@ E:RegisterModule(function()
     troveCB.labelFS:ClearAllPoints()
     troveCB.labelFS:SetPoint("LEFT", troveIcon, "RIGHT", 6, 0)
 
-    Y = Y - 28  -- breathing room above section divider
+    Y = Y - 28
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local div1 = content:CreateTexture(nil, "ARTWORK")
     div1:SetHeight(1)
     div1:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div1:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
-    Y = Y - 34  -- breathing room below section divider
+    Y = Y - 34
 
-    --------------------------------------------------------------------
-    -- SECTION HEADER: Display
-    --------------------------------------------------------------------
+    -- Display
     local dispHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dispHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     dispHeader:SetFont(dispHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(dispHeader, "Display")
     Y = Y - 20
 
-    -- Accent Color (radio group)
     local accentOptions = {
         { value = "gold",     label = "|cFFFFD100Gold|r (default)" },
         { value = "red",      label = "|cFFFF2222Red|r" },
@@ -381,7 +306,6 @@ E:RegisterModule(function()
         "accentColor",
         accentOptions,
         function(value)
-            -- Live-apply accent across the entire addon
             if E.ApplyAccentColor then
                 E:ApplyAccentColor(value)
             end
@@ -390,7 +314,6 @@ E:RegisterModule(function()
     Y = Y - 20 - (#accentOptions * 24) - 4
     Y = Y - 12
 
-    -- Delve achievements on map pin tooltips (radio group)
     local achTipOptions = {
         { value = "summary", label = "Summary line — hold Shift for details (default)" },
         { value = "full",    label = "Always show full details" },
@@ -405,9 +328,6 @@ E:RegisterModule(function()
     Y = Y - 20 - (#achTipOptions * 24) - 4
     Y = Y - 8
 
-    -- Bonus Spoils tracker (off by default). The longer explanation now
-    -- lives in a hover tooltip rather than an inline wrapped paragraph,
-    -- keeping the Options list compact.
     local objCB = CreateCheckbox(
         content, SECT_X, Y,
         "Show Bonus Spoils Tracker",
@@ -430,21 +350,16 @@ E:RegisterModule(function()
     objCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
-    Y = Y - 28  -- breathing room above section divider
+    Y = Y - 28
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local div2 = content:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
     div2:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div2:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
-    Y = Y - 34  -- breathing room below section divider
+    Y = Y - 34
 
-    --------------------------------------------------------------------
-    -- SECTION HEADER: Alerts & Tracking
-    --------------------------------------------------------------------
+    -- Alerts & Tracking
     local alertHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     alertHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     alertHeader:SetFont(alertHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -452,7 +367,6 @@ E:RegisterModule(function()
     Y = Y - 20
 
 
-    -- Low Shard Warning
     local lowWarnCB = CreateCheckbox(
         content, SECT_X, Y,
         "Low Shard Warning",
@@ -460,7 +374,6 @@ E:RegisterModule(function()
     )
     Y = Y - 30
 
-    -- Low Shard Threshold slider (only meaningful when warning is on)
     local threshSlider = CreateSlider(
         content, SECT_X + 28, Y,
         "Warning Threshold",
@@ -470,7 +383,6 @@ E:RegisterModule(function()
     )
     Y = Y - 50
 
-    -- Alert: New Bountiful
     local bountAlertCB = CreateCheckbox(
         content, SECT_X, Y,
         "Chat Alert When New Bountiful Delves Rotate In",
@@ -478,7 +390,6 @@ E:RegisterModule(function()
     )
     Y = Y - 26
 
-    -- Alert: Special Assignment
     local specAlertCB = CreateCheckbox(
         content, SECT_X, Y,
         "Chat Alert for Special Assignments",
@@ -486,21 +397,16 @@ E:RegisterModule(function()
     )
     Y = Y - 30
 
-    Y = Y - 28  -- breathing room above section divider
+    Y = Y - 28
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local div3 = content:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div3:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
-    Y = Y - 34  -- breathing room below section divider
+    Y = Y - 34
 
-    --------------------------------------------------------------------
-    -- SECTION HEADER: Companion Audio
-    --------------------------------------------------------------------
+    -- Companion Audio
     local audioHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     audioHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     audioHeader:SetFont(audioHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -539,30 +445,21 @@ E:RegisterModule(function()
     muteDundunCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
-    Y = Y - 28  -- breathing room above section divider
+    Y = Y - 28
 
-    --------------------------------------------------------------------
-    -- Thin accent divider
-    --------------------------------------------------------------------
     local div4 = content:CreateTexture(nil, "ARTWORK")
     div4:SetHeight(1)
     div4:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     div4:SetPoint("RIGHT", content, "RIGHT", -8, 0)
     E:StyleAccentDivider(div4)
-    Y = Y - 34  -- breathing room below section divider
+    Y = Y - 34
 
-    --------------------------------------------------------------------
-    -- BOTTOM BAR: Reset Defaults + Version
-    --------------------------------------------------------------------
-    -- Define the confirmation popup once at module init, not on every
-    -- click, to avoid repeatedly rebuilding the table.
     StaticPopupDialogs["EVERYTHINGDELVES_RESET"] = {
         text = "Reset all Everything Delves settings to defaults?",
         button1 = "Yes",
         button2 = "Cancel",
         OnAccept = function()
             E:ResetDB()
-            -- Reload the options tab to reflect defaults
             if frame:IsShown() then
                 frame:Hide()
                 frame:Show()
@@ -575,7 +472,6 @@ E:RegisterModule(function()
         preferredIndex = 3,
     }
 
-    -- Clear Delve History confirmation popup
     StaticPopupDialogs["EVERYTHINGDELVES_CLEAR_HISTORY"] = {
         text = "Are you sure you want to clear all Delve History?\n\n"
             .. "This will permanently erase all lifetime stats, run "
@@ -611,7 +507,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Clear Delve History button (sits to the right of Reset All)
     local clearHistBtn = E:CreateButton(content, 150, 24, "Clear Delve History")
     clearHistBtn:SetPoint("LEFT", resetBtn, "RIGHT", 10, 0)
     clearHistBtn:SetScript("OnClick", function()
@@ -633,45 +528,33 @@ E:RegisterModule(function()
     end)
     Y = Y - 34
 
-    -- Set the scroll child height to the total content height
     scrollChild:SetHeight(math.abs(Y) + 10)
     UpdateScrollRange()
 
-    --------------------------------------------------------------------
-    -- OnShow: sync all widgets with current E.db values
-    -- (handles the case where /ed reset was used externally)
-    --------------------------------------------------------------------
+    -- Re-sync widgets with E.db on show, in case /ed reset was used externally
     frame:SetScript("OnShow", function()
-        -- Reset scroll position and sync the range with current content
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)
         UpdateScrollRange()
 
-        -- General
         defaultTabSlider:SetValue(E.db.defaultTab or 1)
         scaleSlider:SetValue((E.db.uiScale or 1.0) * 100)
         minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
         troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
 
-        -- Display
         for _, cb in ipairs(accentRadios) do
             cb:SetChecked(E.db.accentColor == cb.optValue)
         end
 
-        -- Alerts
         lowWarnCB:SetChecked(E.db.lowShardWarning)
         threshSlider:SetValue(E.db.lowShardThreshold or 100)
         bountAlertCB:SetChecked(E.db.alertNewBountiful)
         specAlertCB:SetChecked(E.db.alertSpecialAssignment)
 
-        -- Companion Audio
         muteValeeraCB:SetChecked(E.db.muteValeera == true)
         muteBubblesCB:SetChecked(E.db.muteValeeraBubbles == true)
         muteDundunCB:SetChecked(E.db.muteDundun == true)
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(8, frame)
 end)

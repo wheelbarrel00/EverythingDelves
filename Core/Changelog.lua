@@ -1,18 +1,16 @@
-------------------------------------------------------------------------
--- Core/Changelog.lua - in-addon changelog shown on the About tab.
---
--- Keep the most recent ~10 releases here, condensed; older versions live
--- on CurseForge (linked from the About tab). This is a SECOND home for the
--- changelog (CHANGELOG.md is the canonical repo file), so add a new entry
--- here whenever CHANGELOG.md gets one - it's part of the release routine.
---
--- Newest first. Each entry: { version, date, sections = { { head, items } } }.
--- `head` is a category ("New", "Fixed", "Improved"); `items` are terse
--- one-line bullets (full prose lives in CHANGELOG.md).
-------------------------------------------------------------------------
+-- Second home for the changelog (CHANGELOG.md is canonical); keep in sync on release.
 local E = EverythingDelves
 
 E.Changelog = {
+    {
+        version = "1.17.1", date = "2026-06-18",
+        sections = {
+            { head = "Changed", items = {
+                "Some code clean up.",
+                ".toc bump.",
+            }},
+        },
+    },
     {
         version = "1.17.0", date = "2026-06-17",
         sections = {

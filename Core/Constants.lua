@@ -1,44 +1,25 @@
-------------------------------------------------------------------------
--- Core/Constants.lua
--- Static data: colors, tier tables, shard sources, difficulty ranges
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- RGBA color tables (0-1 floats) for SetBackdropColor / SetTextColor
-------------------------------------------------------------------------
 E.Colors = {
-    -- Frame chrome
-    background  = { r = 0.05, g = 0.05, b = 0.05, a = 0.95 },  -- #0D0D0D
-    border      = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },  -- deep red
+    background  = { r = 0.05, g = 0.05, b = 0.05, a = 0.95 },
+    border      = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
     divider     = { r = 0.55, g = 0.00, b = 0.00, a = 0.80 },
 
-    -- Tabs
-    tabActive   = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },  -- #8B0000
+    tabActive   = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
     tabInactive = { r = 0.15, g = 0.15, b = 0.15, a = 1.00 },
 
-    -- Text
-    header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },  -- #FF2222
+    header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },
 
-    -- Buttons (HARDCODED — not affected by accent color profile).
-    -- bg #6D0501, hover #8A0601 (slightly lighter for OnEnter feedback).
+    -- Intentionally hardcoded, not themed by accent color.
     buttonBg    = { r = 0.427, g = 0.020, b = 0.004, a = 1.00 },
     buttonHover = { r = 0.541, g = 0.024, b = 0.004, a = 1.00 },
 
-    -- Permanent grey divider line color (#4A4A4A). Used for column-
-    -- header separators that should NOT change with accent color.
+    -- Intentionally not themed by accent color.
     greyLine    = { r = 0.290, g = 0.290, b = 0.290, a = 1.00 },
 }
 
--- Unified header font size used by all section headers via
--- StyleAccentHeader. Section headers across every tab share this size
--- so visual hierarchy stays consistent.
 E.HEADER_FONT_SIZE = 20
 
-------------------------------------------------------------------------
--- WoW color escape codes for inline string formatting
--- Usage: E.CC.gold .. "123" .. E.CC.close
-------------------------------------------------------------------------
 E.CC = {
     header = "|cFFFF2222",
     body   = "|cFFE0E0E0",
@@ -49,13 +30,11 @@ E.CC = {
     red    = "|cFFFF3333",
     purple = "|cFFB280FF",
     white  = "|cFFFFFFFF",
-    btnText = "|cFFEBB706",  -- hardcoded button label colour (#EBB706)
+    btnText = "|cFFEBB706",
     close  = "|r",
 }
 
-------------------------------------------------------------------------
--- Tab definitions (order matters — matches button layout)
-------------------------------------------------------------------------
+-- Order matters: matches the tab button layout.
 E.TAB_NAMES = {
     "Delve Locations",
     "Current Bountiful Delves",
@@ -70,11 +49,7 @@ E.TAB_NAMES = {
 }
 E.NUM_TABS = #E.TAB_NAMES
 
-------------------------------------------------------------------------
--- Tier data: index == tier number (1–11)
--- Values are Midnight Season 1 iLvl references.
--- These are static for S1; update if a future patch changes reward scaling.
-------------------------------------------------------------------------
+-- index == tier number (1-11); Midnight Season 1 iLvl references, static for S1.
 E.TierData = {
     { tier =  1, recGear = 170, bountifulLoot = 220, greatVault = 233 },
     { tier =  2, recGear = 187, bountifulLoot = 224, greatVault = 237 },
@@ -89,13 +64,6 @@ E.TierData = {
     { tier = 11, recGear = 265, bountifulLoot = 250, greatVault = 259 },
 }
 
-------------------------------------------------------------------------
--- Tier → color mapping
--- T1–T4 = green (entry), T5–T8 = yellow (mid), T9–T11 = red (hard)
--- (Ranges used directly in GetTierColor/GetTierCC below)
-------------------------------------------------------------------------
-
---- Return the RGBA color table for a given tier number.
 function E:GetTierColor(tier)
     if tier <= 4 then
         return self.Colors.green
@@ -106,7 +74,6 @@ function E:GetTierColor(tier)
     end
 end
 
---- Return the CC escape code for a given tier number.
 function E:GetTierCC(tier)
     if tier <= 4 then
         return self.CC.green
@@ -117,36 +84,19 @@ function E:GetTierCC(tier)
     end
 end
 
-------------------------------------------------------------------------
--- Coffer Key Shard sources
--- Each entry describes a weekly shard income stream.
--- `trackable` = true means we can query completion via API.
-------------------------------------------------------------------------
+-- trackable = true means completion is queryable via the quest API.
 E.ShardSources = {
     {
-        -- "Legends of the Haranir" weekly world event (Harandar zone): the
-        -- weekly "Lost Legends" relic scenario grants 100 shards, ONCE per
-        -- week (weeklyMax=1) - NOT 7. The old "7" mistook the 7 seasonal
-        -- Hara'ti relics for a weekly count, producing a bogus "700" that
-        -- exceeds the 600/wk cap. questLine 6015 IS those 7 relics, so the
-        -- Status column reads SEASONAL relic progress (X/7) - cumulative,
-        -- does not reset weekly.
+        -- weeklyMax=1 (100 shards once/wk), NOT 7: the 7 is the seasonal
+        -- Hara'ti relic count (questLine 6015), which would bust the 600/wk cap.
         name         = "Legends of the Haranir",
         shardsEach   = 100,
         weeklyMax    = 1,
         trackable    = true,
-        questLineID  = 6015,  -- C_QuestLine.GetQuestLineQuests(6015) = 7 relics
+        questLineID  = 6015,
     },
     {
-        -- Saltheril's Soiree: favors at the Soiree give ~30 shards each
-        -- (~3/wk = ~90 total). The shard-granting favor quests are per-
-        -- faction and aren't cleanly indexed, so we track the WEEKLY META
-        -- instead: "Midnight: Saltheril's Soiree" (93889), completed by
-        -- doing those favors (analogous to "Midnight: Delves" 93909).
-        -- 91966 is the DAILY activity (resets daily), not a weekly source,
-        -- so it is NOT tracked here. Status reflects the weekly meta
-        -- (0/1 -> done); the "3x" cap is the favor estimate. Confirm 93889
-        -- resets on the weekly reset in-game.
+        -- Track the weekly meta 93889, not the daily activity 91966.
         name        = "Saltheril's Soiree",
         shardsEach  = 30,
         weeklyMax   = 3,
@@ -154,14 +104,12 @@ E.ShardSources = {
         questIDs    = { 93889 },
     },
     {
+        -- Repeatable with no per-source cap; bounded only by 600/wk.
         name         = "Prey Quests",
         shardsEach   = 75,
-        -- 75/hunt confirmed (all difficulties). No documented per-week
-        -- count - repeatable, bounded only by the 600/wk cap - so no
-        -- per-source cap is shown (the old "8" was just 600/75).
         weeklyMax    = nil,
         trackable    = true,
-        questLineID  = 5945,  -- C_QuestLine.GetQuestLineQuests(5945)
+        questLineID  = 5945,
     },
     {
         name        = "World Map Rares",
@@ -171,48 +119,35 @@ E.ShardSources = {
     },
     {
         name        = "World Quests",
-        shardsEach  = 50,   -- when shards are the listed reward
+        shardsEach  = 50,
         weeklyMax   = nil,
         trackable   = false,
     },
     {
         name        = "World Map Treasures",
-        shardsEach  = "11-14",   -- farming-guide range (wiki cited ~5)
+        shardsEach  = "11-14",
         weeklyMax   = nil,
         unconfirmed = true,
         trackable   = false,
     },
     {
         name        = "Abundance Events",
-        shardsEach  = 13,   -- ~13/run with the Shard of Dundun
+        shardsEach  = 13,
         weeklyMax   = nil,
         unconfirmed = true,
         trackable   = false,
     },
 }
 
-------------------------------------------------------------------------
--- Currency IDs (Midnight 12.0 Season 1)
--- Queryable via C_CurrencyInfo.GetCurrencyInfo(id)
-------------------------------------------------------------------------
 E.CurrencyIDs = {
     cofferKeyShards = 3310,
     bountifulKeys   = 3028,
     undercoins      = 2803,
 }
 
-------------------------------------------------------------------------
--- Dawncrest currency IDs (Midnight 12.0 Season 1 upgrade crests)
--- Ordered lowest -> highest tier. Seasonal cap mechanics: the cap
--- rides on info.maxQuantity and counts info.totalEarned (the
--- season-lifetime total; info.useTotalEarnedForMaxQty), with no
--- separate weekly field. Season 1 launched with +100/week escalating
--- caps, but the 2026-05-19 hotfix removed them for the rest of the
--- season — maxQuantity reads 0 (uncapped) live since then. Always
--- read the cap live; never hardcode it.
--- The display name is read live from the currency API; the label here
--- is only a fallback for undiscovered currencies.
-------------------------------------------------------------------------
+-- Always read the cap live (info.maxQuantity): a 2026-05-19 hotfix removed the
+-- weekly caps, so maxQuantity reads 0 (uncapped). Never hardcode it. label is
+-- only a fallback; the display name is read live from the currency API.
 E.Dawncrests = {
     { id = 3383, label = "Adventurer Dawncrest" },
     { id = 3341, label = "Veteran Dawncrest"    },
@@ -221,30 +156,19 @@ E.Dawncrests = {
     { id = 3347, label = "Myth Dawncrest"       },
 }
 
-------------------------------------------------------------------------
--- Key crafting & beacon costs (Midnight S1 values)
-------------------------------------------------------------------------
 E.SHARDS_PER_KEY      = 100
-------------------------------------------------------------------------
--- Item IDs for C_Item.GetItemIconByID() — used to show currency icons inline
-------------------------------------------------------------------------
+
 E.ItemIcons = {
-    cofferKey   = 224172,  -- Coffer Key (bountiful key)
-    cofferShard = 236096,  -- Coffer Key Shard
+    cofferKey   = 224172,
+    cofferShard = 236096,
 }
 
--- Cached icon texture IDs — resolved once at load to avoid per-refresh API calls
+-- Resolved once at load to avoid per-refresh API calls.
 E.CachedIcons = {
     cofferKey   = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(224172) or nil,
     cofferShard = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(236096) or nil,
 }
 
-------------------------------------------------------------------------
--- Accent color presets (selectable in Options tab)
--- Single source of truth for the entire addon's accent theme.
--- E:ApplyAccentColor(name) mutates E.Colors / E.CC in place from these
--- and walks the registered themed-widget list to repaint everything.
-------------------------------------------------------------------------
 E.AccentColors = {
     red      = { r = 0.55, g = 0.00, b = 0.00, hex = "8B0000" },
     gold     = { r = 1.00, g = 0.82, b = 0.00, hex = "FFD100" },
@@ -331,52 +255,37 @@ E.AccentPresets = {
     },
 }
 
-------------------------------------------------------------------------
--- Theme registry
--- Widgets that need to repaint on accent change call E:RegisterThemed(fn).
--- The callback receives the active preset table and is invoked once at
--- registration time and again whenever E:ApplyAccentColor() is called.
-------------------------------------------------------------------------
 E.ThemedWidgets = {}
 
---- Register a repaint callback. The function is also invoked
---- immediately so the widget picks up the current theme.
---- @param fn fun(preset: table)
+-- Invoked immediately so the widget picks up the current theme.
 function E:RegisterThemed(fn)
     if type(fn) ~= "function" then return end
     self.ThemedWidgets[#self.ThemedWidgets + 1] = fn
     fn(self:GetAccentPreset())
 end
 
---- Get the currently-selected accent preset table.
 function E:GetAccentPreset()
     local key = (self.db and self.db.accentColor) or "gold"
     return self.AccentPresets[key] or self.AccentPresets.gold
 end
 
---- Get the simple {r,g,b,hex} accent color (per the public AccentColors).
 function E:GetAccentColor()
     local key = (self.db and self.db.accentColor) or "gold"
     return self.AccentColors[key] or self.AccentColors.gold
 end
 
---- Apply an accent color theme. Mutates E.Colors and E.CC in place
---- (so any code that read them previously stays consistent) and
---- invokes every registered repaint callback.
---- @param name string|nil  "red" | "gold" | "purple" | "green" | "darkblue"
+-- Mutates E.Colors/E.CC in place so existing reads stay valid.
 function E:ApplyAccentColor(name)
     if name and self.AccentPresets[name] then
         if self.db then self.db.accentColor = name end
     end
-    -- Short-circuit if the requested color is already active. Repainting
-    -- the entire ThemedWidgets list is wasted work in that case.
+    -- Skip the full repaint if the accent is already active.
     local applied = name or (self.db and self.db.accentColor) or "gold"
     if self._lastAppliedAccent == applied then return end
     self._lastAppliedAccent = applied
 
     local p = self:GetAccentPreset()
 
-    -- Mutate live color tables in place.
     local function copy(dst, src)
         dst.r, dst.g, dst.b, dst.a = src.r, src.g, src.b, src.a
     end
@@ -384,11 +293,9 @@ function E:ApplyAccentColor(name)
     copy(self.Colors.divider,     p.divider)
     copy(self.Colors.tabActive,   p.tabActive)
     copy(self.Colors.header,      p.header)
-    -- Buttons are hardcoded (#6D0501 / #EBB706) and intentionally not
-    -- copied from the accent preset.
+    -- Buttons are intentionally hardcoded, not copied from the accent preset.
     self.CC.header = p.headerCC
 
-    -- Repaint every registered widget.
     local list = self.ThemedWidgets
     for i = 1, #list do
         list[i](p)

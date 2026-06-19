@@ -1,16 +1,7 @@
-------------------------------------------------------------------------
--- UI/TabNullaeus.lua - Tab 4: Nullaeus
--- The Nemesis Delve (Torment's Rise): overview & unlock tiers, weekly quest
--- tracker, Beacon of Hope inventory, full boss-mechanics and intermission
--- breakdown, companion/curio loadout, and reward list.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 
---- Resolve an item's icon texture from its ID. GetItemInfoInstant /
---- GetItemIconByID return immediately (no server round-trip) so this is
---- safe to call during layout.
 local function GetRewardIcon(itemID)
     if not itemID then return nil end
     if C_Item and C_Item.GetItemIconByID then
@@ -24,15 +15,9 @@ local function GetRewardIcon(itemID)
     return nil
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTabNullaeusContent")
 
-    --------------------------------------------------------------------
-    -- SCROLLABLE AREA
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0,   0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
@@ -91,10 +76,6 @@ E:RegisterModule(function()
 
     local GRID_X = 8
 
-    -- Flat wrapped body line: anchors under `anchor` at the same left edge,
-    -- stretches to the right margin, and returns itself as the next anchor.
-    -- Used by the prose sections (Overview, Companion & Loadout) so they stay
-    -- allocation-light and need no per-line pull-back math.
     local function AddBodyLine(anchor, gapY, size, text)
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, gapY)
@@ -105,9 +86,6 @@ E:RegisterModule(function()
         return fs
     end
 
-    --------------------------------------------------------------------
-    -- HEADER + QUEST STATUS
-    --------------------------------------------------------------------
     local NEMESIS_MAP   = 2405
     local NEMESIS_X     = 61.17
     local NEMESIS_Y     = 71.37
@@ -196,9 +174,6 @@ E:RegisterModule(function()
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
-    --------------------------------------------------------------------
-    -- OVERVIEW
-    --------------------------------------------------------------------
     local overviewHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     overviewHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -24)
     overviewHeader:SetFont(overviewHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -242,9 +217,6 @@ E:RegisterModule(function()
     divO:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(divO)
 
-    --------------------------------------------------------------------
-    -- BEACON OF HOPE
-    --------------------------------------------------------------------
     local BEACON_ITEM_ID = 253342
     local UNDERCOIN_ID   = 2803
     local BEACON_PRICE   = 5000
@@ -283,16 +255,11 @@ E:RegisterModule(function()
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
-    --------------------------------------------------------------------
-    -- BOSS MECHANICS
-    --------------------------------------------------------------------
     local mechHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mechHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -24)
     mechHeader:SetFont(mechHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(mechHeader, "Boss Mechanics")
 
-    -- Active during every damage phase. Nullaeus loops these three casts on a
-    -- ~20s timer, always in the same order, so the interrupt plan is fixed.
     local mechIntroFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mechIntroFS:SetPoint("TOPLEFT", mechHeader, "BOTTOMLEFT", 0, -6)
     mechIntroFS:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
@@ -348,9 +315,6 @@ E:RegisterModule(function()
     local mechAnchor = mechTipFS
     for i, m in ipairs(MECHANICS) do
         local nameLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        -- i==1 anchors to the companion tip line (base indent); i>1 anchors to
-        -- the previous description line (indented +12), so pull back -12 to keep
-        -- every name line on the same left baseline.
         nameLine:SetPoint("TOPLEFT", mechAnchor, "BOTTOMLEFT", (i == 1) and 0 or -12, (i == 1) and -10 or -14)
         nameLine:SetFont(nameLine:GetFont(), 11)
         nameLine:SetText(
@@ -374,9 +338,6 @@ E:RegisterModule(function()
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
-    --------------------------------------------------------------------
-    -- INTERMISSIONS
-    --------------------------------------------------------------------
     local phaseHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     phaseHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -24)
     phaseHeader:SetFont(phaseHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -397,8 +358,6 @@ E:RegisterModule(function()
         .. E.CC.close
     )
 
-    -- Each HP threshold triggers a ~30s immune intermission: specific adds plus
-    -- a signature hazard. `adds` render as indented bullets under each intro.
     local PHASES = {
         {
             pct   = "75%",
@@ -435,9 +394,6 @@ E:RegisterModule(function()
 
     local phaseAnchor = phaseIntroFS
     for i, ph in ipairs(PHASES) do
-        -- Percentage + intermission name. i==1 anchors to the section intro
-        -- (base indent); later rows anchor to the previous phase's last bullet
-        -- (indented +12), so pull back -12 to realign the baseline.
         local pctLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         pctLine:SetPoint("TOPLEFT", phaseAnchor, "BOTTOMLEFT", (i == 1) and 0 or -12, (i == 1) and -10 or -16)
         pctLine:SetFont(pctLine:GetFont(), 11)
@@ -458,9 +414,6 @@ E:RegisterModule(function()
             rowAnchor = introLine
         end
 
-        -- Bullets sit at a constant +12: the first steps in +12 from the pct
-        -- line (or +0 if it follows the intro, already at +12); the rest chain
-        -- at +0. That keeps the next pctLine's -12 pull-back correct.
         for _, a in ipairs(ph.adds or {}) do
             local addLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             addLine:SetPoint("TOPLEFT", rowAnchor, "BOTTOMLEFT", (rowAnchor == pctLine) and 12 or 0, -3)
@@ -479,7 +432,6 @@ E:RegisterModule(function()
         phaseAnchor = rowAnchor
     end
 
-    -- Final push + high-tier caution, pulled back to the section baseline.
     local finalLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     finalLine:SetPoint("TOPLEFT", phaseAnchor, "BOTTOMLEFT", -12, -16)
     finalLine:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
@@ -515,9 +467,6 @@ E:RegisterModule(function()
     div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div4)
 
-    --------------------------------------------------------------------
-    -- COMPANION & LOADOUT
-    --------------------------------------------------------------------
     local compHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     compHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -24)
     compHeader:SetFont(compHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -561,9 +510,6 @@ E:RegisterModule(function()
     divC:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(divC)
 
-    --------------------------------------------------------------------
-    -- REWARDS
-    --------------------------------------------------------------------
     local rewardHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rewardHeader:SetPoint("TOPLEFT", divC, "BOTTOMLEFT", 0, -24)
     rewardHeader:SetFont(rewardHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -577,9 +523,6 @@ E:RegisterModule(function()
         .. "(hover an item for its tooltip):" .. E.CC.close
     )
 
-    -- Item rewards carry a verified itemID so we can show the real game
-    -- icon and a live item tooltip. Title rewards have no item and fall
-    -- back to a coloured bullet + custom tooltip.
     local REWARDS = {
         { name = "Nullaeus Domaneye",            kind = "Cosmetic Helm", itemID = 263413, color = E.CC.purple,
           cond = "Defeat Nullaeus on either tier this season (My Shady Nemesis).", extra = "Also grants 30 Hero Dawncrests." },
@@ -601,7 +544,6 @@ E:RegisterModule(function()
         row:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
         row:EnableMouse(true)
 
-        -- Icon (item rewards) or coloured bullet (title rewards).
         if r.itemID then
             local icon = row:CreateTexture(nil, "ARTWORK")
             icon:SetSize(20, 20)
@@ -631,7 +573,6 @@ E:RegisterModule(function()
         condFS:SetJustifyH("LEFT")
         condFS:SetText(E.CC.body .. r.cond .. E.CC.close)
 
-        -- Hover: live item tooltip for items, custom tooltip for titles.
         row.itemID = r.itemID
         row.rName  = r.name
         row.rCond  = r.extra and (r.cond .. "  " .. r.extra) or r.cond
@@ -652,9 +593,6 @@ E:RegisterModule(function()
         rewardAnchor = row
     end
 
-    --------------------------------------------------------------------
-    -- REFRESH FUNCTIONS
-    --------------------------------------------------------------------
     local function RefreshNemesis()
         local completed, inProgress = false, false
         if C_QuestLog then
@@ -729,9 +667,6 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- CONTENT HEIGHT
-    --------------------------------------------------------------------
     local function UpdateContentHeight()
         local scTop   = sc:GetTop()
         local lastBot = rewardAnchor:GetBottom()
@@ -758,8 +693,5 @@ E:RegisterModule(function()
         if frame:IsShown() then RefreshBeacon() end
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(4, frame)
 end)

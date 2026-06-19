@@ -1,34 +1,15 @@
-------------------------------------------------------------------------
--- UI/TabTierGuide.lua - Tab 3: Tier Guide
--- Tier iLvl reference table, player recommendation, Valeera companion,
--- Trovehunter's Bounty, Gilded Stash, and faction renown.
---
--- Display-only: reads GetAverageItemLevel(), currency data, and quest
--- completion status. No gameplay automation.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local table_insert = table.insert
 
-------------------------------------------------------------------------
--- Local helpers
-------------------------------------------------------------------------
-
---- GetAverageItemLevel() returns two values: overall and equipped.
---- We use equipped iLvl for the recommendation since that's what
---- matters inside a delve.
+-- Equipped iLvl is what matters inside a delve, not overall.
 local function GetPlayerIlvl()
     local equipped, overall = GetAverageItemLevel()
     local ilvl = math_floor(equipped or overall or 0)
     return ilvl
 end
 
---- Determine the best tier for the player based on equipped iLvl.
---- Returns the highest tier whose recGear requirement the player meets.
 local function GetRecommendedTier(ilvl)
     local best = 1
     for _, t in ipairs(E.TierData) do
@@ -39,20 +20,9 @@ local function GetRecommendedTier(ilvl)
     return best
 end
 
-------------------------------------------------------------------------
--- Delver's Journey (season Delves track)
---
--- In Midnight the season Delves track is presented as a "Journey", but
--- under the hood it is the season Delves faction's renown:
---   * C_DelvesUI.GetDelvesFactionForSeason() -> the faction ID
---   * C_MajorFactions.GetMajorFactionRenownInfo(id) -> level + progress
---   * C_MajorFactions.GetRenownRewardsForLevel(id, lvl) -> milestone art
--- Kept self-contained here (mirrors GetJourneyProgress in the Current
--- Bountiful tab) so neither tab depends on the other's file-local.
-------------------------------------------------------------------------
-
---- Current Journey level + progress.
---- @return number level, number current, number threshold, number|nil factionID, boolean ok
+-- Delver's Journey is the season Delves faction's renown under the hood:
+-- C_DelvesUI.GetDelvesFactionForSeason() -> faction ID, then
+-- C_MajorFactions.GetMajorFactionRenownInfo / GetRenownRewardsForLevel.
 local function GetDelverJourney()
     if C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
             and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo then
@@ -60,8 +30,6 @@ local function GetDelverJourney()
         if factionID and factionID > 0 then
             local info = C_MajorFactions.GetMajorFactionRenownInfo(factionID)
             if info then
-                -- Floor the rep values: the progress bar formats them with
-                -- %d, and it keeps the "cur / threshold" text clean.
                 return info.renownLevel or 0,
                        math_floor(info.renownReputationEarned or 0),
                        math_floor(info.renownLevelThreshold or 1),
@@ -69,12 +37,10 @@ local function GetDelverJourney()
             end
         end
     end
-    -- ok=false -> RefreshJourney hides the section instead of drawing a
-    -- meaningless 0 / 1 bar (renown data isn't loaded yet).
+    -- ok=false -> RefreshJourney hides the section (renown not loaded yet).
     return 0, 0, 1, nil, false
 end
 
---- True when the player has reached the Journey's final renown level.
 local function IsJourneyMaxed(factionID)
     if factionID and C_MajorFactions and C_MajorFactions.HasMaximumRenown then
         local ok, maxed = pcall(C_MajorFactions.HasMaximumRenown, factionID)
@@ -83,8 +49,7 @@ local function IsJourneyMaxed(factionID)
     return false
 end
 
---- Highest level the Journey track defines, so we never request art for
---- levels past the end of the track. Returns nil when unknown.
+-- Highest level the track defines, so we never request art past its end.
 local function GetJourneyMaxLevel(factionID)
     if not (factionID and C_MajorFactions and C_MajorFactions.GetRenownLevels) then
         return nil
@@ -100,12 +65,8 @@ local function GetJourneyMaxLevel(factionID)
     return (maxLevel > 0) and maxLevel or nil
 end
 
---- Best-effort milestone artwork for a Journey level. The node art is the
---- level's renown reward icon (.icon fileID); fall back to the reward's
---- item / spell / mount icon when the curated fileID is absent. Fully
---- pcall-guarded: returns nil on any failure so the icon row can hide and
---- the section degrades to just the level + progress bar.
---- @return number|string|nil iconFile, string|nil rewardName
+-- Milestone art is the level's renown reward .icon; fall back to the
+-- reward's item / spell / mount icon. pcall-guarded so the row can hide.
 local function GetJourneyNodeIcon(factionID, level)
     if not (factionID and C_MajorFactions
             and C_MajorFactions.GetRenownRewardsForLevel) then
@@ -131,27 +92,15 @@ local function GetJourneyNodeIcon(factionID, level)
     return icon, r.name
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab3Content")
 
-    --------------------------------------------------------------------
-    -- TIER TABLE (top section)
-    --
-    -- Grid layout: row 0 = tier number headers,
-    --              row 1 = Recommended Gear iLvl,
-    --              row 2 = Bountiful Loot iLvl,
-    --              row 3 = Great Vault iLvl
-    --------------------------------------------------------------------
     local GRID_X       = 8
     local GRID_Y       = -6
     local COL_WIDTH    = 44
     local ROW_HEIGHT   = 20
-    local LABEL_WIDTH  = 110  -- width of the left-side row labels
+    local LABEL_WIDTH  = 110
 
-    -- Row labels
     local rowLabels = {
         { text = "Tier",           cc = E.CC.header },
         { text = "Rec. Gear iLvl", cc = E.CC.muted  },
@@ -167,14 +116,12 @@ E:RegisterModule(function()
         fs:SetText(info.cc .. info.text .. E.CC.close)
     end
 
-    -- Column data cells - one per tier (1-11)
-    local tierCells = {}  -- [tier] = { tierFS, gearFS, bountFS, vaultFS, bgTexture }
+    local tierCells = {}
 
     for _, td in ipairs(E.TierData) do
         local colX = GRID_X + LABEL_WIDTH + ((td.tier - 1) * COL_WIDTH)
         local cell = {}
 
-        -- Background highlight texture (hidden by default, shown for recommended tier)
         local bg = frame:CreateTexture(nil, "BACKGROUND")
         bg:SetPoint("TOPLEFT", frame, "TOPLEFT", colX - 2, GRID_Y + 2)
         bg:SetSize(COL_WIDTH, ROW_HEIGHT * 4)
@@ -182,7 +129,6 @@ E:RegisterModule(function()
         bg:Hide()
         cell.bg = bg
 
-        -- Row 0: Tier number
         local tierFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         tierFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y)
         tierFS:SetFont(tierFS:GetFont(), 10, "OUTLINE")
@@ -190,28 +136,24 @@ E:RegisterModule(function()
         tierFS:SetText(tc .. "T" .. td.tier .. E.CC.close)
         cell.tierFS = tierFS
 
-        -- Row 1: Rec Gear
         local gearFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         gearFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT)
         gearFS:SetFont(gearFS:GetFont(), 10)
         gearFS:SetText(E.CC.body .. td.recGear .. E.CC.close)
         cell.gearFS = gearFS
 
-        -- Row 2: Bountiful Loot
         local bountFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         bountFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 2)
         bountFS:SetFont(bountFS:GetFont(), 10)
         bountFS:SetText(E.CC.gold .. td.bountifulLoot .. E.CC.close)
         cell.bountFS = bountFS
 
-        -- Row 3: Great Vault
         local vaultFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         vaultFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 3)
         vaultFS:SetFont(vaultFS:GetFont(), 10)
         vaultFS:SetText(E.CC.purple .. td.greatVault .. E.CC.close)
         cell.vaultFS = vaultFS
 
-        -- Tooltip on the tier number
         local hitBox = CreateFrame("Frame", nil, frame)
         hitBox:SetPoint("TOPLEFT", frame, "TOPLEFT", colX - 2, GRID_Y + 2)
         hitBox:SetSize(COL_WIDTH, ROW_HEIGHT)
@@ -235,7 +177,6 @@ E:RegisterModule(function()
         tierCells[td.tier] = cell
     end
 
-    -- Re-tint the recommended-tier highlight backgrounds when accent changes.
     E:RegisterThemed(function(p)
         for _, cell in pairs(tierCells) do
             if cell.bg and cell.bg.SetColorTexture then
@@ -245,9 +186,6 @@ E:RegisterModule(function()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- RECOMMENDATION BOX
-    --------------------------------------------------------------------
     local REC_Y = GRID_Y - (ROW_HEIGHT * 4) - 14
 
     local recBox = CreateFrame("Frame", nil, frame, "BackdropTemplate")
@@ -272,7 +210,6 @@ E:RegisterModule(function()
     recLabel:SetPoint("TOPLEFT", ilvlLabel, "BOTTOMLEFT", 0, -3)
     recLabel:SetFont(recLabel:GetFont(), 11)
 
-    --- Refresh the recommendation text and highlight the correct tier column.
     local function RefreshRecommendation()
         local ilvl = GetPlayerIlvl()
         local recTier = GetRecommendedTier(ilvl)
@@ -287,7 +224,6 @@ E:RegisterModule(function()
             .. E.CC.body .. " - running this tier gives you the best gear upgrade chance" .. E.CC.close
         )
 
-        -- Highlight only the recommended tier column
         for tier, cell in pairs(tierCells) do
             if tier == recTier then
                 cell.bg:Show()
@@ -297,9 +233,6 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- SCROLLABLE AREA
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", recBox, "BOTTOMLEFT", -4, -10)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 4)
@@ -312,13 +245,9 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    -- Initial height is a safe oversize; UpdateContentHeight() recomputes
-    -- the exact content height after layout (see OnShow below). This
-    -- prevents the faction renown list from being clipped when the
-    -- scroll child's fixed height is smaller than the actual content.
+    -- Safe oversize; UpdateContentHeight() recomputes the exact height after layout.
     sc:SetHeight(1200)
 
-    -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
     tabScrollBar:SetWidth(14)
     tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
@@ -362,10 +291,6 @@ E:RegisterModule(function()
     end
 
 
-    --------------------------------------------------------------------
-    -- GREAT VAULT PROGRESS
-    -- Shows Delves / Dungeons / Raids progress toward weekly vault
-    --------------------------------------------------------------------
     local gvHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     gvHeader:SetFont(gvHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -376,12 +301,8 @@ E:RegisterModule(function()
     gvFallbackFS:SetFont(gvFallbackFS:GetFont(), 10)
     gvFallbackFS:Hide()
 
-    -- Activity type ->display config
-    -- Enum.WeeklyRewardChestThresholdType: Activities = Mythic+/Heroic+ dungeons,
-    -- World = Delves + world content. Rated PvP was removed from the Great
-    -- Vault in The War Within (World Content replaced the old PvP slot), so
-    -- C_WeeklyRewards.GetActivities never returns a RankedPvP row in Midnight
-    -- — a PvP bar here could only ever show 0/3, so it is not displayed.
+    -- No PvP row: World Content replaced the Great Vault PvP slot in TWW,
+    -- so C_WeeklyRewards.GetActivities never returns a RankedPvP row.
     local GV_ROWS = {
         { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Mythic+ Dungeons",       max = 8 },
         { type = Enum.WeeklyRewardChestThresholdType.World,      label = "Delves / World Content", max = 8 },
@@ -408,7 +329,6 @@ E:RegisterModule(function()
     gvNoteFS:SetFont(gvNoteFS:GetFont(), 9)
     gvNoteFS:SetText(E.CC.muted .. "Complete activities to unlock Great Vault reward slots on Tuesday" .. E.CC.close)
 
-    -- Divider after Great Vault
     local gvDiv = sc:CreateTexture(nil, "ARTWORK")
     gvDiv:SetHeight(1)
     gvDiv:SetPoint("TOPLEFT", gvNoteFS, "BOTTOMLEFT", 0, -32)
@@ -435,7 +355,6 @@ E:RegisterModule(function()
         gvFallbackFS:Hide()
         gvNoteFS:Show()
 
-        -- Aggregate progress per threshold type
         local progress = {}
         for _, act in ipairs(activities) do
             if not progress[act.type] then
@@ -452,9 +371,6 @@ E:RegisterModule(function()
                 if data then
                     local current = math_min(data.completed, data.total)
                     bar:SetProgress(current, data.total)
-                    -- Always use the accent colour, regardless of whether
-                    -- the bar is full. This keeps the Dungeon / Delves bars
-                    -- consistent with the rest of the UI.
                     local p = E:GetAccentPreset()
                     bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
                                              p.progressFill.b, p.progressFill.a)
@@ -466,14 +382,7 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- DELVER'S JOURNEY
-    -- The season Delves track ("Journey"): the Journey level, the
-    -- current-level progress bar, and a best-effort row of milestone
-    -- reward icons (the node artwork from the in-game Journeys panel).
-    -- Sits directly under Great Vault, above the Valeera companion row.
-    --------------------------------------------------------------------
-    local DJ_NODE_POOL = 12    -- max milestone icons laid out (one per level)
+    local DJ_NODE_POOL = 12
     local DJ_NODE_SIZE = 36
 
     local djHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -488,7 +397,6 @@ E:RegisterModule(function()
     end)
     djHeader:SetScript("OnLeave", function() E:HideTooltip() end)
 
-    -- Level / progress line (doubles as the "unavailable" fallback line)
     local djLevelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     djLevelFS:SetPoint("TOPLEFT", djHeader, "BOTTOMLEFT", 0, -6)
     djLevelFS:SetFont(djLevelFS:GetFont(), 12)
@@ -497,8 +405,7 @@ E:RegisterModule(function()
     djBar:SetPoint("TOPLEFT", djLevelFS, "BOTTOMLEFT", 0, -4)
     djBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 
-    -- Milestone node row. Fixed height so the divider below keeps a stable
-    -- position whether or not the icons resolve (graceful degrade).
+    -- Fixed height so the divider below holds position whether icons resolve or not.
     local djIconRow = CreateFrame("Frame", nil, sc)
     djIconRow:SetHeight(DJ_NODE_SIZE + 16)
     djIconRow:SetPoint("TOPLEFT", djBar, "BOTTOMLEFT", 0, -10)
@@ -506,7 +413,6 @@ E:RegisterModule(function()
 
     local djNodes = {}
     for i = 1, DJ_NODE_POOL do
-        -- Card: dark backdrop + border so each icon reads as a node.
         local card = CreateFrame("Frame", nil, djIconRow, "BackdropTemplate")
         card:SetSize(DJ_NODE_SIZE + 4, DJ_NODE_SIZE + 4)
         if i == 1 then
@@ -526,7 +432,7 @@ E:RegisterModule(function()
         local tex = card:CreateTexture(nil, "ARTWORK")
         tex:SetPoint("CENTER")
         tex:SetSize(DJ_NODE_SIZE - 2, DJ_NODE_SIZE - 2)
-        tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)  -- trim the default icon border
+        tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
         local lvlFS = djIconRow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         lvlFS:SetPoint("TOP", card, "BOTTOM", 0, -1)
@@ -535,8 +441,6 @@ E:RegisterModule(function()
         djNodes[i] = { card = card, tex = tex, lvlFS = lvlFS }
     end
 
-    -- Trailing divider, anchored to the fixed-height icon row so the
-    -- Valeera row below never shifts based on icon availability.
     local djDiv = sc:CreateTexture(nil, "ARTWORK")
     djDiv:SetHeight(1)
     djDiv:SetPoint("TOPLEFT", djIconRow, "BOTTOMLEFT", 0, -10)
@@ -565,8 +469,7 @@ E:RegisterModule(function()
                 E.CC.gold .. "Level " .. level .. E.CC.close
                 .. E.CC.muted .. "   " .. cur .. " / " .. threshold .. E.CC.close)
         end
-        -- At max renown the API reports renownReputationEarned = 0, so
-        -- fill the bar to match the "Complete" state instead of showing 0%.
+        -- At max renown renownReputationEarned = 0, so force the bar full.
         if maxed then
             djBar:SetProgress(threshold, threshold)
         else
@@ -574,9 +477,7 @@ E:RegisterModule(function()
         end
         djBar:Show()
 
-        -- Show the whole journey: every level from 1 to the end of the
-        -- track. If a future track is ever longer than the node pool, fall
-        -- back to a trailing window so the most recent levels still show.
+        -- Show every level 1..end; if the track outgrows the pool, window to the most recent.
         local maxLevel  = GetJourneyMaxLevel(factionID)
         local topLevel  = maxLevel or (maxed and level) or (level + 1)
         if topLevel < 1 then topLevel = 1 end
@@ -597,9 +498,9 @@ E:RegisterModule(function()
                 local earned    = nodeLevel <= level
                 local isCurrent = nodeLevel == level
                 node.tex:SetTexture(icon)
-                node.tex:SetDesaturated(not earned)  -- dim not-yet-earned levels
+                node.tex:SetDesaturated(not earned)
                 if isCurrent then
-                    node.card:SetBackdropBorderColor(1, 0.84, 0, 1)      -- gold
+                    node.card:SetBackdropBorderColor(1, 0.84, 0, 1)
                 else
                     node.card:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
                 end
@@ -646,7 +547,6 @@ E:RegisterModule(function()
     valeeraBtn:SetPoint("LEFT", valeeraIcon, "RIGHT", 8, 0)
 
     valeeraBtn:SetScript("OnClick", function()
-        -- Load the Blizzard companion config addon if not already loaded
         if not C_AddOns.IsAddOnLoaded("Blizzard_DelvesCompanionConfiguration") then
             C_AddOns.LoadAddOn("Blizzard_DelvesCompanionConfiguration")
         end
@@ -670,9 +570,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Companion level + XP, inline to the right of the button. Data via
-    -- E:GetCompanionData() (Core/Utils.lua) — expansion-agnostic
-    -- friendship-faction scan, so this needs no per-expansion edits.
     local compLevelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     compLevelFS:SetPoint("TOPLEFT", valeeraBtn, "TOPRIGHT", 16, -4)
     compLevelFS:SetFont(compLevelFS:GetFont(), 11)
@@ -705,36 +602,22 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
     div2:SetPoint("TOPLEFT", valeeraRow, "BOTTOMLEFT", 0, -8)
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
-    --------------------------------------------------------------------
-    -- TROVEHUNTER'S BOUNTY
-    -- Weekly quest 86371 tracks if player has looted one this week.
-    -- Map item 252415 / item ID 265714, icon 1064187, aura 1254631.
-    -- Check bag via C_Item.GetItemCount(252415)
-    -- Check active aura via C_UnitAuras.GetPlayerAuraBySpellID(1254631)
-    --------------------------------------------------------------------
-
     local troveHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     troveHeader:SetFont(troveHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(troveHeader, "Trovehunter's Bounty")
 
-    local TROVE_QUEST_ID = 86371   -- weekly loot check quest
-    local TROVE_USED_ID  = 92887   -- bounty consumed quest
-    -- Bag count comes from E:GetTrovehunterMapCount() (single source of
-    -- truth for known map item IDs); see Core/Utils.lua.
+    local TROVE_QUEST_ID = 86371   -- weekly loot-check quest
+    local TROVE_USED_ID  = 92887   -- bounty-consumed quest
     local TROVE_ICON     = 1064187 -- texture ID
     local TROVE_AURA     = 1254631 -- buff spell ID
 
-    -- Trovehunter icon
     local troveIcon = sc:CreateTexture(nil, "ARTWORK")
     troveIcon:SetPoint("TOPLEFT", troveHeader, "BOTTOMLEFT", 0, -4)
     troveIcon:SetSize(32, 32)
@@ -756,8 +639,6 @@ E:RegisterModule(function()
             bountyUsed = C_QuestLog.IsQuestFlaggedCompleted(TROVE_USED_ID)
         end
 
-        -- Sum across every known map item ID so the variant the old
-        -- single-ID check missed still registers (E:GetTrovehunterMapCount).
         local inBag = E:GetTrovehunterMapCount()
 
         local auraActive = false
@@ -766,11 +647,8 @@ E:RegisterModule(function()
         end
 
         if weeklyDone then
-            -- Only claim "used / [Done]" when no map remains in the bag.
-            -- The "used" quest flag (92887) has proven unreliable — it can
-            -- read as used while an unused map is still in the bag — so bag
-            -- presence wins: if you're still holding one, you still have a
-            -- bounty to use, and the detail line below nudges you to use it.
+            -- The "used" flag (92887) is unreliable (reads used with a map still
+            -- in the bag), so bag presence wins: only "[Done]" when inBag <= 0.
             if bountyUsed and inBag <= 0 then
                 troveStatusFS:SetText(
                     E.CC.muted .. "Bounty looted and used this week. [Done]"
@@ -789,7 +667,6 @@ E:RegisterModule(function()
             )
         end
 
-        -- Secondary detail line
         if inBag > 0 and not auraActive then
             troveDetailFS:SetText(
                 E.CC.yellow .. "You have a Trovehunter's Bounty in your bag - "
@@ -807,24 +684,13 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local div3 = sc:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", troveIcon, "BOTTOMLEFT", 0, -48)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
-    --------------------------------------------------------------------
-    -- GILDED STASH PROGRESS
-    -- 4x T11 Bountiful Delves this week. Prefers the EXACT counter from
-    -- the in-delve UI widget (captured + persisted per character in
-    -- EverythingDelves.lua — only readable while inside a delve); falls
-    -- back to counting our own logged T11 bountiful runs until the
-    -- first in-delve sync of the week.
-    --------------------------------------------------------------------
-    local GILDED_MAX     = 4
+    local GILDED_MAX     = 4   -- 4x T11 Bountiful Delves per week
 
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
@@ -843,7 +709,6 @@ E:RegisterModule(function()
     gildedNoteFS:SetPoint("TOPLEFT", gildedBar, "BOTTOMLEFT", 0, -4)
     gildedNoteFS:SetFont(gildedNoteFS:GetFont(), 10)
 
-    -- Tooltip on header hover
     gildedHeader:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
         GameTooltip:AddLine("Gilded Stash", 1, 0.84, 0)
@@ -859,15 +724,9 @@ E:RegisterModule(function()
     end)
 
     local function RefreshGildedStash()
-        -- Two sources, best first:
-        --  1. LIVE: the exact weekly counter from the in-delve stash
-        --     widget, captured and persisted per character by
-        --     E:CaptureGildedStash(). Server-authoritative — preferred
-        --     whenever a reading exists this week.
-        --  2. ESTIMATE: count Bountiful T11+ runs from our own
-        --     SavedVariables (wasBountiful snapshotted at delve entry,
-        --     since completed bountifuls drop off the live POI list
-        --     mid-week). Used until the first in-delve sync of the week.
+        -- Prefer the live in-delve widget count (server-authoritative);
+        -- else estimate from logged T11 bountiful runs (entry-snapshotted,
+        -- since completed bountifuls drop off the live POI list mid-week).
         local liveCol, liveTot
         if E.GetLiveGildedStash then
             liveCol, liveTot = E:GetLiveGildedStash()
@@ -905,7 +764,6 @@ E:RegisterModule(function()
             end
         end
 
-        -- Clamp
         if progress > maxCount then progress = maxCount end
 
         gildedBar:SetProgress(progress, maxCount)
@@ -949,11 +807,6 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- MIDNIGHT FACTION RENOWN
-    -- Shows renown progress for all 4 Midnight factions.
-    -- Uses C_MajorFactions.GetMajorFactionData(factionID).
-    --------------------------------------------------------------------
     local MIDNIGHT_FACTIONS = {
         { id = 2710, name = "Silvermoon Court" },
         { id = 2696, name = "Amani Tribe" },
@@ -962,7 +815,6 @@ E:RegisterModule(function()
     }
     local FACTION_RENOWN_MAX = 20
 
-    -- Thin red divider
     local div5 = sc:CreateTexture(nil, "ARTWORK")
     div5:SetHeight(1)
     div5:SetPoint("TOPLEFT", gildedNoteFS, "BOTTOMLEFT", 0, -32)
@@ -974,7 +826,6 @@ E:RegisterModule(function()
     renownHeader:SetFont(renownHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(renownHeader, "Midnight Faction Renown")
 
-    -- Create faction rows: label + progress bar + status text
     local factionRows = {}
     for i, fac in ipairs(MIDNIGHT_FACTIONS) do
         local rowY = -4 - ((i - 1) * 28)
@@ -1034,12 +885,8 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- OnShow: refresh all sections when the tab becomes visible
-    --------------------------------------------------------------------
-    -- Dynamically recompute scroll child height based on the last
-    -- rendered element. Must run after layout, so we defer one frame
-    -- via C_Timer.After(0).
+    -- Recompute scroll child height from the last rendered element; must
+    -- run after layout, hence the C_Timer.After(0) defer in OnShow.
     local function UpdateContentHeight()
         local lastRow = factionRows[#factionRows]
         if not (lastRow and lastRow.bar) then return end
@@ -1059,17 +906,12 @@ E:RegisterModule(function()
         RefreshCompanion()
         RefreshGildedStash()
         RefreshRenown()
-        -- Recompute content height after frames are laid out so the
-        -- scrollbar matches the actual content extent.
         C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)
     end)
 
-    --------------------------------------------------------------------
-    -- Register for inventory/quest events for live updates
-    --------------------------------------------------------------------
     E:RegisterCallback("InventoryChanged", function()
         if frame:IsShown() then
             RefreshRecommendation()
@@ -1079,16 +921,11 @@ E:RegisterModule(function()
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsShown() then
             RefreshTrovehunter()
-            -- Companion XP ticks during delve play; QUEST_LOG_UPDATE
-            -- fires often enough to keep the bar fresh while visible.
+            -- Companion XP and Journey renown both tick up during delves.
             RefreshCompanion()
-            -- Journey renown also ticks up during delves.
             RefreshJourney()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(3, frame)
 end)

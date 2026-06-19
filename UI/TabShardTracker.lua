@@ -1,27 +1,10 @@
-------------------------------------------------------------------------
--- UI/TabShardTracker.lua - Tab 4: Shard Tracker
--- Tracks Coffer Key Shards, Bountiful Keys, Dawncrests, weekly shard
--- income from every known source, and session-level earnings.
---
--- Display-only: reads C_CurrencyInfo, quest completion status, and
--- session counters. No gameplay automation.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local pairs, ipairs, type, time = pairs, ipairs, type, time
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
 local table_insert, table_sort, wipe = table.insert, table.sort, wipe
 
-------------------------------------------------------------------------
--- Local helpers
-------------------------------------------------------------------------
-
-
---- Read a currency quantity safely.
 local function GetCurrency(currencyID)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
@@ -32,8 +15,7 @@ local function GetCurrency(currencyID)
     return 0
 end
 
---- Read full currency info for weekly cap tracking.
---- Returns quantity, maxWeeklyQuantity, quantityEarnedThisWeek
+-- Returns quantity, maxWeeklyQuantity, quantityEarnedThisWeek
 local function GetCurrencyFull(currencyID)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
@@ -46,7 +28,6 @@ local function GetCurrencyFull(currencyID)
     return 0, 0, 0
 end
 
---- Format a number with commas (e.g. 1234 ->"1,234")
 local function FormatNumber(n)
     if n < 1000 then return tostring(n) end
     local s = tostring(n)
@@ -59,30 +40,20 @@ local function FormatNumber(n)
     return formatted
 end
 
-------------------------------------------------------------------------
--- Cached currency values - updated by RefreshAll on currency events,
--- read by RefreshSessionTimer to avoid per-second API table churn.
+-- Cached for RefreshSessionTimer so the per-second tick avoids API table churn.
 local cachedShards = 0
 local cachedKeys   = 0
 
--- Cached quest line results - these don't change mid-session.
 local questLineCache = {}
-
--- Cached undercoins icon - resolved once, never changes.
 local cachedUcIcon = nil
 
--- Reusable scratch buffers for the Special Assignment alert detection.
--- These would otherwise be allocated fresh on every RefreshAll.
+-- Reusable scratch buffers for Special Assignment alert detection.
 local saActiveBuf  = nil
 local saLookupBuf  = nil
 
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab4Content")
-    --------------------------------------------------------------------
-    -- SCROLLABLE AREA
-    --------------------------------------------------------------------
+
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
@@ -95,11 +66,9 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(self, w)
         sc:SetWidth(w)
     end)
-    -- Initial oversize; UpdateContentHeight() recomputes after layout so
-    -- the WQ list at the bottom is never clipped regardless of row count.
+    -- Oversized initially; UpdateContentHeight() recomputes after layout.
     sc:SetHeight(1400)
 
-    -- Themed scrollbar: dark track, red thumb
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
     tabScrollBar:SetWidth(14)
     tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
@@ -143,10 +112,7 @@ E:RegisterModule(function()
     end
 
 
-    --------------------------------------------------------------------
     -- SECTION 1: Currency Overview
-    -- Two big numbers side-by-side: Shards | Bountiful Keys
-    --------------------------------------------------------------------
     local SECT_X = 8
     local SECT_Y = -6
 
@@ -155,7 +121,6 @@ E:RegisterModule(function()
     currHeader:SetFont(currHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(currHeader, "Currency Overview")
 
-    -- Coffer Key Shards
     local shardIcon = sc:CreateTexture(nil, "ARTWORK")
     shardIcon:SetPoint("TOPLEFT", currHeader, "BOTTOMLEFT", 0, -4)
     shardIcon:SetSize(16, 16)
@@ -169,7 +134,6 @@ E:RegisterModule(function()
     shardValueFS:SetPoint("LEFT", shardLabelFS, "RIGHT", 6, 0)
     shardValueFS:SetFont(shardValueFS:GetFont(), 13, "OUTLINE")
 
-    -- Bountiful Keys
     local keyIcon = sc:CreateTexture(nil, "ARTWORK")
     keyIcon:SetPoint("LEFT", shardValueFS, "RIGHT", 24, 0)
     keyIcon:SetSize(16, 16)
@@ -183,7 +147,6 @@ E:RegisterModule(function()
     keyValueFS:SetPoint("LEFT", keyLabelFS, "RIGHT", 6, 0)
     keyValueFS:SetFont(keyValueFS:GetFont(), 13, "OUTLINE")
 
-    -- Undercoins
     local ucIcon = sc:CreateTexture(nil, "ARTWORK")
     ucIcon:SetPoint("TOPLEFT", shardIcon, "BOTTOMLEFT", 0, -4)
     ucIcon:SetSize(16, 16)
@@ -197,7 +160,6 @@ E:RegisterModule(function()
     ucValueFS:SetPoint("LEFT", ucLabelFS, "RIGHT", 6, 0)
     ucValueFS:SetFont(ucValueFS:GetFont(), 13, "OUTLINE")
 
-    -- Progress bar: shards toward next key
     local nextKeyBar = E:CreateProgressBar(sc, 0, 14, "Shards to Next Key")
     nextKeyBar:SetPoint("TOPLEFT", ucIcon, "BOTTOMLEFT", 0, -8)
     nextKeyBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
@@ -206,7 +168,6 @@ E:RegisterModule(function()
     nextKeyNote:SetPoint("TOPLEFT", nextKeyBar, "BOTTOMLEFT", 0, -2)
     nextKeyNote:SetFont(nextKeyNote:GetFont(), 10)
 
-    -- Weekly shard cap bar
     local weeklyCapBar = E:CreateProgressBar(sc, 0, 14, "Weekly Shard Cap")
     weeklyCapBar:SetPoint("TOPLEFT", nextKeyNote, "BOTTOMLEFT", 0, -6)
     weeklyCapBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
@@ -215,9 +176,6 @@ E:RegisterModule(function()
     weeklyCapNote:SetPoint("TOPLEFT", weeklyCapBar, "BOTTOMLEFT", 0, -2)
     weeklyCapNote:SetFont(weeklyCapNote:GetFont(), 10)
 
-    --------------------------------------------------------------------
-    -- Thin red divider
-    --------------------------------------------------------------------
     local dc = E.Colors.divider
     local div1 = sc:CreateTexture(nil, "ARTWORK")
     div1:SetHeight(1)
@@ -225,30 +183,22 @@ E:RegisterModule(function()
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
-    --------------------------------------------------------------------
     -- SECTION 1b: Dawncrests
-    -- Season upgrade crests. "Season Total" is the lifetime amount
-    -- earned this season (info.totalEarned); "Season Max" is the live
-    -- per-tier seasonal earning cap (info.maxQuantity — Blizzard raises
-    -- it weekly via hotfix, so it must be read live, never hardcoded).
-    --------------------------------------------------------------------
+    -- "Season Max" is the per-tier seasonal cap (info.maxQuantity): Blizzard
+    -- raises it weekly via hotfix, so it must be read live, never hardcoded.
     local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
     crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(crestHeader, "Dawncrests")
 
-    -- Permanent grey line under the section header (matches the Weekly
-    -- Shard Sources styling below).
     local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     crestHeaderDiv:SetHeight(1)
     crestHeaderDiv:SetPoint("TOPLEFT",  crestHeader, "BOTTOMLEFT",  0,  -2)
     crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 545, -2)
     E:StyleGreyLine(crestHeaderDiv)
 
-    -- Column headers. Each data column also gets a transparent hover
-    -- frame carrying an explanation tooltip - FontStrings can't take
-    -- OnEnter scripts, and several users have asked what "Season Total"
-    -- (and "Season Max") actually mean.
+    -- Each data column gets a transparent hover frame for its tooltip;
+    -- FontStrings can't take OnEnter scripts.
     local CREST_COL_Y = -12
     local CREST_COL_TIPS = {
         ["On Hand"] = {
@@ -292,7 +242,6 @@ E:RegisterModule(function()
 
         local tip = CREST_COL_TIPS[col.label]
         if tip then
-            -- Invisible hover target sized to the header label text.
             local hover = CreateFrame("Button", nil, sc)
             hover:SetPoint("TOPLEFT", fs, "TOPLEFT", -3, 2)
             hover:SetSize((fs:GetStringWidth() or 60) + 8, 16)
@@ -310,7 +259,6 @@ E:RegisterModule(function()
     for i, crest in ipairs(E.Dawncrests) do
         local rowY = CREST_ROW_Y - ((i - 1) * CREST_ROW_H)
 
-        -- Alternating row background
         if i % 2 == 0 then
             local rowBg = sc:CreateTexture(nil, "BACKGROUND")
             rowBg:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", -2, rowY + 2)
@@ -352,9 +300,6 @@ E:RegisterModule(function()
         }
     end
 
-    --------------------------------------------------------------------
-    -- Thin red divider after crest list
-    --------------------------------------------------------------------
     local crestBottomY = CREST_ROW_Y - ((#E.Dawncrests - 1) * CREST_ROW_H)
         - CREST_ROW_H
     local div1b = sc:CreateTexture(nil, "ARTWORK")
@@ -363,18 +308,12 @@ E:RegisterModule(function()
     div1b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1b)
 
-    --------------------------------------------------------------------
     -- SECTION 2: Weekly Shard Sources
-    -- Scrollable list of every shard source with earned/available status
-    --------------------------------------------------------------------
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     srcHeader:SetPoint("TOPLEFT", div1b, "BOTTOMLEFT", 0, -32)
     srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
 
-    -- Permanent grey line (#4A4A4A) directly under the section header,
-    -- running across to the right edge of the "Status" column. Not tied
-    -- to the accent colour profile.
     local srcHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     srcHeaderDiv:SetHeight(1)
     srcHeaderDiv:SetPoint("TOPLEFT",  srcHeader, "BOTTOMLEFT",  0,  -2)
@@ -385,8 +324,6 @@ E:RegisterModule(function()
     weeklyTotalFS:SetPoint("LEFT", srcHeader, "RIGHT", 16, 0)
     weeklyTotalFS:SetFont(weeklyTotalFS:GetFont(), 11)
 
-    -- Column headers (extra padding below the grey line so the row
-    -- isn't jammed up against it).
     local COL_HEADERS_Y = -12
     local colNameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colNameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, COL_HEADERS_Y)
@@ -408,7 +345,6 @@ E:RegisterModule(function()
     colStatusFS:SetFont(colStatusFS:GetFont(), 10, "OUTLINE")
     colStatusFS:SetText(E.CC.muted .. "Status" .. E.CC.close)
 
-    -- Source rows
     local ROW_HEIGHT    = 20
     local SOURCE_ROW_Y  = COL_HEADERS_Y - 16
     local sourceRows    = {}
@@ -416,7 +352,6 @@ E:RegisterModule(function()
     for i, src in ipairs(E.ShardSources) do
         local rowY = SOURCE_ROW_Y - ((i - 1) * ROW_HEIGHT)
 
-        -- Alternating row background
         if i % 2 == 0 then
             local rowBg = sc:CreateTexture(nil, "BACKGROUND")
             rowBg:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", -2, rowY + 2)
@@ -424,24 +359,20 @@ E:RegisterModule(function()
             rowBg:SetColorTexture(0.08, 0.08, 0.08, 0.50)
         end
 
-        -- Source name (with asterisk if unconfirmed)
         local nameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         nameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, rowY)
         nameFS:SetFont(nameFS:GetFont(), 10)
         nameFS:SetWidth(255)
         nameFS:SetJustifyH("LEFT")
 
-        -- Per-unit shards (with asterisk if unconfirmed)
         local perFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         perFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 260, rowY)
         perFS:SetFont(perFS:GetFont(), 10)
 
-        -- Weekly cap
         local capFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         capFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 310, rowY)
         capFS:SetFont(capFS:GetFont(), 10)
 
-        -- Status (trackable vs not)
         local statusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         statusFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 405, rowY)
         statusFS:SetFont(statusFS:GetFont(), 10)
@@ -455,13 +386,9 @@ E:RegisterModule(function()
         }
     end
 
-    --------------------------------------------------------------------
-    -- Thin red divider after source list
-    --------------------------------------------------------------------
     local lastRowY = SOURCE_ROW_Y - ((#E.ShardSources - 1) * ROW_HEIGHT)
-    local belowLastRow = lastRowY - ROW_HEIGHT  -- bottom edge of last row
+    local belowLastRow = lastRowY - ROW_HEIGHT
 
-    -- Footnote for unconfirmed values
     local footnoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     footnoteFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 2)
     footnoteFS:SetFont(footnoteFS:GetFont(), 9)
@@ -473,10 +400,7 @@ E:RegisterModule(function()
     div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div2)
 
-    --------------------------------------------------------------------
     -- SECTION 3: Session Tracker
-    -- Shows shards earned and keys earned since login.
-    --------------------------------------------------------------------
     local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     sessHeader:SetFont(sessHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -498,20 +422,13 @@ E:RegisterModule(function()
     sessRateFS:SetPoint("TOPLEFT", sessTimeFS, "BOTTOMLEFT", 0, -2)
     sessRateFS:SetFont(sessRateFS:GetFont(), 10)
 
-    --------------------------------------------------------------------
-    -- Thin red divider after session tracker
-    --------------------------------------------------------------------
     local div3 = sc:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
     div3:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -32)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
-    --------------------------------------------------------------------
-    -- SECTION 3b: Special Assignments
-    -- 8 known Special Assignment quest IDs. Track active/completed.
-    -- Weekly limit is 3 (you can complete 3 per week).
-    --------------------------------------------------------------------
+    -- SECTION 3b: Special Assignments (weekly limit of 3 completions)
     local SPECIAL_ASSIGNMENTS = {
         { questID = 93013, unlockID = 94391, title = "Push back the Light" },
         { questID = 92063, unlockID = 94390, title = "A Hunter's Regret" },
@@ -533,7 +450,6 @@ E:RegisterModule(function()
     saSummaryFS:SetPoint("LEFT", saHeader, "RIGHT", 12, 0)
     saSummaryFS:SetFont(saSummaryFS:GetFont(), 11)
 
-    -- Create rows for each assignment
     local saRows = {}
     for i, sa in ipairs(SPECIAL_ASSIGNMENTS) do
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -544,18 +460,13 @@ E:RegisterModule(function()
         saRows[i] = { fs = fs, questID = sa.questID, unlockID = sa.unlockID, title = sa.title }
     end
 
-    -- Divider after Special Assignments
     local div3b = sc:CreateTexture(nil, "ARTWORK")
     div3b:SetHeight(1)
     div3b:SetPoint("TOPLEFT", saRows[#saRows].fs, "BOTTOMLEFT", 0, -32)
     div3b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3b)
 
-    --------------------------------------------------------------------
     -- SECTION 3c: Weekly Delve Quests
-    -- Quest 93909 "Midnight: Delves" - weekly from Archmage Aethas
-    -- Sunreaver, requires completing Midnight Delves.
-    --------------------------------------------------------------------
     local WEEKLY_DELVE_QUESTS = {
         { questID = 93909, title = "Midnight: Delves" },
     }
@@ -575,30 +486,22 @@ E:RegisterModule(function()
         wdqRows[i] = { fs = fs, questID = wq.questID, title = wq.title }
     end
 
-    -- Divider after Weekly Delve Quests
     local div3c = sc:CreateTexture(nil, "ARTWORK")
     div3c:SetHeight(1)
     div3c:SetPoint("TOPLEFT", wdqRows[#wdqRows].fs, "BOTTOMLEFT", 0, -32)
     div3c:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3c)
 
-    --------------------------------------------------------------------
     -- SECTION 4: Low-Shard Warning
-    -- Reads lowShardWarning + lowShardThreshold from SavedVariables.
-    --------------------------------------------------------------------
     local warnFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     warnFS:SetPoint("TOPLEFT", div3c, "BOTTOMLEFT", 0, -6)
     warnFS:SetFont(warnFS:GetFont(), 11)
 
-    --------------------------------------------------------------------
-    -- SECTION 5: Coffer Shard World Quests
-    -- Scans Midnight zones for active WQs rewarding currency 3310.
-    --------------------------------------------------------------------
+    -- SECTION 5: Coffer Shard World Quests (Midnight zones, currency 3310)
     local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424 }
     local WQ_CURRENCY = 3310
-    local MAX_WQ_ROWS = 12  -- max rows to pre-create
+    local MAX_WQ_ROWS = 12
 
-    -- Divider before WQ section.
     local div4 = sc:CreateTexture(nil, "ARTWORK")
     div4:SetHeight(1)
     div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -32)
@@ -614,7 +517,6 @@ E:RegisterModule(function()
     wqCountFS:SetPoint("LEFT", wqHeader, "RIGHT", 12, 0)
     wqCountFS:SetFont(wqCountFS:GetFont(), 11)
 
-    -- Refresh button for WQ section
     local wqRefreshBtn = E:CreateButton(sc, 60, 18, "Refresh")
     wqRefreshBtn.label:SetFont(wqRefreshBtn.label:GetFont(), 9)
     wqRefreshBtn:SetPoint("LEFT", wqCountFS, "RIGHT", 12, 0)
@@ -638,7 +540,6 @@ E:RegisterModule(function()
         .. "click Refresh to update." .. E.CC.close
     )
 
-    -- Cap-reached warning (shown when weeklyEarned >= weeklyCap)
     local wqCapWarningFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqCapWarningFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, -2)
     wqCapWarningFS:SetFont(wqCapWarningFS:GetFont(), 9, "OUTLINE")
@@ -649,13 +550,8 @@ E:RegisterModule(function()
     )
     wqCapWarningFS:Hide()
 
-    -- Column headers for WQ list
     local wqColY = -18
 
-    -- Permanent grey line ABOVE the WQ column header row (#4A4A4A,
-    -- not affected by accent colour). Stops at the right edge of TomTom.
-    -- Y offset chosen so the column-header text OUTLINE doesn't bleed
-    -- into this line (which made it look thicker than the bottom line).
     local wqHdrLineTop = sc:CreateTexture(nil, "ARTWORK")
     wqHdrLineTop:SetHeight(1)
     wqHdrLineTop:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY + 10)
@@ -675,14 +571,12 @@ E:RegisterModule(function()
         fs:SetText(E.CC.muted .. col.label .. E.CC.close)
     end
 
-    -- Permanent grey line BELOW the WQ column header row.
     local wqHdrLineBot = sc:CreateTexture(nil, "ARTWORK")
     wqHdrLineBot:SetHeight(1)
     wqHdrLineBot:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY - 16)
     wqHdrLineBot:SetPoint("TOPRIGHT", wqNoteFS, "BOTTOMLEFT", 520, wqColY - 16)
     E:StyleGreyLine(wqHdrLineBot)
 
-    -- Pre-create reusable WQ rows
     local wqRows = {}
     for i = 1, MAX_WQ_ROWS do
         local rowY = wqColY - 28 - ((i - 1) * 18)
@@ -716,9 +610,7 @@ E:RegisterModule(function()
             local bc = E.Colors.buttonBg
             self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
         end)
-        -- Single shared OnClick closure; reads the current wq from the
-        -- button's .wq field (set on each refresh) so we don't allocate
-        -- a new closure per-row per-refresh.
+        -- Shared OnClick reads self.wq (set each refresh) to avoid a closure per row.
         wpBtn:SetScript("OnClick", function(self)
             local wq = self.wq
             if wq and C_TaskQuest and C_TaskQuest.GetQuestLocation then
@@ -730,10 +622,6 @@ E:RegisterModule(function()
             end
         end)
 
-        -- TomTom waypoint button (parallel to Pin). Only useful if the
-        -- TomTom addon is loaded; we display it always and inform the
-        -- user via tooltip when it isn't installed (mirroring the
-        -- Delve Locations / Current Bountiful tabs).
         local ttBtn = E:CreateButton(sc, 50, 16, "TomTom")
         ttBtn.label:SetFont(ttBtn.label:GetFont(), 9)
         ttBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 470, rowY + 2)
@@ -776,7 +664,6 @@ E:RegisterModule(function()
             ttBtn    = ttBtn,
             visible  = false,
         }
-        -- Hide by default
         zoneFS:Hide()
         nameFS:Hide()
         amountFS:Hide()
@@ -795,9 +682,7 @@ E:RegisterModule(function()
     )
     wqEmptyFS:Hide()
 
-    -- Bottom note below the WQ list. Its anchor is updated dynamically in
-    -- RefreshAll so it always sits 14 px below the last visible row/message.
-    -- UpdateContentHeight measures its position to correctly size the scroll child.
+    -- Anchor is updated in RefreshAll to follow the last visible row/message.
     local wqBottomFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
     wqBottomFS:SetFont(wqBottomFS:GetFont(), 9)
@@ -805,46 +690,32 @@ E:RegisterModule(function()
         E.CC.muted .. "* Tip: Visit zone maps to load WQ data before refreshing." .. E.CC.close
     )
 
-    --- Scan all Midnight zones for WQs rewarding shard currency.
-    --- Results are cached and only rescanned when forced or stale (>60s).
-    --- Primes map data before querying. Auto-retries once after 3s on
-    --- empty results (map data may not be loaded for unvisited zones).
-    local wqCache      = {}    -- reusable results table
-    local wqEntryPool  = {}    -- recycled WQ entry tables
-    local wqCacheTime  = 0     -- epoch when cache was last populated
+    local wqCache      = {}
+    local wqEntryPool  = {}
+    local wqCacheTime  = 0
     local WQ_CACHE_TTL = 60    -- seconds before cache is considered stale
     local wqRetryPending = false
-    local wqRetriesUsed  = 0   -- caps the empty-result retry loop
-    local WQ_MAX_RETRIES = 1   -- one retry, then stop trying forever
-    local mapsPrimed   = {}    -- [mapID] = true after first prime this session
-
-    -- Cache zone names once (resolved lazily on first scan)
-    local zoneNameCache = {}   -- [mapID] = "Zone Name"
-
-    -- Reusable dedupe set (wiped each scan)
+    local wqRetriesUsed  = 0
+    local WQ_MAX_RETRIES = 1   -- one retry, then stop forever (see below)
+    local mapsPrimed   = {}
+    local zoneNameCache = {}
     local seenQuestIDs = {}
 
-    --- Forward declaration so retry can call RefreshAll
-    local RefreshAll  -- defined below
-    -- Forward declaration so RefreshAll can recompute scroll height
-    -- after the WQ rows are populated. Assigned in OnShow setup below.
-    local UpdateContentHeight
+    local RefreshAll  -- forward decl; retry calls it
+    local UpdateContentHeight  -- forward decl; assigned in OnShow setup
 
-    -- Reusable sort comparator (avoids creating a closure each scan)
     local function wqSortFunc(a, b)
         if a.zone == b.zone then return a.title < b.title end
         return a.zone < b.zone
     end
 
     local function ScanCofferShardWQs(forceRescan)
-        -- Return cached results if fresh enough
         if not forceRescan and #wqCache > 0
                 and (time() - wqCacheTime) < WQ_CACHE_TTL then
             return wqCache
         end
 
-        -- Recycle existing entries into the pool instead of throwing
-        -- them to the GC, then empty the cache.
+        -- Recycle entries into the pool rather than GC them, then empty the cache.
         for i = #wqCache, 1, -1 do
             local e = wqCache[i]
             wqCache[i] = nil
@@ -858,7 +729,7 @@ E:RegisterModule(function()
         end
 
         for _, zoneID in ipairs(WQ_ZONES) do
-            -- Prime map data once per session so the client loads zone WQs
+            -- Prime map data once per session so the client loads the zone's WQs.
             if not mapsPrimed[zoneID] then
                 if C_Map and C_Map.GetMapInfo then
                     C_Map.GetMapInfo(zoneID)
@@ -875,9 +746,7 @@ E:RegisterModule(function()
             if quests then
                 for _, qData in ipairs(quests) do
                     local qid = qData.questID
-                    -- Dedupe: C_TaskQuest.GetQuestsOnMap returns subzone
-                    -- quests too, so the same quest may appear under
-                    -- multiple parent scans.
+                    -- GetQuestsOnMap returns subzone quests too, so dedupe across parent scans.
                     if qid and qid > 0 and not seenQuestIDs[qid]
                             and C_QuestLog.IsWorldQuest
                             and C_QuestLog.IsWorldQuest(qid)
@@ -895,10 +764,7 @@ E:RegisterModule(function()
                                             .GetQuestInfoByQuestID(qid)
                                             or title
                                     end
-                                    -- Resolve zone name from the quest's
-                                    -- OWN mapID (its actual location), not
-                                    -- the parent map being scanned. Falls
-                                    -- back to the scanned zone if absent.
+                                    -- Use the quest's own mapID (its location), not the scanned parent.
                                     local questMapID = qData.mapID or zoneID
                                     if not zoneNameCache[questMapID] then
                                         local mi = C_Map and C_Map.GetMapInfo
@@ -934,11 +800,8 @@ E:RegisterModule(function()
         table_sort(wqCache, wqSortFunc)
         wqCacheTime = time()
 
-        -- If scan returned 0 results, schedule ONE retry after 3s.
-        -- Without the retry cap, an empty result would reschedule
-        -- itself forever, calling RefreshAll every 3 seconds and
-        -- generating massive GC churn for characters with no
-        -- shard-rewarding WQs available.
+        -- Empty scan: retry once after 3s (unvisited-zone map data may be unloaded).
+        -- The cap stops it rescheduling forever on chars with no shard WQs.
         if #wqCache == 0
                 and not wqRetryPending
                 and wqRetriesUsed < WQ_MAX_RETRIES then
@@ -946,25 +809,20 @@ E:RegisterModule(function()
             wqRetriesUsed  = wqRetriesUsed + 1
             C_Timer.After(3, function()
                 wqRetryPending = false
-                wqCacheTime = 0  -- invalidate cache
+                wqCacheTime = 0
                 if RefreshAll and frame:IsShown() then
                     RefreshAll(true)
                 end
             end)
         elseif #wqCache > 0 then
-            -- Reset the retry budget once we successfully see WQs;
-            -- next time the cache empties, we'll get one retry again.
-            wqRetriesUsed = 0
+            wqRetriesUsed = 0  -- reset budget once WQs are seen
         end
 
         return wqCache
     end
 
-    --------------------------------------------------------------------
-    -- Session baseline - snapshot currencies at first refresh so we
-    -- can compute session deltas.
-    --------------------------------------------------------------------
-    local sessionBaseline = nil  -- { shards = N, keys = N, time = epoch }
+    -- Snapshot currencies at first refresh to compute session deltas.
+    local sessionBaseline = nil  -- { shards, keys, time }
 
     local function EnsureBaseline()
         if not sessionBaseline then
@@ -976,12 +834,7 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- MASTER REFRESH
-    --------------------------------------------------------------------
-
-    -- Lightweight: only updates the session timer and session deltas.
-    -- Called every 1 second via OnUpdate while the tab is visible.
+    -- Lightweight: session timer and deltas only. Called every 1s via OnUpdate.
     local function RefreshSessionTimer()
         if not sessionBaseline then
             EnsureBaseline()
@@ -994,7 +847,6 @@ E:RegisterModule(function()
         local sessKeys   = cachedKeys   - sessionBaseline.keys
         local sessTime   = time() - sessionBaseline.time
 
-        -- Format elapsed time as HH:MM:SS
         local hours   = math_floor(sessTime / 3600)
         local minutes = math_floor((sessTime % 3600) / 60)
         local seconds = sessTime % 60
@@ -1016,7 +868,6 @@ E:RegisterModule(function()
             string_format("|cFF999999Session time: |r|cFFE0E0E0%s|r", elapsed)
         )
 
-        -- Shards per hour rate
         if sessTime >= 60 and sessShards > 0 then
             local perHour = math_floor(sessShards / (sessTime / 3600))
             sessRateFS:SetText(
@@ -1029,30 +880,23 @@ E:RegisterModule(function()
         end
     end
 
-    -- Full refresh: updates all sections. Called on OnShow, events,
-    -- and manual Refresh button click - NOT on a timer.
-    -- forceWQRescan: if true, bypasses the WQ scan cache.
+    -- Full refresh of all sections. Event/OnShow/button driven, not timed.
+    -- forceWQRescan bypasses the WQ scan cache.
     RefreshAll = function(forceWQRescan)
 
-        ----------------------------------------------------------------
         -- Section 1: Currency overview
-        ----------------------------------------------------------------
         cachedShards = GetCurrency(E.CurrencyIDs.cofferKeyShards)
         cachedKeys   = GetCurrency(E.CurrencyIDs.bountifulKeys)
         local shards = cachedShards
         local keys   = cachedKeys
 
-        -- Weekly cap data from the currency API
         local _, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
         local weeklyRemaining = math_max(0, weeklyCap - weeklyEarned)
-        -- True when the player has earned their full weekly shard cap
         local isAtCap = weeklyCap > 0 and weeklyEarned >= weeklyCap
 
-        -- Set currency icons via modern API
         shardIcon:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
         keyIcon:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey))
 
-        -- Undercoins icon (cache after first successful resolve)
         if not cachedUcIcon then
             local ucInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.undercoins)
             if ucInfo and ucInfo.iconFileID then
@@ -1066,7 +910,6 @@ E:RegisterModule(function()
         shardValueFS:SetText(E.CC.gold .. FormatNumber(shards) .. E.CC.close)
         keyValueFS:SetText(E.CC.gold .. FormatNumber(keys) .. E.CC.close)
 
-        -- Progress toward next key
         local partial = shards % E.SHARDS_PER_KEY
         if partial == 0 and shards > 0 then
             partial = E.SHARDS_PER_KEY
@@ -1080,7 +923,6 @@ E:RegisterModule(function()
             .. E.CC.close
         )
 
-        -- Weekly shard cap progress
         if weeklyCap > 0 then
             weeklyCapBar:SetProgress(weeklyEarned, weeklyCap)
             weeklyCapNote:SetText(
@@ -1092,21 +934,17 @@ E:RegisterModule(function()
             weeklyCapBar:Show()
             weeklyCapNote:Show()
         else
-            -- API didn't return cap data; hide the bar
             weeklyCapBar:Hide()
             weeklyCapNote:SetText(
                 E.CC.muted .. "Weekly shard cap data unavailable" .. E.CC.close
             )
         end
 
-        ----------------------------------------------------------------
         -- Section 1b: Dawncrests
-        ----------------------------------------------------------------
         for _, row in ipairs(crestRows) do
             local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
                          and C_CurrencyInfo.GetCurrencyInfo(row.id)
             if info then
-                -- Icon and live name resolve once; they never change.
                 if not row.iconSet and info.iconFileID then
                     row.icon:SetTexture(info.iconFileID)
                     row.iconSet = true
@@ -1115,20 +953,15 @@ E:RegisterModule(function()
                     and info.name or row.label
                 local qty    = info.quantity or 0
                 local season = info.totalEarned or 0
-                -- Live per-tier season cap. Zero means uncapped — the
-                -- launch caps (+100/week onto maxQuantity via hotfix)
-                -- were removed entirely in the 2026-05-19 hotfix "for
-                -- the rest of Season 1". Kept as a live read so a cap
-                -- reintroduced next season shows up with no addon
-                -- update.
+                -- Zero = uncapped (S1 caps removed by hotfix); read live so a
+                -- reintroduced cap shows up without an addon update.
                 local seasonMax = info.maxQuantity or 0
                 row.nameFS:SetText(E.CC.body .. crestName .. E.CC.close)
                 row.handFS:SetText(E.CC.gold .. FormatNumber(qty) .. E.CC.close)
                 row.maxFS:SetText(seasonMax > 0
                     and (E.CC.body .. FormatNumber(seasonMax) .. E.CC.close)
                     or  (E.CC.muted .. "Uncapped" .. E.CC.close))
-                -- Season total goes red once the cap is hit — further
-                -- crests from capped sources are lost.
+                -- Red once at cap: further crests from capped sources are lost.
                 local seasonColor = E.CC.body
                 if seasonMax > 0 and season >= seasonMax then
                     seasonColor = E.CC.red
@@ -1137,7 +970,6 @@ E:RegisterModule(function()
                     and (seasonColor .. FormatNumber(season) .. E.CC.close)
                     or  (E.CC.muted .. "-" .. E.CC.close))
             else
-                -- Currency not yet discovered on this character
                 row.nameFS:SetText(E.CC.muted .. row.label .. E.CC.close)
                 row.handFS:SetText(E.CC.muted .. "-" .. E.CC.close)
                 row.maxFS:SetText(E.CC.muted .. "-" .. E.CC.close)
@@ -1145,27 +977,22 @@ E:RegisterModule(function()
             end
         end
 
-        ----------------------------------------------------------------
         -- Section 2: Weekly shard sources
-        ----------------------------------------------------------------
         for _, row in ipairs(sourceRows) do
             local src = row.src
 
-            -- Name (with asterisk if unconfirmed)
             local displayName = src.name
             if src.unconfirmed then
                 displayName = displayName .. " *"
             end
             row.nameFS:SetText(E.CC.body .. displayName .. E.CC.close)
 
-            -- Per-unit (with asterisk if unconfirmed)
             local perText = tostring(src.shardsEach)
             if src.unconfirmed then
                 perText = perText .. "*"
             end
             row.perFS:SetText(E.CC.gold .. perText .. E.CC.close)
 
-            -- Weekly cap
             if src.weeklyMax then
                 local maxShards = 0
                 if type(src.shardsEach) == "number" then
@@ -1183,7 +1010,6 @@ E:RegisterModule(function()
                 row.capFS:SetText(E.CC.muted .. "-" .. E.CC.close)
             end
 
-            -- Status - live tracking for sources with questLineID or questIDs
             if src.trackable then
                 local done, total = 0, 0
 
@@ -1230,10 +1056,7 @@ E:RegisterModule(function()
             end
         end
 
-        -- Show the LIVE weekly shard cap (read from the currency API
-        -- above) rather than a sum of the source rows. The cap is the
-        -- real ceiling (600 in S1) and reads live, so it never goes
-        -- stale if Blizzard changes it.
+        -- Live cap from the currency API (600 in S1), not a sum of rows, so it never goes stale.
         if weeklyCap and weeklyCap > 0 then
             weeklyTotalFS:SetText(
                 E.CC.muted .. "Weekly cap: " .. E.CC.close
@@ -1244,16 +1067,12 @@ E:RegisterModule(function()
             weeklyTotalFS:SetText("")
         end
 
-        -- Session tracker is updated separately by RefreshSessionTimer()
         RefreshSessionTimer()
 
-        ----------------------------------------------------------------
         -- Section 3b: Special Assignments
-        ----------------------------------------------------------------
         local saCompleted = 0
         local saActive    = 0
         for _, row in ipairs(saRows) do
-            -- Check unlock status first
             local unlocked = true
             if row.unlockID and C_QuestLog
                     and C_QuestLog.IsQuestFlaggedCompleted then
@@ -1304,11 +1123,8 @@ E:RegisterModule(function()
             .. E.CC.close
         )
 
-        -- Special Assignment alert (F7)
         if E.db and E.db.alertSpecialAssignment then
-            -- Reusable scratch tables - avoids allocating two fresh
-            -- tables per RefreshAll just to detect the rare transition
-            -- from "no SA active" ->"SA active".
+            -- Reusable scratch tables to detect the "no SA" -> "SA active" transition.
             if not saActiveBuf  then saActiveBuf  = {} end
             if not saLookupBuf then saLookupBuf = {} end
             wipe(saActiveBuf)
@@ -1339,8 +1155,7 @@ E:RegisterModule(function()
             if hasNew then
                 print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
             end
-            -- Mutate the DB table in place so we don't replace the
-            -- reference (and create garbage) every refresh.
+            -- Mutate in place rather than replacing the reference each refresh.
             if not E.db.lastKnownActiveSAs then E.db.lastKnownActiveSAs = {} end
             wipe(E.db.lastKnownActiveSAs)
             for i = 1, #saActiveBuf do
@@ -1348,9 +1163,7 @@ E:RegisterModule(function()
             end
         end
 
-        ----------------------------------------------------------------
         -- Section 3c: Weekly Delve Quests
-        ----------------------------------------------------------------
         for _, row in ipairs(wdqRows) do
             local done = false
             if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
@@ -1369,9 +1182,7 @@ E:RegisterModule(function()
             end
         end
 
-        ----------------------------------------------------------------
         -- Section 4: Low-shard warning
-        ----------------------------------------------------------------
         if E.db and E.db.lowShardWarning then
             local threshold = E.db.lowShardThreshold or 100
             if shards < threshold then
@@ -1391,16 +1202,13 @@ E:RegisterModule(function()
             warnFS:Hide()
         end
 
-        ----------------------------------------------------------------
         -- Section 5: Coffer Shard World Quests
-        ----------------------------------------------------------------
         local wqs = ScanCofferShardWQs(forceWQRescan)
         wqCountFS:SetText(
             E.CC.gold .. #wqs .. E.CC.close
             .. E.CC.muted .. " active" .. E.CC.close
         )
 
-        -- Show cap warning above the list when the weekly cap is reached
         if isAtCap then
             wqCapWarningFS:Show()
         else
@@ -1416,8 +1224,6 @@ E:RegisterModule(function()
                 row.wpBtn:Hide()
                 row.ttBtn:Hide()
             end
-            -- Anchor cap warning + footer below the empty-state message
-            -- with clear breathing room (16 px above warning, 12 px between).
             wqCapWarningFS:ClearAllPoints()
             wqBottomFS:ClearAllPoints()
             if isAtCap then
@@ -1431,15 +1237,13 @@ E:RegisterModule(function()
             for i, row in ipairs(wqRows) do
                 if i <= #wqs then
                     local wq = wqs[i]
-                    -- Use muted colors for all row text when cap is reached
                     local zoneCC   = isAtCap and E.CC.muted  or E.CC.body
                     local nameCC   = isAtCap and E.CC.muted  or E.CC.purple
                     local amountCC = isAtCap and E.CC.muted  or E.CC.gold
                     row.zoneFS:SetText(zoneCC   .. wq.zone   .. E.CC.close)
                     row.nameFS:SetText(nameCC   .. wq.title  .. E.CC.close)
                     row.amountFS:SetText(amountCC .. wq.amount .. E.CC.close)
-                    -- Dim button backdrop + border + label when at cap
-                    -- (still clickable). Border restored to accent on uncap.
+                    -- Dim buttons at cap (still clickable); restored on uncap.
                     if isAtCap then
                         row.wpBtn.dimmed = true
                         row.ttBtn.dimmed = true
@@ -1455,15 +1259,12 @@ E:RegisterModule(function()
                         local bc = E.Colors.buttonBg
                         row.wpBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
                         row.ttBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-                        -- Restore the hardcoded dark button border (buttons
-                        -- are not themed by accent colour).
+                        -- Buttons aren't accent-themed; restore the hardcoded dark border.
                         row.wpBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
                         row.ttBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
                         row.wpBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
                         row.ttBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
                     end
-                    -- Attach current wq to the buttons; shared OnClick
-                    -- closure (set at row creation) reads from self.wq.
                     row.wpBtn.wq = wq
                     row.ttBtn.wq = wq
                     row.zoneFS:Show()
@@ -1479,9 +1280,6 @@ E:RegisterModule(function()
                     row.ttBtn:Hide()
                 end
             end
-            -- Anchor cap warning (if shown) + footer below the last
-            -- visible WQ row with clear breathing room: 16 px gap above
-            -- the yellow warning, 12 px between warning and grey tip.
             local lastRow = wqRows[#wqs]
             wqCapWarningFS:ClearAllPoints()
             wqBottomFS:ClearAllPoints()
@@ -1493,30 +1291,22 @@ E:RegisterModule(function()
             end
         end
 
-        -- Recompute scroll content height so the WQ rows are never clipped
-        -- (deferred to next frame so layout is settled before measuring).
+        -- Deferred to next frame so layout is settled before measuring.
         if UpdateContentHeight then
             C_Timer.After(0, UpdateContentHeight)
         end
     end
 
-    -- Wire up Refresh button now that RefreshAll is defined
     wqRefreshBtn:SetScript("OnClick", function()
-        wqCacheTime   = 0   -- invalidate cache
+        wqCacheTime   = 0
         wqRetriesUsed = 0   -- give the retry budget back on user request
         RefreshAll(true)
         E:FlashButtonConfirm(wqRefreshBtn)
     end)
 
-    --------------------------------------------------------------------
-    -- OnShow: refresh everything when the tab becomes visible
-    --------------------------------------------------------------------
-    -- Recompute the scroll child's real content height after layout so
-    -- the scroll range matches the visible extent.
+    -- Recompute the scroll child's content height to match the visible extent.
     UpdateContentHeight = function()
-        -- Find the bottom of the last actually-visible element. The WQ
-        -- rows may be hidden; fall back through candidates until we
-        -- find one whose frame is laid out.
+        -- WQ rows may be hidden; fall back through candidates to the lowest laid-out one.
         local candidates = { wqEmptyFS, wqBottomFS }
         for i = #wqRows, 1, -1 do
             candidates[#candidates + 1] = wqRows[i].wpBtn
@@ -1538,7 +1328,7 @@ E:RegisterModule(function()
 
     frame:SetScript("OnShow", function()
         EnsureBaseline()
-        wqRetriesUsed = 0   -- fresh retry budget each time tab is opened
+        wqRetriesUsed = 0   -- fresh retry budget each time the tab opens
         RefreshAll()
         C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
@@ -1546,10 +1336,7 @@ E:RegisterModule(function()
         tabScrollBar:SetValue(0)
     end)
 
-    --------------------------------------------------------------------
-    -- OnUpdate timer: lightweight session timer refresh (1 second)
-    -- Full data refresh is event-driven (OnShow, currency, quest log)
-    --------------------------------------------------------------------
+    -- Timer refreshes the session clock only; full data is event-driven.
     local timerElapsed = 0
     frame:SetScript("OnUpdate", function(_, dt)
         timerElapsed = timerElapsed + dt
@@ -1561,18 +1348,12 @@ E:RegisterModule(function()
         end
     end)
 
-    --------------------------------------------------------------------
-    -- Register for currency and quest log events via callback list
-    --------------------------------------------------------------------
-    -- Background refreshes (currency/quest events) must NOT reset the
-    -- user's scroll position. UpdateContentHeight resizes the scroll
-    -- child, which can clamp the current scroll if the new content is
-    -- shorter; we save and restore the scroll value around the refresh.
+    -- Background event refreshes must not reset scroll: UpdateContentHeight can
+    -- clamp it when content shrinks, so save and restore the value around it.
     local function RefreshPreservingScroll()
         if not frame:IsShown() then return end
         local prevScroll = scrollFrame:GetVerticalScroll()
         RefreshAll()
-        -- UpdateContentHeight runs deferred; restore on the same frame.
         C_Timer.After(0, function()
             if scrollFrame and scrollFrame.SetVerticalScroll then
                 scrollFrame:SetVerticalScroll(prevScroll)
@@ -1586,8 +1367,5 @@ E:RegisterModule(function()
     E:RegisterCallback("CurrencyUpdate", RefreshPreservingScroll)
     E:RegisterCallback("QuestLogUpdate", RefreshPreservingScroll)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(5, frame)
 end)

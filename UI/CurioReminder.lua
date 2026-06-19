@@ -1,14 +1,5 @@
-------------------------------------------------------------------------
--- UI/CurioReminder.lua — Companion Curio Reminder
--- Displays Combat and Utility curio requirements for Brann or Valeera
--- when the Companion Configuration frame is opened. Highlights the
--- player's current role. Updates bag counts on BAG_UPDATE_DELAYED.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Curio data by companion and role
-------------------------------------------------------------------------
 local CURIO_DATA = {
     Brann = {
         { role = "Tank",   combat = { name = "Mana-Tinted Glasses",   id = 239576 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
@@ -24,10 +15,6 @@ local CURIO_DATA = {
 
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
 
-------------------------------------------------------------------------
--- Detect which companion is shown in the configuration frame by
--- scanning its FontStrings for the companion's name.
-------------------------------------------------------------------------
 local function GetActiveCompanionName()
     if not DelvesCompanionConfigurationFrame then return nil end
     local infoFrame = DelvesCompanionConfigurationFrame.CompanionInfoFrame
@@ -44,9 +31,6 @@ local function GetActiveCompanionName()
     return nil
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local POPUP_W   = 330
     local ICON_SZ   = 14
@@ -72,7 +56,6 @@ E:RegisterModule(function()
     end)
     popup:Hide()
 
-    -- Title
     local titleFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", popup, "TOPLEFT", 8, -8)
     titleFS:SetFont(titleFS:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -83,7 +66,6 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
-    -- Hover the title bar: explain what this reminder is and how to read it.
     local titleHit = CreateFrame("Frame", nil, popup)
     titleHit:SetPoint("TOPLEFT",     popup,    "TOPLEFT",  1, -1)
     titleHit:SetPoint("BOTTOMRIGHT", titleDiv, "TOPRIGHT", 0,  0)
@@ -98,7 +80,6 @@ E:RegisterModule(function()
     end)
     titleHit:SetScript("OnLeave", function() E:HideTooltip() end)
 
-    -- Shared tooltip for the per-curio bag counts (the green/red numbers).
     local function ShowCountTip(self)
         E:ShowTooltip(self, "Currently in your bags",
             "How many of this curio you have on you right now.",
@@ -107,7 +88,6 @@ E:RegisterModule(function()
             .. "pick one up before your next delve.")
     end
 
-    -- Build one set of UI rows for the 3 roles (reused for both companions)
     local roleRows = {}
     for i = 1, 3 do
         local yBase = ROLE_Y - (i - 1) * ROLE_STEP
@@ -133,8 +113,7 @@ E:RegisterModule(function()
         rf.utilFS:SetPoint("LEFT", rf.utilIcon, "RIGHT", 3, 0)
         rf.utilFS:SetFont(rf.utilFS:GetFont(), 9)
 
-        -- Bag counts live in their own FontStrings (anchored after each
-        -- curio name) so each green/red number gets its own hover zone.
+        -- Counts get their own FontStrings so each number has its own hover zone.
         rf.combatCountFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         rf.combatCountFS:SetPoint("LEFT", rf.combatFS, "RIGHT", 4, 0)
         rf.combatCountFS:SetFont(rf.combatCountFS:GetFont(), 9)
@@ -163,9 +142,6 @@ E:RegisterModule(function()
         roleRows[i] = rf
     end
 
-    --------------------------------------------------------------------
-    -- Fill all three role rows for the given companion
-    --------------------------------------------------------------------
     local function Populate(companionName)
         local rows = CURIO_DATA[companionName]
         if not rows then popup:Hide(); return end
@@ -210,11 +186,8 @@ E:RegisterModule(function()
         popup:ClearAllPoints()
         local cf = DelvesCompanionConfigurationFrame
         if cf and cf:IsShown() then
-            -- Sit to the LEFT of the companion frame when there's room for
-            -- the full popup width, otherwise flip to the RIGHT. The old
-            -- always-left anchor got clamped on top of Valeera's UI when
-            -- the frame opened near the left screen edge (default UI);
-            -- ElvUI shifts the frame rightward so the left side stays clear.
+            -- Prefer the left of the frame; flip right when too close to the
+            -- screen edge, else the popup clamps on top of the companion UI.
             local roomLeft = cf:GetLeft() or 0
             if roomLeft >= POPUP_W + 8 then
                 popup:SetPoint("TOPRIGHT", cf, "TOPLEFT", -8, 0)
@@ -242,9 +215,6 @@ E:RegisterModule(function()
         DelvesCompanionConfigurationFrame:HookScript("OnHide", function() popup:Hide() end)
     end
 
-    --------------------------------------------------------------------
-    -- Event handling
-    --------------------------------------------------------------------
     local ef = CreateFrame("Frame")
     ef:RegisterEvent("BAG_UPDATE_DELAYED")
     ef:RegisterEvent("ADDON_LOADED")
@@ -256,15 +226,9 @@ E:RegisterModule(function()
         end
     end)
 
-    -- Hook immediately — this module init runs during PLAYER_LOGIN, so
-    -- DelvesCompanionConfigurationFrame exists if it was pre-loaded.
-    -- ADDON_LOADED above catches it if it loads on-demand later.
+    -- Catches the frame if it was pre-loaded; ADDON_LOADED handles on-demand load.
     HookCompanionFrame()
 
-    --------------------------------------------------------------------
-    -- Public toggle called by the /ed curios slash handler
-    -- (registered in EverythingDelves.lua)
-    --------------------------------------------------------------------
     function E:ToggleCurioPopup(arg)
         if popup:IsShown() then
             popup:Hide()

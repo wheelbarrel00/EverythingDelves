@@ -1,26 +1,10 @@
-------------------------------------------------------------------------
--- Core/Utils.lua
--- Shared utility functions used across multiple tabs
-------------------------------------------------------------------------
 ---@diagnostic disable: undefined-global, undefined-field
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
 local tostring = tostring
 
-------------------------------------------------------------------------
--- UI factory: flat dark-red button with hover highlight
-------------------------------------------------------------------------
---- Create a styled button that matches the addon's visual theme.
---- @param parent Frame   Parent frame
---- @param width  number  Button width
---- @param height number  Button height
---- @param label  string  Display text
---- @return Button
 function E:CreateButton(parent, width, height, label)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetSize(width, height)
@@ -30,8 +14,7 @@ function E:CreateButton(parent, width, height, label)
         edgeSize = 1,
     })
 
-    -- HARDCODED colours: #6D0501 background, #EBB706 label, dark border.
-    -- Buttons intentionally do NOT follow the accent-colour profile.
+    -- Intentionally hardcoded; buttons do not follow the accent profile.
     local bg = E.Colors.buttonBg
     btn:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
     btn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
@@ -40,8 +23,7 @@ function E:CreateButton(parent, width, height, label)
     text:SetPoint("CENTER")
     text:SetFont(text:GetFont(), 11)
     text:SetText(label)
-    -- #EBB706 (gold) label colour. SetTextColor (no inline |cFF code) so
-    -- dim states can override the colour reliably.
+    -- SetTextColor (not an inline |cFF code) so dim states can override it.
     text:SetTextColor(0.922, 0.718, 0.024, 1.0)
     btn.label = text
 
@@ -59,20 +41,11 @@ function E:CreateButton(parent, width, height, label)
     return btn
 end
 
-------------------------------------------------------------------------
--- TomTom integration helpers
-------------------------------------------------------------------------
---- Check whether the TomTom addon is available and functional.
 function E:IsTomTomLoaded()
     return (TomTom and TomTom.AddWaypoint) and true or false
 end
 
---- Add a TomTom waypoint. Returns false and prints a warning if TomTom
---- is not loaded. Coordinates are in percentage form (e.g. 45.4).
---- @param mapID number  uiMapID
---- @param x     number  percentage (0-100)
---- @param y     number  percentage (0-100)
---- @param title string  Waypoint label
+-- Coords are percentages (0-100); converted to 0-1 for the API.
 function E:AddTomTomWaypoint(mapID, x, y, title)
     if not self:IsTomTomLoaded() then
         print(E.CC.header .. "Everything Delves|r: TomTom is not installed.")
@@ -82,27 +55,12 @@ function E:AddTomTomWaypoint(mapID, x, y, title)
     return true
 end
 
-------------------------------------------------------------------------
--- Blizzard map waypoint helper
-------------------------------------------------------------------------
---- Set a Blizzard user waypoint (the built-in map pin).
---- C_Map.SetUserWaypoint() takes a UiMapPoint table:
----   { uiMapID = number, position = { x, y } }
---- C_SuperTrack.SetSuperTrackedUserWaypoint(true) makes the waypoint
---- show as the golden navigation arrow on-screen.
---- Set a Blizzard user waypoint (the built-in map pin).
---- Coordinates are in percentage form (e.g. 45.4 means 45.4% of the map).
---- C_Map.SetUserWaypoint() expects 0-1 range, so we divide by 100.
---- @param mapID number
---- @param x     number  percentage (0-100)
---- @param y     number  percentage (0-100)
+-- Coords are percentages (0-100); SetUserWaypoint expects 0-1, so we divide.
 function E:SetWaypoint(mapID, x, y)
-    -- C_Map.SetUserWaypoint is confirmed available in Midnight 12.0.
     if C_Map and C_Map.SetUserWaypoint then
         local ok, err = pcall(function()
             local point = UiMapPoint.CreateFromCoordinates(mapID, x / 100, y / 100)
             C_Map.SetUserWaypoint(point)
-            -- Make the waypoint the actively-tracked objective
             if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
                 C_SuperTrack.SetSuperTrackedUserWaypoint(true)
             end
@@ -115,12 +73,6 @@ function E:SetWaypoint(mapID, x, y)
     end
 end
 
-------------------------------------------------------------------------
--- Tooltip helpers
-------------------------------------------------------------------------
-
---- Flash a button's label to "Done!" in green, then restore after 1.5s.
---- @param btn Button  Must have a .label FontString
 function E:FlashButtonConfirm(btn)
     if not btn or not btn.label then return end
     local original = btn.label:GetText()
@@ -132,17 +84,13 @@ function E:FlashButtonConfirm(btn)
     end)
 end
 
---- Show a simple tooltip anchored to a frame.
---- @param owner    Frame
---- @param title    string
---- @param ...      string  Additional lines
 function E:ShowTooltip(owner, title, ...)
     GameTooltip:SetOwner(owner, "ANCHOR_CURSOR")
-    GameTooltip:AddLine(title, 1, 0.84, 0, true) -- gold
+    GameTooltip:AddLine(title, 1, 0.84, 0, true)
     for i = 1, select("#", ...) do
         local line = select(i, ...)
         if line and line ~= "" then
-            GameTooltip:AddLine(line, 0.88, 0.88, 0.88, true) -- off-white, wrap
+            GameTooltip:AddLine(line, 0.88, 0.88, 0.88, true)
         end
     end
     GameTooltip:Show()
@@ -152,20 +100,6 @@ function E:HideTooltip()
     GameTooltip:Hide()
 end
 
-------------------------------------------------------------------------
--- Progress bar factory (shared by multiple tabs)
-------------------------------------------------------------------------
---- Create a themed progress bar with a fill texture and a value label.
---- The returned frame has a :SetProgress(current, max) method.
---- When `caption` is supplied, a left-aligned title is drawn inside the
---- bar (e.g. "Weekly Bountiful") and the numeric value moves to the
---- right so the two never overlap; without it the value stays centered
---- (backward-compatible with existing call sites).
---- @param parent Frame
---- @param width  number  Bar width in pixels, or 0 for anchor-based sizing
---- @param height number
---- @param caption string|nil  Optional left-aligned bar title
---- @return Frame
 function E:CreateProgressBar(parent, width, height, caption)
     local bar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     if width and width > 0 then
@@ -186,9 +120,7 @@ function E:CreateProgressBar(parent, width, height, caption)
     fill:SetHeight(height - 2)
     bar.fill = fill
 
-    -- Theme: accent-driven fill color. Tabs that need a status-driven
-    -- override (e.g. gold-when-complete) just call fill:SetColorTexture
-    -- directly; the next ApplyAccentColor will re-paint back to accent.
+    -- Accent-driven fill; a direct SetColorTexture override is repainted on the next ApplyAccentColor.
     E:RegisterThemed(function(p)
         if fill.SetColorTexture then
             fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
@@ -200,9 +132,6 @@ function E:CreateProgressBar(parent, width, height, caption)
     label:SetFont(label:GetFont(), 10, "OUTLINE")
     bar.label = label
 
-    -- With a caption, draw the title on the left and push the numeric
-    -- value to the right edge so they share the bar without overlapping.
-    -- Without one, keep the value centered (legacy behaviour).
     if caption and caption ~= "" then
         local cap = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         cap:SetPoint("LEFT", bar, "LEFT", 6, 0)
@@ -215,7 +144,6 @@ function E:CreateProgressBar(parent, width, height, caption)
         label:SetPoint("CENTER")
     end
 
-    --- Update the bar to show current / max progress.
     function bar:SetProgress(current, max)
         local pct = (max > 0) and (current / max) or 0
         pct = math_min(pct, 1)
@@ -228,21 +156,12 @@ function E:CreateProgressBar(parent, width, height, caption)
     return bar
 end
 
-------------------------------------------------------------------------
--- Trovehunter's Bounty map detection
-------------------------------------------------------------------------
--- Single source of truth for "does the player hold a bounty map", shared
--- by the entry popup and the Tier Guide status line so they can never
--- disagree. Kept as a list so a second ID can be added trivially if one
--- is ever confirmed -- a previously-suspected alternate (265714) was
--- ruled out by /dump (returns 0 for a confirmed map holder), so only the
--- proven map item (252415) is checked.
+-- Only 252415 is a confirmed bounty-map item; a suspected alternate (265714)
+-- was ruled out by /dump. Kept as a list so a second ID can be added later.
 E.TROVE_MAP_ITEM_IDS = { 252415 }
 
---- Total count of Trovehunter's Bounty maps held across all known item
---- IDs. Bags only (not bank) on purpose: the map can only be used from
---- bags inside a delve, so a banked copy must not trip the reminder.
---- @return number
+-- Bags only (not bank): the map is only usable from bags inside a delve, so a
+-- banked copy must not trip the reminder.
 function E:GetTrovehunterMapCount()
     if not (C_Item and C_Item.GetItemCount) then return 0 end
     local total = 0
@@ -253,13 +172,6 @@ function E:GetTrovehunterMapCount()
     return total
 end
 
-------------------------------------------------------------------------
--- Accent-theme helpers (used widely by tab modules)
-------------------------------------------------------------------------
-
---- Set a FontString to a section-header style using the active accent
---- color, and register it for repaint when the accent changes.
---- Pass the raw text (no color codes); we wrap it.
 function E:StyleAccentHeader(fs, rawText)
     if not fs or not rawText then return end
     fs:SetText(self.CC.header .. rawText .. self.CC.close)
@@ -270,8 +182,6 @@ function E:StyleAccentHeader(fs, rawText)
     end)
 end
 
---- Color a thin horizontal divider texture with the accent divider hue
---- and register it for repaint.
 function E:StyleAccentDivider(tex)
     if not tex or not tex.SetColorTexture then return end
     local d = self.Colors.divider
@@ -283,29 +193,21 @@ function E:StyleAccentDivider(tex)
     end)
 end
 
---- Color a horizontal line texture with the hardcoded grey (#4A4A4A).
---- Used for column-header separators that must NEVER change with the
---- accent colour profile.
+-- Grey column-header separators; intentionally never themed by accent color.
 function E:StyleGreyLine(tex)
     if not tex or not tex.SetColorTexture then return end
     local g = self.Colors.greyLine
     tex:SetColorTexture(g.r, g.g, g.b, g.a)
 end
 
-------------------------------------------------------------------------
--- Delve companion level / XP
-------------------------------------------------------------------------
--- The companion's progression is a friendship reputation whose reaction
--- string reads "Level N" (each expansion's companion follows the same
--- pattern). Rather than hardcoding a faction ID per expansion, scan the
--- friendship faction ID range once and cache the hit account-wide; the
--- cache invalidates when the account's expansion level changes so a new
--- expansion's companion replaces the old one automatically.
--- LIMITATION: the "Level %d" reaction match is English-only (same
--- limitation as the deferred companion-localization audit finding).
+-- Companion progression is a friendship reputation reading "Level N". Scan the
+-- friendship faction ID range and cache account-wide (invalidated on expansion
+-- change) rather than hardcoding a per-expansion faction ID.
+-- LIMITATION: the "Level %d" reaction match is English-only.
 
-local COMPANION_SCAN_FROM = 3100  -- scan DESCENDING so the newest
-local COMPANION_SCAN_TO   = 2600  -- expansion's companion wins
+-- Scan descending so the newest expansion's companion wins.
+local COMPANION_SCAN_FROM = 3100
+local COMPANION_SCAN_TO   = 2600
 
 local function ScanForCompanionFaction()
     if not (C_GossipInfo and C_GossipInfo.GetFriendshipReputation) then
@@ -322,10 +224,6 @@ local function ScanForCompanionFaction()
     return nil
 end
 
---- Friendship faction ID of the current expansion's delve companion.
---- Resolved by scan once, then cached account-wide (the ID itself is
---- global; only the standing is per character). Returns nil when the
---- companion isn't found (e.g. not unlocked yet) — re-scans next call.
 function E:GetCompanionFactionID()
     local xpac = GetAccountExpansionLevel and GetAccountExpansionLevel() or 0
     local db = self.db
@@ -340,8 +238,6 @@ function E:GetCompanionFactionID()
     return id
 end
 
---- Live companion progression for this character.
---- @return table|nil  { name, level, xpCurrent, xpMax, isMaxLevel }
 function E:GetCompanionData()
     local id = self:GetCompanionFactionID()
     if not id then return nil end
@@ -351,7 +247,6 @@ function E:GetCompanionData()
         return nil
     end
 
-    -- Level: prefer the ranks API; fall back to parsing the reaction.
     local level = 0
     if C_GossipInfo.GetFriendshipReputationRanks then
         local ok2, ranks = pcall(
@@ -365,7 +260,7 @@ function E:GetCompanionData()
     end
 
     local floor = d.reactionThreshold or 0
-    local ceil  = d.nextThreshold              -- nil at max level
+    local ceil  = d.nextThreshold  -- nil at max level
     return {
         name       = (d.name and d.name ~= "") and d.name or "Companion",
         level      = level,
@@ -375,7 +270,6 @@ function E:GetCompanionData()
     }
 end
 
---- Color a scrollbar thumb texture and register for repaint.
 function E:StyleAccentThumb(tex)
     if not tex or not tex.SetColorTexture then return end
     self:RegisterThemed(function(p)
@@ -386,20 +280,10 @@ function E:StyleAccentThumb(tex)
     end)
 end
 
-------------------------------------------------------------------------
--- Sort helpers
-------------------------------------------------------------------------
---- Case-insensitive string comparison for table.sort.
 function E.CompareAlpha(a, b)
     return (a or ""):lower() < (b or ""):lower()
 end
 
-------------------------------------------------------------------------
--- Delve history helpers
-------------------------------------------------------------------------
---- Get history for a delve. Returns entry or nil.
---- @param delveName string
---- @return table|nil
 function E:GetDelveHistory(delveName)
     if not self.db or not self.db.delveHistory then return nil end
     return self.db.delveHistory[delveName]

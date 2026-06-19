@@ -17,3 +17,6 @@ Desktop.ini
 # Backup files
 *.bak
 *.orig
+
+# Local tooling
+docs/

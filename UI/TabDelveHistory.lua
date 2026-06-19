@@ -1,37 +1,12 @@
-------------------------------------------------------------------------
--- UI/TabDelveHistory.lua — Tab 5: Delve History
---
--- Displays lifetime stats and recent-run log for each Midnight delve
--- recorded in EverythingDelvesDB.delveHistory. The SCENARIO_COMPLETED
--- logger in EverythingDelves.lua populates that table; this tab only
--- reads it.
---
--- Memory rules honoured:
---   * No OnUpdate on this tab.
---   * No closures allocated in loops (header/run rows share a single
---     OnClick that reads self.delveKey).
---   * Delve header rows and per-run detail rows are recycled from
---     pools — we never destroy or recreate frames on refresh.
---   * Refresh fires only from OnShow and the explicit
---     E:RefreshDelveHistoryTab() hook called when a run is logged or
---     history is cleared.
-------------------------------------------------------------------------
 local E = EverythingDelves
 ---@diagnostic disable: need-check-nil
 
-------------------------------------------------------------------------
--- Local references for frequently accessed globals
-------------------------------------------------------------------------
 local pairs, ipairs              = pairs, ipairs
 local math_floor, math_max       = math.floor, math.max
 local string_format              = string.format
 local table_sort, table_insert   = table.sort, table.insert
 local date, time                 = date, time
 
-------------------------------------------------------------------------
--- Formatting helpers
-------------------------------------------------------------------------
---- Return "Xm YYs" or "Xh Ym" depending on size.
 local function FormatDuration(sec)
     sec = sec or 0
     if sec <= 0 then return "--" end
@@ -49,22 +24,18 @@ local function FormatDuration(sec)
     return string_format("%dh %dm %02ds", h, m, s)
 end
 
---- Return a compact "Apr 22, 2026" date string.
 local function FormatDate(ts)
     if not ts or ts == 0 then return "" end
     return date("%b %d, %Y", ts)
 end
 
---- Return a "Apr 22, 2026 at 15:28" date + 24h time string.
 local function FormatDateTime(ts)
     if not ts or ts == 0 then return "" end
     return date("%b %d, %Y at %H:%M", ts)
 end
 
---- Resolve the story/variation label for a single run row.
---- Prefers the live variant captured when the run was logged; falls back
---- to the delve's signature story (E.DelveStories). Returns nil when
---- neither is known (e.g. the Nemesis delve, which has no signature).
+-- Prefer the live variant captured at log time; fall back to the delve's
+-- signature story. nil when neither is known (e.g. Nemesis has no signature).
 local function ResolveRunStory(run, delveKey)
     if run and run.story and run.story ~= "" then
         return run.story
@@ -72,15 +43,9 @@ local function ResolveRunStory(run, delveKey)
     return E.DelveStories and E.DelveStories[delveKey] or nil
 end
 
-------------------------------------------------------------------------
--- MODULE INIT
-------------------------------------------------------------------------
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTabHistoryContent")
 
-    --------------------------------------------------------------------
-    -- Header: title + aggregate summary
-    --------------------------------------------------------------------
     local HDR_X = 8
     local HDR_Y = -6
 
@@ -93,8 +58,6 @@ E:RegisterModule(function()
     summaryFS:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
     summaryFS:SetFont(summaryFS:GetFont(), 11)
 
-    -- Footer note (own reserved strip below the list, with a divider so
-    -- the scrolling rows never bleed into it).
     local footerDiv = frame:CreateTexture(nil, "ARTWORK")
     footerDiv:SetHeight(1)
     footerDiv:SetPoint("BOTTOMLEFT",  frame, "BOTTOMLEFT",  8, 22)
@@ -119,9 +82,6 @@ E:RegisterModule(function()
     headerDiv:SetPoint("RIGHT",    frame, "RIGHT", -8, 0)
     E:StyleAccentDivider(headerDiv)
 
-    --------------------------------------------------------------------
-    -- Clear History button (top-right, subtle)
-    --------------------------------------------------------------------
     local clearBtn = E:CreateButton(frame, 100, 20, "Clear History")
     clearBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -6)
     if clearBtn.Text then
@@ -143,13 +103,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    --------------------------------------------------------------------
-    -- History retention slider (top band, left of Clear History).
-    -- Sets how many recent runs are kept per delve. Default = floor = 20;
-    -- raising it keeps more history going forward. Placed in the FIXED
-    -- header (not by the scrolling "Midnight Delves" header) so it stays
-    -- put and never scrolls out of reach.
-    --------------------------------------------------------------------
+    -- In the fixed header, not the scrolling content, so it never scrolls out of reach.
     local CAP_MIN  = E.HISTORY_CAP_MIN or 20
     local CAP_MAX  = E.HISTORY_CAP_MAX or 100
     local CAP_STEP = 10
@@ -196,10 +150,8 @@ E:RegisterModule(function()
     capSlider:SetScript("OnEnter", CapTooltip)
     capSlider:SetScript("OnLeave", function() E:HideTooltip() end)
 
-    -- Sync the slider to the saved value (re-synced on OnShow so a profile
-    -- switch is reflected). Set the readout explicitly too: when the saved
-    -- value matches the slider's current value, SetValue won't fire
-    -- OnValueChanged, so the number could otherwise stay blank.
+    -- Set the readout explicitly: when the saved value equals the slider's
+    -- current value, SetValue won't fire OnValueChanged and it'd stay blank.
     local function SyncHistoryCap()
         local v = ClampCap((E.db and E.db.historyCap) or CAP_MIN)
         capSlider:SetValue(v)
@@ -208,9 +160,6 @@ E:RegisterModule(function()
     SyncHistoryCap()
     frame.SyncHistoryCap = SyncHistoryCap
 
-    --------------------------------------------------------------------
-    -- Scroll frame + scroll child
-    --------------------------------------------------------------------
     local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
     scrollFrame:SetPoint("TOPLEFT",     headerDiv, "BOTTOMLEFT", 0, -4)
     scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 30)
@@ -222,7 +171,6 @@ E:RegisterModule(function()
     scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
     sc:SetHeight(400)
 
-    -- Themed scrollbar
     local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
     tabScrollBar:SetWidth(14)
     tabScrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
@@ -265,10 +213,6 @@ E:RegisterModule(function()
         end
     end
 
-    --------------------------------------------------------------------
-    -- Section headers (Nemesis, Midnight Delves) — pre-created, shown
-    -- or hidden depending on whether content exists.
-    --------------------------------------------------------------------
     local nemesisHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemesisHeader:SetFont(nemesisHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     E:StyleAccentHeader(nemesisHeader, "Seasonal Nemesis")
@@ -288,11 +232,8 @@ E:RegisterModule(function()
         .. "No Midnight delve runs recorded yet. Complete a delve to "
         .. "start tracking!" .. E.CC.close)
 
-    -- Accent-colour dividers for the Seasonal Nemesis / Midnight Delves
-    -- sections. Parented to `sc` (the scroll child) so they scroll WITH
-    -- the content and clip at the viewport edges — children of `frame`
-    -- stayed pinned to the viewport and floated over rows as you scrolled.
-    -- Anchored within sc at the running yCur in Refresh.
+    -- Parented to sc (not frame) so they scroll with the content; children of
+    -- frame stay pinned to the viewport and float over rows as you scroll.
     local nemesisDivider = sc:CreateTexture(nil, "ARTWORK")
     nemesisDivider:SetHeight(1)
     E:StyleAccentDivider(nemesisDivider)
@@ -303,27 +244,19 @@ E:RegisterModule(function()
     E:StyleAccentDivider(midnightDivider)
     midnightDivider:Hide()
 
-    --------------------------------------------------------------------
-    -- Frame pools
-    --------------------------------------------------------------------
     local HEADER_ROW_HEIGHT = 22
     local RUN_ROW_HEIGHT    = 16
 
-    local headerRowPool = {}  -- delve summary rows (collapsible)
-    local runRowPool    = {}  -- individual run detail rows
-    local noteLinePool  = {}  -- wrapped note text shown under a run row
+    local headerRowPool = {}
+    local runRowPool    = {}
+    local noteLinePool  = {}
 
-    -- Track expanded state keyed by delve name — survives refresh.
+    -- Expanded state keyed by delve name — survives refresh.
     local expandedByKey = {}
 
-    -- Forward-declared refresher so the toggle OnClick can call it.
     local Refresh
-    -- Forward-declared note editor opener (defined below, used by the
-    -- per-run note button's shared OnClick).
     local OpenNoteEditor
 
-    --- Single shared OnClick used by every header row: flips the
-    --- expanded flag for the bound delve key and triggers a refresh.
     local function HeaderRow_OnClick(self)
         local key = self.delveKey
         if not key then return end
@@ -331,12 +264,8 @@ E:RegisterModule(function()
         if Refresh then Refresh() end
     end
 
-    ------------------------------------------------------------------
-    -- Run note editor (shared popup) + per-run note widgets
-    -- A single dialog edits the free-form note attached to one logged
-    -- run. The run is identified by its delve name + timestamp, so the
-    -- note survives refresh and re-sorting.
-    ------------------------------------------------------------------
+    -- A run is identified by delve name + timestamp, so its note survives
+    -- refresh and re-sorting.
     local noteEditor = CreateFrame("Frame", "EverythingDelvesRunNoteEditor",
                                    UIParent, "BackdropTemplate")
     noteEditor:SetSize(440, 230)
@@ -366,7 +295,6 @@ E:RegisterModule(function()
     neContext:SetFont(neContext:GetFont(), 11)
     neContext:SetJustifyH("LEFT")
 
-    -- Bordered box wrapping the multi-line edit field.
     local neBox = CreateFrame("Frame", nil, noteEditor, "BackdropTemplate")
     neBox:SetPoint("TOPLEFT",  noteEditor, "TOPLEFT",  14, -60)
     neBox:SetPoint("TOPRIGHT", noteEditor, "TOPRIGHT", -14, -60)
@@ -393,7 +321,6 @@ E:RegisterModule(function()
     neEdit:SetPoint("BOTTOMRIGHT", neBox, "BOTTOMRIGHT", -6, 6)
     neEdit:SetScript("OnEscapePressed", function() noteEditor:Hide() end)
 
-    -- Character counter under the box.
     local neCount = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     neCount:SetPoint("TOPRIGHT", neBox, "BOTTOMRIGHT", 0, -4)
     neCount:SetFont(neCount:GetFont(), 9)
@@ -439,8 +366,6 @@ E:RegisterModule(function()
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
     end)
 
-    -- Delete button (bottom-left, separated from Save/Cancel). Only shown
-    -- when the run currently has a note to clear.
     local neDelete = E:CreateButton(noteEditor, 90, 24, "Delete")
     neDelete:SetPoint("BOTTOMLEFT", noteEditor, "BOTTOMLEFT", 14, 14)
     neDelete:SetScript("OnClick", function()
@@ -461,7 +386,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    -- Assign the forward-declared opener.
     function OpenNoteEditor(delveKey, run, niceName)
         if not (delveKey and run) then return end
         noteEditor.delveKey  = delveKey
@@ -482,8 +406,7 @@ E:RegisterModule(function()
         neEdit:SetFocus()
     end
 
-    -- Shared handlers for every run row's note button (no per-row
-    -- closures — they read state off the bound row).
+    -- Shared across all note buttons (no per-row closures); read state off self.row.
     local function NoteBtn_SetState(btn, hasNote)
         if hasNote then
             btn.tex:SetDesaturated(false)
@@ -521,9 +444,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end
 
-    -- Delete-run confirmation. The run is identified by delve key +
-    -- timestamp (same addressing as run notes); E:DeleteRun also
-    -- subtracts the run's contribution from lifetime stats.
+    -- E:DeleteRun also subtracts the run's contribution from lifetime stats.
     StaticPopupDialogs["EVERYTHINGDELVES_DELETE_RUN"] = {
         text = "Delete this %s run?\n\n%s\n\nIts time, deaths, and key"
             .. " usage are removed from the delve's lifetime stats."
@@ -563,9 +484,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end
 
-    -- Shared hover handlers for the "B" badge so the lone gold glyph has a
-    -- legend (it was ambiguous — Bountiful? Boss? Bonus?). Only explains
-    -- itself when the badge is actually shown (this run was bountiful).
+    -- The lone "B" glyph is ambiguous (Bountiful? Boss? Bonus?); give it a legend.
     local function BountBadge_OnEnter(self)
         local row = self.row
         if row and row.run and row.run.wasBountiful then
@@ -578,7 +497,6 @@ E:RegisterModule(function()
         E:HideTooltip()
     end
 
-    -- Pooled wrapped text line shown beneath a run that has a note.
     local function AcquireNoteLine(i)
         local fs = noteLinePool[i]
         if not fs then
@@ -592,11 +510,6 @@ E:RegisterModule(function()
         return fs
     end
 
-    -- Rows stay neutral on hover/click — no background tint.
-
-    --- Create a reusable header row. All textual fields are FontStrings
-    --- that are re-populated each refresh; the row is a plain Button
-    --- with a shared OnClick so no closures are allocated per delve.
     local function CreateHeaderRow()
         local row = CreateFrame("Button", nil, sc)
         row:SetHeight(HEADER_ROW_HEIGHT)
@@ -615,7 +528,6 @@ E:RegisterModule(function()
         nameFS:SetWidth(170)
         row.nameFS = nameFS
 
-        -- Fixed-position stat columns so summaries line up across delves.
         local function statCol(x, w)
             local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             fs:SetPoint("LEFT", row, "LEFT", x, 0)
@@ -630,9 +542,6 @@ E:RegisterModule(function()
         row.avgFS    = statCol(332, 92)
         row.fastFS   = statCol(426, 104)
 
-        -- Total Deaths pinned to the right edge; Latest flexes into the
-        -- space between Fastest and it (so it gets all remaining width on
-        -- wide frames and clips gracefully on narrow ones).
         local hdeathsFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         hdeathsFS:SetPoint("RIGHT", row, "RIGHT", -2, 0)
         hdeathsFS:SetFont(hdeathsFS:GetFont(), 10)
@@ -641,9 +550,7 @@ E:RegisterModule(function()
         hdeathsFS:SetWordWrap(false)
         row.hdeathsFS = hdeathsFS
 
-        -- Lifetime coffer keys spent on this delve, pinned just left of Total
-        -- Deaths (blank when none have ever been used, so non-key delves stay
-        -- uncluttered). Latest flexes into whatever space remains to its left.
+        -- Blank when no keys were ever used, so non-key delves stay uncluttered.
         local keysFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         keysFS:SetPoint("RIGHT", hdeathsFS, "LEFT", -10, 0)
         keysFS:SetFont(keysFS:GetFont(), 10)
@@ -664,9 +571,6 @@ E:RegisterModule(function()
         return row
     end
 
-    --- Fill a header row's stat columns from a delve's lifetime totals.
-    --- `latest` (optional) is the newest run (recentRuns[1]) for the
-    --- "Latest: <time> on <date>" column.
     local function SetHeaderStats(row, life, latest)
         local avg = (life.totalRuns and life.totalRuns > 0)
             and math_floor(life.totalDuration / life.totalRuns) or 0
@@ -701,15 +605,12 @@ E:RegisterModule(function()
             .. E.CC.body .. string_format("%d", life.totalDeaths or 0) .. E.CC.close)
     end
 
-    --- Create a reusable per-run detail row.
     local function CreateRunRow()
         local row = CreateFrame("Frame", nil, sc)
         row:SetHeight(RUN_ROW_HEIGHT)
         row:SetPoint("LEFT",  sc, "LEFT",  32, 0)
         row:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
 
-        -- Note button (right edge): a small parchment icon that is faint
-        -- when empty and gold when the run has a note attached.
         local noteBtn = CreateFrame("Button", nil, row)
         noteBtn:SetSize(15, 15)
         noteBtn:SetPoint("RIGHT", row, "RIGHT", -2, 0)
@@ -723,8 +624,6 @@ E:RegisterModule(function()
         noteBtn:SetScript("OnLeave", NoteBtn_OnLeave)
         row.noteBtn = noteBtn
 
-        -- Delete button: small red X left of the note button. Faint
-        -- until hovered; removes the run after a confirmation popup.
         local delBtn = CreateFrame("Button", nil, row)
         delBtn:SetSize(15, 15)
         delBtn:SetPoint("RIGHT", noteBtn, "LEFT", -4, 0)
@@ -739,8 +638,7 @@ E:RegisterModule(function()
         delBtn:SetScript("OnLeave", DelBtn_OnLeave)
         row.delBtn = delBtn
 
-        -- Fixed-position columns so every run lines up into a grid
-        -- regardless of field width (proportional font).
+        -- Fixed-position columns so rows align into a grid despite the proportional font.
         local function col(x, w, justify)
             local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             fs:SetPoint("LEFT", row, "LEFT", x, 0)
@@ -751,7 +649,6 @@ E:RegisterModule(function()
             return fs
         end
         row.bountFS  = col(0,   12)
-        -- Invisible hover target over the "B" badge so it can explain itself.
         local bountHover = CreateFrame("Frame", nil, row)
         bountHover:SetPoint("LEFT", row, "LEFT", 0, 0)
         bountHover:SetSize(14, RUN_ROW_HEIGHT)
@@ -790,10 +687,7 @@ E:RegisterModule(function()
         return row
     end
 
-    --------------------------------------------------------------------
-    -- Section-ordering scratch buffers (reused every refresh, wiped
-    -- instead of reallocated).
-    --------------------------------------------------------------------
+    -- Reused every refresh, wiped instead of reallocated.
     local nemesisKeys  = {}
     local midnightKeys = {}
 
@@ -816,9 +710,6 @@ E:RegisterModule(function()
         table_sort(midnightKeys)
     end
 
-    --------------------------------------------------------------------
-    -- Refresh (populate everything from E.db.delveHistory)
-    --------------------------------------------------------------------
     local LEFT_X = 8
     local INDENT = 0
 
@@ -826,7 +717,6 @@ E:RegisterModule(function()
         local history = E.db and E.db.delveHistory or nil
         CollectKeys(history)
 
-        -- Aggregate summary numbers
         local totalRuns, totalDeaths, totalDur = 0, 0, 0
         if history then
             for _, entry in pairs(history) do
@@ -847,24 +737,20 @@ E:RegisterModule(function()
             E.CC.muted, E.CC.close, E.CC.gold, FormatDuration(totalDur), E.CC.close
         )
 
-        -- Hide all pool rows up front; we'll anchor the used ones fresh.
+        -- Hide all pool rows up front; we re-anchor the used ones fresh.
         for _, r in ipairs(headerRowPool) do r:Hide() end
         for _, r in ipairs(runRowPool)    do r:Hide() end
         for _, r in ipairs(noteLinePool)  do r:Hide() end
 
-        -- Hide both empty-state messages; they're only re-shown by
-        -- PlaceAt() when the matching section is actually empty.
         nemesisEmptyFS:Hide()
         midnightEmptyFS:Hide()
 
         local hUsed, rUsed, nUsed = 0, 0, 0
-        -- Running Y cursor (positive pixels from top of sc). Every
-        -- widget anchors directly to sc "TOPLEFT" with a fixed X and
-        -- yCur as its Y offset — no chained sibling anchors, so there
-        -- is zero possibility of X-drift between rows.
+        -- Every widget anchors directly to sc TOPLEFT at a fixed X with -yCur as
+        -- its Y; no chained sibling anchors, so rows can't X-drift.
         local yCur = 4
-        local X_PARENT = 0                -- align section headers with "Delve History"
-        local X_CHILD  = 16               -- indented child run row X
+        local X_PARENT = 0
+        local X_CHILD  = 16
 
         local function PlaceAt(widget, x, h)
             widget:ClearAllPoints()
@@ -881,9 +767,6 @@ E:RegisterModule(function()
             yCur = yCur + h
         end
 
-        --- Emit one run detail row (identical for both sections): the
-        --- formatted stat line, its note button, and — when the run has
-        --- a note — a wrapped note line beneath it.
         local function EmitRun(run, key, niceName)
             rUsed = rUsed + 1
             local rrow = AcquireRunRow(rUsed)
@@ -913,9 +796,7 @@ E:RegisterModule(function()
                 and (E.CC.body .. storyTxt .. E.CC.close)
                 or  (E.CC.muted .. "--" .. E.CC.close))
 
-            -- Correct legacy entries whose boss was logged under its live
-            -- encounter name (e.g. "Spinshroom" -> "Gyrospore") so already
-            -- saved runs display the boss the player actually fought.
+            -- Map legacy live encounter names (e.g. "Spinshroom" -> "Gyrospore").
             local bossName = run.boss and E:NormalizeLiveBoss(key, run.boss)
             rrow.bossFS:SetText(bossName
                 and (E.CC.body .. bossName .. E.CC.close) or "")
@@ -937,9 +818,7 @@ E:RegisterModule(function()
             end
         end
 
-        ----------------------------------------------------------------
         -- Section: Seasonal Nemesis
-        ----------------------------------------------------------------
         PlaceAt(nemesisHeader, X_PARENT, 20)
 
         if #nemesisKeys == 0 then
@@ -957,7 +836,6 @@ E:RegisterModule(function()
                 local arrow    = expanded and "|cFFFFD700v|r" or "|cFFFFD700>|r"
                 row.arrowFS:SetText(arrow)
 
-                -- Nemesis display includes the boss name (Nullaeus).
                 local nem = E.NemesisDelve
                 local niceName = key
                 if nem and nem.boss then
@@ -980,30 +858,24 @@ E:RegisterModule(function()
             end
         end
 
-        ----------------------------------------------------------------
-        -- Spacer + accent divider + Section: Midnight Delves
-        ----------------------------------------------------------------
-        yCur = yCur + 32  -- breathing room above the divider
+        -- Section: Midnight Delves
+        yCur = yCur + 32
 
-        -- Accent-colour separator. Anchored inside sc at the running
-        -- yCur so it scrolls with the content (instead of floating over
-        -- rows pinned to the viewport).
         nemesisDivider:ClearAllPoints()
         nemesisDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   8, -yCur)
         nemesisDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -8, -yCur)
         nemesisDivider:SetHeight(1)
         nemesisDivider:Show()
-        yCur = yCur + 32  -- breathing room below the divider
+        yCur = yCur + 32
 
         PlaceAt(midnightHeader, X_PARENT, 24)
 
-        -- Third accent divider, directly below the Midnight Delves header.
         midnightDivider:ClearAllPoints()
         midnightDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   8, -yCur + 4)
         midnightDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -8, -yCur + 4)
         midnightDivider:SetHeight(1)
         midnightDivider:Show()
-        yCur = yCur + 8  -- breathing room below the third divider
+        yCur = yCur + 8
 
         if #midnightKeys == 0 then
             PlaceAt(midnightEmptyFS, X_PARENT, 16)
@@ -1040,10 +912,7 @@ E:RegisterModule(function()
         UpdateScrollRange()
     end
 
-    --------------------------------------------------------------------
-    -- External hook: called by the delve logger when a run is recorded
-    -- or when the player wipes history from the Options tab.
-    --------------------------------------------------------------------
+    -- Called by the delve logger when a run is recorded, or when history is cleared.
     function E:RefreshDelveHistoryTab()
         if frame:IsShown() then
             Refresh()
@@ -1057,8 +926,5 @@ E:RegisterModule(function()
         if frame.SyncHistoryCap then frame.SyncHistoryCap() end
     end)
 
-    --------------------------------------------------------------------
-    -- Register with the main frame tab system
-    --------------------------------------------------------------------
     E:RegisterTab(6, frame)
 end)

@@ -1,8 +1,3 @@
-------------------------------------------------------------------------
--- UI/WhatsNew.lua — What's New popup
--- Shows once per feature release. Update WHATS_NEW_VERSION and the
--- ENTRIES table each release; everything else is automatic.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
 local WHATS_NEW_VERSION = "1.17.0"
@@ -47,7 +42,6 @@ E:RegisterModule(function()
     end)
     popup:Hide()
 
-    -- Title
     local titleFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, -8)
     titleFS:SetFont(titleFS:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -62,7 +56,6 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
-    -- Feature rows
     local Y = -(HEADER_H - 2)
     for _, entry in ipairs(ENTRIES) do
         local tf = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -83,7 +76,6 @@ E:RegisterModule(function()
         Y = Y - ENTRY_H
     end
 
-    -- Dismiss button (sits right-of-center so the Discord link fits beside it)
     local btn = E:CreateButton(popup, 100, 24, "Got it")
     btn:SetPoint("BOTTOM", popup, "BOTTOM", 60, 16)
     btn:SetScript("OnClick", function()
@@ -91,10 +83,7 @@ E:RegisterModule(function()
         popup:Hide()
     end)
 
-    -- "Join our Discord!" to the left of "Got it" — same look as the main
-    -- window title-bar link (logo chip + accent text). Does NOT mark the
-    -- popup as seen, so the player can copy the invite and keep reading.
-    -- Opens the same copyable invite popup (E:ShowDiscord).
+    -- Intentionally does NOT mark the popup seen, so the player can grab the invite and keep reading.
     local discordBtn = CreateFrame("Button", nil, popup, "BackdropTemplate")
     discordBtn:SetHeight(24)
     local dBg = discordBtn:CreateTexture(nil, "BACKGROUND")
@@ -136,10 +125,8 @@ E:RegisterModule(function()
         end
     end
 
-    -- Show on first login after this release
     MaybeShow()
 
-    -- Public accessor for /ed whatsnew preview
     function E:ShowWhatsNew()
         popup:Show()
     end

@@ -1,15 +1,6 @@
-------------------------------------------------------------------------
--- Core/Data.lua
--- Static fallback data tables for delve locations and bountiful delves.
--- These serve as a baseline; live API data from C_AreaPoiInfo / C_Map
--- overlays or replaces these values when available at runtime.
-------------------------------------------------------------------------
 local E = EverythingDelves
 
-------------------------------------------------------------------------
--- Zone list (display name → uiMapID mapping)
--- Confirmed map IDs from live Midnight 12.0 data
-------------------------------------------------------------------------
+-- Map IDs confirmed from live Midnight 12.0 data.
 E.Zones = {
     { name = "Eversong Woods",        mapID = 2395 },
     { name = "Harandar",              mapID = 2413 },
@@ -19,21 +10,9 @@ E.Zones = {
     { name = "Isle of Quel'Danas",    mapID = 2424 },
 }
 
-------------------------------------------------------------------------
--- Delve directory — confirmed live data from Midnight S1
---
--- Each entry:
---   name        string   Display name (from C_AreaPoiInfo)
---   zone        string   Zone name (must match E.Zones)
---   x, y        number   Map coordinates (percentage, zone-relative)
---   mapID       number   uiMapID for waypoint APIs
---   poiID       number   AreaPOI ID for live bountiful detection
---
--- Coordinates are in percentage form (e.g. 45.4 = 0.454 for waypoint
--- APIs; we convert when calling SetWaypoint).
-------------------------------------------------------------------------
+-- Confirmed live data from Midnight S1. Coordinates are percentages
+-- (45.4 = 0.454); SetWaypoint conversion happens at the call site.
 E.DelveData = {
-    -- Isle of Quel'Danas
     {
         name  = "Parhelion Plaza",
         zone  = "Isle of Quel'Danas",
@@ -41,7 +20,6 @@ E.DelveData = {
         mapID = 2424,
         poiID = 8428,  normalPoiID = 8427,
     },
-    -- Eversong Woods
     {
         name  = "The Shadow Enclave",
         zone  = "Eversong Woods",
@@ -49,7 +27,6 @@ E.DelveData = {
         mapID = 2395,
         poiID = 8438,  normalPoiID = 8437,
     },
-    -- Zul'Aman
     {
         name  = "Atal'Aman",
         zone  = "Zul'Aman",
@@ -64,7 +41,6 @@ E.DelveData = {
         mapID = 2437,
         poiID = 8442,  normalPoiID = 8441,
     },
-    -- Voidstorm
     {
         name  = "Shadowguard Point",
         zone  = "Voidstorm",
@@ -79,7 +55,6 @@ E.DelveData = {
         mapID = 2405,
         poiID = 8430,  normalPoiID = 8429,
     },
-    -- Harandar
     {
         name  = "The Gulf of Memory",
         zone  = "Harandar",
@@ -94,7 +69,6 @@ E.DelveData = {
         mapID = 2413,
         poiID = 8434,  normalPoiID = 8433,
     },
-    -- Silvermoon
     {
         name  = "Collegiate Calamity",
         zone  = "Silvermoon",
@@ -113,43 +87,28 @@ E.DelveData = {
 
 E.TOTAL_DELVES = #E.DelveData
 
-------------------------------------------------------------------------
--- Seasonal Nemesis Delve (Midnight S1)
--- Torment's Rise — boss: Nullaeus. Only two tiers offered: T8 and T11.
--- Kept separate from E.DelveData so location/bountiful iterators are
--- unaffected.
-------------------------------------------------------------------------
+-- Seasonal Nemesis delve. Kept out of E.DelveData so location/bountiful
+-- iterators are unaffected.
 E.NemesisDelve = {
     name  = "Torment's Rise",
     boss  = "Nullaeus",
     tiers = { 8, 11 },
 }
 
-------------------------------------------------------------------------
--- Loggable delve lookup — scenario name → "regular" | "nemesis".
--- Used by the SCENARIO_COMPLETED handler to filter out TWW / legacy
--- scenarios and only log Midnight delves.
-------------------------------------------------------------------------
+-- SCENARIO_COMPLETED filters on this so only Midnight delves are logged.
 E.LoggableDelveNames = {}
 for _, d in ipairs(E.DelveData) do
     E.LoggableDelveNames[d.name] = "regular"
 end
 E.LoggableDelveNames[E.NemesisDelve.name] = "nemesis"
 
-------------------------------------------------------------------------
--- Name → DelveData entry. For callers that have a delve name and need its
--- metadata (zone / mapID / poiID / coords) without scanning the array.
-------------------------------------------------------------------------
 E.DelveDataByName = {}
 for _, d in ipairs(E.DelveData) do
     E.DelveDataByName[d.name] = d
 end
 
-------------------------------------------------------------------------
--- Delve uiMapID → canonical delve name. Used as a fallback identifier
--- when GetRealZoneText()/GetInstanceInfo() don't return a recognizable
--- delve name at SCENARIO_COMPLETED time.
-------------------------------------------------------------------------
+-- Fallback name lookup when GetRealZoneText()/GetInstanceInfo() don't
+-- return a recognizable delve name at SCENARIO_COMPLETED time.
 E.DelveZoneIDs = {
     [2933] = "Collegiate Calamity",
     [2952] = "The Shadow Enclave",
@@ -164,16 +123,8 @@ E.DelveZoneIDs = {
     [3003] = "The Darkway",
 }
 
-------------------------------------------------------------------------
--- Delver's Call quests — one rotational "World Tour" quest per delve.
--- Quest IDs catalogued for Midnight S1. The leveling strategy: pick all
--- of these up but BANK them (don't turn in) until you're a few levels
--- short of cap — turn-in XP scales to your level, so a banked batch
--- becomes a burst through the final levels.
---
--- `delve` MUST match the name used in E.DelveData exactly so rows line
--- up with the Delve Locations tab (note: "Twilight Crypt", singular).
-------------------------------------------------------------------------
+-- `delve` MUST match the E.DelveData name exactly so rows line up with the
+-- Delve Locations tab (note: "Twilight Crypt", singular).
 E.DelversCall = {
     { delve = "Atal'Aman",           questID = 93409 },
     { delve = "Collegiate Calamity", questID = 93384 },
@@ -187,24 +138,6 @@ E.DelversCall = {
     { delve = "Twilight Crypt",      questID = 93410 },
 }
 
-------------------------------------------------------------------------
--- Delve boss mechanics (Midnight Season 1)
---
--- Keyed by the EXACT delve name used in E.DelveData so the Delve
--- Locations and Current Bountiful tabs can look bosses up directly.
--- Some delves field more than one possible end boss across their
--- variants, so each delve holds an ordered list of bosses.
---
--- Each boss entry:
---   name   string  Boss name as it appears in game.
---   brief  string  One-line summary shown next to the boss name.
---   notes  list    Role-tagged breakdown revealed when the boss is
---                  expanded. Each note: { role = <key>, text = <string> }.
---                  Role keys map to a label + colour via E.BossRoleMeta.
---
--- Mechanics describe what each boss does and how to handle it; they are
--- intentionally written for a solo delver (plus companion).
-------------------------------------------------------------------------
 E.BossRoleMeta = {
     interrupt = { label = "Interrupt", rgb = { 0.95, 0.45, 0.30 } },
     dps       = { label = "Priority",  rgb = { 0.95, 0.75, 0.30 } },
@@ -212,9 +145,10 @@ E.BossRoleMeta = {
     tank      = { label = "Tank",      rgb = { 0.40, 0.65, 0.95 } },
     healer    = { label = "Healer",    rgb = { 0.45, 0.85, 0.55 } },
 }
--- Display order for a boss's notes (any unlisted role falls to the end).
+-- Unlisted roles fall to the end.
 E.BossRoleOrder = { "interrupt", "dps", "general", "tank", "healer" }
 
+-- Keyed by the exact E.DelveData name.
 E.DelveBosses = {
     ["Collegiate Calamity"] = {
         {
@@ -380,16 +314,13 @@ E.DelveBosses = {
     },
 }
 
--- Alias map so callers using alternate spellings (e.g. the plural
--- "Twilight Crypts" from DelveZoneIDs, or "Gulf of Memory" without the
--- article) still resolve to the right boss list.
+-- Alternate spellings (e.g. plural "Twilight Crypts" from DelveZoneIDs)
+-- that must still resolve to the canonical boss list.
 local BOSS_NAME_ALIASES = {
     ["Twilight Crypts"] = "Twilight Crypt",
     ["Gulf of Memory"]  = "The Gulf of Memory",
 }
 
---- Return the ordered boss list for a delve, or nil if none is known.
---- Accepts the canonical E.DelveData name or a known alias.
 function E:GetDelveBosses(delveName)
     if not delveName then return nil end
     local list = E.DelveBosses[delveName]
@@ -399,16 +330,9 @@ function E:GetDelveBosses(delveName)
     return nil
 end
 
-------------------------------------------------------------------------
--- Static story-variant -> boss map for the four multi-boss delves
--- (the other six only ever field one boss). Verified against multiple
--- public guides; gives correct "today's boss" coverage from the first
--- login, before any live ENCOUNTER_END capture has happened.
---
--- Alternate spellings the game/API has been seen to return are included
--- as extra keys (e.g. "Dastardly Rootstalks", "Sporasaurus Surprise") so
--- the lookup never misses on a spelling difference.
-------------------------------------------------------------------------
+-- Story-variant -> boss for the four multi-boss delves, so "today's boss"
+-- is known from first login before any live ENCOUNTER_END capture. Some
+-- variants carry duplicate keys for alternate spellings the API returns.
 E.DelveBossByVariant = {
     ["Collegiate Calamity"] = {
         ["Invasive Glow"]        = "Hydrangea",
@@ -434,10 +358,6 @@ E.DelveBossByVariant = {
     },
 }
 
---- Return the verified static boss for a delve + story variant, or nil.
---- Resolves the delve through the same alias map as GetDelveBosses, then
---- matches the variant by exact key first, then a case-insensitive
---- substring scan as a final guard against minor wording differences.
 function E:GetStaticBoss(delveName, variant)
     if not (delveName and variant and variant ~= "") then return nil end
     local byVariant = E.DelveBossByVariant[delveName]
@@ -446,9 +366,8 @@ function E:GetStaticBoss(delveName, variant)
         byVariant = alias and E.DelveBossByVariant[alias] or nil
     end
     if not byVariant then return nil end
-    -- 1) exact key
     if byVariant[variant] then return byVariant[variant] end
-    -- 2) substring scan (handles a stray prefix / spacing)
+    -- Substring scan guards against minor wording / spacing differences.
     local lower = variant:lower()
     for key, boss in pairs(byVariant) do
         local lk = key:lower()
@@ -459,26 +378,16 @@ function E:GetStaticBoss(delveName, variant)
     return nil
 end
 
-------------------------------------------------------------------------
--- Live end-boss name corrections.
---
--- The boss recorded in history is captured live from ENCOUNTER_END, which
--- carries the encounter-journal name rather than the unit the player sees.
--- For most delves these match, but The Grudge Pit's Arena Champion is shown
--- in-game (and in every guide) as "Gyrospore" while its fight reuses a
--- different encounter under the hood — so ENCOUNTER_END reports that
--- encounter's name instead. (This same reused, non-player-facing unit is
--- why the champion has no health bar and can't be targeted.) Normalize the
--- live name to the boss the player actually fought, scoped per delve so a
--- name that is correct elsewhere is never rewritten.
+-- ENCOUNTER_END reports the encounter-journal name, which for the Grudge
+-- Pit Arena Champion is "Spinshroom" (a reused under-the-hood encounter)
+-- rather than the visible "Gyrospore". Scoped per delve so a name that is
+-- correct elsewhere is never rewritten.
 E.LiveBossNameFix = {
     ["The Grudge Pit"] = {
         ["Spinshroom"] = "Gyrospore",
     },
 }
 
---- Correct a live-captured end-boss name to the canonical visible boss for
---- a delve. Returns bossName unchanged when no correction is defined.
 function E:NormalizeLiveBoss(delveName, bossName)
     if not (delveName and bossName) then return bossName end
     local fixes = E.LiveBossNameFix[delveName]
