@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
-  <img src="https://img.shields.io/badge/Interface-120005-333333?style=flat-square" alt="Interface" />
+  <img src="https://img.shields.io/badge/Interface-120007-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
   <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
 </p>
@@ -46,33 +46,43 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 
 ## Everything in One Window
 
-- **Delve Locations** — all 10 Midnight delves across 6 zones, with S–F tier ratings for today's story variant, one-click Blizzard/TomTom waypoints (single or all at once), and click-to-expand boss tactics that highlight today's boss
+- **Delve Locations** — all 10 Midnight delves across 6 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss
 - **Quickest Delve & Best Value** — every delve shows an expected clear time (your own average once you've run it, or a pace-calibrated estimate), a sortable Speed column to line up your fastest runs first, and a summary line calling out today's Quickest delve and the Best value pick
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
-- **Tier Guide** — T1–T11 reward iLvls with your gear auto-matched, Great Vault progress bars, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
+- **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths
+- **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, your own gear tier highlighted
+- **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
 - **Nullaeus (Seasonal Nemesis)** — the weekly boss delve at Torment's Rise: boss mechanics, phase transitions, and the full reward track
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Dawncrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
-- **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, and your own free-form notes
+- **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
+- **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
 - **Bonus Spoils tracker** — an optional in-delve overlay that tracks the two bonus chests (the Nemesis Strongbox packs and the Sanctified Banner) so you know you've grabbed the extra loot before pulling the boss; off by default
-- **Options & Profiles** — color themes, alerts, a curio reminder, Valeera (and Brann) audio mutes, and per-character history profiles that auto-migrate and are never deleted
-- **Plus** — delve achievements on world-map pin tooltips, a minimap button with live tooltip stats, a dark Midnight theme, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
+- **Options, Profiles & About** — color themes, alerts, a curio reminder, Valeera (and Brann) audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
+- **Plus** — delve achievements on world-map pin tooltips, a minimap/broker button with live status text, a dark Midnight theme, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
 
 ---
 
 ## Features
 
 ### Delve Locations
-All 10 Midnight delves across 6 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. Set a Blizzard map pin or TomTom waypoint with one click, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
+All 10 Midnight delves across 6 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
 
 A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then, color-graded relative to your own pace — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
 ### Current Bountiful Delves
 Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Delver's Journey stage, and a live **daily** reset countdown (bountiful delves and story variants rotate daily). Each delve shows its story variant, tier rating, and overcharged status, with a "Best Pick" suggestion for the highest-value bountiful. The checklist and progress bar fill in **automatically** from your completed runs. Quick-launch buttons for the Great Vault and Group Finder, and the **same expandable boss tactics** as the Delve Locations tab.
 
+### In-Delve HUD & Run Timer
+An optional on-screen panel that appears while you're inside a delve. It shows the **story variant and its grade**, the **recommended Combat and Utility curios** for your role, a **live run timer**, and your **remaining lives and death count**. Drag it anywhere; toggle the full HUD and the standalone timer independently in Options (both default on).
+
+### Difficulty Picker Info
+Open a delve's entrance and a panel appears beside the difficulty picker with everything you need to choose a tier: that delve's **achievement status** (story, chests, and tier goals), and a **tier-by-tier reward table** with each tier's loot and Great Vault item levels (gear-track colored), your own gear tier highlighted.
+
 ### Tier Guide
-Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl. Your equipped iLvl is read automatically and the recommended tier is highlighted. This tab also includes:
-- **Great Vault Progress** — bars for Mythic+ Dungeons, Delves/World Content, and PvP
+Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl — with the loot iLvls **colored by their gear track** (Adventurer, Veteran, Champion, Hero, Myth; hover a tier to see the track). Your equipped iLvl is read automatically and the recommended tier is highlighted. This tab also includes:
+- **Great Vault Progress** — each of the three reward slots for Mythic+ Dungeons and Delves/World Content shown individually, with its reward item level and the progress needed to unlock it
+- **Delver's Journey** — your current Journey level, a progress bar to the next level, and a row of milestone reward icons for each renown level
 - **Valeera Companion** — her level and an XP bar showing progress to the next companion unlock, plus a one-click launcher for the companion configuration UI
 - **Trovehunter's Bounty** — looted/used/active status with bag and aura checks
 - **Gilded Stash** — 4× T11 Bountiful weekly reward progress
@@ -92,15 +102,19 @@ Your shard economy dashboard. Currency overview with progress bars for next key 
 
 ### Delve History
 Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis (Torment's Rise / Nullaeus). Auto-detected — just play normally and runs are logged automatically. Grouped by delve with collapsible detail rows:
-- **Total runs, highest tier, average & fastest times, and total deaths** per delve
+- **Total runs, highest tier, average & fastest times, total deaths, and keys used** per delve
 - **Latest run** time and date shown on each delve's summary line
-- **Per-run detail** for the last 20 runs: tier, time, deaths, Coffer Key used, story variant, the **boss you faced**, and the date + time of day
+- **Per-run detail** for your recent runs: tier, time, deaths, Coffer Key used, story variant, the **boss you faced**, and the date + time of day
 - **Free-form notes** — attach a note to any run (a build you tested, a notable drop, a curio experiment); click the note icon to add, edit, or clear it
 - **Delete a single run** — remove a bogus run (a disconnect artifact, a test run) with one click; its time, deaths, and key usage are subtracted from that delve's lifetime stats, and record stats recalculate automatically
+- **Configurable history depth** — a slider sets how many recent runs to keep per delve, from 20 up to 100
 - Lifetime totals persist across sessions with minimal memory cost
 
 ### Delver's Call
 Tracks all 10 weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account.
+
+### Roster
+An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, and whether the weekly delve quest is done** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play.
 
 ### Bonus Spoils
 An optional on-screen tracker for a delve's two bonus chests — the **Nemesis Strongbox** (filled by clearing the Pactsworn groups) and the **Sanctified Banner**. It shows at a glance when you've secured the extra loot so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default — turn it on in Options, then drag it wherever you like.
@@ -111,8 +125,14 @@ UI scale, accent color theme (red / gold / purple / green / dark blue), default 
 ### Profiles
 Delve history, completion marks, and Gilded Stash progress are tracked **per character**. The Profiles tab lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
 
+### About
+A one-stop info tab: the addon version, a full slash-command reference, copyable links (Discord, CurseForge, GitHub, and a bug-report link), and the complete in-addon changelog so you can catch up on anything you missed. Open it directly with `/ed about`.
+
 ### Quality of Life
-- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot
+- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot, with hover help on its title and each bag-count number
+- **Live broker text** — the minimap/broker button shows your Keys, weekly shards, and time to reset as live status text, so Titan Panel and ElvUI users can read it without opening the window
+- **Bounty Map tooltip** — hovering a Trovehunter's Bounty in your bags tells you whether it's still unused this week, or active right now
+- **Map achievement tooltips** — a delve pin's tooltip lists every related achievement (Stories, Discoveries, and Delver of the Depths) in a clean two-column layout, each criterion green when earned and red when still needed
 - **What's New** — a one-time popup highlighting each feature release
 
 ---
@@ -179,7 +199,7 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 | Metric | Value |
 |---|---|
 | Memory footprint | ~600 KB |
-| Lua files | 22 |
+| Lua files | 26 |
 | Interface version | 120007 (Midnight 12.0) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
@@ -187,30 +207,34 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 ### Architecture
 ```
 EverythingDelves/
-├── EverythingDelves.lua          # Bootstrap: namespace, events, slash commands
+├── EverythingDelves.lua          # Bootstrap: namespace, events, slash commands, run lifecycle
 ├── EverythingDelves.toc          # Addon manifest
 ├── Core/
-│   ├── Constants.lua             # Colors, tier data, shard sources, currency IDs
+│   ├── Constants.lua             # Colors, tier data, gear-track bands, shard sources, IDs
+│   ├── Changelog.lua             # In-addon changelog data (About tab)
 │   ├── Data.lua                  # Delve directory (names, zones, coordinates, POI IDs)
-│   ├── Utils.lua                 # UI factories, waypoint helpers, tooltip, progress bars
+│   ├── Utils.lua                 # UI factories, waypoint + SuperTrack helpers, tooltips
 │   ├── SpeedRank.lua             # Per-delve clear-time estimates + pace baseline
 │   └── Achievements.lua          # Delve achievement IDs for map-pin tooltips
 ├── UI/
-│   ├── MainFrame.lua             # Window, tabs, minimap button, LibDataBroker
+│   ├── MainFrame.lua             # Window, tabs, minimap button, LibDataBroker (live text)
 │   ├── TabDelveLocations.lua     # Tab 1: sortable delve list + boss tactics
 │   ├── TabCurrentBountiful.lua   # Tab 2: live bountiful detection + currency dashboard
-│   ├── TabTierGuide.lua          # Tab 3: tier table, vault, renown, gilded stash
+│   ├── TabTierGuide.lua          # Tab 3: tier table, per-slot vault, journey, renown
 │   ├── TabNullaeus.lua           # Tab 4: seasonal nemesis boss delve
 │   ├── TabShardTracker.lua       # Tab 5: shard economy, session tracker, WQ scanner
 │   ├── TabDelveHistory.lua       # Tab 6: lifetime stats + run history, notes, bosses
 │   ├── TabDelversCall.lua        # Tab 7: weekly World Tour quest tracker
-│   ├── TabOptions.lua            # Tab 8: all user settings
-│   ├── TabProfiles.lua           # Tab 9: per-character profile management
+│   ├── TabRoster.lua             # Tab 8: account-wide character dashboard
+│   ├── TabOptions.lua            # Tab 9: all user settings
+│   ├── TabProfiles.lua           # Tab 10: per-character profile management
+│   ├── TabAbout.lua              # Tab 11: info, commands, links, changelog
 │   ├── CurioReminder.lua         # Curio reminder popup
 │   ├── CompanionAudio.lua        # Optional Valeera / Dun-dun mute
 │   ├── TrovehunterReminder.lua   # Trovehunter's Bounty reminder
-│   ├── DelveObjectives.lua       # Bonus Spoils in-delve tracker
+│   ├── DelveObjectives.lua       # In-delve HUD, run timer, Bonus Spoils tracker
 │   ├── PinAchievements.lua       # Delve achievements on world-map pin tooltips
+│   ├── DelvesPickerInfo.lua      # Info panel beside the delve difficulty picker
 │   └── WhatsNew.lua              # One-time feature-release popup
 └── Libs/                         # LibStub, LibDataBroker, LibDBIcon, CallbackHandler
 ```
@@ -241,8 +265,9 @@ Please use the [GitHub Issues](https://github.com/wheelbarrel00/EverythingDelves
 
 ## Roadmap
 
-- [ ] Companion (Valeera) curio recommendations per tier
-- [ ] Multi-character shard tracking
+- [x] Account-wide character tracking (Roster tab)
+- [ ] Per-spec curio recommendations
+- [ ] Run History grouped by weekly reset
 - [ ] Localization support (enUS, deDE, frFR, etc.)
 
 ---
