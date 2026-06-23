@@ -3,6 +3,16 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.18.0", date = "2026-06-22",
+        sections = {
+            { head = "New", items = {
+                "Roster tab - an account-wide overview of every character: item level, keys, shards, bounty maps, Great Vault delve slots, Gilded Stash, and the weekly delve quest. Sort by any column and hover a row for detail.",
+                "Live broker text - the minimap/broker now shows Keys, weekly shards, and time to reset without hovering (handy for Titan Panel and ElvUI).",
+                "Bounty Map tooltip - hovering a Trovehunter's Bounty shows whether it is still unused this week, or active right now.",
+            }},
+        },
+    },
+    {
         version = "1.17.1", date = "2026-06-18",
         sections = {
             { head = "Changed", items = {

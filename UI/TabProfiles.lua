@@ -308,5 +308,5 @@ E:RegisterModule(function()
         Rebuild()
     end)
 
-    E:RegisterTab(9, frame)
+    E:RegisterTab(10, frame)
 end)

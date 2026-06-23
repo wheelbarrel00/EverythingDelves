@@ -1,19 +1,19 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.17.0"
+local WHATS_NEW_VERSION = "1.18.0"
 
 local ENTRIES = {
     {
-        title = "New: Delver's Journey",
-        desc  = "The Tier Guide tab now shows your Delver's Journey right under Great Vault: your current level, progress toward the next, and a row of milestone reward icons. Hover an icon to see its reward.",
+        title = "New: Roster tab",
+        desc  = "A new account-wide Roster tab shows every character at a glance - item level, keys, shards, bounty maps, Great Vault delve slots, Gilded Stash, and the weekly delve quest. Click a column to sort, hover a row for detail.",
     },
     {
-        title = "Curio reminder tooltips",
-        desc  = "The companion curio reminder now has hover help - mouse over its title to learn what it shows, or over any count to see it's how many of that curio you're carrying (green means you have one, red means none yet).",
+        title = "Live broker text",
+        desc  = "The minimap/broker now shows Keys, weekly shards, and time to reset as live text, so Titan Panel and ElvUI users can read it without hovering.",
     },
     {
-        title = "Map achievement tooltips, redesigned",
-        desc  = "Delve achievements on a map pin (hold Shift to expand) now list every related achievement - Stories, Discoveries, and Delver of the Depths - in a clean two-column layout with green/red criteria.",
+        title = "Bounty Map tooltip",
+        desc  = "Hovering a Trovehunter's Bounty in your bags now tells you whether it's still unused this week, or active right now.",
     },
 }
 

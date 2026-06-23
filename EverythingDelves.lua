@@ -110,6 +110,7 @@ local DEFAULTS = {
     delversCallRoster      = {},
     delveBossMap           = {},
     gildedStashByChar      = {},
+    roster                 = {},
 }
 
 -- Profile-scoped keys: the E.db proxy redirects these to the active profile.
@@ -169,6 +170,14 @@ function E:InitDB()
 
     sv.profiles    = sv.profiles    or {}
     sv.profileKeys = sv.profileKeys or {}
+
+    -- Roster inserted at tab 8 shifted Options/Profiles/About down one.
+    if not sv._rosterTabMigrated then
+        if type(sv.defaultTab) == "number" and sv.defaultTab >= 8 then
+            sv.defaultTab = sv.defaultTab + 1
+        end
+        sv._rosterTabMigrated = true
+    end
 
     local charKey = CharKey()
 
@@ -938,6 +947,67 @@ function E:GetLiveGildedStash()
     if not entry then return nil end
     if not entry.validUntil or time() >= entry.validUntil then return nil end
     return entry.collected, entry.total
+end
+
+local ROSTER_WEEKLY_QUEST = 93909
+
+function E:CaptureRosterSnapshot()
+    local sv = EverythingDelvesDB
+    if not sv then return end
+    sv.roster = sv.roster or {}
+    local key = CharKey()
+    local rec = sv.roster[key] or {}
+
+    rec.name    = UnitName("player")             or rec.name
+    rec.realm   = GetRealmName()                 or rec.realm
+    rec.class   = select(2, UnitClass("player")) or rec.class
+    rec.faction = UnitFactionGroup("player")     or rec.faction
+    rec.level   = UnitLevel("player")            or rec.level
+
+    local _, equipped = GetAverageItemLevel()
+    if equipped and equipped > 0 then rec.ilvl = math.floor(equipped + 0.5) end
+
+    local function CurrencyQty(id)
+        local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+            and C_CurrencyInfo.GetCurrencyInfo(id)
+        return (info and info.quantity) or 0
+    end
+    rec.keys   = CurrencyQty(self.CurrencyIDs.bountifulKeys)
+    rec.shards = CurrencyQty(self.CurrencyIDs.cofferKeyShards)
+
+    rec.bountyMaps = self:GetTrovehunterMapCount()
+
+    rec.weeklyQuestDone = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
+        and C_QuestLog.IsQuestFlaggedCompleted(ROSTER_WEEKLY_QUEST)) or false
+
+    local prog, total, slots = 0, 0, 0
+    local ok, acts = pcall(function()
+        return C_WeeklyRewards and C_WeeklyRewards.GetActivities
+            and C_WeeklyRewards.GetActivities() or nil
+    end)
+    if ok and acts and Enum and Enum.WeeklyRewardChestThresholdType then
+        for _, a in ipairs(acts) do
+            if a.type == Enum.WeeklyRewardChestThresholdType.World then
+                prog  = math.max(prog,  a.progress  or 0)
+                total = math.max(total, a.threshold or 0)
+                if (a.threshold or 0) > 0 and (a.progress or 0) >= a.threshold then
+                    slots = slots + 1
+                end
+            end
+        end
+    end
+    rec.vaultProgress = prog
+    rec.vaultTotal    = total
+    rec.vaultSlots    = slots
+
+    rec.gildedCollected, rec.gildedTotal = self:GetLiveGildedStash()
+
+    local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
+        and C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if secs and secs > 0 then rec.weekEnd = time() + secs end
+
+    rec.updated = time()
+    sv.roster[key] = rec
 end
 
 -- widgetID guard keeps this cheap despite UPDATE_UI_WIDGET's high fire rate.

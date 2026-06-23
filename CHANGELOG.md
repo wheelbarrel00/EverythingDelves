@@ -5,6 +5,14 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-06-22
+
+### New Features
+
+- **Roster tab** - A new account-wide Roster tab shows all your characters at a glance: item level, Coffer Keys, shards, bounty maps in your bag, Great Vault delve slots, Gilded Stash progress, and whether the weekly delve quest is done - so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play.
+- **Live minimap/broker text** - The Everything Delves data broker now shows live status text - Keys, weekly shards, and time until the weekly reset - so Titan Panel and ElvUI DataText users can read it at a glance without hovering. Left-click still opens the window and right-click still opens Options.
+- **Bounty Map tooltip** - Hovering a Trovehunter's Bounty in your bags now tells you whether it is still unused this week, or active right now.
+
 ## [1.17.1] - 2026-06-18
 
 - Some code clean up

@@ -266,5 +266,5 @@ E:RegisterModule(function()
     sc:SetHeight(math_max(1, -Y + 10))
     UpdateScrollRange()
 
-    E:RegisterTab(10, frame)
+    E:RegisterTab(11, frame)
 end)

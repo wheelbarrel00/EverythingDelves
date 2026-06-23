@@ -151,3 +151,30 @@ function E:MaybeShowTrovehunterReminder()
         E:ShowTrovehunterReminder()
     end)
 end
+
+local function AddBountyTooltipLine(tooltip, data)
+    if not (tooltip and data and data.id) then return end
+    local match = false
+    for _, mapID in ipairs(E.TROVE_MAP_ITEM_IDS) do
+        if data.id == mapID then match = true break end
+    end
+    if not match then return end
+
+    local auraActive = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
+        and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA) ~= nil
+
+    tooltip:AddLine(" ")
+    if auraActive then
+        tooltip:AddLine(E.CC.green
+            .. "Bounty active this week - happy looting!" .. E.CC.close)
+    else
+        tooltip:AddLine(E.CC.yellow
+            .. "Not used yet - use it inside a Bountiful Delve." .. E.CC.close)
+    end
+end
+
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
+        and Enum and Enum.TooltipDataType then
+    TooltipDataProcessor.AddTooltipPostCall(
+        Enum.TooltipDataType.Item, AddBountyTooltipLine)
+end

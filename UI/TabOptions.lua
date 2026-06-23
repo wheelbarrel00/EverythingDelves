@@ -556,5 +556,5 @@ E:RegisterModule(function()
         muteDundunCB:SetChecked(E.db.muteDundun == true)
     end)
 
-    E:RegisterTab(8, frame)
+    E:RegisterTab(9, frame)
 end)

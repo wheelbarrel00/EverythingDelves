@@ -43,6 +43,7 @@ E.TAB_NAMES = {
     "Shard Tracker",
     "Delve History",
     "Delver's Call",
+    "Roster",
     "Options",
     "Profiles",
     "About",

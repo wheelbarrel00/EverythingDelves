@@ -54,7 +54,7 @@ function E:InitMainFrame()
     end)
 
     -- Window is built once and reused; re-apply default tab on every Show so it
-    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(8)
+    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(9)
     -- runs after Show returns, so it still wins.)
     frame:SetScript("OnShow", function()
         E:SelectTab(E.db.defaultTab or 1)
@@ -334,6 +334,37 @@ local function AddLiveStats(tip)
     end
 end
 
+function E:UpdateBrokerText()
+    if not self.brokerObj then return end
+
+    local keys = GetCurrencyQty(self.CurrencyIDs.bountifulKeys)
+
+    local shardStr = "0"
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info   = C_CurrencyInfo.GetCurrencyInfo(self.CurrencyIDs.cofferKeyShards)
+        local cap    = (info and info.maxWeeklyQuantity) or 0
+        local earned = (info and info.quantityEarnedThisWeek) or 0
+        if cap > 0 then
+            shardStr = earned .. "/" .. cap
+        else
+            shardStr = tostring((info and info.quantity) or 0)
+        end
+    end
+
+    local resetStr = "?"
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+        if secs and secs > 0 then
+            resetStr = math_floor(secs / 86400) .. "d "
+                .. math_floor((secs % 86400) / 3600) .. "h"
+        end
+    end
+
+    self.brokerObj.text = string_format(
+        "Keys: %s%d|r  Shards: %s%s|r  Reset: %s%s|r",
+        E.CC.gold, keys, E.CC.gold, shardStr, E.CC.gold, resetStr)
+end
+
 function E:CreateBrokerObject()
     local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
     if not LDB then return end
@@ -348,7 +379,7 @@ function E:CreateBrokerObject()
             elseif btn == "RightButton" then
                 E:ToggleMainFrame()
                 if E.MainFrame:IsShown() then
-                    E:SelectTab(8) -- Options
+                    E:SelectTab(9) -- Options
                 end
             end
         end,
@@ -360,6 +391,13 @@ function E:CreateBrokerObject()
             AddLiveStats(tip)
         end,
     })
+
+    self.brokerObj.text = self.brokerObj.label
+    E:RegisterCallback("CurrencyUpdate", function() E:UpdateBrokerText() end)
+    C_Timer.After(3, function() E:UpdateBrokerText() end)
+    if C_Timer.NewTicker then
+        C_Timer.NewTicker(60, function() E:UpdateBrokerText() end)
+    end
 end
 
 function E:TryRegisterLibDBIcon()
@@ -458,7 +496,7 @@ function E:CreateMinimapButton()
         elseif btn == "RightButton" then
             E:ToggleMainFrame()
             if E.MainFrame:IsShown() then
-                E:SelectTab(8) -- Options
+                E:SelectTab(9) -- Options
             end
         end
     end)
