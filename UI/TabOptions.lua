@@ -350,6 +350,49 @@ E:RegisterModule(function()
     objCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
+    local timerCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show Run Timer",
+        "showRunTimer",
+        function()
+            if E.UpdateDelveObjectivesWindow then
+                E:UpdateDelveObjectivesWindow()
+            end
+        end
+    )
+    timerCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Run Timer",
+            "Shows your elapsed run time on a small on-screen",
+            "display while you're inside a delve. Works on its",
+            "own - you don't need the Bonus Spoils tracker.",
+            " ",
+            "Drag the display to move it.")
+    end)
+    timerCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 30
+
+    local hudCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show Delve HUD",
+        "showDelveHUD",
+        function()
+            if E.UpdateDelveObjectivesWindow then
+                E:UpdateDelveObjectivesWindow()
+            end
+        end
+    )
+    hudCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Delve HUD",
+            "An on-screen panel while inside a delve showing the",
+            "story variant and its grade, the recommended curios",
+            "for your role, your run timer, and your death count.",
+            " ",
+            "Shares the on-screen frame with the Run Timer and",
+            "Bonus Spoils tracker - drag any of them to move it.")
+    end)
+    hudCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 30
+
     Y = Y - 28
 
     local div2 = content:CreateTexture(nil, "ARTWORK")

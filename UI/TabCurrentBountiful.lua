@@ -552,23 +552,7 @@ local function CreateDelveRow()
     local wpBtn = E:CreateButton(row, 32, 20, "Pin")
     wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
     wpBtn:SetPoint("LEFT", row, "LEFT", 370, 0)
-    wpBtn:SetScript("OnClick", function()
-        if row.delve then
-            E:SetWaypoint(row.delve.mapID, row.delve.x, row.delve.y)
-            E:FlashButtonConfirm(wpBtn)
-        end
-    end)
-    wpBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set Waypoint",
-                      "Places a Blizzard map pin on this delve.")
-    end)
-    wpBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
+    E:WireDelvePinButton(wpBtn, function() return row.delve end)
     row.wpBtn = wpBtn
 
     local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
@@ -718,6 +702,7 @@ function UpdateRows()
         local row = AcquireDelveRow(dUsed)
         row:SetParent(sc)
         row.delve = delve
+        E:RefreshDelvePin(row.wpBtn)
 
         local caret = (delve.completed and E.CC.muted or E.CC.gold)
             .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close

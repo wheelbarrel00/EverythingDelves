@@ -3,6 +3,26 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.19.0", date = "2026-06-23",
+        sections = {
+            { head = "New", items = {
+                "Delve HUD - an on-screen panel while in a delve: story variant and grade, recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths.",
+                "Run timer - a live elapsed-time clock for your run, on the HUD or standalone.",
+                "Difficulty picker info - opening a delve entrance shows that delve's achievement status and a tier-by-tier reward table beside the picker.",
+            }},
+            { head = "Improved", items = {
+                "The Pin button now tracks the real delve entrance with the game's on-screen arrow, as a toggle with a live tracking highlight.",
+                "Great Vault Progress now shows all three reward slots with each one's item level and unlock progress.",
+                "Per-tier loot is coloured by gear track (Adventurer through Myth), with the track named in the tooltip.",
+            }},
+            { head = "Fixed", items = {
+                "Dying in a delve no longer resets the run timer, death count, or Bonus Spoils progress.",
+                "Reloading mid-delve keeps your Nemesis Strongbox pack count.",
+                "Reloading after the boss no longer shows a phantom new run.",
+            }},
+        },
+    },
+    {
         version = "1.18.0", date = "2026-06-22",
         sections = {
             { head = "New", items = {

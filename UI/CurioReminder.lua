@@ -15,6 +15,24 @@ local CURIO_DATA = {
 
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
 
+function E:GetRecommendedCurios(companion, role)
+    local rows = CURIO_DATA[companion] or CURIO_DATA.Valeera
+    if not rows then return nil end
+    for _, row in ipairs(rows) do
+        if row.role == role then return row.combat, row.utility end
+    end
+    return nil
+end
+
+function E:GetPlayerCurioRole()
+    local r = ROLE_NORM[(UnitGroupRolesAssigned
+        and UnitGroupRolesAssigned("player")) or "NONE"]
+    if r and r ~= "" then return r end
+    local spec = GetSpecialization and GetSpecialization()
+    local specRole = spec and GetSpecializationRole and GetSpecializationRole(spec)
+    return ROLE_NORM[specRole or "NONE"] or "Damage"
+end
+
 local function GetActiveCompanionName()
     if not DelvesCompanionConfigurationFrame then return nil end
     local infoFrame = DelvesCompanionConfigurationFrame.CompanionInfoFrame
@@ -145,6 +163,7 @@ E:RegisterModule(function()
     local function Populate(companionName)
         local rows = CURIO_DATA[companionName]
         if not rows then popup:Hide(); return end
+        E.lastKnownCompanion = companionName
 
         titleFS:SetText(E.CC.header .. "Curios \226\128\148 " .. companionName .. E.CC.close)
 

@@ -73,6 +73,113 @@ function E:SetWaypoint(mapID, x, y)
     end
 end
 
+local AREA_POI_PIN = Enum.SuperTrackingMapPinType and Enum.SuperTrackingMapPinType.AreaPOI
+
+-- Bountiful and normal entrances are separate map POIs; only the one live this
+-- week resolves, so prefer the bountiful icon and fall back to the normal one.
+function E:GetActiveDelvePOI(delve)
+    if not (delve and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then return nil end
+    local function live(id)
+        if not id then return false end
+        local ok, info = pcall(C_AreaPoiInfo.GetAreaPOIInfo, delve.mapID, id)
+        return ok and info ~= nil
+    end
+    if live(delve.poiID) then return delve.poiID end
+    if live(delve.normalPoiID) then return delve.normalPoiID end
+    return nil
+end
+
+function E:IsSuperTrackingDelve(delve)
+    if not (delve and AREA_POI_PIN and C_SuperTrack and C_SuperTrack.GetSuperTrackedMapPin) then
+        return false
+    end
+    local ok, ptype, tid = pcall(C_SuperTrack.GetSuperTrackedMapPin)
+    if not ok or ptype ~= AREA_POI_PIN then return false end
+    return tid == delve.poiID or tid == delve.normalPoiID
+end
+
+function E:ToggleDelveSuperTrack(delve)
+    if not delve then return nil end
+    if self:IsSuperTrackingDelve(delve) then
+        if C_SuperTrack and C_SuperTrack.ClearSuperTrackedMapPin then
+            pcall(C_SuperTrack.ClearSuperTrackedMapPin)
+        end
+        return "cleared"
+    end
+    local poi = self:GetActiveDelvePOI(delve)
+    if poi and AREA_POI_PIN and C_SuperTrack and C_SuperTrack.SetSuperTrackedMapPin then
+        if pcall(C_SuperTrack.SetSuperTrackedMapPin, AREA_POI_PIN, poi) then
+            return "tracking"
+        end
+    end
+    self:SetWaypoint(delve.mapID, delve.x, delve.y)
+    return "waypoint"
+end
+
+E._delvePins = E._delvePins or {}
+
+local PIN_TRACK_BORDER = { 0.16, 0.86, 0.32, 1.0 }
+local PIN_TRACK_LABEL  = { 0.40, 0.92, 0.45, 1.0 }
+local PIN_IDLE_BORDER  = { 0.10, 0.00, 0.00, 1.0 }
+local PIN_IDLE_LABEL   = { 0.922, 0.718, 0.024, 1.0 }
+
+function E:RefreshDelvePin(btn)
+    if not (btn and btn.label) then return end
+    local delve = btn._getDelve and btn._getDelve()
+    if delve and self:IsSuperTrackingDelve(delve) then
+        btn:SetBackdropBorderColor(unpack(PIN_TRACK_BORDER))
+        btn.label:SetTextColor(unpack(PIN_TRACK_LABEL))
+    else
+        btn:SetBackdropBorderColor(unpack(PIN_IDLE_BORDER))
+        btn.label:SetTextColor(unpack(PIN_IDLE_LABEL))
+    end
+end
+
+function E:RefreshAllDelvePins()
+    for btn in pairs(self._delvePins) do
+        if btn:IsShown() then self:RefreshDelvePin(btn) end
+    end
+end
+
+function E:WireDelvePinButton(btn, getDelve)
+    btn._getDelve = getDelve
+    self._delvePins[btn] = true
+    btn:SetScript("OnClick", function()
+        local delve = getDelve()
+        if not delve then return end
+        if E:ToggleDelveSuperTrack(delve) == "waypoint" then
+            E:FlashButtonConfirm(btn)
+        end
+        E:RefreshDelvePin(btn)
+    end)
+    btn:SetScript("OnEnter", function(self)
+        local hc = E.Colors.buttonHover
+        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
+        local delve = getDelve()
+        if delve and E:IsSuperTrackingDelve(delve) then
+            E:ShowTooltip(self, "Tracking This Delve",
+                          "The on-screen arrow is guiding you here.",
+                          E.CC.muted .. "Click to stop tracking." .. E.CC.close)
+        else
+            E:ShowTooltip(self, "Track This Delve",
+                          "Point the on-screen arrow at this entrance.",
+                          E.CC.muted .. "Click again to stop." .. E.CC.close)
+        end
+    end)
+    btn:SetScript("OnLeave", function(self)
+        local bc = E.Colors.buttonBg
+        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
+        E:HideTooltip()
+    end)
+    self:RefreshDelvePin(btn)
+end
+
+local superTrackFrame = CreateFrame("Frame")
+superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
+superTrackFrame:SetScript("OnEvent", function()
+    E:RefreshAllDelvePins()
+end)
+
 function E:FlashButtonConfirm(btn)
     if not btn or not btn.label then return end
     local original = btn.label:GetText()

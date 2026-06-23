@@ -145,13 +145,15 @@ E:RegisterModule(function()
         local bountFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         bountFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 2)
         bountFS:SetFont(bountFS:GetFont(), 10)
-        bountFS:SetText(E.CC.gold .. td.bountifulLoot .. E.CC.close)
+        local _, bountCC = E:GetLootTrack(td.bountifulLoot)
+        bountFS:SetText(bountCC .. td.bountifulLoot .. E.CC.close)
         cell.bountFS = bountFS
 
         local vaultFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         vaultFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 3)
         vaultFS:SetFont(vaultFS:GetFont(), 10)
-        vaultFS:SetText(E.CC.purple .. td.greatVault .. E.CC.close)
+        local _, vaultCC = E:GetLootTrack(td.greatVault)
+        vaultFS:SetText(vaultCC .. td.greatVault .. E.CC.close)
         cell.vaultFS = vaultFS
 
         local hitBox = CreateFrame("Frame", nil, frame)
@@ -170,6 +172,12 @@ E:RegisterModule(function()
             table_insert(tipLines, "")
             table_insert(tipLines, E.CC.muted .. "Recommended iLvl: " .. E.CC.close
                 .. E.CC.gold .. td.recGear .. "+" .. E.CC.close)
+            local bN, bC = E:GetLootTrack(td.bountifulLoot)
+            local vN, vC = E:GetLootTrack(td.greatVault)
+            table_insert(tipLines, E.CC.muted .. "Bountiful Loot: " .. E.CC.close
+                .. bC .. td.bountifulLoot .. " (" .. bN .. ")" .. E.CC.close)
+            table_insert(tipLines, E.CC.muted .. "Great Vault: " .. E.CC.close
+                .. vC .. td.greatVault .. " (" .. vN .. ")" .. E.CC.close)
             E:ShowTooltip(self, "Tier " .. td.tier, unpack(tipLines))
         end)
         hitBox:SetScript("OnLeave", function() E:HideTooltip() end)
@@ -308,32 +316,85 @@ E:RegisterModule(function()
         { type = Enum.WeeklyRewardChestThresholdType.World,      label = "Delves / World Content", max = 8 },
     }
 
-    local gvBars = {}
+    local GV_SLOT_W, GV_SLOT_H, GV_SLOT_GAP = 92, 40, 8
+    local gvSlots = {}
+    local gvSummaries = {}
     local gvLastAnchor = gvHeader
     for i, cfg in ipairs(GV_ROWS) do
         local rowLabel = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        rowLabel:SetPoint("TOPLEFT", gvLastAnchor, "BOTTOMLEFT", 0, (i == 1) and -6 or -4)
+        rowLabel:SetPoint("TOPLEFT", gvLastAnchor, "BOTTOMLEFT", 0, (i == 1) and -6 or -10)
         rowLabel:SetFont(rowLabel:GetFont(), 10)
         rowLabel:SetText(E.CC.muted .. cfg.label .. ":" .. E.CC.close)
 
-        local bar = E:CreateProgressBar(sc, 0, 12)
-        bar:SetPoint("TOPLEFT", rowLabel, "BOTTOMLEFT", 0, -2)
-        bar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
+        local cells = {}
+        for s = 1, 3 do
+            local cell = CreateFrame("Frame", nil, sc, "BackdropTemplate")
+            cell:SetSize(GV_SLOT_W, GV_SLOT_H)
+            cell:SetBackdrop({
+                bgFile   = "Interface\\Buttons\\WHITE8x8",
+                edgeFile = "Interface\\Buttons\\WHITE8x8",
+                edgeSize = 1,
+            })
+            cell:SetBackdropColor(0.07, 0.07, 0.07, 0.85)
+            cell:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
+            if s == 1 then
+                cell:SetPoint("TOPLEFT", rowLabel, "BOTTOMLEFT", 0, -3)
+            else
+                cell:SetPoint("LEFT", cells[s - 1], "RIGHT", GV_SLOT_GAP, 0)
+            end
 
-        gvBars[cfg.type] = bar
-        gvLastAnchor = bar
+            local ilvlFS = cell:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            ilvlFS:SetPoint("TOP", cell, "TOP", 0, -5)
+            ilvlFS:SetFont(ilvlFS:GetFont(), 14, "OUTLINE")
+            cell.ilvlFS = ilvlFS
+
+            local subFS = cell:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            subFS:SetPoint("BOTTOM", cell, "BOTTOM", 0, 4)
+            subFS:SetFont(subFS:GetFont(), 9)
+            cell.subFS = subFS
+
+            cell:EnableMouse(true)
+            cell:SetScript("OnEnter", function(self)
+                if self.tipTitle then
+                    E:ShowTooltip(self, self.tipTitle, self.tipLine1, self.tipLine2)
+                end
+            end)
+            cell:SetScript("OnLeave", function() E:HideTooltip() end)
+
+            cells[s] = cell
+        end
+        gvSlots[cfg.type] = cells
+
+        local summary = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        summary:SetPoint("TOPLEFT", cells[1], "BOTTOMLEFT", 0, -4)
+        summary:SetFont(summary:GetFont(), 9)
+        gvSummaries[cfg.type] = summary
+
+        gvLastAnchor = summary
     end
 
     local gvNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvNoteFS:SetPoint("TOPLEFT", gvLastAnchor, "BOTTOMLEFT", 0, -4)
     gvNoteFS:SetFont(gvNoteFS:GetFont(), 9)
-    gvNoteFS:SetText(E.CC.muted .. "Complete activities to unlock Great Vault reward slots on Tuesday" .. E.CC.close)
+    gvNoteFS:SetText(E.CC.muted .. "Rewards are claimable after the weekly reset (Tuesday)" .. E.CC.close)
 
     local gvDiv = sc:CreateTexture(nil, "ARTWORK")
     gvDiv:SetHeight(1)
     gvDiv:SetPoint("TOPLEFT", gvNoteFS, "BOTTOMLEFT", 0, -32)
     gvDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(gvDiv)
+
+    local function GVRewardILvl(activityID)
+        if not (C_WeeklyRewards and C_WeeklyRewards.GetExampleRewardItemHyperlinks) then
+            return nil
+        end
+        local ok, link = pcall(C_WeeklyRewards.GetExampleRewardItemHyperlinks, activityID)
+        if not ok or not link or link == "" then return nil end
+        if not (C_Item and C_Item.GetDetailedItemLevelInfo) then return nil end
+        local ok2, ilvl = pcall(C_Item.GetDetailedItemLevelInfo, link)
+        if ok2 and ilvl and ilvl > 0 then return ilvl end
+        return nil
+    end
 
     local function RefreshGreatVault()
         local ok, activities = pcall(function()
@@ -348,37 +409,86 @@ E:RegisterModule(function()
                 E.CC.muted .. "Great Vault data not available yet - enter a dungeon, raid or delve first" .. E.CC.close)
             gvFallbackFS:Show()
             gvNoteFS:Hide()
-            for _, bar in pairs(gvBars) do bar:Hide() end
+            for _, cells in pairs(gvSlots) do
+                for _, c in ipairs(cells) do c:Hide() end
+            end
+            for _, sumFS in pairs(gvSummaries) do sumFS:Hide() end
             return
         end
 
         gvFallbackFS:Hide()
         gvNoteFS:Show()
 
-        local progress = {}
+        local byType = {}
         for _, act in ipairs(activities) do
-            if not progress[act.type] then
-                progress[act.type] = { completed = 0, total = 0 }
-            end
-            progress[act.type].total = math_max(progress[act.type].total, act.threshold or 0)
-            progress[act.type].completed = math_max(progress[act.type].completed, act.progress or 0)
+            byType[act.type] = byType[act.type] or {}
+            table.insert(byType[act.type], act)
+        end
+        for _, list in pairs(byType) do
+            table.sort(list, function(a, b) return (a.threshold or 0) < (b.threshold or 0) end)
         end
 
         for _, cfg in ipairs(GV_ROWS) do
-            local bar = gvBars[cfg.type]
-            if bar then
-                local data = progress[cfg.type]
-                if data then
-                    local current = math_min(data.completed, data.total)
-                    bar:SetProgress(current, data.total)
-                    local p = E:GetAccentPreset()
-                    bar.fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
-                                             p.progressFill.b, p.progressFill.a)
+            local cells = gvSlots[cfg.type]
+            local list  = byType[cfg.type]
+            local nextRemaining
+            for s = 1, 3 do
+                local cell = cells[s]
+                local act  = list and list[s]
+                if act then
+                    local threshold = act.threshold or 0
+                    local prog      = math_min(act.progress or 0, threshold)
+                    local unlocked  = (act.progress or 0) >= threshold
+                    local ilvl      = GVRewardILvl(act.id)
+
+                    if ilvl then
+                        cell.ilvlFS:SetText(tostring(ilvl))
+                        if unlocked then
+                            cell.ilvlFS:SetTextColor(0.40, 0.92, 0.45)
+                            cell:SetBackdropColor(0.09, 0.13, 0.09, 0.85)
+                            cell:SetBackdropBorderColor(0.16, 0.70, 0.30, 0.85)
+                        else
+                            cell.ilvlFS:SetTextColor(0.80, 0.67, 0.22)
+                            cell:SetBackdropColor(0.07, 0.07, 0.07, 0.85)
+                            cell:SetBackdropBorderColor(0.40, 0.32, 0.10, 0.80)
+                        end
+                    else
+                        cell.ilvlFS:SetText("\226\128\148")
+                        cell.ilvlFS:SetTextColor(0.45, 0.45, 0.45)
+                        cell:SetBackdropColor(0.06, 0.06, 0.06, 0.85)
+                        cell:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
+                    end
+
+                    cell.subFS:SetText(E.CC.muted .. prog .. "/" .. threshold .. E.CC.close)
+
+                    if (not unlocked) and (not nextRemaining) then
+                        nextRemaining = threshold - prog
+                    end
+
+                    cell.tipTitle = "Reward Slot " .. s
+                    cell.tipLine1 = ilvl and ("Item level " .. ilvl) or "No reward unlocked yet"
+                    if unlocked then
+                        cell.tipLine2 = E.CC.muted .. "Unlocked - claim after the Tuesday reset." .. E.CC.close
+                    else
+                        cell.tipLine2 = E.CC.muted .. prog .. " / " .. threshold
+                            .. "  (" .. (threshold - prog) .. " more)" .. E.CC.close
+                    end
+                    cell:Show()
                 else
-                    bar:SetProgress(0, cfg.max)
+                    cell:Hide()
+                    cell.tipTitle = nil
                 end
-                bar:Show()
             end
+
+            local summary = gvSummaries[cfg.type]
+            if not list or #list == 0 then
+                summary:SetText("")
+            elseif nextRemaining then
+                summary:SetText(E.CC.muted .. "Next slot in " .. nextRemaining .. " more" .. E.CC.close)
+            else
+                summary:SetText(E.CC.gold .. "All slots unlocked" .. E.CC.close)
+            end
+            summary:Show()
         end
     end
 

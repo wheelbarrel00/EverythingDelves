@@ -85,6 +85,32 @@ function E:GetTierCC(tier)
     end
 end
 
+-- Story-grade letter colors; mirror TabCurrentBountiful's TIER_COLORS.
+local GRADE_CC = {
+    S = "|cFFFFD600", A = "|cFF33D933", B = "|cFF19CCE6",
+    C = "|cFFD9BF19", D = "|cFF8C8C8C", F = "|cFF733333",
+}
+function E:GetGradeCC(letter)
+    return GRADE_CC[letter] or "|cFFAAAAAA"
+end
+
+-- Midnight S1 delve reward tracks by item level (Adventurer 220-230,
+-- Veteran 233-243, Champion 246-256, Hero 259). Champion/Hero are both Epic
+-- quality, so distinct track colors are used rather than the quality color.
+local LOOT_TRACKS = {
+    { max = 232, name = "Adventurer", cc = "|cFF1EFF00" },
+    { max = 244, name = "Veteran",    cc = "|cFF0070DD" },
+    { max = 256, name = "Champion",   cc = "|cFFA335EE" },
+    { max = 271, name = "Hero",       cc = "|cFFE268FF" },
+}
+function E:GetLootTrack(ilvl)
+    ilvl = tonumber(ilvl) or 0
+    for _, t in ipairs(LOOT_TRACKS) do
+        if ilvl <= t.max then return t.name, t.cc end
+    end
+    return "Myth", "|cFFFF8000"
+end
+
 -- trackable = true means completion is queryable via the quest API.
 E.ShardSources = {
     {

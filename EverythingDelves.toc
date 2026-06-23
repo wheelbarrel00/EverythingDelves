@@ -2,7 +2,7 @@
 ## Title: Everything Delves
 ## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
 ## Author: Wheelbarrel00
-## Version: 1.18.0
+## Version: 1.19.0
 ## SavedVariables: EverythingDelvesDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## X-Curse-Project-ID: 1519355
@@ -40,4 +40,5 @@ UI\TabAbout.lua
 UI\TrovehunterReminder.lua
 UI\DelveObjectives.lua
 UI\PinAchievements.lua
+UI\DelvesPickerInfo.lua
 UI\WhatsNew.lua

@@ -103,6 +103,8 @@ local DEFAULTS = {
     muteDundun             = false,
     achievementTooltip     = "summary",  -- "summary" | "full" | "off"
     showDelveObjectives    = false,
+    showRunTimer           = true,
+    showDelveHUD           = true,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},
@@ -1449,11 +1451,18 @@ local function TryBeginFromCurrentZone(source)
     -- (entryArmed) or a /reload/reconnect resume. A non-PEW retry only refines.
     local genuineStart = entryArmed or enteredViaReload or enteredViaLogin
 
+    -- Already mid-run and still inside the delve (leaving sets inDelve=false, so
+    -- inDelve true here means we never left). A loading screen in this state is a
+    -- death/respawn teleport, NOT a new entry: route it to the refine branches so
+    -- a re-begin can't reset the timer, deaths, and bonus-spoils pack tally.
+    local continuing = runState.inDelve and runState.startTime > 0
+    if continuing then entryArmed = false end
+
     if matchedName then
         -- The "not inDelve" recovery leg covers a transient isDelve flicker
         -- that cleared inDelve after entryArmed was consumed; without it the
         -- run could be dropped. Every path here either begins fresh or resumes.
-        if genuineStart or not runState.inDelve then
+        if (genuineStart or not runState.inDelve) and not continuing then
             entryArmed = false
             -- Resume only a genuinely current run: a /reload or reconnect, same
             -- delve, startTime not in the future (a reboot DOES reset GetTime()
@@ -1494,7 +1503,12 @@ local function TryBeginFromCurrentZone(source)
                 -- A resumed run has no heartbeat and a possibly-stale saved.tier;
                 -- settle it against the live tracker.
                 SettleTier()
-            else
+            elseif not (enteredViaReload or enteredViaLogin) then
+                -- A /reload or relog is NOT a new entry, so it NEVER begins a
+                -- fresh run here -- it can only resume above. If nothing resumed,
+                -- the run already ended (e.g. reloading while looting after the
+                -- boss clears activeRun); beginning would show a phantom 0:00 run.
+                -- Only a genuine entry (entryArmed) or untracked recovery begins.
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)
             end
@@ -1515,8 +1529,8 @@ local function TryBeginFromCurrentZone(source)
         -- Name unresolved (cold POI cache): start a provisional run to still
         -- track timing/deaths, but only on a genuine entry or an untracked
         -- recovery — a /reload/reconnect instead waits to resume the saved run.
-        if entryArmed or (not runState.inDelve
-                and not enteredViaReload and not enteredViaLogin) then
+        if (entryArmed or (not runState.inDelve
+                and not enteredViaReload and not enteredViaLogin)) and not continuing then
             entryArmed = false
             runState.inDelve       = true
             runState.delveName     = candidate

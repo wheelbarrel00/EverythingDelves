@@ -1,19 +1,27 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.18.0"
+local WHATS_NEW_VERSION = "1.19.0"
 
 local ENTRIES = {
     {
-        title = "New: Roster tab",
-        desc  = "A new account-wide Roster tab shows every character at a glance - item level, keys, shards, bounty maps, Great Vault delve slots, Gilded Stash, and the weekly delve quest. Click a column to sort, hover a row for detail.",
+        title = "Delve HUD & run timer",
+        desc  = "A new on-screen panel while you're in a delve shows the story variant and its grade, your recommended Combat and Utility curios, a live run timer, and your remaining lives and deaths. Drag it anywhere; toggle it (and the standalone timer) in Options.",
     },
     {
-        title = "Live broker text",
-        desc  = "The minimap/broker now shows Keys, weekly shards, and time to reset as live text, so Titan Panel and ElvUI users can read it without hovering.",
+        title = "Track the real delve entrance",
+        desc  = "The Pin button now steers the game's on-screen arrow to the actual delve entrance and works as a toggle - click to track, click again to stop. The button lights up green while it's the one you're tracking.",
     },
     {
-        title = "Bounty Map tooltip",
-        desc  = "Hovering a Trovehunter's Bounty in your bags now tells you whether it's still unused this week, or active right now.",
+        title = "Better Tier Guide rewards",
+        desc  = "Great Vault Progress now shows all three reward slots with each one's item level and unlock progress, and the per-tier loot is colored by gear track (Adventurer through Myth) - hover a tier to see the track name.",
+    },
+    {
+        title = "Info at the difficulty picker",
+        desc  = "Opening a delve entrance now shows a panel beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, so you can pick the right tier at a glance.",
+    },
+    {
+        title = "Bug fixes",
+        desc  = "Dying in a delve no longer resets your run timer, deaths, or Bonus Spoils progress; reloading mid-delve keeps your Nemesis pack count; and reloading after the boss no longer shows a phantom new run.",
     },
 }
 

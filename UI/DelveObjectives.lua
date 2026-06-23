@@ -69,6 +69,62 @@ local function StripEscapes(s)
              :gsub("|A.-|a", ""))
 end
 
+local function CurioLine(label, curio)
+    if not curio then return nil end
+    local icon = (C_Item and C_Item.GetItemIconByID)
+        and C_Item.GetItemIconByID(curio.id)
+    local iconStr = icon and ("|T" .. icon .. ":12:12:0:0|t ") or ""
+    return E.CC.muted .. label .. E.CC.close .. " "
+        .. iconStr .. E.CC.body .. curio.name .. E.CC.close
+end
+
+-- Lives aren't in any widget/criterion (the header carries only the tier); they
+-- render as a standalone digit right after the tier in the scenario tracker.
+-- Anchor on the known tier and take the next digit; stop before Challenges/Wave.
+local function ReadDelveLives(knownTier)
+    local tracker = _G.ScenarioObjectiveTracker or _G.ObjectiveTrackerFrame
+    if not tracker then return nil end
+    local digits, stop = {}, false
+    local function walk(f, depth)
+        if stop or not f or depth > 8 then return end
+        if f.IsForbidden and f:IsForbidden() then return end
+        local okR, regs = pcall(function() return { f:GetRegions() } end)
+        if okR then
+            for _, r in ipairs(regs) do
+                if r.GetObjectType and r:GetObjectType() == "FontString"
+                        and r:IsShown() then
+                    local t = r:GetText()
+                    if t and t ~= "" then
+                        local clean = t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                        if clean:find("Challenge", 1, true)
+                                or clean:find("Wave", 1, true) then
+                            stop = true
+                            return
+                        end
+                        local n = clean:match("^%s*(%d+)%s*$")
+                        if n then digits[#digits + 1] = tonumber(n) end
+                    end
+                end
+            end
+        end
+        local okC, kids = pcall(function() return { f:GetChildren() } end)
+        if okC then
+            for _, c in ipairs(kids) do
+                walk(c, depth + 1)
+                if stop then return end
+            end
+        end
+    end
+    pcall(walk, tracker, 0)
+    if knownTier then
+        for i = 1, #digits - 1 do
+            if digits[i] == knownTier then return digits[i + 1] end
+        end
+    end
+    if #digits == 2 then return digits[2] end
+    return nil
+end
+
 -- Difficulty 208 = Delves. Live, authoritative test that flips the moment the
 -- player zones out; deliberately ignores runState.inDelve (can be left stale on
 -- some exit paths). Spans the whole run plus the post-completion looting window.
@@ -116,10 +172,21 @@ E:RegisterModule(function()
     end)
     win:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
-        GameTooltip:AddLine("Bonus Spoils", 1, 1, 1)
-        GameTooltip:AddLine("Nemesis Strongbox packs + the Sanctified"
-            .. " Banner — the bonus loot to grab before the boss."
-            .. " Drag to move; toggle in Options or with /ed obj.",
+        GameTooltip:AddLine("Everything Delves", 1, 1, 1)
+        if E.db and E.db.showDelveObjectives then
+            GameTooltip:AddLine("Bonus Spoils: Nemesis Strongbox packs"
+                .. " + the Sanctified Banner — the bonus loot to grab"
+                .. " before the boss.", 0.7, 0.7, 0.7, true)
+        end
+        if E.db and E.db.showDelveHUD then
+            GameTooltip:AddLine("Delve HUD: variant, grade, recommended"
+                .. " curios and deaths for this run.", 0.7, 0.7, 0.7, true)
+        end
+        if E.db and E.db.showRunTimer then
+            GameTooltip:AddLine("The clock shows your elapsed run time.",
+                0.7, 0.7, 0.7, true)
+        end
+        GameTooltip:AddLine("Drag to move; toggle in Options.",
             0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
@@ -127,7 +194,7 @@ E:RegisterModule(function()
 
     local titleFS = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", win, "TOPLEFT", PAD, -8)
-    titleFS:SetWidth(WIN_W - 2 * PAD)
+    titleFS:SetWidth(WIN_W - 2 * PAD - 48)
     titleFS:SetJustifyH("LEFT")
     titleFS:SetWordWrap(false)
     titleFS:SetFont(titleFS:GetFont(), 12, "OUTLINE")
@@ -137,6 +204,39 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPLEFT",  win, "TOPLEFT",  1, -26)
     titleDiv:SetPoint("TOPRIGHT", win, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
+
+    local timerFS = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    timerFS:SetPoint("TOPRIGHT", win, "TOPRIGHT", -PAD, -8)
+    timerFS:SetJustifyH("RIGHT")
+    timerFS:SetFont(timerFS:GetFont(), 12, "OUTLINE")
+    timerFS:Hide()
+
+    -- elapsed must use GetTime() to match runState.startTime's base (not time()).
+    local function UpdateRunTimer()
+        local rs = E.delveRunState
+        if E.db and (E.db.showRunTimer or E.db.showDelveHUD) and rs and rs.inDelve
+                and rs.startTime and rs.startTime > 0 then
+            local secs = math.max(0, math.floor(GetTime() - rs.startTime))
+            local txt = E.CC.gold
+                .. (secs > 0 and E:FormatClock(secs) or "0:00")
+                .. E.CC.close
+            if timerFS.cachedText ~= txt then
+                timerFS:SetText(txt)
+                timerFS.cachedText = txt
+            end
+            timerFS:Show()
+        else
+            timerFS:Hide()
+        end
+    end
+
+    local timerAccum = 0
+    win:SetScript("OnUpdate", function(_, elapsed)
+        timerAccum = timerAccum + elapsed
+        if timerAccum < 1 then return end
+        timerAccum = 0
+        UpdateRunTimer()
+    end)
 
     -- Sanctified Banner state machine, mirrored into E.db.activeRun so a mid-run
     -- /reload doesn't lose it. Forward-only: announced -> clicked -> buffed ->
@@ -154,6 +254,7 @@ E:RegisterModule(function()
     local nemesisRemaining = nil
     local nemesisSeen      = {}   -- vguid -> true (distinct packs seen this run)
     local nemesisSeenCount = 0
+    local nemesisKilledBase = 0   -- packs killed before a mid-run /reload (persisted)
     local castLog = {}            -- recent player casts (newest last); objdump diag
 
     -- FontStrings created once and reused; SetText only fires on change.
@@ -268,6 +369,7 @@ E:RegisterModule(function()
                 lastRunKey = runKey
                 bannerState, ragerGUID = nil, nil
                 nemesisRemaining, nemesisSeenCount = nil, 0
+                nemesisKilledBase = 0
                 wipe(nemesisSeen)
                 wipe(msgLog)
                 wipe(stickyMsgs)
@@ -276,6 +378,7 @@ E:RegisterModule(function()
                 if ar and ar.startTime == rs.startTime then
                     bannerState = ar.bannerState
                     ragerGUID   = ar.bannerRagerGUID
+                    nemesisKilledBase = ar.nemesisKilled or 0
                 end
             end
         end
@@ -291,47 +394,88 @@ E:RegisterModule(function()
         end
         local liveTier = ReadLiveTier(stepInfo)
 
+        if E.db and E.db.showDelveHUD and rs and rs.inDelve then
+            local variant = rs.story
+            if (not variant or variant == "") and E.GetDelveStoryVariant then
+                variant = E:GetDelveStoryVariant(name)
+            end
+            if variant and variant ~= "" then
+                local si = E.GetStoryTier and E:GetStoryTier(variant)
+                local grade = ""
+                if si and si.tier then
+                    grade = "  " .. E:GetGradeCC(si.tier)
+                        .. "(" .. si.tier .. ")" .. E.CC.close
+                end
+                AddLine(E.CC.muted .. "Variant:" .. E.CC.close .. " "
+                    .. E.CC.body .. variant .. E.CC.close .. grade)
+            end
+            local role = E.GetPlayerCurioRole and E:GetPlayerCurioRole() or "Damage"
+            local combat, utility
+            if E.GetRecommendedCurios then
+                combat, utility = E:GetRecommendedCurios(
+                    E.lastKnownCompanion or "Valeera", role)
+            end
+            local cl = CurioLine("Combat:", combat)
+            local ul = CurioLine("Utility:", utility)
+            if cl then AddLine(cl) end
+            if ul then AddLine(ul) end
+            local knownTier = liveTier or (rs.tier or 0)
+            local lives = ReadDelveLives(knownTier > 0 and knownTier or nil)
+            local statLine = ""
+            if lives then
+                local livesCC = (lives <= 1 and E.CC.red)
+                    or (lives <= 2 and E.CC.yellow) or E.CC.green
+                statLine = E.CC.muted .. "Lives:" .. E.CC.close .. " "
+                    .. livesCC .. lives .. E.CC.close .. "   "
+            end
+            statLine = statLine .. E.CC.muted .. "Deaths:" .. E.CC.close .. " "
+                .. E.CC.gold .. tostring(rs.deaths or 0) .. E.CC.close
+            AddLine(statLine)
+        end
+
         -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
         -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
-        if rs and rs.inDelve and rs.delveKind ~= "nemesis"
-                and nemesisSeenCount > 0 then
-            local tierNow = liveTier or (rs.tier or 0)
-            local expected = 0
-            if     tierNow >= 10 then expected = 4
-            elseif tierNow >= 8  then expected = 3
-            elseif tierNow >= 6  then expected = 2
-            elseif tierNow >= 4  then expected = 1
+        if E.db and E.db.showDelveObjectives then
+            if rs and rs.inDelve and rs.delveKind ~= "nemesis"
+                    and (nemesisSeenCount > 0 or nemesisKilledBase > 0) then
+                local tierNow = liveTier or (rs.tier or 0)
+                local expected = 0
+                if     tierNow >= 10 then expected = 4
+                elseif tierNow >= 8  then expected = 3
+                elseif tierNow >= 6  then expected = 2
+                elseif tierNow >= 4  then expected = 1
+                end
+                local total  = math.max(expected, nemesisKilledBase + nemesisSeenCount)
+                local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
+                EmitObjective(
+                    "Nemesis Strongbox: " .. killed .. "/" .. total .. " packs",
+                    killed >= total, false, nil)
             end
-            local total  = math.max(expected, nemesisSeenCount)
-            local killed = math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
-            EmitObjective(
-                "Nemesis Strongbox: " .. killed .. "/" .. total .. " packs",
-                killed >= total, false, nil)
-        end
 
-        if bannerState == "grand" then
-            EmitObjective("Sanctified Banner - Grand Spoils earned!",
-                true, false, nil)
-        elseif bannerState == "buffed" or bannerState == "clicked" then
-            EmitObjective("Sanctified Banner found - bonus Spoils secured",
-                true, false, nil)
-        elseif bannerState == "eliteUp" then
-            EmitObjective("Sanctified Banner - kill the Voidfused Rager!",
-                false, false, nil)
-        elseif rs and rs.inDelve
-                and (rs.wasBountiful or bannerState == "announced") then
-            EmitObjective("Sanctified Banner - find it for bonus loot",
-                false, false, nil)
-        end
+            if bannerState == "grand" then
+                EmitObjective("Sanctified Banner - Grand Spoils earned!",
+                    true, false, nil)
+            elseif bannerState == "buffed" or bannerState == "clicked" then
+                EmitObjective("Sanctified Banner found - bonus Spoils secured",
+                    true, false, nil)
+            elseif bannerState == "eliteUp" then
+                EmitObjective("Sanctified Banner - kill the Voidfused Rager!",
+                    false, false, nil)
+            elseif rs and rs.inDelve
+                    and (rs.wasBountiful or bannerState == "announced") then
+                EmitObjective("Sanctified Banner - find it for bonus loot",
+                    false, false, nil)
+            end
 
-        if objTotal > 0 and objDone >= objTotal then
-            AddLine(ICON_DONE .. E.CC.green
-                .. "Bonus loot secured - go get the boss!" .. E.CC.close, true)
-        elseif objTotal == 0 then
-            -- Phrased to fit both "no bonus mechanics" and "run already ended".
-            AddLine(ICON_DONE .. E.CC.green
-                .. "All bonus loot accounted for." .. E.CC.close)
+            if objTotal > 0 and objDone >= objTotal then
+                AddLine(ICON_DONE .. E.CC.green
+                    .. "Bonus loot secured - go get the boss!" .. E.CC.close, true)
+            elseif objTotal == 0 then
+                -- Phrased to fit both "no bonus mechanics" and "run already ended".
+                AddLine(ICON_DONE .. E.CC.green
+                    .. "All bonus loot accounted for." .. E.CC.close)
+            end
         end
 
         -- Rendered last so the live widget tier can win.
@@ -348,7 +492,12 @@ E:RegisterModule(function()
         for i = lineIdx + 1, #linePool do
             linePool[i]:Hide()
         end
-        win:SetHeight(math.max(64, -yOff + 8))
+        -- No content lines = timer-only mode: collapse to a compact title bar.
+        if lineIdx == 0 then
+            win:SetHeight(32)
+        else
+            win:SetHeight(math.max(64, -yOff + 8))
+        end
     end
 
     local refreshPending = false
@@ -356,11 +505,20 @@ E:RegisterModule(function()
 
     local function DoRefresh()
         refreshPending = false
-        local shouldShow = E.db and E.db.showDelveObjectives and PlayerInDelve()
+        local rs = E.delveRunState
+        local hasRun = rs and rs.inDelve and rs.startTime and rs.startTime > 0
+        local shouldShow = E.db and PlayerInDelve()
+            and (E.db.showDelveObjectives
+                or ((E.db.showRunTimer or E.db.showDelveHUD) and hasRun))
         if shouldShow then
-            -- Register the buff/cast watchers only while active in a delve.
-            ef:RegisterUnitEvent("UNIT_AURA", "player")
-            ef:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+            -- Banner/cast watchers only while the Bonus Spoils tracker is on.
+            if E.db.showDelveObjectives then
+                ef:RegisterUnitEvent("UNIT_AURA", "player")
+                ef:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+            else
+                ef:UnregisterEvent("UNIT_AURA")
+                ef:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+            end
             -- pcall so one bad API read can't kill the window for the session.
             local ok, err = pcall(RefreshContent)
             if not ok and E.db and E.db.debugTier then
@@ -478,6 +636,14 @@ E:RegisterModule(function()
             SetBannerState("grand")
         end
         nemesisRemaining = packCount
+        -- Persist the kill count: a /reload resets the vignette GUIDs, so seenCount
+        -- rebuilds from live packs only and would drop already-killed ones. max()
+        -- guards against a scan that runs before the resume restores the base.
+        local ar = E.db and E.db.activeRun
+        if ar then
+            local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - packCount)
+            ar.nemesisKilled = math.max(ar.nemesisKilled or 0, killed)
+        end
     end
 
     local function HandleMessage(event, a1, a2)
@@ -506,6 +672,8 @@ E:RegisterModule(function()
         if not ticker then
             ticker = C_Timer.NewTicker(3, QueueRefresh)
         end
+        timerAccum = 0
+        UpdateRunTimer()
     end)
     win:SetScript("OnHide", function()
         if ticker then
@@ -636,24 +804,15 @@ E:RegisterModule(function()
             end
         end
 
-        -- Tries every known getter until one returns data.
-        local GETTERS = {
-            "GetTextWithStateWidgetVisualizationInfo",
-            "GetIconAndTextWidgetVisualizationInfo",
-            "GetStatusBarWidgetVisualizationInfo",
-            "GetSpellDisplayVisualizationInfo",
-            "GetDoubleStatusBarWidgetVisualizationInfo",
-            "GetDiscreteProgressStepsVisualizationInfo",
-            "GetTextureAndTextWidgetVisualizationInfo",
-            "GetTextureAndTextRowVisualizationInfo",
-            "GetIconTextAndBackgroundWidgetVisualizationInfo",
-            "GetTextColumnRowVisualizationInfo",
-            "GetBulletTextListWidgetVisualizationInfo",
-            "GetScenarioHeaderCurrenciesAndBackgroundWidgetVisualizationInfo",
-            "GetScenarioHeaderDelvesWidgetVisualizationInfo",
-            "GetItemDisplayVisualizationInfo",
-            "GetTextWithSubtextWidgetVisualizationInfo",
-        }
+        -- Every widget-viz getter on C_UIWidgetManager, so unknown widget
+        -- types (e.g. the delve lives display, type 30) still decode.
+        local GETTERS = {}
+        for k, v in pairs(C_UIWidgetManager) do
+            if type(v) == "function" and k:find("VisualizationInfo", 1, true) then
+                GETTERS[#GETTERS + 1] = k
+            end
+        end
+        table.sort(GETTERS)
         local function dumpWidgetSet(label, setID)
             out("=== widget set: " .. label .. " ("
                 .. tostring(setID) .. ") ===")
@@ -705,6 +864,33 @@ E:RegisterModule(function()
             dumpWidgetSet("below minimap",
                 C_UIWidgetManager.GetBelowMinimapWidgetSetID())
         end
+
+        out("=== objective tracker text (lives hunt) ===")
+        local trkPrinted = 0
+        local function walkText(f, d)
+            if not f or d > 8 or trkPrinted > 80 then return end
+            if f.IsForbidden and f:IsForbidden() then return end
+            local okR, regs = pcall(function() return { f:GetRegions() } end)
+            if okR then
+                for _, r in ipairs(regs) do
+                    if r.GetObjectType and r:GetObjectType() == "FontString"
+                            and r:IsShown() then
+                        local t = r:GetText()
+                        if t and t ~= "" then
+                            trkPrinted = trkPrinted + 1
+                            out("  \"" .. esc(t) .. "\"")
+                        end
+                    end
+                end
+            end
+            local okC, kids = pcall(function() return { f:GetChildren() } end)
+            if okC then for _, c in ipairs(kids) do walkText(c, d + 1) end end
+        end
+        for _, tn in ipairs({ "ObjectiveTrackerFrame", "ScenarioObjectiveTracker" }) do
+            local tf = _G[tn]
+            if tf then out("  [" .. tn .. "]"); pcall(walkText, tf, 0) end
+        end
+        if trkPrinted == 0 then out("  no tracker text found") end
 
         out("=== delve tracker widget probe (gilded + siblings) ===")
         if C_UIWidgetManager

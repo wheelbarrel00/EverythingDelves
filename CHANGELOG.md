@@ -5,6 +5,26 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-06-23
+
+### New Features
+
+- **Delve HUD** - While inside a delve, a new on-screen panel shows the story variant and its grade, the recommended Combat and Utility curios for your role, a live run timer, and your remaining lives and death count. Drag it to move it; toggle it (and the standalone timer) under Options.
+- **Run timer** - A live elapsed-time clock for your delve run, shown on the HUD - or on its own if you don't want the full panel.
+- **Difficulty picker info** - Opening a delve entrance now shows a panel beside the difficulty picker with that delve's achievement status (story, chests, and tier goals) and a tier-by-tier reward table, so you can choose the right tier at a glance.
+
+### Improvements
+
+- **Pin button now tracks the real entrance** - The Pin button on the Current Bountiful and Delve Locations tabs now points the game's own on-screen navigation arrow at the actual delve entrance instead of dropping a static map pin. It works as a toggle - click to start tracking, click again to stop - and lights up green while it's the delve you're tracking.
+- **Great Vault per-slot rewards** - The Great Vault section of the Tier Guide now shows each of the three reward slots individually, with its reward item level and the progress needed to unlock it, instead of a single combined bar.
+- **Gear-track coloured loot** - The per-tier Bountiful Loot and Great Vault item levels on the Tier Guide are now coloured by their gear track (Adventurer, Veteran, Champion, Hero, Myth), and hovering a tier names the track for each.
+
+### Bug Fixes
+
+- **Dying no longer resets your run** - Dying in a delve could reset your run timer, death count, and Bonus Spoils pack progress because the respawn was being treated as a brand-new run. Your run now continues correctly through a death.
+- **Mid-run reload keeps your pack count** - Reloading partway through a delve no longer loses your Nemesis Strongbox pack progress.
+- **No phantom run after the boss** - Reloading while looting after the boss no longer shows a phantom "new run" with a fresh timer.
+
 ## [1.18.0] - 2026-06-22
 
 ### New Features
