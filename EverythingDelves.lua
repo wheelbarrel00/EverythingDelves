@@ -105,6 +105,7 @@ local DEFAULTS = {
     showDelveObjectives    = false,
     showRunTimer           = true,
     showDelveHUD           = true,
+    showPickerInfo         = true,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},

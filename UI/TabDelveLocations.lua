@@ -604,8 +604,8 @@ E:RegisterModule(function()
         speedHeader:SetScript("OnEnter", function(self)
             E:ShowTooltip(self, "Sort by Speed",
                 "Quickest clear first. Shows your own average time once",
-                "you've run a delve, or a tier-based estimate (marked *)",
-                "until then.")
+                "you've run a delve, or a tier- and gear-based estimate",
+                "(marked *) until then.")
         end)
         speedHeader:SetScript("OnLeave", function() E:HideTooltip() end)
     end

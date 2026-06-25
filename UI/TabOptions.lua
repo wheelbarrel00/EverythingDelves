@@ -393,6 +393,21 @@ E:RegisterModule(function()
     hudCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
+    local pickerCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show Tier & Achievement Panel at Delve Entrance",
+        "showPickerInfo"
+    )
+    pickerCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Tier & Achievement Panel",
+            "When you open a delve's difficulty picker at its",
+            "entrance, shows a panel with the loot and Great Vault",
+            "item levels for every tier, plus your story, chest,",
+            "and tier-goal achievement progress for that delve.")
+    end)
+    pickerCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 30
+
     Y = Y - 28
 
     local div2 = content:CreateTexture(nil, "ARTWORK")

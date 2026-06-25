@@ -98,15 +98,23 @@ E:RegisterModule(function()
     end
 
     local function body(text, indent, size)
+        local sz    = size or 11
+        local avail = WRAP - (indent or 0)
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT + (indent or 0), Y)
-        fs:SetFont(fs:GetFont(), size or 11)
-        fs:SetWidth(WRAP - (indent or 0))
+        fs:SetFont(fs:GetFont(), sz)
         fs:SetJustifyH("LEFT")
-        fs:SetWordWrap(true)
         fs:SetText(text)
-        local h = fs:GetStringHeight() or (size or 11)
-        if h < (size or 11) then h = (size or 11) end
+        -- GetStringHeight is unreliable until the frame is first drawn (the tab is
+        -- built hidden at login), so it can report one line for a wrapping item and
+        -- the next line then overlaps. Read the unwrapped width FIRST (glyph metrics,
+        -- layout-independent), derive the line count against the fixed wrap, and take
+        -- whichever height is larger.
+        local fullW = fs:GetStringWidth() or 0
+        fs:SetWidth(avail)
+        fs:SetWordWrap(true)
+        local lines = math_max(1, math.ceil(fullW / avail))
+        local h = math_max(fs:GetStringHeight() or 0, lines * (sz + 3))
         Y = Y - h - 3
     end
 

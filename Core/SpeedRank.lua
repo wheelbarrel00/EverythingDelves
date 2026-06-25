@@ -1,6 +1,6 @@
 local E = EverythingDelves
 
-local math_floor, math_huge = math.floor, math.huge
+local math_floor, math_huge, math_min = math.floor, math.huge, math.min
 
 -- Relative clear-time shape by reward tier; absolute scale comes from the
 -- player's own pace (GetPersonalPaceBaseline). Normalised so B = 1.0.
@@ -13,8 +13,13 @@ local TIER_TIME_FACTOR = {
     F = 1.85,
 }
 
--- B-tier baseline (seconds) used only until a character has any run history.
+-- B-tier baseline (seconds) for a delve-geared character; the pre-history
+-- estimate is this stretched by gear deficit (GetFallbackBaseline). Anchored
+-- to E.TierData recGear: ref 210 = no stretch, T1 floor (170) = 1.5x, cap 2.5x.
 local FALLBACK_BASELINE = 360
+local BASELINE_REF_ILVL = 210
+local BASELINE_PER_ILVL = 0.0125
+local BASELINE_MAX_MULT = 2.5
 
 local TIER_REWARD_WEIGHT = {
     S = 6, A = 5, B = 4, C = 3, D = 2, F = 1,
@@ -74,6 +79,19 @@ function E:GetPersonalPaceBaseline()
     return sum / n
 end
 
+-- Gear-scaled pre-history baseline: an undergeared character clears slower, so
+-- the estimate stretches below BASELINE_REF_ILVL. Never returns less than
+-- FALLBACK_BASELINE (low gear is never faster). GetSpeedGrade uses the same
+-- value so the speed-colour ratio stays equal to the tier factor.
+function E:GetFallbackBaseline()
+    local equipped = GetAverageItemLevel and select(2, GetAverageItemLevel())
+    local ilvl = math_floor(equipped or 0)
+    local deficit = BASELINE_REF_ILVL - ilvl
+    if ilvl <= 0 or deficit <= 0 then return FALLBACK_BASELINE end
+    local mult = math_min(BASELINE_MAX_MULT, 1 + deficit * BASELINE_PER_ILVL)
+    return math_floor(FALLBACK_BASELINE * mult)
+end
+
 -- Returns seconds, source ("personal" logged average | "estimate"),
 -- tierLetter. nil if no tier is known.
 function E:GetDelveSpeed(delveName, tierOverride)
@@ -91,7 +109,7 @@ function E:GetDelveSpeed(delveName, tierOverride)
     local tier = self:GetDelveTierLetter(delveName, tierOverride)
     local factor = tier and TIER_TIME_FACTOR[tier]
     if not factor then return nil end
-    local baseline = self:GetPersonalPaceBaseline() or FALLBACK_BASELINE
+    local baseline = self:GetPersonalPaceBaseline() or self:GetFallbackBaseline()
     return math_floor(baseline * factor), "estimate", tier
 end
 
@@ -100,7 +118,7 @@ function E:GetSpeedGrade(seconds)
     if not seconds or seconds <= 0 then
         return last.label, last.rgb[1], last.rgb[2], last.rgb[3]
     end
-    local baseline = self:GetPersonalPaceBaseline() or FALLBACK_BASELINE
+    local baseline = self:GetPersonalPaceBaseline() or self:GetFallbackBaseline()
     local ratio = seconds / baseline
     for _, g in ipairs(SPEED_GRADES) do
         if ratio <= g.max then

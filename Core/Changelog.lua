@@ -3,6 +3,18 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.20.0", date = "2026-06-25",
+        sections = {
+            { head = "Improved", items = {
+                "Speed estimates now scale with your item level, so an undergeared character sees realistic clear times instead of a one-size-fits-all guess. Your own logged average still takes over after a single run.",
+                "The Tier & Achievement panel shown at a delve entrance can now be turned off in Options (on by default).",
+            }},
+            { head = "Fixed", items = {
+                "Changelog entries on the About tab no longer occasionally overlap.",
+            }},
+        },
+    },
+    {
         version = "1.19.0", date = "2026-06-23",
         sections = {
             { head = "New", items = {

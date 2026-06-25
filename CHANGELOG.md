@@ -5,6 +5,17 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-06-25
+
+### Improvements
+
+- **Gear-aware Speed estimates** - The Speed column on Delve Locations now scales its pre-run clear-time estimate to your character's item level, so an undergeared character sees realistic (longer) times instead of a one-size-fits-all guess. Geared characters are unaffected, and your own logged average still replaces the estimate after a single run.
+- **Toggle the entrance info panel** - The Tier & Achievement panel that appears beside the difficulty picker at a delve entrance can now be turned off under Options (on by default).
+
+### Bug Fixes
+
+- **About tab changelog no longer overlaps** - Changelog entries on the About tab could occasionally overlap when a long line wrapped; they now lay out correctly.
+
 ## [1.19.0] - 2026-06-23
 
 ### New Features

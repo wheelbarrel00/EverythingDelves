@@ -238,6 +238,7 @@ E:RegisterModule(function()
     end
 
     local function Show()
+        if E.db and E.db.showPickerInfo == false then panel:Hide(); return end
         local delve = ResolveNearbyDelve()
         if not delve then panel:Hide(); return end
         Refresh(delve)
