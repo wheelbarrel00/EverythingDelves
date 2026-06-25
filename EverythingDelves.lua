@@ -1430,6 +1430,14 @@ local function TryBeginFromCurrentZone(source)
         end
         runCompleted = false
         keyWatch     = nil
+        -- Consume the login/reload flags now that we're in the open world. A delve
+        -- entry can be a seamless transition that fires no fresh PEW, so a flag left
+        -- latched from the session's first PEW would otherwise bleed onto that entry
+        -- and dead-lock it: resume finds no saved run and a fresh begin is gated off
+        -- on login/reload, so the run never starts. Clearing here is safe -- a real
+        -- logged-out-in-delve resume happens in-delve, where this branch never runs.
+        enteredViaReload = false
+        enteredViaLogin  = false
         return
     end
 
@@ -1510,6 +1518,17 @@ local function TryBeginFromCurrentZone(source)
                 -- the run already ended (e.g. reloading while looting after the
                 -- boss clears activeRun); beginning would show a phantom 0:00 run.
                 -- Only a genuine entry (entryArmed) or untracked recovery begins.
+                if E.db then E.db.activeRun = nil end
+                BeginDelveRun(matchedName, kind)
+            elseif saved and saved.name == matchedName
+                    and saved.startedAt
+                    and (time() - saved.startedAt) < MAX_RESUME_AGE then
+                -- Couldn't resume above (typically a client restart reset GetTime()
+                -- so saved.startTime now reads in the future), but a saved activeRun
+                -- proves a genuine, wall-clock-recent run was in progress -- begin a
+                -- fresh clock so the HUD/timer/objectives aren't left dead instead of
+                -- dead-locking. A COMPLETED run clears activeRun, so requiring `saved`
+                -- here means this can never start a phantom in the post-boss window.
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)
             end

@@ -5,6 +5,13 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.1] - 2026-06-25
+
+### Bug Fixes
+
+- **Delve HUD and Run Timer show on their own** - The Delve HUD and Run Timer no longer require the Bonus Spoils Tracker to be enabled; each now appears by itself while you're in a delve.
+- **First delve after login or reload now tracks correctly** - The first delve you entered after logging in or reloading could fail to start tracking: the HUD, run timer, and bonus-objective tracker stayed blank (showing "all bonus loot accounted for" even with packs still up), and the run went untimed and unlogged. It now starts correctly.
+
 ## [1.20.0] - 2026-06-25
 
 ### Improvements

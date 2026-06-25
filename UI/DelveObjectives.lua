@@ -505,11 +505,11 @@ E:RegisterModule(function()
 
     local function DoRefresh()
         refreshPending = false
-        local rs = E.delveRunState
-        local hasRun = rs and rs.inDelve and rs.startTime and rs.startTime > 0
+        -- Gate on the LIVE in-delve test, not rs.inDelve: the run-state is false
+        -- in the post-boss loot room and on a not-yet-begun login entry, yet the
+        -- HUD/timer (which self-gate on the run state) should still be available.
         local shouldShow = E.db and PlayerInDelve()
-            and (E.db.showDelveObjectives
-                or ((E.db.showRunTimer or E.db.showDelveHUD) and hasRun))
+            and (E.db.showDelveObjectives or E.db.showRunTimer or E.db.showDelveHUD)
         if shouldShow then
             -- Banner/cast watchers only while the Bonus Spoils tracker is on.
             if E.db.showDelveObjectives then
@@ -1014,7 +1014,8 @@ E:RegisterModule(function()
                         out("  " .. esc(v.name)
                             .. " vignetteID=" .. tostring(v.vignetteID)
                             .. " npcID=" .. tostring(npcID)
-                            .. " atlas=" .. esc(v.atlasName)
+                            .. " vguid=" .. esc(guid)
+                            .. " objGUID=" .. esc(v.objectGUID)
                             .. " onMinimap=" .. tostring(v.onMinimap))
                     end
                 end

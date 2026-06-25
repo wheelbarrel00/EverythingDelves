@@ -3,6 +3,15 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.20.1", date = "2026-06-25",
+        sections = {
+            { head = "Fixed", items = {
+                "The Delve HUD and Run Timer now show on their own, without needing the Bonus Spoils Tracker enabled.",
+                "The first delve entered after logging in or reloading no longer fails to start - the HUD, run timer, and bonus-objective tracking stayed blank (and the run went untimed and unlogged) when the entry didn't trigger a fresh loading screen.",
+            }},
+        },
+    },
+    {
         version = "1.20.0", date = "2026-06-25",
         sections = {
             { head = "Improved", items = {
