@@ -156,6 +156,22 @@ E:RegisterModule(function()
         return best
     end
 
+    -- Picker is shared with Ritual Sites; match the entrance name to a delve only.
+    local function ResolveEntranceDelve()
+        local header = C_DelvesUI and C_DelvesUI.GetDelveEntranceHeaderString
+            and C_DelvesUI.GetDelveEntranceHeaderString()
+        if type(header) == "string" and header ~= "" then
+            for _, d in ipairs(E.DelveData or {}) do
+                if d.name == header
+                        or (E.DelveNamesMatch and E.DelveNamesMatch(header, d.name)) then
+                    return d
+                end
+            end
+            return nil
+        end
+        return ResolveNearbyDelve()
+    end
+
     local function Refresh(delve)
         titleFS:SetText(E.CC.gold .. delve.name .. E.CC.close)
 
@@ -239,7 +255,7 @@ E:RegisterModule(function()
 
     local function Show()
         if E.db and E.db.showPickerInfo == false then panel:Hide(); return end
-        local delve = ResolveNearbyDelve()
+        local delve = ResolveEntranceDelve()
         if not delve then panel:Hide(); return end
         Refresh(delve)
         AnchorPanel(_G.DelvesDifficultyPickerFrame)

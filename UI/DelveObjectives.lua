@@ -214,7 +214,8 @@ E:RegisterModule(function()
     -- elapsed must use GetTime() to match runState.startTime's base (not time()).
     local function UpdateRunTimer()
         local rs = E.delveRunState
-        if E.db and (E.db.showRunTimer or E.db.showDelveHUD) and rs and rs.inDelve
+        local timerOn = E.db and (E.db.showRunTimer or E.db.showDelveHUD)
+        if timerOn and rs and rs.inDelve
                 and rs.startTime and rs.startTime > 0 then
             local secs = math.max(0, math.floor(GetTime() - rs.startTime))
             local txt = E.CC.gold
@@ -223,6 +224,18 @@ E:RegisterModule(function()
             if timerFS.cachedText ~= txt then
                 timerFS:SetText(txt)
                 timerFS.cachedText = txt
+            end
+            timerFS.frozenFor = nil
+            timerFS:Show()
+        elseif timerOn and E.db.showRunResult and rs and rs.lastResult
+                and PlayerInDelve() then
+            -- Rebuild only on a new result; avoids per-second string churn.
+            local lr = rs.lastResult
+            if timerFS.frozenFor ~= lr then
+                local cc = lr.beat and E.CC.green or E.CC.red
+                timerFS:SetText(cc .. E:FormatClock(lr.duration) .. E.CC.close)
+                timerFS.frozenFor = lr
+                timerFS.cachedText = nil
             end
             timerFS:Show()
         else
@@ -248,11 +261,11 @@ E:RegisterModule(function()
     local stickyMsgs  = {}   -- keyword-matched messages, never rotated out
     local ScanVignettes      -- forward local; defined after SetBannerState
     -- Packs can appear ONE AT A TIME, so the peak-seen-at-once count undercounts
-    -- kills. Instead accumulate distinct pack-vignette GUIDs ever seen this run;
-    -- killed = seenCount - remaining. Rendering waits for a pack to be seen to
+    -- kills. Instead accumulate distinct pack creature/object GUIDs ever seen this
+    -- run; killed = seenCount - remaining. Rendering waits for a pack to be seen to
     -- avoid a false "done" before vignettes load / in delves without the affix.
     local nemesisRemaining = nil
-    local nemesisSeen      = {}   -- vguid -> true (distinct packs seen this run)
+    local nemesisSeen      = {}   -- objectGUID -> true (distinct packs seen this run)
     local nemesisSeenCount = 0
     local nemesisKilledBase = 0   -- packs killed before a mid-run /reload (persisted)
     local castLog = {}            -- recent player casts (newest last); objdump diag
@@ -433,6 +446,22 @@ E:RegisterModule(function()
             AddLine(statLine)
         end
 
+        if E.db and E.db.showRunResult and rs and rs.inDelve
+                and E.GetBestRunTime then
+            local curTier = liveTier or (rs.tier or 0)
+            local best, bestTier
+            if curTier > 0 then best = E:GetBestRunTime(name, curTier) end
+            if not best then best, bestTier = E:GetBestRunTime(name) end
+            if best and best > 0 then
+                local line = E.CC.muted .. "Best:" .. E.CC.close .. " "
+                    .. E.CC.gold .. E:FormatClock(best) .. E.CC.close
+                if bestTier and bestTier ~= curTier then
+                    line = line .. E.CC.muted .. " (T" .. bestTier .. ")" .. E.CC.close
+                end
+                AddLine(line)
+            end
+        end
+
         -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
         -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
@@ -607,8 +636,10 @@ E:RegisterModule(function()
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
             if ok2 and v and v.vignetteID == NEMESIS_PACK_VIGNETTE then
                 packCount = packCount + 1
-                if not nemesisSeen[vguid] then
-                    nemesisSeen[vguid] = true
+                -- Key on the creature GUID; the vignette GUID regenerates and double-counts.
+                local key = v.objectGUID
+                if key and not nemesisSeen[key] then
+                    nemesisSeen[key] = true
                     nemesisSeenCount = nemesisSeenCount + 1
                 end
             end

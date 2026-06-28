@@ -1,27 +1,27 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.19.0"
+local WHATS_NEW_VERSION = "1.21.0"
 
 local ENTRIES = {
     {
-        title = "Delve HUD & run timer",
-        desc  = "A new on-screen panel while you're in a delve shows the story variant and its grade, your recommended Combat and Utility curios, a live run timer, and your remaining lives and deaths. Drag it anywhere; toggle it (and the standalone timer) in Options.",
+        title = "Run result on the Delve HUD",
+        desc  = "After you beat the boss, the run timer now stays on screen - green if you beat your best time for that delve and tier, red if you didn't - and the HUD shows your best time during the run so you know what to chase. Toggle it in Options (on by default). Thanks to BanditC64 for the suggestion!",
     },
     {
-        title = "Track the real delve entrance",
-        desc  = "The Pin button now steers the game's on-screen arrow to the actual delve entrance and works as a toggle - click to track, click again to stop. The button lights up green while it's the one you're tracking.",
+        title = "New minimap icon",
+        desc  = "The minimap button, broker display, and AddOns list now use the bountiful delve icon in place of the old placeholder key.",
     },
     {
-        title = "Better Tier Guide rewards",
-        desc  = "Great Vault Progress now shows all three reward slots with each one's item level and unlock progress, and the per-tier loot is colored by gear track (Adventurer through Myth) - hover a tier to see the track name.",
+        title = "Weekly shards in the tooltip",
+        desc  = "An optional tooltip format (Options, off by default) shows your Coffer Key Shards as owned / still-earnable-this-week, so you can see how many more you can bank before the weekly reset.",
     },
     {
-        title = "Info at the difficulty picker",
-        desc  = "Opening a delve entrance now shows a panel beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, so you can pick the right tier at a glance.",
+        title = "Clearer achievement tooltips",
+        desc  = "A delve's map tooltip now lays out its achievements clearly - each shows a short label with progress (Stories 2/3, Sturdy Chests 1/3) and a check or x for every step.",
     },
     {
         title = "Bug fixes",
-        desc  = "Dying in a delve no longer resets your run timer, deaths, or Bonus Spoils progress; reloading mid-delve keeps your Nemesis pack count; and reloading after the boss no longer shows a phantom new run.",
+        desc  = "The Nemesis Strongbox pack count no longer doubles (such as 3/6 instead of 0/3) when the in-delve pack markers refresh during a run, and the Tier & Achievement panel no longer pops up at the new Ritual Site entrances.",
     },
 }
 

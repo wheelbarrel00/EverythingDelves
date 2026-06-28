@@ -8,13 +8,6 @@ local E = EverythingDelves
 
 local GameTooltip, IsShiftKeyDown = GameTooltip, IsShiftKeyDown
 
--- BATTLE_PET_SOURCE_6 = "Achievement", PVP_PROGRESS_REWARDS_HEADER = "Progress";
--- fallbacks cover the rare case a standard global is absent.
-local GREEN_C        = GREEN_FONT_COLOR or CreateColor(0.12, 1.00, 0.12)
-local RED_C          = RED_FONT_COLOR   or CreateColor(1.00, 0.24, 0.24)
-local ACH_LABEL      = _G.BATTLE_PET_SOURCE_6      or "Achievement"
-local PROGRESS_LABEL = _G.PVP_PROGRESS_REWARDS_HEADER or "Progress"
-
 local poiToDelve = {}
 for _, d in ipairs(E.DelveData or {}) do
     if d.poiID       then poiToDelve[d.poiID]       = d.name end
@@ -83,47 +76,45 @@ local expandedDelve
 -- immediately re-expand; ignore the held key as an expand request for a beat.
 local suppressShiftUntil = 0
 
-local function AddCriterion(c)
-    local cr, cg, cb = (c.completed and GREEN_C or RED_C):GetRGB()
-    if (c.reqQuantity or 0) > 1 then
-        local label = (c.name and c.name ~= "") and c.name or PROGRESS_LABEL
-        GameTooltip:AddDoubleLine(
-            label, ("%d / %d"):format(c.quantity or 0, c.reqQuantity),
-            cr, cg, cb, cr, cg, cb)
-    else
-        GameTooltip:AddDoubleLine(" ", c.name or "?", nil, nil, nil, cr, cg, cb)
-    end
+local ICON_DONE = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12:0:0|t"
+local ICON_TODO = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:12:12:0:0|t"
+
+local function AddAchHeader(label, done, total)
+    local right = (done >= total)
+        and (E.CC.green .. "Done" .. E.CC.close)
+        or  (E.CC.red .. done .. "/" .. total .. E.CC.close)
+    GameTooltip:AddDoubleLine(E.CC.gold .. label .. E.CC.close, right)
 end
 
-local function AddGroup(name, done, criteria)
-    local hr, hg, hb = (done and GREEN_C or RED_C):GetRGB()
-    GameTooltip:AddDoubleLine(ACH_LABEL, name or "?", nil, nil, nil, hr, hg, hb)
-    for _, c in ipairs(criteria or {}) do
-        if (c.name and c.name ~= "") or (c.reqQuantity or 0) > 1 then
-            AddCriterion(c)
+local function AddSubItem(name, completed)
+    local icon = completed and ICON_DONE or ICON_TODO
+    local cc   = completed and E.CC.green or E.CC.body
+    GameTooltip:AddLine("   " .. icon .. " " .. cc .. name .. E.CC.close)
+end
+
+local function AddDetailLines(status)
+    local s = status.stories
+    if s and #s.criteria > 0 then
+        local done = 0
+        for _, c in ipairs(s.criteria) do if c.completed then done = done + 1 end end
+        AddAchHeader("Stories", done, #s.criteria)
+        for _, c in ipairs(s.criteria) do
+            if c.name ~= "" then AddSubItem(c.name, c.completed) end
         end
     end
-end
 
--- Shows every group complete or not, so the whole picture is visible at once.
-local function AddDetailLines(status)
-    if status.stories then
-        AddGroup(status.stories.name, status.stories.done, status.stories.criteria)
-    end
-
-    if status.discoveries then
-        AddGroup(status.discoveries.name, status.discoveries.done,
-            status.discoveries.criteria)
+    local d = status.discoveries
+    if d and d.total > 0 then
+        AddAchHeader("Sturdy Chests", d.found, d.total)
     end
 
     if status.depths and #status.depths > 0 then
-        -- Delver of the Depths is a series; present this delve's tier brackets as one group.
-        local crit = {}
+        local done = 0
+        for _, t in ipairs(status.depths) do if t.completed then done = done + 1 end end
+        AddAchHeader("Delver of the Depths", done, #status.depths)
         for _, t in ipairs(status.depths) do
-            crit[#crit + 1] = { name = t.label, completed = t.completed }
+            AddSubItem(t.label, t.completed)
         end
-        local allDone = (status.depthsMissing and #status.depthsMissing == 0)
-        AddGroup("Delver of the Depths", allDone, crit)
     end
 end
 

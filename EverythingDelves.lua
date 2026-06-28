@@ -105,7 +105,9 @@ local DEFAULTS = {
     showDelveObjectives    = false,
     showRunTimer           = true,
     showDelveHUD           = true,
+    showRunResult          = true,
     showPickerInfo         = true,
+    showShardWeekly        = false,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},
@@ -1035,6 +1037,7 @@ local function BeginDelveRun(name, kind)
     runState.wasBountiful  = false
     runState.story         = E:GetDelveStoryVariant(name)
     runState.boss          = nil
+    runState.lastResult    = nil
     runState.trovehunterPopupShown = false
     -- Persist run start so duration survives /reload (GetTime() is continuous
     -- across /reload; startedAt is wall-clock for the staleness check).
@@ -1172,6 +1175,20 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
     while #recent > cap do
         recent[#recent] = nil
     end
+end
+
+function E:GetBestRunTime(name, tier)
+    local hist = self.db and self.db.delveHistory and self.db.delveHistory[name]
+    if not hist or not hist.recentRuns then return nil end
+    local best, bestTier
+    for _, r in ipairs(hist.recentRuns) do
+        local d = r.duration or 0
+        if d > 0 and (not tier or (r.tier or 0) == tier)
+                and (not best or d < best) then
+            best, bestTier = d, r.tier or 0
+        end
+    end
+    return best, bestTier
 end
 
 function E:SetRunNote(delveName, timestamp, text)
@@ -1502,6 +1519,7 @@ local function TryBeginFromCurrentZone(source)
                 runState.tier          = saved.tier or 0
                 runState.wasBountiful  = saved.wasBountiful or false
                 runState.story         = saved.story
+                runState.lastResult    = nil
                 runState.trovehunterPopupShown = saved.trovehunterPopupShown or false
                 TryCaptureTier("restored")
                 -- TryCaptureTier short-circuits if tier was already captured;
@@ -1565,6 +1583,7 @@ local function TryBeginFromCurrentZone(source)
             runState.wasBountiful  = false
             runState.story         = nil
             runState.boss          = nil
+            runState.lastResult    = nil
             -- Persist so a /reload during the unresolved-name window resumes.
             if E.db then
                 E.db.activeRun = {
@@ -1776,10 +1795,19 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             if runState.boss then
                 runState.boss = E:NormalizeLiveBoss(matchedName, runState.boss)
             end
+            -- Read before LogDelveRun folds this run into the history.
+            local priorBest = E:GetBestRunTime(matchedName, tier)
+                or E:GetBestRunTime(matchedName)
             E:LogDelveRun(
                 matchedName, tier, duration, runState.deaths,
                 keyUsed, runState.wasBountiful, story, runState.boss
             )
+            if duration > 0 then
+                runState.lastResult = {
+                    duration = duration,
+                    beat     = (not priorBest) or duration <= priorBest,
+                }
+            end
             if runState.boss and story and story ~= "" then
                 E:RecordDelveBoss(matchedName, story, runState.boss)
             end

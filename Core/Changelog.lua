@@ -3,6 +3,23 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.21.0", date = "2026-06-28",
+        sections = {
+            { head = "New", items = {
+                "Delve HUD run result - the run timer stays on screen after you beat the boss, green if you beat your best time for that delve and tier or red if not, plus your best time shown during the run. Toggle in Options (on by default). Thanks to BanditC64 for the suggestion!",
+                "Optional tooltip format (off by default) showing your Coffer Key Shards as owned / still-earnable-this-week on the minimap and broker button.",
+            }},
+            { head = "Improved", items = {
+                "The minimap button, broker display, and AddOns-list entry now use the bountiful delve icon instead of the old placeholder key.",
+                "The delve achievement breakdown on the map tooltip is reorganized - each achievement shows a short label with its progress and a check or x per step, instead of repeated 'Achievement' labels and a raw criterion line.",
+            }},
+            { head = "Fixed", items = {
+                "The Nemesis Strongbox pack tally no longer doubles (such as 3/6 instead of 0/3) when in-delve pack markers refresh during a run - each pack is counted once.",
+                "The Tier & Achievement panel no longer appears at the new Ritual Site entrances (which reuse the delve picker) - it attaches only to delves now.",
+            }},
+        },
+    },
+    {
         version = "1.20.1", date = "2026-06-25",
         sections = {
             { head = "Fixed", items = {

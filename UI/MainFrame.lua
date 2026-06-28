@@ -2,8 +2,27 @@
 local E = EverythingDelves
 
 local pairs, ipairs = pairs, ipairs
-local math_floor = math.floor
+local math_floor, math_max = math.floor, math.max
 local string_format = string.format
+
+local DELVE_ICON_ATLAS = "delves-bountiful"
+local DELVE_ICON_TRIM  = 0.15
+local FALLBACK_ICON    = "Interface\\Icons\\INV_Misc_Key_15"
+
+-- LibDBIcon needs a file, not an atlas; resolve + inset to trim the frame.
+local function GetDelveIcon()
+    if C_Texture and C_Texture.GetAtlasInfo then
+        local a = C_Texture.GetAtlasInfo(DELVE_ICON_ATLAS)
+        if a and a.file then
+            local dx = (a.rightTexCoord - a.leftTexCoord) * DELVE_ICON_TRIM
+            local dy = (a.bottomTexCoord - a.topTexCoord) * DELVE_ICON_TRIM
+            return a.file,
+                { a.leftTexCoord + dx, a.rightTexCoord - dx,
+                  a.topTexCoord + dy, a.bottomTexCoord - dy }
+        end
+    end
+    return FALLBACK_ICON, nil
+end
 
 function E:InitMainFrame()
     if self.MainFrame then return end
@@ -308,8 +327,23 @@ local function AddLiveStats(tip)
     local shards = GetCurrencyQty(E.CurrencyIDs.cofferKeyShards)
     local keys   = GetCurrencyQty(E.CurrencyIDs.bountifulKeys)
     local uc     = GetCurrencyQty(E.CurrencyIDs.undercoins)
-    tip:AddDoubleLine(E.CC.white .. "Coffer Key Shards:" .. E.CC.close,
-                      E.CC.white .. shards .. E.CC.close)
+
+    local shardVal = E.CC.white .. shards .. E.CC.close
+    local shardNote = false
+    if E.db and E.db.showShardWeekly
+            and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.cofferKeyShards)
+        local cap  = (info and info.maxWeeklyQuantity) or 0
+        if cap > 0 then
+            local remaining = math_max(0, cap - ((info and info.quantityEarnedThisWeek) or 0))
+            shardVal = shardVal .. E.CC.muted .. "/" .. remaining .. E.CC.close
+            shardNote = true
+        end
+    end
+    tip:AddDoubleLine(E.CC.white .. "Coffer Key Shards:" .. E.CC.close, shardVal)
+    if shardNote then
+        tip:AddLine(E.CC.muted .. "owned / earnable this week" .. E.CC.close)
+    end
     tip:AddDoubleLine(E.CC.white .. "Bountiful Keys:" .. E.CC.close,
                       E.CC.white .. keys .. E.CC.close)
     tip:AddDoubleLine(E.CC.white .. "Undercoins:" .. E.CC.close,
@@ -369,9 +403,11 @@ function E:CreateBrokerObject()
     local LDB = LibStub and LibStub("LibDataBroker-1.1", true)
     if not LDB then return end
 
+    local iconTex, iconCoords = GetDelveIcon()
     self.brokerObj = LDB:NewDataObject("Everything Delves", {
         type  = "launcher",
-        icon  = "Interface\\Icons\\INV_Misc_Key_15",
+        icon  = iconTex,
+        iconCoords = iconCoords,
         label = "Everything Delves",
         OnClick = function(_, btn)
             if btn == "LeftButton" then
@@ -450,7 +486,11 @@ function E:CreateMinimapButton()
     local icon = button:CreateTexture(nil, "BACKGROUND")
     icon:SetSize(20, 20)
     icon:SetPoint("CENTER")
-    icon:SetTexture("Interface\\Icons\\INV_Misc_Key_15")
+    local iconTex, iconCoords = GetDelveIcon()
+    icon:SetTexture(iconTex)
+    if iconCoords then
+        icon:SetTexCoord(iconCoords[1], iconCoords[2], iconCoords[3], iconCoords[4])
+    end
     button.icon = icon
 
     local border = button:CreateTexture(nil, "OVERLAY")

@@ -262,6 +262,20 @@ E:RegisterModule(function()
     end)
     Y = Y - 28
 
+    local shardWeeklyCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show weekly earnable shards in button tooltip",
+        "showShardWeekly"
+    )
+    shardWeeklyCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Weekly Shards in Tooltip",
+            "On the minimap / broker button tooltip, shows your",
+            "Coffer Key Shards as owned / still-earnable-this-week",
+            "instead of just the owned count.")
+    end)
+    shardWeeklyCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 28
+
     -- Anchored beside the Default Tab slider so it doesn't consume a Y row
     local troveCB = CreateCheckbox(
         content, SECT_X, Y,
@@ -391,6 +405,27 @@ E:RegisterModule(function()
             "Bonus Spoils tracker - drag any of them to move it.")
     end)
     hudCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 30
+
+    local resultCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Show Best Time & keep timer after boss",
+        "showRunResult",
+        function()
+            if E.UpdateDelveObjectivesWindow then
+                E:UpdateDelveObjectivesWindow()
+            end
+        end
+    )
+    resultCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, "Best Time & Run Result",
+            "Adds your fastest time for the current delve to the",
+            "on-screen panel (your best at this tier, or your overall",
+            "best labelled with its tier), and keeps the run timer up",
+            "after you beat the boss - green if you beat your best time",
+            "at this tier, red if not. Needs one previous run logged.")
+    end)
+    resultCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     local pickerCB = CreateCheckbox(
@@ -599,6 +634,8 @@ E:RegisterModule(function()
         scaleSlider:SetValue((E.db.uiScale or 1.0) * 100)
         minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
         troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
+        shardWeeklyCB:SetChecked(E.db.showShardWeekly == true)
+        resultCB:SetChecked(E.db.showRunResult ~= false)
 
         for _, cb in ipairs(accentRadios) do
             cb:SetChecked(E.db.accentColor == cb.optValue)

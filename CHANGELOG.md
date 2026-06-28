@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-06-28
+
+### New Features
+
+- **Delve HUD run result** - After you beat the boss, the run timer now stays on screen instead of disappearing - green if you beat your best time for that delve and tier, red if you didn't - and the HUD shows your best time during the run so you know what to chase. Turn it off under Options (on by default). Thanks to BanditC64 for the suggestion!
+- **Weekly shards in the button tooltip** - A new option (off by default) changes the Coffer Key Shards line on the minimap/broker tooltip to show owned / still-earnable-this-week, so you can see how many more you can bank before the weekly reset.
+
+### Improvements
+
+- **New minimap and broker icon** - The minimap button, broker display, and the Everything Delves entry in your AddOns list now use the bountiful delve icon in place of the old placeholder key.
+- **Clearer delve achievement tooltips** - The achievement breakdown on a delve's map tooltip is reorganized: each achievement now shows a short label with its progress (Stories 2/3, Sturdy Chests 1/3, Delver of the Depths 2/4) and a green check or red x for every step, replacing the repeated "Achievement" labels and the raw, easy-to-misread criterion line.
+
+### Bug Fixes
+
+- **Nemesis Strongbox pack count** - The bonus-objective pack tally could double (for example showing 3/6 instead of 0/3) when the in-delve pack markers refreshed during a run; each pack is now counted once and the tally stays accurate.
+- **Tier & Achievement panel at Ritual Sites** - The panel beside the difficulty picker no longer appears at the new Ritual Site entrances (which reuse the delve picker); it now attaches only to delves, and shows the exact delve you're standing at.
+
 ## [1.20.1] - 2026-06-25
 
 ### Bug Fixes
