@@ -1834,5 +1834,17 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         -- begin/resume until the player leaves so a trailing event can't spawn
         -- a phantom run.
         runCompleted = true
+
+        if E._gildedRecapture then E._gildedRecapture:Cancel() end
+        local gildedTicks = 0
+        E._gildedRecapture = C_Timer.NewTicker(3, function(ticker)
+            gildedTicks = gildedTicks + 1
+            E:CaptureGildedStash()
+            local _, _, diffID = GetInstanceInfo()
+            if diffID ~= 208 or gildedTicks >= 20 then
+                ticker:Cancel()
+                E._gildedRecapture = nil
+            end
+        end)
     end
 end)

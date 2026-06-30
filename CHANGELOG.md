@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.1] - 2026-06-30
+
+### Bug Fixes
+
+- **Gilded Stash counter now credits your run** - A Tier 11 Bountiful run could fail to count toward Gilded Stash progress (showing 0/4 instead of 1/4) when the in-delve count wasn't re-synced after looting the stash. The Tier Guide now also counts your logged Tier 11 Bountiful runs for the week as a backup, and the in-delve count re-syncs on its own after you beat the boss.
+
 ## [1.21.0] - 2026-06-28
 
 ### New Features

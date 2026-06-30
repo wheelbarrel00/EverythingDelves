@@ -834,9 +834,6 @@ E:RegisterModule(function()
     end)
 
     local function RefreshGildedStash()
-        -- Prefer the live in-delve widget count (server-authoritative);
-        -- else estimate from logged T11 bountiful runs (entry-snapshotted,
-        -- since completed bountifuls drop off the live POI list mid-week).
         local liveCol, liveTot
         if E.GetLiveGildedStash then
             liveCol, liveTot = E:GetLiveGildedStash()
@@ -845,36 +842,35 @@ E:RegisterModule(function()
         local maxCount = (isLive and liveTot and liveTot > 0)
             and liveTot or GILDED_MAX
 
-        local progress = 0
-        if isLive then
-            progress = liveCol
-        else
-            local lastReset = 0
-            if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-                local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
-                if secs and secs > 0 then
-                    local now = (GetServerTime and GetServerTime()) or time()
-                    lastReset = now + secs - 604800
-                end
+        local lastReset = 0
+        if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+            local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+            if secs and secs > 0 then
+                local now = (GetServerTime and GetServerTime()) or time()
+                lastReset = now + secs - 604800
             end
+        end
 
-            local history = E.db and E.db.delveHistory
-            if history then
-                for _, entry in pairs(history) do
-                    if entry.recentRuns then
-                        for _, run in ipairs(entry.recentRuns) do
-                            if (run.tier or 0) >= 11
-                                    and run.wasBountiful
-                                    and (run.timestamp or 0) >= lastReset then
-                                progress = progress + 1
-                            end
+        local estimate = 0
+        local history = E.db and E.db.delveHistory
+        if history then
+            for _, entry in pairs(history) do
+                if entry.recentRuns then
+                    for _, run in ipairs(entry.recentRuns) do
+                        if (run.tier or 0) >= 11
+                                and run.wasBountiful
+                                and (run.timestamp or 0) >= lastReset then
+                            estimate = estimate + 1
                         end
                     end
                 end
             end
         end
 
+        local progress = math_max(liveCol or 0, estimate)
         if progress > maxCount then progress = maxCount end
+
+        local fromLive = isLive and (liveCol or 0) >= estimate
 
         gildedBar:SetProgress(progress, maxCount)
 
@@ -884,7 +880,7 @@ E:RegisterModule(function()
                 .. progress .. " / " .. maxCount .. ")" .. E.CC.close
             )
             gildedNoteFS:SetText(
-                E.CC.muted .. (isLive
+                E.CC.muted .. (fromLive
                     and "All Gilded Stashes looted this week."
                     or  "All T11 Bountiful Delve runs complete this week.")
                 .. E.CC.close
@@ -892,13 +888,13 @@ E:RegisterModule(function()
         elseif progress > 0 then
             gildedStatusFS:SetText(
                 E.CC.yellow .. progress .. " / " .. maxCount
-                .. (isLive and " Gilded Stashes looted this week"
+                .. (fromLive and " Gilded Stashes looted this week"
                             or  " T11 runs this week") .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.body .. (maxCount - progress) .. " more to go."
                 .. E.CC.close .. "  " .. E.CC.muted
-                .. (isLive
+                .. (fromLive
                     and "Exact count, synced in-delve."
                     or  "Estimate - enter a delve to sync the exact count.")
                 .. E.CC.close
@@ -906,7 +902,7 @@ E:RegisterModule(function()
         else
             gildedStatusFS:SetText(
                 E.CC.btnText .. "0 / " .. maxCount
-                .. (isLive and " - no Gilded Stashes looted yet this week"
+                .. (fromLive and " - no Gilded Stashes looted yet this week"
                             or  " - no T11 runs yet this week") .. E.CC.close
             )
             gildedNoteFS:SetText(

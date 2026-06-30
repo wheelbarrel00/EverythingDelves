@@ -3,6 +3,14 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.21.1", date = "2026-06-30",
+        sections = {
+            { head = "Fixed", items = {
+                "The Gilded Stash counter no longer stays at 0/4 after a Tier 11 Bountiful run when the in-delve count didn't re-sync - your logged Tier 11 Bountiful runs for the week now count as a backup, and the in-delve count re-syncs on its own after the boss.",
+            }},
+        },
+    },
+    {
         version = "1.21.0", date = "2026-06-28",
         sections = {
             { head = "New", items = {
