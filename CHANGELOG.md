@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.2] - 2026-06-30
+
+### Bug Fixes
+
+- **Tier & Achievement panel now matches the delve you're at** - The panel beside the difficulty picker could show a different delve's name, achievements, and rewards than the entrance you were standing at (for example "The Shadow Enclave" while the picker showed "Atal'Aman"). It now reads the delve straight from the entrance picker, so the name and info always match. Thanks to charswebdev2 for the report!
+
 ## [1.21.1] - 2026-06-30
 
 ### Bug Fixes

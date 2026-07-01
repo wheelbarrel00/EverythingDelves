@@ -131,45 +131,17 @@ E:RegisterModule(function()
         return rec
     end
 
-    -- The picker only opens at an entrance, so the nearest delve on the player's
-    -- current map is this one; reading position avoids touching the secure frame.
-    local function ResolveNearbyDelve()
-        if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then
-            return nil
-        end
-        local mapID = C_Map.GetBestMapForUnit("player")
-        if not mapID then return nil end
-        local pos = C_Map.GetPlayerMapPosition(mapID, "player")
-        if not pos then return nil end
-        local px, py = pos:GetXY()
-        if not px then return nil end
-        local best, bestDist
-        for _, d in ipairs(E.DelveData or {}) do
-            if d.mapID == mapID and d.x and d.y then
-                local dx, dy = (d.x / 100) - px, (d.y / 100) - py
-                local dist = dx * dx + dy * dy
-                if not bestDist or dist < bestDist then
-                    bestDist, best = dist, d
-                end
-            end
-        end
-        return best
-    end
-
-    -- Picker is shared with Ritual Sites; match the entrance name to a delve only.
     local function ResolveEntranceDelve()
         local header = C_DelvesUI and C_DelvesUI.GetDelveEntranceHeaderString
             and C_DelvesUI.GetDelveEntranceHeaderString()
-        if type(header) == "string" and header ~= "" then
-            for _, d in ipairs(E.DelveData or {}) do
-                if d.name == header
-                        or (E.DelveNamesMatch and E.DelveNamesMatch(header, d.name)) then
-                    return d
-                end
+        if type(header) ~= "string" or header == "" then return nil end
+        for _, d in ipairs(E.DelveData or {}) do
+            if d.name == header
+                    or (E.DelveNamesMatch and E.DelveNamesMatch(header, d.name)) then
+                return d
             end
-            return nil
         end
-        return ResolveNearbyDelve()
+        return nil
     end
 
     local function Refresh(delve)

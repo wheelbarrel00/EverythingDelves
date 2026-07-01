@@ -3,6 +3,14 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.21.2", date = "2026-06-30",
+        sections = {
+            { head = "Fixed", items = {
+                "The Tier & Achievement panel at a delve entrance could show a different delve's name, achievements, and rewards than the entrance you were standing at - it now reads the delve straight from the picker, so the name and info always match. Thanks to charswebdev2 for the report!",
+            }},
+        },
+    },
+    {
         version = "1.21.1", date = "2026-06-30",
         sections = {
             { head = "Fixed", items = {
