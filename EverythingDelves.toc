@@ -1,8 +1,8 @@
-## Interface: 120001, 120005, 120007
+## Interface: 120100, 120005, 120007
 ## Title: Everything Delves
 ## Notes: A complete Delves companion for World of Warcraft: Midnight. Track delve locations, bountiful status, coffer shards, tier info, and more.
 ## Author: Wheelbarrel00
-## Version: 1.21.2
+## Version: 1.21.3
 ## SavedVariables: EverythingDelvesDB
 ## IconAtlas: delves-bountiful
 ## X-Curse-Project-ID: 1519355

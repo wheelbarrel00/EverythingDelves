@@ -89,7 +89,7 @@ E:RegisterModule(function()
     local NEMESIS_MAP   = 2405
     local NEMESIS_X     = 61.17
     local NEMESIS_Y     = 71.37
-    local NEMESIS_QUEST = 93525
+    local NULLING_QUEST = 93525
     local NEMESIS_ICON  = "Interface\\Icons\\Inv_120_raid_voidspire_hostgeneral"
     local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
@@ -597,26 +597,28 @@ E:RegisterModule(function()
         local completed, inProgress = false, false
         if C_QuestLog then
             if C_QuestLog.IsQuestFlaggedCompleted then
-                completed = C_QuestLog.IsQuestFlaggedCompleted(NEMESIS_QUEST)
+                completed = C_QuestLog.IsQuestFlaggedCompleted(NULLING_QUEST)
             end
             if (not completed) and C_QuestLog.IsOnQuest then
-                inProgress = C_QuestLog.IsOnQuest(NEMESIS_QUEST)
+                inProgress = C_QuestLog.IsOnQuest(NULLING_QUEST)
             end
         end
 
         if completed then
             nemStatusFS:SetText(
-                E.CC.green .. "[Done] Weekly Nemesis quest complete this week." .. E.CC.close
+                E.CC.green .. "[Done] Nulling Nullaeus complete \226\128\148 "
+                .. "Dominating Victory earned." .. E.CC.close
             )
         elseif inProgress then
             nemStatusFS:SetText(
-                E.CC.yellow .. "In progress \226\128\148 check your quest log." .. E.CC.close
+                E.CC.yellow .. "Nulling Nullaeus in progress \226\128\148 "
+                .. "check your quest log." .. E.CC.close
             )
         else
             nemStatusFS:SetText(
-                E.CC.btnText .. "Quest available" .. E.CC.close
+                E.CC.btnText .. "Nulling Nullaeus available" .. E.CC.close
                 .. E.CC.muted
-                .. " \226\128\148 pick up at Delvers HQ in Silvermoon (if eligible)"
+                .. " \226\128\148 the one-time seasonal quest; defeat Nullaeus to earn it."
                 .. E.CC.close
             )
         end

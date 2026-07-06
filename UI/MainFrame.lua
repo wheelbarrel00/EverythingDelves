@@ -444,9 +444,57 @@ function E:TryRegisterLibDBIcon()
             self.db.minimapButton.LibDBIcon = {}
         end
         LDBIcon:Register("EverythingDelves", self.brokerObj, self.db.minimapButton.LibDBIcon)
+        self:HardenMinimapIcon()
         return true
     end
     return false
+end
+
+local iconGuards = setmetatable({}, { __mode = "k" })
+
+function E:HardenMinimapIcon()
+    local iconTex, iconCoords = GetDelveIcon()
+    if not iconCoords then return end
+
+    local LDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
+    local button = LDBIcon and LDBIcon:GetMinimapButton("EverythingDelves")
+    local tex = button and button.icon
+    if not tex then return end
+
+    local reassert = iconGuards[tex]
+    if not reassert then
+        local L, R, T, B = iconCoords[1], iconCoords[2], iconCoords[3], iconCoords[4]
+        local fixing = false
+        reassert = function()
+            if fixing then return end
+            fixing = true
+            tex:SetTexture(iconTex)
+            tex:SetTexCoord(L, R, T, B)
+            fixing = false
+        end
+        iconGuards[tex] = reassert
+        hooksecurefunc(tex, "SetTexCoord", function(_, l, r, t, b)
+            if fixing then return end
+            -- LibDBIcon's own 5% mouseover inset stays inside our crop; only a
+            -- collector reset wider than it (the full sheet) needs correcting.
+            if not (l and r and t and b) or l < L or r > R or t < T or b > B then
+                reassert()
+            end
+        end)
+        hooksecurefunc(tex, "SetTexture", function()
+            if not fixing then reassert() end
+        end)
+    end
+    reassert()
+
+    if not self.iconHealFrame then
+        local f = CreateFrame("Frame")
+        f:RegisterEvent("PLAYER_ENTERING_WORLD")
+        f:SetScript("OnEvent", function()
+            C_Timer.After(0, function() E:HardenMinimapIcon() end)
+        end)
+        self.iconHealFrame = f
+    end
 end
 
 function E:CreateMinimapButton()

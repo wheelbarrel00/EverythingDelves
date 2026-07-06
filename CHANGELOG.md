@@ -5,6 +5,14 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.3] - 2026-07-05
+
+### Bug Fixes
+
+- **Achievement tooltip error fixed** - Mousing over a nameplate buff or debuff outside the world map (for example in a Time-walking dungeon) could throw a Lua error from the delve achievement map-tooltip code. It now safely ignores frames that aren't map pins.
+- **Minimap button icon no longer distorts** - When another addon organizes your minimap buttons, the Everything Delves icon could turn into a garbled, stretched texture after a zone change or reload (clicking it fixed it only until the next zone change). The icon now re-applies its correct artwork automatically, so it stays right without any interaction.
+- **Nullaeus tab quest status corrected** - The Nullaeus tab claimed the weekly Nemesis quest was complete every week even when it wasn't - it was reading the one-time "Nulling Nullaeus" seasonal quest, which stays complete forever once earned. The status line now correctly reflects that seasonal quest instead of a false weekly claim.
+
 ## [1.21.2] - 2026-06-30
 
 ### Bug Fixes

@@ -3,6 +3,16 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.21.3", date = "2026-07-05",
+        sections = {
+            { head = "Fixed", items = {
+                "Mousing over a nameplate buff or debuff outside the world map (for example in a Time-walking dungeon) no longer throws an error from the delve achievement map tooltip - it now ignores frames that aren't map pins.",
+                "The minimap button icon no longer turns into a garbled, stretched texture after a zone change or reload when another addon organizes your minimap buttons - it re-applies its correct artwork automatically instead of needing a click.",
+                "The Nullaeus tab no longer claims the weekly Nemesis quest is complete every week - it was reading the one-time 'Nulling Nullaeus' seasonal quest, and the status line now reflects that seasonal quest correctly.",
+            }},
+        },
+    },
+    {
         version = "1.21.2", date = "2026-06-30",
         sections = {
             { head = "Fixed", items = {

@@ -37,11 +37,10 @@ end
 
 local function IsWorldMapDescendant(frame)
     local worldMap = _G.WorldMapFrame
-    if not (frame and worldMap and type(frame.GetParent) == "function") then
-        return false
-    end
+    if not (frame and worldMap) then return false end
     local f, hops = frame, 0
     while f and hops < 12 do
+        if f.IsForbidden and f:IsForbidden() then return false end
         if f == worldMap then return true end
         f = f:GetParent()
         hops = hops + 1
