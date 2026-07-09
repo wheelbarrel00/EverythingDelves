@@ -364,6 +364,32 @@ E:RegisterModule(function()
         return nil
     end
 
+    -- Shared with the vignette scan, which runs on its own events even while the
+    -- window is hidden. A reset that lived only in RefreshContent let a re-entry
+    -- pile new packs onto the previous run's tally -- a doubled, reload-persistent
+    -- count. After SCENARIO_COMPLETED inDelve is false, so this no-ops and the
+    -- looting-window banner state survives until the next real run.
+    local function SyncRunTracking()
+        local rs = E.delveRunState
+        if not (rs and rs.inDelve) then return end
+        local runKey = (rs.delveName or "?") .. "#" .. tostring(rs.startTime or 0)
+        if runKey == lastRunKey then return end
+        lastRunKey = runKey
+        bannerState, ragerGUID = nil, nil
+        nemesisRemaining, nemesisSeenCount = nil, 0
+        nemesisKilledBase = 0
+        wipe(nemesisSeen)
+        wipe(msgLog)
+        wipe(stickyMsgs)
+        wipe(castLog)
+        local ar = E.db and E.db.activeRun
+        if ar and ar.startTime == rs.startTime then
+            bannerState = ar.bannerState
+            ragerGUID   = ar.bannerRagerGUID
+            nemesisKilledBase = ar.nemesisKilled or 0
+        end
+    end
+
     local function RefreshContent()
         wipe(seen)
         lineIdx, yOff = 0, -32
@@ -372,29 +398,7 @@ E:RegisterModule(function()
 
         local rs = E.delveRunState
 
-        -- New tracked run: reset the banner machine, then restore persisted state
-        -- on a /reload-resumed run (same startTime). After SCENARIO_COMPLETED
-        -- rs.inDelve is false but the player is still looting — no reset on that
-        -- path, so "Grand Spoils earned!" survives until the next real run.
-        if rs and rs.inDelve then
-            local runKey = (rs.delveName or "?") .. "#" .. tostring(rs.startTime or 0)
-            if runKey ~= lastRunKey then
-                lastRunKey = runKey
-                bannerState, ragerGUID = nil, nil
-                nemesisRemaining, nemesisSeenCount = nil, 0
-                nemesisKilledBase = 0
-                wipe(nemesisSeen)
-                wipe(msgLog)
-                wipe(stickyMsgs)
-                wipe(castLog)
-                local ar = E.db and E.db.activeRun
-                if ar and ar.startTime == rs.startTime then
-                    bannerState = ar.bannerState
-                    ragerGUID   = ar.bannerRagerGUID
-                    nemesisKilledBase = ar.nemesisKilled or 0
-                end
-            end
-        end
+        SyncRunTracking()
 
         -- Fresh vignette pass before rendering: feeds nemesis counter + banner.
         if ScanVignettes then pcall(ScanVignettes) end
@@ -627,6 +631,7 @@ E:RegisterModule(function()
     -- being seen = killed, not out of range. Name matching is EN-only for now.
     ScanVignettes = function()
         if not PlayerInDelve() then return end
+        SyncRunTracking()
         if not (C_VignetteInfo and C_VignetteInfo.GetVignettes) then return end
         local ok, vigs = pcall(C_VignetteInfo.GetVignettes)
         if not ok or type(vigs) ~= "table" then return end

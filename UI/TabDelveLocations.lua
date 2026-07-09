@@ -664,14 +664,20 @@ E:RegisterModule(function()
                 runSuffix = E.CC.muted .. " (" .. totalRuns .. "x)" .. E.CC.close
             end
 
+            local dcCheck = ""
+            if E.db and E.db.showDelversCallDone
+                    and E:IsDelversCallComplete(delve.name) then
+                dcCheck = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12:12:0:0|t"
+            end
+
             local caret = E.CC.gold
                 .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
             if isBountiful then
                 row.nameText:SetText(caret .. " "
-                    .. E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix)
+                    .. E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix .. dcCheck)
             else
                 row.nameText:SetText(caret .. " "
-                    .. E.CC.body .. delve.name .. E.CC.close .. runSuffix)
+                    .. E.CC.body .. delve.name .. E.CC.close .. runSuffix .. dcCheck)
             end
 
             row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
@@ -773,6 +779,10 @@ E:RegisterModule(function()
         scrollFrame:SetVerticalScroll(0)
         scrollBar:SetValue(0)
     end)
+
+    function E:RefreshDelveLocations()
+        if frame:IsShown() then Refresh() end
+    end
 
     E:RegisterCallback("AreaPoisUpdated", function()
         if frame:IsShown() then

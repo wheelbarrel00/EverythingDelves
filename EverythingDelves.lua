@@ -108,6 +108,7 @@ local DEFAULTS = {
     showRunResult          = true,
     showPickerInfo         = true,
     showShardWeekly        = false,
+    showDelversCallDone    = false,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     lastKnownBountifulIDs  = {},

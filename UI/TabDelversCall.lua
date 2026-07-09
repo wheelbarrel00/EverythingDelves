@@ -308,9 +308,45 @@ E:RegisterModule(function()
         rollupBottom = last
     end
 
+    local footerDiv = sc:CreateTexture(nil, "ARTWORK")
+    footerDiv:SetHeight(1)
+    footerDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+    E:StyleAccentDivider(footerDiv)
+
+    local doneCheck = CreateFrame("CheckButton", nil, sc, "UICheckButtonTemplate")
+    doneCheck:SetSize(24, 24)
+    doneCheck:SetChecked(E.db and E.db.showDelversCallDone == true)
+
+    local doneLabel = doneCheck:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    doneLabel:SetPoint("LEFT", doneCheck, "RIGHT", 4, 0)
+    doneLabel:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+    doneLabel:SetJustifyH("LEFT")
+    doneLabel:SetWordWrap(true)
+    doneLabel:SetFont(doneLabel:GetFont(), 11)
+    doneLabel:SetText(E.CC.body
+        .. "Show a green checkmark on the Delve Locations tab for delves whose"
+        .. " Delver's Call you've turned in" .. E.CC.close)
+
+    doneCheck:SetScript("OnClick", function(self)
+        if E.db then
+            E.db.showDelversCallDone = self:GetChecked() and true or false
+        end
+        if E.RefreshDelveLocations then E:RefreshDelveLocations() end
+    end)
+
+    local function PositionFooter()
+        footerDiv:ClearAllPoints()
+        footerDiv:SetPoint("TOPLEFT", rollupBottom, "BOTTOMLEFT", 0, -14)
+        footerDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+        doneCheck:ClearAllPoints()
+        doneCheck:SetPoint("TOPLEFT", footerDiv, "BOTTOMLEFT", GRID_X, -8)
+    end
+
     local function UpdateContentHeight()
         local scTop   = sc:GetTop()
-        local lastBot = rollupBottom and rollupBottom:GetBottom()
+        local lastBot = doneLabel and doneLabel:GetBottom()
+        local ckBot   = doneCheck and doneCheck:GetBottom()
+        if ckBot and (not lastBot or ckBot < lastBot) then lastBot = ckBot end
         if scTop and lastBot and scTop > lastBot then
             sc:SetHeight((scTop - lastBot) + 24)
         end
@@ -340,6 +376,7 @@ E:RegisterModule(function()
 
         PersistRoster(states)
         RefreshRollup()
+        PositionFooter()
         C_Timer.After(0, UpdateContentHeight)
     end
 

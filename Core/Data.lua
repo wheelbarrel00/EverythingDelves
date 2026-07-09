@@ -138,6 +138,19 @@ E.DelversCall = {
     { delve = "Twilight Crypt",      questID = 93410 },
 }
 
+local delversCallQuestByDelve = {}
+for _, entry in ipairs(E.DelversCall) do
+    delversCallQuestByDelve[entry.delve] = entry.questID
+end
+
+function E:IsDelversCallComplete(delveName)
+    local questID = delversCallQuestByDelve[delveName]
+    if not questID or not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then
+        return false
+    end
+    return C_QuestLog.IsQuestFlaggedCompleted(questID) and true or false
+end
+
 E.BossRoleMeta = {
     interrupt = { label = "Interrupt", rgb = { 0.95, 0.45, 0.30 } },
     dps       = { label = "Priority",  rgb = { 0.95, 0.75, 0.30 } },

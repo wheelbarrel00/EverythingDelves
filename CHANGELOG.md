@@ -5,6 +5,20 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.0] - 2026-07-08
+
+### New Features
+
+- **Delver's Call progress on the Delve Locations tab** - Turn on the new checkbox at the bottom of the Delver's Call tab, and every delve on the Delve Locations tab whose Delver's Call you've already turned in gets a green checkmark next to its name - an at-a-glance view of which ones you still owe. Thanks to DrahgunFyre for the suggestion!
+
+### Bug Fixes
+
+- **Nemesis Strongbox pack count on quick re-entry** - The bonus-objective pack tally could double (for example showing 3/6 instead of 0/3) after you left a delve and immediately re-entered, and the doubled count stuck around even through a reload. The tally now resets cleanly on re-entry and stays accurate.
+
+### Thanks
+
+- A special thank you to Agaman for his help making Everything Delves great.
+
 ## [1.21.3] - 2026-07-05
 
 ### Bug Fixes

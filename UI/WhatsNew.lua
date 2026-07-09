@@ -1,27 +1,19 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.21.0"
+local WHATS_NEW_VERSION = "1.22.0"
 
 local ENTRIES = {
     {
-        title = "Run result on the Delve HUD",
-        desc  = "After you beat the boss, the run timer now stays on screen - green if you beat your best time for that delve and tier, red if you didn't - and the HUD shows your best time during the run so you know what to chase. Toggle it in Options (on by default). Thanks to BanditC64 for the suggestion!",
+        title = "Delver's Call progress on the map",
+        desc  = "Turn on the new checkbox at the bottom of the Delver's Call tab and every delve on the Delve Locations tab whose Delver's Call you've already turned in shows a green checkmark next to its name - an at-a-glance view of which ones you still owe. Thanks to DrahgunFyre for the suggestion!",
     },
     {
-        title = "New minimap icon",
-        desc  = "The minimap button, broker display, and AddOns list now use the bountiful delve icon in place of the old placeholder key.",
+        title = "Bug fix",
+        desc  = "The Nemesis Strongbox pack count no longer doubles (such as 3/6 instead of 0/3) after you leave a delve and quickly re-enter - it resets cleanly now and no longer sticks through a reload.",
     },
     {
-        title = "Weekly shards in the tooltip",
-        desc  = "An optional tooltip format (Options, off by default) shows your Coffer Key Shards as owned / still-earnable-this-week, so you can see how many more you can bank before the weekly reset.",
-    },
-    {
-        title = "Clearer achievement tooltips",
-        desc  = "A delve's map tooltip now lays out its achievements clearly - each shows a short label with progress (Stories 2/3, Sturdy Chests 1/3) and a check or x for every step.",
-    },
-    {
-        title = "Bug fixes",
-        desc  = "The Nemesis Strongbox pack count no longer doubles (such as 3/6 instead of 0/3) when the in-delve pack markers refresh during a run, and the Tier & Achievement panel no longer pops up at the new Ritual Site entrances.",
+        title = "Special thanks",
+        desc  = "A special thank you to Agaman for his help making Everything Delves great.",
     },
 }
 

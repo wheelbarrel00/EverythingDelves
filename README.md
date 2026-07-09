@@ -111,7 +111,7 @@ Lifetime stats and recent run history for every Midnight delve, including the Se
 - Lifetime totals persist across sessions with minimal memory cost
 
 ### Delver's Call
-Tracks all 10 weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account.
+Tracks all 10 weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account. Flip on the checkbox at the bottom of the tab to mark every delve whose Delver's Call you've already turned in with a **green checkmark on the Delve Locations tab**.
 
 ### Roster
 An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, and whether the weekly delve quest is done** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play.

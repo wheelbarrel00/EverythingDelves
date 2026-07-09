@@ -3,6 +3,20 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.22.0", date = "2026-07-08",
+        sections = {
+            { head = "New", items = {
+                "Delver's Call progress on the Delve Locations tab - turn on the new checkbox at the bottom of the Delver's Call tab, and every delve whose Delver's Call you've already turned in gets a green checkmark next to its name on the Delve Locations tab. Thanks to DrahgunFyre for the suggestion!",
+            }},
+            { head = "Fixed", items = {
+                "The Nemesis Strongbox pack count no longer doubles (such as 3/6 instead of 0/3) after you leave a delve and quickly re-enter - the tally resets cleanly on re-entry and no longer sticks through a reload.",
+            }},
+            { head = "Thanks", items = {
+                "A special thank you to Agaman for his help making Everything Delves great.",
+            }},
+        },
+    },
+    {
         version = "1.21.3", date = "2026-07-05",
         sections = {
             { head = "Fixed", items = {
