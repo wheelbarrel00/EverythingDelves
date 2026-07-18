@@ -40,6 +40,12 @@ local BANNER_BUFFS = {             -- any of these on the player = banner used
     1272809, 1272810, 1272813, 1272814,    -- Light's Judgement
     1273058, 1273066,                      -- Holy Reinforcements
 }
+local BANNER_BUFF_SET = {}
+for _, sid in ipairs(BANNER_BUFFS) do BANNER_BUFF_SET[sid] = true end
+
+-- Cast/aura click signals exist only on the clicker's client, so banner
+-- transitions are also shared with the party over addon comms.
+local ADDON_MSG_PREFIX = "EDLV"
 
 -- Entrance-only header widgets (gone once inside a delve); kept solely for
 -- the /ed objdump probe section.
@@ -256,10 +262,17 @@ E:RegisterModule(function()
     -- eliteUp -> grand (Grand Sanctified Spoils earned).
     local bannerState = nil
     local ragerGUID   = nil  -- the Rager's VIGNETTE guid once spotted
+    -- Session-local on purpose: vignette GUIDs regenerate on /reload, so a
+    -- persisted sighting would trip the absence check before re-discovery.
+    local bannerVigGUID   = nil
+    local bannerGoneAt    = nil  -- when observed absence started
+    local bannerHoldUntil = 0    -- absence inference paused after a loading screen
+    local secretNameCount = 0    -- vignette names that threw (objdump diag)
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
     local stickyMsgs  = {}   -- keyword-matched messages, never rotated out
     local ScanVignettes      -- forward local; defined after SetBannerState
+    local PollPartyAuras     -- forward local; defined after SetBannerState
     -- Packs can appear ONE AT A TIME, so the peak-seen-at-once count undercounts
     -- kills. Instead accumulate distinct pack creature/object GUIDs ever seen this
     -- run; killed = seenCount - remaining. Rendering waits for a pack to be seen to
@@ -364,6 +377,16 @@ E:RegisterModule(function()
         return nil
     end
 
+    local function SendBannerComm(payload)
+        if not IsInGroup()
+                or not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then
+            return
+        end
+        local channel = IsInGroup(LE_PARTY_CATEGORY_INSTANCE)
+            and "INSTANCE_CHAT" or "PARTY"
+        pcall(C_ChatInfo.SendAddonMessage, ADDON_MSG_PREFIX, payload, channel)
+    end
+
     -- Shared with the vignette scan, which runs on its own events even while the
     -- window is hidden. A reset that lived only in RefreshContent let a re-entry
     -- pile new packs onto the previous run's tally -- a doubled, reload-persistent
@@ -376,6 +399,7 @@ E:RegisterModule(function()
         if runKey == lastRunKey then return end
         lastRunKey = runKey
         bannerState, ragerGUID = nil, nil
+        bannerVigGUID, bannerGoneAt, secretNameCount = nil, nil, 0
         nemesisRemaining, nemesisSeenCount = nil, 0
         nemesisKilledBase = 0
         wipe(nemesisSeen)
@@ -388,6 +412,8 @@ E:RegisterModule(function()
             ragerGUID   = ar.bannerRagerGUID
             nemesisKilledBase = ar.nemesisKilled or 0
         end
+        -- Recover transitions missed during a reload or a late zone-in.
+        SendBannerComm("BANNERQ")
     end
 
     local function RefreshContent()
@@ -402,6 +428,7 @@ E:RegisterModule(function()
 
         -- Fresh vignette pass before rendering: feeds nemesis counter + banner.
         if ScanVignettes then pcall(ScanVignettes) end
+        if PollPartyAuras then pcall(PollPartyAuras) end
 
         local name = (rs and rs.delveName) or GetRealZoneText() or "Delve"
         local stepInfo
@@ -575,7 +602,9 @@ E:RegisterModule(function()
         announced = 1, clicked = 2, buffed = 3, eliteUp = 4, grand = 5,
     }
 
-    local function SetBannerState(s)
+    -- quiet: comm-received and inference-derived transitions must not
+    -- broadcast - only directly observed signals are authoritative.
+    local function SetBannerState(s, quiet)
         if not BANNER_RANK[s] then return end
         if bannerState and BANNER_RANK[s] <= BANNER_RANK[bannerState] then
             return
@@ -586,7 +615,54 @@ E:RegisterModule(function()
             ar.bannerState     = bannerState
             ar.bannerRagerGUID = ragerGUID
         end
+        if not quiet then
+            SendBannerComm("BANNER:" .. s)
+        end
         QueueRefresh()
+    end
+
+    -- Only trust group channels; a whispered or guild EDLV payload from a
+    -- stranger must not drive state.
+    local COMM_CHANNELS = { PARTY = true, INSTANCE_CHAT = true }
+    local function HandleAddonMessage(msg, channel)
+        if not PlayerInDelve() or not IsInGroup() then return end
+        if not COMM_CHANNELS[channel] then return end
+        if type(msg) ~= "string" then return end
+        if msg == "BANNERQ" then
+            if bannerState then
+                SendBannerComm("BANNER:" .. bannerState)
+            end
+            return
+        end
+        local s = msg:match("^BANNER:(%a+)$")
+        if s and BANNER_RANK[s] then
+            SetBannerState(s, true)
+        end
+    end
+
+    -- The blessing can land on a teammate while no click signal ever reaches
+    -- this client (the clicker may not run the addon). Party units are
+    -- friendly players, so their aura reads are not secret-string exposed.
+    PollPartyAuras = function()
+        if not PlayerInDelve() or not IsInGroup() then return end
+        if bannerState and BANNER_RANK[bannerState] >= BANNER_RANK.buffed then
+            return
+        end
+        if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return end
+        for p = 1, 4 do
+            local unit = "party" .. p
+            if UnitExists(unit) then
+                for i = 1, 40 do
+                    local ok, aura = pcall(
+                        C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
+                    if not ok or not aura then break end
+                    if aura.spellId and BANNER_BUFF_SET[aura.spellId] then
+                        SetBannerState("buffed")
+                        return
+                    end
+                end
+            end
+        end
     end
 
     local function HandleUnitAura()
@@ -635,7 +711,9 @@ E:RegisterModule(function()
         if not (C_VignetteInfo and C_VignetteInfo.GetVignettes) then return end
         local ok, vigs = pcall(C_VignetteInfo.GetVignettes)
         if not ok or type(vigs) ~= "table" then return end
-        local ragerSeen = false
+        local ragerSeen  = false
+        local bannerSeen = false
+        local secretThisScan = false
         local packCount = 0
         for _, vguid in ipairs(vigs) do
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
@@ -650,26 +728,60 @@ E:RegisterModule(function()
             end
             local nm = ok2 and v and v.name
             if type(nm) == "string" then
-                local ln = nm:lower()
-                if ln:find(RAGER_NAME_MATCH:lower(), 1, true) then
-                    ragerSeen = true
-                    if ragerGUID ~= vguid then
-                        ragerGUID = vguid
-                        local ar = E.db and E.db.activeRun
-                        if ar then ar.bannerRagerGUID = ragerGUID end
+                -- Group vignette names can be Midnight secret strings that pass
+                -- type() but throw on any string op. Guard per vignette so one
+                -- bad name can't abort the whole scan inside the outer pcall.
+                local okL, ln = pcall(string.lower, nm)
+                if not okL then
+                    secretNameCount = secretNameCount + 1
+                    secretThisScan = true
+                    -- GUID fallback: a known vignette whose name went
+                    -- unreadable is still present, not despawned.
+                    if vguid == bannerVigGUID then bannerSeen = true end
+                    if vguid == ragerGUID then ragerSeen = true end
+                elseif ln then
+                    if ln:find(RAGER_NAME_MATCH:lower(), 1, true) then
+                        ragerSeen = true
+                        if ragerGUID ~= vguid then
+                            ragerGUID = vguid
+                            local ar = E.db and E.db.activeRun
+                            if ar then ar.bannerRagerGUID = ragerGUID end
+                        end
+                        SetBannerState("eliteUp")
+                    elseif ln:find("grand sanctified", 1, true) then
+                        SetBannerState("grand")
+                    elseif ln:find("sanctified spoils", 1, true) then
+                        SetBannerState("clicked")  -- bonus chest confirmed
+                    elseif ln:find("sanctified banner", 1, true) then
+                        bannerSeen = true
+                        bannerVigGUID = vguid
+                        SetBannerState("announced")
                     end
-                    SetBannerState("eliteUp")
-                elseif ln:find("grand sanctified", 1, true) then
-                    SetBannerState("grand")
-                elseif ln:find("sanctified spoils", 1, true) then
-                    SetBannerState("clicked")  -- bonus chest confirmed
-                elseif ln:find("sanctified banner", 1, true) then
-                    SetBannerState("announced")
                 end
             end
         end
-        if ragerGUID and not ragerSeen and bannerState == "eliteUp" then
-            SetBannerState("grand")
+        -- A scan that hit a secret name is inconclusive for absence: skip
+        -- both despawn inferences rather than promote on partial data.
+        if ragerGUID and not ragerSeen and not secretThisScan
+                and bannerState == "eliteUp" then
+            SetBannerState("grand", true)
+        end
+        -- A teammate's click despawns the banner zone-wide, the only signal
+        -- some clients get. Require sustained absence: loading screens flush
+        -- the whole list (bannerHoldUntil), and everything despawns at run
+        -- completion (rs.inDelve). Inferred, so it never re-broadcasts.
+        local rs = E.delveRunState
+        if bannerVigGUID and bannerState == "announced"
+                and rs and rs.inDelve then
+            if bannerSeen then
+                bannerGoneAt = nil
+            elseif not secretThisScan and GetTime() >= bannerHoldUntil then
+                if not bannerGoneAt then
+                    bannerGoneAt = GetTime()
+                elseif GetTime() - bannerGoneAt >= 3 then
+                    SetBannerState("clicked", true)
+                end
+            end
         end
         nemesisRemaining = packCount
         -- Persist the kill count: a /reload resets the vignette GUIDs, so seenCount
@@ -737,8 +849,12 @@ E:RegisterModule(function()
         "CHAT_MSG_SYSTEM",
         "VIGNETTE_MINIMAP_UPDATED",
         "VIGNETTES_UPDATED",
+        "CHAT_MSG_ADDON",
     }) do
         pcall(ef.RegisterEvent, ef, ev)
+    end
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+        pcall(C_ChatInfo.RegisterAddonMessagePrefix, ADDON_MSG_PREFIX)
     end
     ef:SetScript("OnEvent", function(_, event, ...)
         if event == "UNIT_AURA" then
@@ -749,6 +865,19 @@ E:RegisterModule(function()
             local _, _, spellID = ...
             HandlePlayerCast(spellID)
             return
+        end
+        if event == "CHAT_MSG_ADDON" then
+            local prefix, msg, channel = ...
+            if prefix == ADDON_MSG_PREFIX then
+                pcall(HandleAddonMessage, msg, channel)
+            end
+            return
+        end
+        if event == "PLAYER_ENTERING_WORLD" then
+            -- Loading screens flush the vignette list; hold the banner
+            -- absence inference until it has had time to repopulate.
+            bannerGoneAt = nil
+            bannerHoldUntil = GetTime() + 10
         end
         if MSG_EVENTS[event] then
             -- pcall: chat/system text could be a Midnight secret string.
@@ -1024,6 +1153,9 @@ E:RegisterModule(function()
         out("  state=" .. tostring(bannerState)
             .. " ragerGUID=" .. tostring(ragerGUID)
             .. " ragerNpcID=" .. tostring(ragerNpcID))
+        out("  bannerVigGUID=" .. tostring(bannerVigGUID)
+            .. " bannerGoneAt=" .. tostring(bannerGoneAt)
+            .. " secretNames=" .. tostring(secretNameCount))
         out("  nemesisPacksRemaining=" .. tostring(nemesisRemaining)
             .. " seenCount=" .. tostring(nemesisSeenCount))
         out("=== keyword-matched delve messages ===")

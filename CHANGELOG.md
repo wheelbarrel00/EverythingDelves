@@ -5,6 +5,12 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.1] - 2026-07-18
+
+### Bug Fixes
+
+- **Sanctified Banner now registers for your whole group** - When you're running a delve in a party, the Bonus Spoils tracker marks the Sanctified Banner as secured for every member the moment anyone collects it, instead of only updating for the person who clicked it. Thanks to DrahgunFyre for reporting it.
+
 ## [1.22.0] - 2026-07-08
 
 ### New Features

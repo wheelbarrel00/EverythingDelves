@@ -3,6 +3,14 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.22.1", date = "2026-07-18",
+        sections = {
+            { head = "Fixed", items = {
+                "The Sanctified Banner in the Bonus Spoils tracker now registers for your whole group - when anyone in your party collects the banner, every member's tracker marks it secured, instead of only updating for the person who clicked it. Thanks to DrahgunFyre for reporting it.",
+            }},
+        },
+    },
+    {
         version = "1.22.0", date = "2026-07-08",
         sections = {
             { head = "New", items = {
