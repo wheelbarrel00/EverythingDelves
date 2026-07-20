@@ -842,18 +842,22 @@ E:RegisterModule(function()
         local maxCount = (isLive and liveTot and liveTot > 0)
             and liveTot or GILDED_MAX
 
-        local lastReset = 0
+        -- Weekly boundary in the SAME clock as run.timestamp (time()), so a
+        -- skewed local-vs-server clock can't mis-bucket runs near the reset.
+        local lastReset, haveReset = 0, false
         if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
             local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
             if secs and secs > 0 then
-                local now = (GetServerTime and GetServerTime()) or time()
-                lastReset = now + secs - 604800
+                lastReset = time() + secs - 604800
+                haveReset = true
             end
         end
 
+        -- Only estimate from history when the reset boundary is known -- a nil
+        -- boundary would count all-time runs and show a false "[Done]".
         local estimate = 0
         local history = E.db and E.db.delveHistory
-        if history then
+        if haveReset and history then
             for _, entry in pairs(history) do
                 if entry.recentRuns then
                     for _, run in ipairs(entry.recentRuns) do
@@ -1030,6 +1034,25 @@ E:RegisterModule(function()
             -- Companion XP and Journey renown both tick up during delves.
             RefreshCompanion()
             RefreshJourney()
+        end
+    end)
+
+    -- Gilded Stash / Great Vault / Renown update from their own events, not the
+    -- quest/inventory ticks above, so an open tab would otherwise go stale.
+    E:RegisterCallback("GildedStashChanged", function()
+        if frame:IsShown() then RefreshGildedStash() end
+    end)
+    local liveEvents = CreateFrame("Frame")
+    for _, ev in ipairs({ "WEEKLY_REWARDS_UPDATE",
+            "MAJOR_FACTION_RENOWN_LEVEL_CHANGED", "UPDATE_FACTION" }) do
+        pcall(liveEvents.RegisterEvent, liveEvents, ev)
+    end
+    liveEvents:SetScript("OnEvent", function(_, event)
+        if not frame:IsShown() then return end
+        if event == "WEEKLY_REWARDS_UPDATE" then
+            RefreshGreatVault()
+        else
+            RefreshRenown()
         end
     end)
 

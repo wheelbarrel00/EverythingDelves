@@ -240,13 +240,20 @@ E:RegisterModule(function()
         self:ClearFocus()
     end)
 
-    scaleSlider:SetScript("OnValueChanged", function(self, value)
-        local pct = math_floor(value)
+    local function CommitScale()
+        local pct = math_floor(scaleSlider:GetValue())
         local scale = pct / 100
         E.db.uiScale = scale
         scaleInput:SetNumber(pct)
         if E.MainFrame then E.MainFrame:SetScale(scale) end
+    end
+
+    -- Preview the % live while dragging but only rescale the window on release,
+    -- so the UI doesn't jitter under the cursor mid-drag.
+    scaleSlider:SetScript("OnValueChanged", function(_, value)
+        scaleInput:SetNumber(math_floor(value))
     end)
+    scaleSlider:SetScript("OnMouseUp", CommitScale)
     Y = Y - 50
 
     local minimapCB = CreateCheckbox(
@@ -333,7 +340,7 @@ E:RegisterModule(function()
         { value = "full",    label = "Always show full details" },
         { value = "off",     label = "Off" },
     }
-    CreateRadioGroup(
+    local achTipRadios = CreateRadioGroup(
         content, SECT_X, Y,
         "Delve Achievements on Map Tooltips",
         "achievementTooltip",
@@ -636,9 +643,16 @@ E:RegisterModule(function()
         troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
         shardWeeklyCB:SetChecked(E.db.showShardWeekly == true)
         resultCB:SetChecked(E.db.showRunResult ~= false)
+        objCB:SetChecked(E.db.showDelveObjectives == true)
+        timerCB:SetChecked(E.db.showRunTimer ~= false)
+        hudCB:SetChecked(E.db.showDelveHUD ~= false)
+        pickerCB:SetChecked(E.db.showPickerInfo ~= false)
 
         for _, cb in ipairs(accentRadios) do
             cb:SetChecked(E.db.accentColor == cb.optValue)
+        end
+        for _, cb in ipairs(achTipRadios) do
+            cb:SetChecked(E.db.achievementTooltip == cb.optValue)
         end
 
         lowWarnCB:SetChecked(E.db.lowShardWarning)

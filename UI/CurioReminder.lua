@@ -167,7 +167,9 @@ E:RegisterModule(function()
 
         titleFS:SetText(E.CC.header .. "Curios \226\128\148 " .. companionName .. E.CC.close)
 
-        local myRole = ROLE_NORM[UnitGroupRolesAssigned and UnitGroupRolesAssigned("player") or "NONE"] or ""
+        -- Spec-role fallback so a solo player (assigned role NONE) still gets
+        -- their row highlighted, matching the HUD.
+        local myRole = E:GetPlayerCurioRole()
 
         for i, row in ipairs(rows) do
             local rf    = roleRows[i]

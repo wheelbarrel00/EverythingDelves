@@ -169,7 +169,12 @@ E:RegisterModule(function()
         EditBoxOnEnterPressed = function(editBox)
             local dialog = editBox:GetParent()
             local name = strtrim(editBox:GetText() or "")
-            E:CopyProfile(E.activeProfileName, name)
+            local ok, err = E:CopyProfile(E.activeProfileName, name)
+            if not ok then
+                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not duplicate profile."))
+            else
+                print(E.CC.header .. "Everything Delves|r: Duplicated into '" .. name .. "' and switched to it.")
+            end
             if Rebuild then Rebuild() end
             if dialog and dialog.Hide then dialog:Hide() end
         end,
@@ -182,8 +187,8 @@ E:RegisterModule(function()
 
     StaticPopupDialogs["EVERYTHINGDELVES_DELETEPROFILE"] = {
         text = "Permanently delete profile '%s'?\n\n"
-            .. "This erases that profile's delve history and completion "
-            .. "marks. This cannot be undone.",
+            .. "This erases that profile's delve history. This cannot "
+            .. "be undone.",
         button1 = "Delete",
         button2 = "Cancel",
         OnAccept = function(_, data)
@@ -213,9 +218,9 @@ E:RegisterModule(function()
     noteFS:SetJustifyH("LEFT")
     noteFS:SetText(
         E.CC.muted
-        .. "Profiles are per-character. Delve history, completion marks, "
-        .. "and Gilded Stash progress live in the active profile. UI "
-        .. "settings (colors, scale, alerts) stay account-wide.\n"
+        .. "Profiles are per-character. Your delve history lives in the "
+        .. "active profile; UI settings (colors, scale, alerts) stay "
+        .. "account-wide.\n"
         .. "Switching profiles never deletes data — it only changes "
         .. "which profile this character uses."
         .. E.CC.close

@@ -347,7 +347,11 @@ local function RefreshBountifulData(force)
     if E.db and E.db.delveHistory and dailyResetEpoch > 0 then
         for _, delve in ipairs(bountifulList) do
             if not delve.completed then
+                -- Runs log under the canonical name; the POI name can differ
+                -- (e.g. "Twilight Crypts" vs "Twilight Crypt").
                 local hist = E.db.delveHistory[delve.name]
+                    or (delve.canonicalName
+                        and E.db.delveHistory[delve.canonicalName])
                 local runs = hist and hist.recentRuns
                 if runs then
                     for _, run in ipairs(runs) do
@@ -428,7 +432,12 @@ local function RefreshBountifulData(force)
     -- AutoRepairBountifulHistory (which would re-inflate the Gilded Stash count).
     if E.db and E.db.delveHistory and dailyResetEpoch > 0 and E.DelveDataByName then
         wipe(reAddSeen)
-        for _, d in ipairs(bountifulList) do reAddSeen[d.name] = true end
+        -- Seed both names: the loop below keys delveHistory by canonical name,
+        -- so a POI-only seed would re-add a name-mismatched delve as a duplicate.
+        for _, d in ipairs(bountifulList) do
+            reAddSeen[d.name] = true
+            if d.canonicalName then reAddSeen[d.canonicalName] = true end
+        end
         for delveName, hist in pairs(E.db.delveHistory) do
             if not reAddSeen[delveName] then
                 local meta = E.DelveDataByName[delveName]

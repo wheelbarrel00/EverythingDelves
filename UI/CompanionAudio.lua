@@ -42,23 +42,30 @@ local isInDelve         = false
 local suppressCVarEvent = false
 local selectiveOK       = nil   -- nil=untested, true=works, false=unsupported on this client
 
-local function CheckInDelve()
+-- Strict delve test (diffID 208, or a Delve-flagged scenario). Gates the
+-- global chatBubbles CVar so it is never forced off in an unrelated scenario.
+local function ConfirmedDelve()
     local _, instType, diffID = GetInstanceInfo()
     if diffID == 208 then return true end
-    if instType == "scenario" then
-        if C_ScenarioInfo and C_ScenarioInfo.GetScenarioInfo then
-            local ok, info = pcall(C_ScenarioInfo.GetScenarioInfo)
-            if ok and info then
-                if info.isDelve then return true end
-                if Enum and Enum.ScenarioType
-                        and info.scenarioType == Enum.ScenarioType.Delve then
-                    return true
-                end
+    if instType == "scenario" and C_ScenarioInfo
+            and C_ScenarioInfo.GetScenarioInfo then
+        local ok, info = pcall(C_ScenarioInfo.GetScenarioInfo)
+        if ok and info then
+            if info.isDelve then return true end
+            if Enum and Enum.ScenarioType
+                    and info.scenarioType == Enum.ScenarioType.Delve then
+                return true
             end
         end
-        return true  -- treat all scenarios as potential delves for fallback
     end
     return false
+end
+
+-- Looser: also treats any other scenario as a potential delve. Fine for the
+-- selective (Valeera-only) bubble ticker, which does nothing outside a delve.
+local function CheckInDelve()
+    if ConfirmedDelve() then return true end
+    return (select(2, GetInstanceInfo())) == "scenario"
 end
 
 local function ToggleSoundList(list, mute)
@@ -174,7 +181,7 @@ RefreshBubbleState = function()
                 if worked == false then
                     selectiveOK = false
                     StopBubbleTicker()
-                    if CheckInDelve() then ApplyBubbleCVar() end
+                    if ConfirmedDelve() then ApplyBubbleCVar() end
                 else
                     selectiveOK = true
                 end
@@ -183,7 +190,7 @@ RefreshBubbleState = function()
         return
     end
 
-    if isInDelve then
+    if ConfirmedDelve() then
         ApplyBubbleCVar()
     else
         RestoreBubbleCVar()
@@ -220,7 +227,7 @@ E:RegisterModule(function()
             if not suppressCVarEvent
                     and cvar == string.lower(CHAT_BUBBLE_CVAR)
                     and bubbleCVarBackup
-                    and isInDelve
+                    and ConfirmedDelve()
                     and E.db and E.db.muteValeeraBubbles then
                 ApplyBubbleCVar()
             end

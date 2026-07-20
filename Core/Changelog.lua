@@ -3,6 +3,33 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.22.2", date = "2026-07-18",
+        sections = {
+            { head = "Fixed", items = {
+                "\"Reset All Settings\" no longer erases your data - it only restores options to their defaults now, keeping your Roster, learned delve bosses, and Gilded Stash history.",
+                "The companion level and XP bar now show on non-English game clients (they were blank before).",
+                "Fixed an error that could blank the Shard Tracker tab when many Coffer Shard world quests were active at once.",
+                "Gilded Stash progress is more accurate - no more false \"Done\" right after login, and runs made near the weekly reset are counted correctly.",
+                "The Tier Guide now updates Gilded Stash, Great Vault, and Renown live while the tab is open, instead of only when you switch away and back.",
+                "The Current Bountiful tab no longer shows a duplicate row or an inflated count for a delve whose map name differs from its internal name.",
+                "The Special Assignment chat alert no longer false-fires when you first enable it, and now fires in the background instead of only while the Shard Tracker tab is open.",
+                "The Current Bountiful tab's Session Completions counter increments again.",
+                "Options checkboxes now stay in sync after a reset or a slash-command toggle.",
+                "The curio popup highlights your role for solo players too.",
+                "Muting the companion's chat bubbles no longer disables all chat bubbles in non-delve scenarios.",
+                "Duplicating a profile into an existing name with the Enter key now reports the collision instead of doing nothing.",
+                "Deleting a run no longer lowers your recorded highest tier or best time when the record is in older, trimmed history.",
+                "Corrected the Profiles tab note about what a profile stores.",
+            }},
+            { head = "Improved", items = {
+                "Dragging the UI Scale slider now applies the new scale when you release it, instead of rescaling the window as you drag.",
+            }},
+            { head = "Thanks", items = {
+                "A special thank you to Agaman for his help on this update - you rock!",
+            }},
+        },
+    },
+    {
         version = "1.22.1", date = "2026-07-18",
         sections = {
             { head = "Fixed", items = {

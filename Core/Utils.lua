@@ -307,10 +307,10 @@ function E:StyleGreyLine(tex)
     tex:SetColorTexture(g.r, g.g, g.b, g.a)
 end
 
--- Companion progression is a friendship reputation reading "Level N". Scan the
--- friendship faction ID range and cache account-wide (invalidated on expansion
--- change) rather than hardcoding a per-expansion faction ID.
--- LIMITATION: the "Level %d" reaction match is English-only.
+-- The companion is a friendship reputation with a numeric rank. Scan the
+-- faction ID range and cache (invalidated on expansion change) rather than
+-- hardcoding a per-expansion ID. A digit in the localized reaction is the
+-- locale-independent tell (numeric rank vs named friendship tiers).
 
 -- Scan descending so the newest expansion's companion wins.
 local COMPANION_SCAN_FROM = 3100
@@ -324,7 +324,7 @@ local function ScanForCompanionFaction()
         local ok, d = pcall(C_GossipInfo.GetFriendshipReputation, id)
         if ok and d and d.friendshipFactionID and d.friendshipFactionID > 0
                 and type(d.reaction) == "string"
-                and d.reaction:match("^Level %d+") then
+                and d.reaction:find("%d") then
             return id
         end
     end

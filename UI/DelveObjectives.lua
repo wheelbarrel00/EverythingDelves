@@ -908,10 +908,15 @@ E:RegisterModule(function()
     -- counters can be located on the live client and wired in precisely.
     function E:DumpDelveObjectiveData()
         local function out(s) print("|cFFFFD700[ED obj]|r " .. s) end
+        -- pcall the body: a dumped field can be a Midnight secret string that
+        -- throws on #/sub/gsub, and the dump must survive it, not abort.
         local function esc(v)
-            local s = tostring(v)
-            if #s > 90 then s = s:sub(1, 90) .. "..." end
-            return (s:gsub("|", "||"))
+            local ok, r = pcall(function()
+                local s = tostring(v)
+                if #s > 90 then s = s:sub(1, 90) .. "..." end
+                return (s:gsub("|", "||"))
+            end)
+            return ok and r or "<secret>"
         end
         local function sniff(t)
             local keys = {}

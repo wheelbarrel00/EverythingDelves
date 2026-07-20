@@ -111,8 +111,14 @@ local DEFAULTS = {
     showDelversCallDone    = false,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
+}
+
+-- Account-wide DATA, kept OUT of DEFAULTS so E:ResetDB (settings-only) can't
+-- wipe it. A new persistent data table belongs HERE, not in DEFAULTS.
+local DATA_DEFAULTS = {
     lastKnownBountifulIDs  = {},
     lastKnownActiveSAs     = {},
+    saBaselineRecorded     = false,  -- distinguishes "no SAs, recorded" from "never scanned"
     delversCallRoster      = {},
     delveBossMap           = {},
     gildedStashByChar      = {},
@@ -164,15 +170,19 @@ function E:InitDB()
     local sv = EverythingDelvesDB
 
     -- Merge defaults without overwriting existing values (settings survive updates).
-    for k, v in pairs(DEFAULTS) do
-        if sv[k] == nil then
-            if type(v) == "table" then
-                sv[k] = CopyTable(v)
-            else
-                sv[k] = v
+    local function seed(tbl)
+        for k, v in pairs(tbl) do
+            if sv[k] == nil then
+                if type(v) == "table" then
+                    sv[k] = CopyTable(v)
+                else
+                    sv[k] = v
+                end
             end
         end
     end
+    seed(DEFAULTS)
+    seed(DATA_DEFAULTS)
 
     sv.profiles    = sv.profiles    or {}
     sv.profileKeys = sv.profileKeys or {}
@@ -223,8 +233,8 @@ function E:InitDB()
     BuildDBProxy(sv)
 end
 
--- Resets account-wide settings only; profiles (delve history, mid-run
--- state) are deliberately preserved.
+-- Settings only: DATA_DEFAULTS and profiles are deliberately not iterated,
+-- so a reset never wipes history/roster/etc.
 function E:ResetDB()
     local sv = EverythingDelvesDB
     if not sv then return end
@@ -942,9 +952,11 @@ function E:CaptureGildedStash()
         entry = {}
         store[key] = entry
     end
+    local changed = entry.collected ~= col or entry.total ~= tot
     entry.collected  = col
     entry.total      = tot
     entry.validUntil = time() + secs
+    if changed then FireCallbacks("GildedStashChanged") end
 end
 
 function E:GetLiveGildedStash()
@@ -1209,9 +1221,8 @@ function E:SetRunNote(delveName, timestamp, text)
     return false
 end
 
--- Removes a logged run and subtracts it from lifetime totals. highestTier /
--- fastestTime are recomputed from the remaining runs only when the deleted run
--- held the record. Drops the delve entry when nothing remains.
+-- Removes a logged run and subtracts it from lifetime totals. Drops the delve
+-- entry when nothing remains.
 function E:DeleteRun(delveName, timestamp)
     if not (delveName and timestamp and self.db and self.db.delveHistory) then
         return false
@@ -1242,14 +1253,17 @@ function E:DeleteRun(delveName, timestamp)
         if run.keyUsed then
             life.totalKeysUsed = math.max(0, (life.totalKeysUsed or 0) - 1)
         end
-        if (run.tier or 0) >= (life.highestTier or 0) then
+        -- Only lower these records when recent holds the WHOLE history: a
+        -- record can live in a run trimmed past the cap, which recent can't see.
+        local wholeHistory = (life.totalRuns or 0) <= #recent
+        if wholeHistory and (run.tier or 0) >= (life.highestTier or 0) then
             local best = 0
             for _, r in ipairs(recent) do
                 if (r.tier or 0) > best then best = r.tier end
             end
             life.highestTier = best
         end
-        if run.duration and run.duration > 0
+        if wholeHistory and run.duration and run.duration > 0
                 and run.duration == life.fastestTime then
             local fastest = 0
             for _, r in ipairs(recent) do
@@ -1803,6 +1817,10 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
                 matchedName, tier, duration, runState.deaths,
                 keyUsed, runState.wasBountiful, story, runState.boss
             )
+            if runState.wasBountiful and E.sessionData then
+                E.sessionData.bountifulCompleted =
+                    (E.sessionData.bountifulCompleted or 0) + 1
+            end
             if duration > 0 then
                 runState.lastResult = {
                     duration = duration,

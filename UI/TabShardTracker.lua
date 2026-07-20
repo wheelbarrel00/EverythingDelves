@@ -1123,45 +1123,8 @@ E:RegisterModule(function()
             .. E.CC.close
         )
 
-        if E.db and E.db.alertSpecialAssignment then
-            -- Reusable scratch tables to detect the "no SA" -> "SA active" transition.
-            if not saActiveBuf  then saActiveBuf  = {} end
-            if not saLookupBuf then saLookupBuf = {} end
-            wipe(saActiveBuf)
-            wipe(saLookupBuf)
-
-            for _, row in ipairs(saRows) do
-                local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-                             and C_QuestLog.IsQuestFlaggedCompleted(row.questID)
-                local active = (not done) and C_QuestLog and C_QuestLog.IsOnQuest
-                               and C_QuestLog.IsOnQuest(row.questID)
-                if active then
-                    table_insert(saActiveBuf, row.questID)
-                end
-            end
-            table_sort(saActiveBuf)
-
-            local storedSAs = E.db.lastKnownActiveSAs or {}
-            for _, id in ipairs(storedSAs) do saLookupBuf[id] = true end
-
-            local hasNew = false
-            for _, id in ipairs(saActiveBuf) do
-                if not saLookupBuf[id] then
-                    hasNew = true
-                    break
-                end
-            end
-
-            if hasNew then
-                print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
-            end
-            -- Mutate in place rather than replacing the reference each refresh.
-            if not E.db.lastKnownActiveSAs then E.db.lastKnownActiveSAs = {} end
-            wipe(E.db.lastKnownActiveSAs)
-            for i = 1, #saActiveBuf do
-                E.db.lastKnownActiveSAs[i] = saActiveBuf[i]
-            end
-        end
+        -- SA new-availability detection lives in DetectSpecialAssignments so it
+        -- runs on currency/quest events even while this tab is hidden.
 
         -- Section 3c: Weekly Delve Quests
         for _, row in ipairs(wdqRows) do
@@ -1280,7 +1243,8 @@ E:RegisterModule(function()
                     row.ttBtn:Hide()
                 end
             end
-            local lastRow = wqRows[#wqs]
+            -- #wqs can exceed the MAX_WQ_ROWS pool; clamp so it is not nil (crash).
+            local lastRow = wqRows[math_min(#wqs, MAX_WQ_ROWS)]
             wqCapWarningFS:ClearAllPoints()
             wqBottomFS:ClearAllPoints()
             if isAtCap then
@@ -1348,9 +1312,60 @@ E:RegisterModule(function()
         end
     end)
 
+    -- Separate from RefreshAll so the SA alert fires even with the tab hidden;
+    -- only reads C_QuestLog + E.db, so it is safe to run before the show gate.
+    local function DetectSpecialAssignments()
+        if not (E.db and E.db.alertSpecialAssignment) then return end
+        -- Reusable scratch tables to detect the "no SA" -> "SA active" transition.
+        if not saActiveBuf  then saActiveBuf  = {} end
+        if not saLookupBuf then saLookupBuf = {} end
+        wipe(saActiveBuf)
+        wipe(saLookupBuf)
+
+        for _, row in ipairs(saRows) do
+            local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
+                         and C_QuestLog.IsQuestFlaggedCompleted(row.questID)
+            local active = (not done) and C_QuestLog and C_QuestLog.IsOnQuest
+                           and C_QuestLog.IsOnQuest(row.questID)
+            if active then
+                table_insert(saActiveBuf, row.questID)
+            end
+        end
+        table_sort(saActiveBuf)
+
+        local storedSAs = E.db.lastKnownActiveSAs or {}
+        for _, id in ipairs(storedSAs) do saLookupBuf[id] = true end
+
+        -- An empty baseline is ambiguous (no SAs vs never scanned); the flag
+        -- lets a first scan seed silently while a later empty -> active alerts.
+        local recorded = E.db.saBaselineRecorded or #storedSAs > 0
+
+        local hasNew = false
+        if recorded then
+            for _, id in ipairs(saActiveBuf) do
+                if not saLookupBuf[id] then
+                    hasNew = true
+                    break
+                end
+            end
+        end
+
+        if hasNew then
+            print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
+        end
+        E.db.saBaselineRecorded = true
+        -- Mutate in place rather than replacing the reference each refresh.
+        if not E.db.lastKnownActiveSAs then E.db.lastKnownActiveSAs = {} end
+        wipe(E.db.lastKnownActiveSAs)
+        for i = 1, #saActiveBuf do
+            E.db.lastKnownActiveSAs[i] = saActiveBuf[i]
+        end
+    end
+
     -- Background event refreshes must not reset scroll: UpdateContentHeight can
     -- clamp it when content shrinks, so save and restore the value around it.
     local function RefreshPreservingScroll()
+        DetectSpecialAssignments()  -- before the IsShown gate: alert fires tab-closed
         if not frame:IsShown() then return end
         local prevScroll = scrollFrame:GetVerticalScroll()
         RefreshAll()

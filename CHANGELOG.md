@@ -5,6 +5,33 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.2] - 2026-07-18
+
+### Bug Fixes
+
+- **"Reset All Settings" no longer erases your data** - Resetting now only restores options to their defaults, as the button promises. Your Roster snapshots, learned delve bosses, and Gilded Stash history are kept instead of being wiped.
+- **Companion level and XP now show on non-English clients** - The companion progress readout was blank on any non-English game client; it now works regardless of language.
+- **Shard Tracker no longer breaks with many Coffer Shard world quests** - Fixed an error that could blank the Shard Tracker tab when a large number of shard world quests were active at once.
+- **Gilded Stash progress is more accurate** - Fixed a false "Done" that could briefly appear right after login, and a weekly-boundary timing issue that could mis-count runs made near the reset.
+- **Tier Guide updates live while open** - Gilded Stash, Great Vault, and faction Renown now refresh on screen as they change, instead of only when you switch away and back.
+- **Bountiful tab no longer shows duplicate rows** - A completed delve whose map name differs from its internal name (such as Twilight Crypts) is now marked done correctly, with no duplicate row or inflated completion count.
+- **Special Assignment alert fixes** - The chat alert no longer fires a false "now available" the first time you enable it while an assignment is active, and it now fires in the background instead of only while the Shard Tracker tab is open.
+- **Session Completions counts again** - The Current Bountiful tab's Session Completions total now increments as you finish bountiful delves.
+- **Options checkboxes stay in sync** - The Display options and the achievement-tooltip setting now reflect their real state after a reset or a slash-command toggle.
+- **Companion curio highlight for solo players** - The curio popup now highlights your role even when you are not in a group.
+- **Muting companion chat bubbles stays scoped to delves** - Fixed a case where the option could disable all chat bubbles in non-delve scenarios.
+- **Duplicating a profile reports name collisions** - Pressing Enter to duplicate a profile into an existing name now tells you instead of silently doing nothing.
+- **Deleting a run keeps your records** - Deleting a run no longer lowers your recorded highest tier or best time when the true record lives in older history beyond the display cap.
+- **Corrected the Profiles tab note** - The description of what a profile stores now matches reality.
+
+### Improvements
+
+- **Smoother UI Scale slider** - Dragging the UI Scale slider now applies the new scale when you release it, instead of rescaling the whole window as you drag.
+
+### Thanks
+
+- A special thank you to Agaman for his help on this update - you rock!
+
 ## [1.22.1] - 2026-07-18
 
 ### Bug Fixes
