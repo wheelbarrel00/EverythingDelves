@@ -7,18 +7,20 @@ local ARROW_UP   = " |TInterface\\Buttons\\Arrow-Up-Up:12:12|t"
 local ARROW_DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:12:12|t"
 
 local COLUMNS = {
-    { key = "name",    label = "Character", x = 12,  numeric = false },
-    { key = "ilvl",    label = "iLvl",      x = 206, numeric = true  },
-    { key = "keys",    label = "Keys",      x = 254, numeric = true  },
-    { key = "shards",  label = "Shards",    x = 302, numeric = true  },
-    { key = "bounty",  label = "Bounty",    x = 366, numeric = true  },
-    { key = "vault",   label = "Vault",     x = 420, numeric = true  },
-    { key = "gilded",  label = "Gilded",    x = 480, numeric = true  },
-    { key = "weekly",  label = "Weekly",    x = 534, numeric = true  },
-    { key = "updated", label = "Updated",   x = 598, numeric = true  },
+    { key = "name",     label = "Character", x = 12,  numeric = false },
+    { key = "ilvl",     label = "iLvl",      x = 206, numeric = true  },
+    { key = "keys",     label = "Keys",      x = 250, numeric = true  },
+    { key = "shards",   label = "Shards",    x = 296, numeric = true  },
+    { key = "wkshards", label = "Wk Shards", x = 344, numeric = true  },
+    { key = "bounty",   label = "Bounty",    x = 414, numeric = true  },
+    { key = "vault",    label = "Vault",     x = 470, numeric = true  },
+    { key = "gilded",   label = "Gilded",    x = 524, numeric = true  },
+    { key = "weekly",   label = "Weekly",    x = 578, numeric = true  },
+    { key = "trove",    label = "Trove",     x = 636, numeric = true  },
+    { key = "updated",  label = "Updated",   x = 692, numeric = true  },
 }
-local DELETE_X  = 690
-local ROW_W     = 712
+local DELETE_X  = 780
+local ROW_W     = 802
 local ROW_H     = 22
 
 local function ClassColorOpen(class)
@@ -238,11 +240,13 @@ E:RegisterModule(function()
             if sortKey == "name"    then return (rec.name or e.key):lower() end
             if sortKey == "ilvl"    then return rec.ilvl or 0 end
             if sortKey == "keys"    then return rec.keys or 0 end
-            if sortKey == "shards"  then return rec.shards or 0 end
-            if sortKey == "bounty"  then return rec.bountyMaps or 0 end
-            if sortKey == "vault"   then return e.valid and (rec.vaultSlots or 0) or -1 end
-            if sortKey == "gilded"  then return e.valid and (rec.gildedCollected or 0) or -1 end
-            if sortKey == "weekly"  then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
+            if sortKey == "shards"   then return rec.shards or 0 end
+            if sortKey == "wkshards" then return e.valid and (rec.shardsEarnedWeek or 0) or -1 end
+            if sortKey == "bounty"   then return rec.bountyMaps or 0 end
+            if sortKey == "vault"    then return e.valid and (rec.vaultSlots or 0) or -1 end
+            if sortKey == "gilded"   then return e.valid and (rec.gildedCollected or 0) or -1 end
+            if sortKey == "weekly"   then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
+            if sortKey == "trove"    then return e.valid and (rec.bountyLooted and 1 or 0) or -1 end
             return rec.updated or 0
         end
         table.sort(list, function(a, b)
@@ -302,6 +306,16 @@ E:RegisterModule(function()
 
             row.cells.shards:SetText(E.CC.body .. (rec.shards or 0) .. E.CC.close)
 
+            if valid and (rec.shardsMaxWeek or 0) > 0 then
+                local earned = rec.shardsEarnedWeek or 0
+                local mx     = rec.shardsMaxWeek
+                local cc = (earned >= mx) and E.CC.green
+                    or (earned > 0 and E.CC.gold or E.CC.muted)
+                row.cells.wkshards:SetText(cc .. earned .. "/" .. mx .. E.CC.close)
+            else
+                row.cells.wkshards:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
+            end
+
             local bounty = rec.bountyMaps or 0
             row.cells.bounty:SetText((bounty > 0 and E.CC.gold or E.CC.muted) .. bounty .. E.CC.close)
 
@@ -327,6 +341,12 @@ E:RegisterModule(function()
                 row.cells.weekly:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
             end
 
+            if valid and rec.bountyLooted then
+                row.cells.trove:SetText(E.CC.green .. "Done" .. E.CC.close)
+            else
+                row.cells.trove:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
+            end
+
             row.cells.updated:SetText(E.CC.muted .. FormatAgo(now - (rec.updated or now)) .. E.CC.close)
 
             -- Built sequentially (no nil holes) so unpack() reaches every line.
@@ -337,6 +357,10 @@ E:RegisterModule(function()
                 "Bounty maps: " .. (rec.bountyMaps or 0),
             }
             if valid then
+                if (rec.shardsMaxWeek or 0) > 0 then
+                    tip[#tip + 1] = "Weekly shards earned: " .. (rec.shardsEarnedWeek or 0)
+                        .. "/" .. rec.shardsMaxWeek
+                end
                 tip[#tip + 1] = "Great Vault delves: " .. (rec.vaultProgress or 0)
                     .. "/" .. (rec.vaultTotal or 0)
                     .. "  (" .. (rec.vaultSlots or 0) .. "/3 slots)"
@@ -344,6 +368,8 @@ E:RegisterModule(function()
                     tip[#tip + 1] = "Gilded Stash: " .. (rec.gildedCollected or 0)
                         .. "/" .. rec.gildedTotal
                 end
+                tip[#tip + 1] = "Trovehunter's Bounty: "
+                    .. (rec.bountyLooted and "looted this week" or "not looted")
             else
                 tip[#tip + 1] = "Weekly data resets at the next reset"
             end

@@ -15,6 +15,35 @@ local CURIO_DATA = {
 
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
 
+-- roleType -> ED role (0 = Damage, 1 = Healer, 2 = Tank), verified live.
+local COMPANION_ROLE_BY_TYPE = { [0] = "Damage", [1] = "Healer", [2] = "Tank" }
+
+-- Read via trait data, not the secure companion frame, to avoid taint.
+function E:GetCompanionAssignedRole()
+    local D, T = C_DelvesUI, C_Traits
+    if not (D and T and D.GetTraitTreeForCompanion and D.GetRoleSubtreeForCompanion
+        and T.GetConfigIDByTreeID and T.GetSubTreeInfo) then
+        return nil, false
+    end
+    local treeID = D.GetTraitTreeForCompanion(nil)
+    if not treeID or treeID == 0 then return nil, false end
+    local configID = T.GetConfigIDByTreeID(treeID)
+    if not configID or configID == 0 then return nil, false end
+
+    local sawSubtree = false
+    for roleType, edRole in pairs(COMPANION_ROLE_BY_TYPE) do
+        local subID = D.GetRoleSubtreeForCompanion(roleType, nil)
+        if subID and subID ~= 0 then
+            local info = T.GetSubTreeInfo(configID, subID)
+            if info then
+                sawSubtree = true
+                if info.isActive then return edRole, true end
+            end
+        end
+    end
+    return nil, sawSubtree
+end
+
 function E:GetRecommendedCurios(companion, role)
     local rows = CURIO_DATA[companion] or CURIO_DATA.Valeera
     if not rows then return nil end
@@ -165,11 +194,18 @@ E:RegisterModule(function()
         if not rows then popup:Hide(); return end
         E.lastKnownCompanion = companionName
 
-        titleFS:SetText(E.CC.header .. "Curios \226\128\148 " .. companionName .. E.CC.close)
+        local role, resolved = E:GetCompanionAssignedRole()
+        local myRole, noRole
+        if role then
+            myRole = role
+        elseif resolved then
+            noRole = true
+        else
+            myRole = E:GetPlayerCurioRole()
+        end
 
-        -- Spec-role fallback so a solo player (assigned role NONE) still gets
-        -- their row highlighted, matching the HUD.
-        local myRole = E:GetPlayerCurioRole()
+        titleFS:SetText(E.CC.header .. "Curios \226\128\148 " .. companionName .. E.CC.close
+            .. (noRole and ("  " .. E.CC.red .. "(no role set)" .. E.CC.close) or ""))
 
         for i, row in ipairs(rows) do
             local rf    = roleRows[i]

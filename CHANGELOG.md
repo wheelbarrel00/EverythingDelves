@@ -5,6 +5,21 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] - 2026-07-25
+
+### New Features
+
+- **Keybindings** - Set keybinds for the main window, the curio recommendations, and the Delve HUD in the game's Key Bindings menu, under "Everything Delves".
+- **One-click Trovehunter's Bounty** - The Trovehunter's Bounty reminder now has a "Use Trovehunter's Bounty" button, so you can use the bounty straight from the reminder before finishing the delve.
+- **Roster weekly columns** - The Roster tab adds a "Wk Shards" column (your weekly Coffer Key Shard progress toward the cap) and a "Trove" column (whether you've looted the Trovehunter's Bounty this week).
+- **Companion role warning** - An optional alert (on by default) warns you at the start of a delve when your companion has no role assigned. Toggle it in Options.
+
+### Improvements
+
+- **Curios match your companion's real role** - Curio recommendations in the companion popup and the in-delve HUD now use your companion's actual assigned role instead of guessing from your own spec, so off-role characters get the right picks. When no role is set, the popup says so.
+- **Great Vault fills in at login** - Great Vault item levels now populate on login without needing to open the vault first.
+- **Remix/Timerunning characters excluded from Roster** - Timerunning (Remix) characters no longer appear in your account roster, since they have no Midnight delve data.
+
 ## [1.22.2] - 2026-07-18
 
 ### Bug Fixes

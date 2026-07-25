@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
   <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
-  <img src="https://img.shields.io/badge/Interface-120007-333333?style=flat-square" alt="Interface" />
+  <img src="https://img.shields.io/badge/Interface-120100-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
   <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
 </p>
@@ -74,7 +74,7 @@ A sortable **Speed** column shows each delve's expected clear time — your own 
 Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Delver's Journey stage, and a live **daily** reset countdown (bountiful delves and story variants rotate daily). Each delve shows its story variant, tier rating, and overcharged status, with a "Best Pick" suggestion for the highest-value bountiful. The checklist and progress bar fill in **automatically** from your completed runs. Quick-launch buttons for the Great Vault and Group Finder, and the **same expandable boss tactics** as the Delve Locations tab.
 
 ### In-Delve HUD & Run Timer
-An optional on-screen panel that appears while you're inside a delve. It shows the **story variant and its grade**, the **recommended Combat and Utility curios** for your role, a **live run timer**, and your **remaining lives and death count**. Drag it anywhere; toggle the full HUD and the standalone timer independently in Options (both default on).
+An optional on-screen panel that appears while you're inside a delve. It shows the **story variant and its grade**, the **recommended Combat and Utility curios** for your companion's assigned role, a **live run timer**, and your **remaining lives and death count**. Drag it anywhere; toggle the full HUD and the standalone timer independently in Options (both default on).
 
 ### Difficulty Picker Info
 Open a delve's entrance and a panel appears beside the difficulty picker with everything you need to choose a tier: that delve's **achievement status** (story, chests, and tier goals), and a **tier-by-tier reward table** with each tier's loot and Great Vault item levels (gear-track colored), your own gear tier highlighted.
@@ -92,7 +92,7 @@ Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and 
 A dedicated tab for the weekly **Nullaeus** boss delve in Torment's Rise (Voidstorm): quest status with a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, the full boss mechanics list, the three phase transitions, and the reward track — the Nullaeus Domaneye helm, Dominating Victory toy, Arcanovoid Construct mount, and the Ominous / Fabled Vanquisher titles, each with a live item tooltip.
 
 ### Shard Tracker
-Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 9 known shard sources with live quest completion tracking. Also includes:
+Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 7 known shard sources with live quest completion tracking. Also includes:
 - **Dawncrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — all 8 tracked with unlock, active, and completed status
@@ -114,22 +114,23 @@ Lifetime stats and recent run history for every Midnight delve, including the Se
 Tracks all 10 weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account. Flip on the checkbox at the bottom of the tab to mark every delve whose Delver's Call you've already turned in with a **green checkmark on the Delve Locations tab**.
 
 ### Roster
-An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, and whether the weekly delve quest is done** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play.
+An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, weekly shard progress, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, whether the weekly delve quest is done, and whether this week's Trovehunter's Bounty is looted** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play. Remix/Timerunning characters are left off, since they have no Midnight delve data.
 
 ### Bonus Spoils
 An optional on-screen tracker for a delve's two bonus chests — the **Nemesis Strongbox** (filled by clearing the Pactsworn groups) and the **Sanctified Banner**. It shows at a glance when you've secured the extra loot so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default — turn it on in Options, then drag it wherever you like.
 
 ### Options
-UI scale, accent color theme (red / gold / purple / green / dark blue), default tab, minimap button toggle, session tracking, completed item display, low shard warning threshold, bountiful rotation alerts, Special Assignment alerts, and **Companion Audio** mutes (silence Valeera and/or Dun-dun while inside a delve). `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
+UI scale, accent color theme (red / gold / purple / green / dark blue), default tab, minimap button toggle, session tracking, completed item display, low shard warning threshold, bountiful rotation alerts, Special Assignment alerts, a **companion-role warning** (when your delve companion has no role assigned), and **Companion Audio** mutes (silence Valeera and/or Dun-dun while inside a delve). `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
 
 ### Profiles
-Delve history, completion marks, and Gilded Stash progress are tracked **per character**. The Profiles tab lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
+Your delve history is tracked **per character** through profiles, so each alt keeps its own runs and stats instead of every character sharing one history. The Profiles tab lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
 
 ### About
 A one-stop info tab: the addon version, a full slash-command reference, copyable links (Discord, CurseForge, GitHub, and a bug-report link), and the complete in-addon changelog so you can catch up on anything you missed. Open it directly with `/ed about`.
 
 ### Quality of Life
-- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot, with hover help on its title and each bag-count number
+- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot for your companion's assigned role, with hover help on its title and each bag-count number
+- **Trovehunter's Bounty reminder** — inside a bountiful delve, a reminder to use your bounty before you finish, with a one-click Use button
 - **Live broker text** — the minimap/broker button shows your Keys, weekly shards, and time to reset as live status text, so Titan Panel and ElvUI users can read it without opening the window
 - **Bounty Map tooltip** — hovering a Trovehunter's Bounty in your bags tells you whether it's still unused this week, or active right now
 - **Map achievement tooltips** — a delve pin's tooltip lists every related achievement (Stories, Discoveries, and Delver of the Depths) in a clean two-column layout, each criterion green when earned and red when still needed
@@ -167,6 +168,8 @@ A one-stop info tab: the addon version, a full slash-command reference, copyable
 
 The minimap tooltip shows a live snapshot of your currencies, active bountiful count, and weekly reset timer.
 
+You can also bind keys for the main window, curio recommendations, and the Delve HUD in the game's **Key Bindings** menu (under "Everything Delves").
+
 ---
 
 ## Zones & Delves Covered
@@ -200,7 +203,7 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 |---|---|
 | Memory footprint | ~600 KB |
 | Lua files | 26 |
-| Interface version | 120007 (Midnight 12.0) |
+| Interface version | 120100 (Midnight 12.0) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 

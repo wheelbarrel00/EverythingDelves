@@ -453,7 +453,8 @@ E:RegisterModule(function()
                 AddLine(E.CC.muted .. "Variant:" .. E.CC.close .. " "
                     .. E.CC.body .. variant .. E.CC.close .. grade)
             end
-            local role = E.GetPlayerCurioRole and E:GetPlayerCurioRole() or "Damage"
+            local role = (E.GetCompanionAssignedRole and E:GetCompanionAssignedRole())
+                or (E.GetPlayerCurioRole and E:GetPlayerCurioRole()) or "Damage"
             local combat, utility
             if E.GetRecommendedCurios then
                 combat, utility = E:GetRecommendedCurios(

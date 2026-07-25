@@ -495,6 +495,13 @@ E:RegisterModule(function()
         "Chat Alert for Special Assignments",
         "alertSpecialAssignment"
     )
+    Y = Y - 26
+
+    local roleAlertCB = CreateCheckbox(
+        content, SECT_X, Y,
+        "Warn When Companion Has No Role Assigned",
+        "alertCompanionRole"
+    )
     Y = Y - 30
 
     Y = Y - 28
@@ -659,6 +666,7 @@ E:RegisterModule(function()
         threshSlider:SetValue(E.db.lowShardThreshold or 100)
         bountAlertCB:SetChecked(E.db.alertNewBountiful)
         specAlertCB:SetChecked(E.db.alertSpecialAssignment)
+        roleAlertCB:SetChecked(E.db.alertCompanionRole ~= false)
 
         muteValeeraCB:SetChecked(E.db.muteValeera == true)
         muteBubblesCB:SetChecked(E.db.muteValeeraBubbles == true)

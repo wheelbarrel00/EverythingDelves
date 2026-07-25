@@ -3,6 +3,22 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.23.0", date = "2026-07-25",
+        sections = {
+            { head = "New", items = {
+                "Keybindings for the main window, curio recommendations, and the Delve HUD - set them in the game's Key Bindings menu under \"Everything Delves\".",
+                "A one-click \"Use Trovehunter's Bounty\" button on the Trovehunter reminder, so you can use the bounty before finishing the delve.",
+                "Roster columns for weekly Coffer Key Shard progress (Wk Shards) and whether you've looted the Trovehunter's Bounty this week (Trove).",
+                "An optional warning (on by default) when your Delve companion has no role assigned.",
+            }},
+            { head = "Improved", items = {
+                "Curio recommendations in the companion popup and the in-delve HUD now use your companion's actual assigned role instead of your own spec, so off-role players get the right picks.",
+                "Great Vault item levels now fill in at login without opening the vault.",
+                "Remix/Timerunning characters are no longer shown in the account Roster.",
+            }},
+        },
+    },
+    {
         version = "1.22.2", date = "2026-07-18",
         sections = {
             { head = "Fixed", items = {

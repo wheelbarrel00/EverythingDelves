@@ -5,8 +5,9 @@ local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
 local tostring = tostring
 
-function E:CreateButton(parent, width, height, label)
-    local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
+function E:CreateButton(parent, width, height, label, extraTemplate)
+    local template = extraTemplate and ("BackdropTemplate, " .. extraTemplate) or "BackdropTemplate"
+    local btn = CreateFrame("Button", nil, parent, template)
     btn:SetSize(width, height)
     btn:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8x8",

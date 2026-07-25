@@ -5,20 +5,61 @@ local TROVE_AURA     = 1254631 -- buff spell id, active once the bounty is consu
 
 local frame
 
+local function LatchShown()
+    local rs = E.delveRunState
+    if rs then rs.trovehunterPopupShown = true end
+    if E.db and E.db.activeRun then
+        E.db.activeRun.trovehunterPopupShown = true
+    end
+end
+
 local function CreateReminderFrame()
     local f = CreateFrame(
         "Frame", "EverythingDelvesTrovehunterReminder",
         UIParent, "BackdropTemplate"
     )
-    f:SetSize(360, 170)
+    f:SetSize(360, 188)
     f:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
     f:SetFrameStrata("DIALOG")
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    -- Secure Use button makes this frame Protected, so guard moves against combat taint.
+    f:SetScript("OnDragStart", function(self)
+        if not InCombatLockdown() then self:StartMoving() end
+    end)
+    f:SetScript("OnDragStop", function(self)
+        if not InCombatLockdown() then self:StopMovingOrSizing() end
+    end)
     f:SetClampedToScreen(true)
+
+    -- Protected frame can't be Shown or Hidden in combat, so defer either to combat end.
+    local function RequestHide()
+        if InCombatLockdown() then
+            f._pendingHide = true
+            f:RegisterEvent("PLAYER_REGEN_ENABLED")
+        else
+            f:Hide()
+        end
+    end
+    f:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_REGEN_ENABLED" then
+            self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local wantHide, wantShow = self._pendingHide, self._pendingShow
+            self._pendingHide, self._pendingShow = nil, nil
+            if wantHide then
+                self:Hide()
+            elseif wantShow then
+                local rs = E.delveRunState
+                local auraUp = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
+                    and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
+                if rs and rs.inDelve and not rs.trovehunterPopupShown and not auraUp then
+                    self:Show()
+                    LatchShown()
+                end
+            end
+        end
+    end)
 
     f:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8x8",
@@ -79,7 +120,7 @@ local function CreateReminderFrame()
     cb:SetScript("OnClick", function(self)
         if self:GetChecked() then
             E.db.showTrovehunterReminder = false
-            f:Hide()
+            RequestHide()
         else
             E.db.showTrovehunterReminder = true
         end
@@ -88,18 +129,55 @@ local function CreateReminderFrame()
 
     local dismissBtn = E:CreateButton(f, 80, 22, "Dismiss")
     dismissBtn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
-    dismissBtn:SetScript("OnClick", function() f:Hide() end)
+    dismissBtn:SetScript("OnClick", RequestHide)
 
     tinsert(UISpecialFrames, "EverythingDelvesTrovehunterReminder") -- ESC closes the frame
 
     f:Hide()
+
+    -- Create after f:Hide(): a SecureActionButton child makes f Protected (unhideable in combat).
+    local useBtn = E:CreateButton(f, 200, 24, "Use Trovehunter's Bounty", "SecureActionButtonTemplate")
+    local function ConfigureUseButton()
+        useBtn:SetSize(200, 24)
+        useBtn:SetPoint("TOP", f, "TOP", 0, -104)
+        -- Register both edges: SecureActionButton_OnClick only acts on the one matching the ActionButtonUseKeyDown CVar.
+        useBtn:RegisterForClicks("AnyUp", "AnyDown")
+        useBtn:SetAttribute("type", "macro")
+        useBtn:SetAttribute("macrotext", "/use item:" .. E.TROVE_MAP_ITEM_IDS[1])
+    end
+    if InCombatLockdown() then
+        local waiter = CreateFrame("Frame")
+        waiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+        waiter:SetScript("OnEvent", function(self)
+            self:UnregisterAllEvents()
+            ConfigureUseButton()
+        end)
+    else
+        ConfigureUseButton()
+    end
+    -- Hide on the up edge only, so the frame stays shown until the use fires (on either edge).
+    useBtn:HookScript("PostClick", function(_, _, down)
+        if not down then RequestHide() end
+    end)
+    f.useBtn = useBtn
+
     return f
+end
+
+function E:InitTrovehunterReminder()
+    if not frame then frame = CreateReminderFrame() end
 end
 
 function E:ShowTrovehunterReminder()
     if not frame then frame = CreateReminderFrame() end
     frame.dontShowCB:SetChecked(false)
+    if InCombatLockdown() then
+        frame._pendingShow = true
+        frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
     frame:Show()
+    LatchShown()
 end
 
 function E:MaybeShowTrovehunterReminder()
@@ -125,9 +203,7 @@ function E:MaybeShowTrovehunterReminder()
         and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
     if aura then return end
 
-    -- Defer Show by 2s so it doesn't race the loading-screen-clear / UI-settle
-    -- on entry (else the frame shows then gets covered). popupShown is set only
-    -- when Show actually fires, so a /reload mid-deferral doesn't strand the run.
+    -- Latch only when the frame actually shows, so an in-combat defer keeps retrying.
     if E._trovehunterDeferPending then return end
     E._trovehunterDeferPending = true
 
@@ -136,18 +212,13 @@ function E:MaybeShowTrovehunterReminder()
         local rs2 = E.delveRunState
         if not rs2 or not rs2.inDelve then return end
         if rs2.trovehunterPopupShown then return end
-        -- IsInInstance() returns only (isInstance, instanceType); read diffID
-        -- from GetInstanceInfo() instead, or non-208 scenario delves get suppressed.
+        -- IsInInstance() gives only (isInstance, instanceType), so read diffID from GetInstanceInfo().
         local _, instanceType = IsInInstance()
         local _, _, diffID = GetInstanceInfo()
         if instanceType ~= "scenario" and diffID ~= 208 then return end
         local nowAura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
             and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
         if nowAura then return end
-        rs2.trovehunterPopupShown = true
-        if E.db and E.db.activeRun then
-            E.db.activeRun.trovehunterPopupShown = true
-        end
         E:ShowTrovehunterReminder()
     end)
 end

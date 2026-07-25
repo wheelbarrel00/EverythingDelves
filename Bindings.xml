@@ -1,0 +1,11 @@
+<Bindings>
+    <Binding name="EVERYTHINGDELVES_TOGGLE" category="BINDING_HEADER_EVERYTHINGDELVES">
+        EverythingDelves_ToggleMainWindow()
+    </Binding>
+    <Binding name="EVERYTHINGDELVES_CURIOS" category="BINDING_HEADER_EVERYTHINGDELVES">
+        EverythingDelves_ToggleCurios()
+    </Binding>
+    <Binding name="EVERYTHINGDELVES_HUD" category="BINDING_HEADER_EVERYTHINGDELVES">
+        EverythingDelves_ToggleHUD()
+    </Binding>
+</Bindings>

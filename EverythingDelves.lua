@@ -97,6 +97,7 @@ local DEFAULTS = {
     lowShardThreshold      = 100,
     alertNewBountiful      = false,
     alertSpecialAssignment = false,
+    alertCompanionRole     = true,
     showTrovehunterReminder = true,
     muteValeera            = false,
     muteValeeraBubbles     = false,
@@ -333,6 +334,28 @@ function E:ToggleMainFrame()
     end
 end
 
+-- Bindings run in global scope, so E's methods need global wrappers.
+BINDING_HEADER_EVERYTHINGDELVES = "Everything Delves"
+BINDING_NAME_EVERYTHINGDELVES_TOGGLE = "Toggle Main Window"
+BINDING_NAME_EVERYTHINGDELVES_CURIOS = "Toggle Curio Recommendations"
+BINDING_NAME_EVERYTHINGDELVES_HUD = "Toggle Delve HUD"
+
+function EverythingDelves_ToggleMainWindow()
+    E:ToggleMainFrame()
+end
+
+function EverythingDelves_ToggleCurios()
+    if E.ToggleCurioPopup then E:ToggleCurioPopup() end
+end
+
+function EverythingDelves_ToggleHUD()
+    if not E.db then return end
+    E.db.showDelveHUD = (E.db.showDelveHUD == false)
+    if E.UpdateDelveObjectivesWindow then E:UpdateDelveObjectivesWindow() end
+    print("|cFFFF2222Everything Delves|r: Delve HUD "
+        .. (E.db.showDelveHUD and "enabled" or "disabled") .. ".")
+end
+
 SLASH_EVERYTHINGDELVES1 = "/ed"
 SLASH_EVERYTHINGDELVES2 = "/everythingdelves"
 
@@ -481,6 +504,11 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         self:InitMainFrame()
     end
 
+    -- Pre-create out of combat so the secure Use button's protected setup never runs mid-combat.
+    if self.InitTrovehunterReminder then
+        self:InitTrovehunterReminder()
+    end
+
     if self.ApplyAccentColor then
         self:ApplyAccentColor(self.db.accentColor)
     end
@@ -498,6 +526,11 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
     end
 
     self._autoRepairPending = true
+
+    -- Prime Great Vault example ilvls (empty until the vault UI is first opened).
+    if C_WeeklyRewards and C_WeeklyRewards.OnUIInteract then
+        pcall(C_WeeklyRewards.OnUIInteract)
+    end
 
     -- Force a refresh shortly after login so auto-repair fires without
     -- waiting for the user to open the Bountiful tab.
@@ -968,10 +1001,18 @@ function E:GetLiveGildedStash()
 end
 
 local ROSTER_WEEKLY_QUEST = 93909
+local TROVE_LOOT_QUEST    = 86371
 
 function E:CaptureRosterSnapshot()
     local sv = EverythingDelvesDB
     if not sv then return end
+
+    -- Skip Remix/Timerunning alts (no Midnight data). Neither global is guaranteed.
+    if (C_ChatInfo and C_ChatInfo.IsTimerunningPlayer and C_ChatInfo.IsTimerunningPlayer(UnitGUID("player")))
+        or (PlayerGetTimerunningSeasonID and PlayerGetTimerunningSeasonID() or 0) ~= 0 then
+        return
+    end
+
     sv.roster = sv.roster or {}
     local key = CharKey()
     local rec = sv.roster[key] or {}
@@ -990,13 +1031,24 @@ function E:CaptureRosterSnapshot()
             and C_CurrencyInfo.GetCurrencyInfo(id)
         return (info and info.quantity) or 0
     end
-    rec.keys   = CurrencyQty(self.CurrencyIDs.bountifulKeys)
-    rec.shards = CurrencyQty(self.CurrencyIDs.cofferKeyShards)
+    rec.keys = CurrencyQty(self.CurrencyIDs.bountifulKeys)
+
+    local shardInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+        and C_CurrencyInfo.GetCurrencyInfo(self.CurrencyIDs.cofferKeyShards)
+    rec.shards           = (shardInfo and shardInfo.quantity) or 0
+    rec.shardsEarnedWeek = (shardInfo and shardInfo.quantityEarnedThisWeek) or 0
+    -- maxWeeklyQuantity can read 0 before the currency loads, so keep the last known cap.
+    local shardCap = (shardInfo and shardInfo.maxWeeklyQuantity) or 0
+    if shardCap > 0 then rec.shardsMaxWeek = shardCap end
+    rec.shardsMaxWeek = rec.shardsMaxWeek or 0
 
     rec.bountyMaps = self:GetTrovehunterMapCount()
 
     rec.weeklyQuestDone = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
         and C_QuestLog.IsQuestFlaggedCompleted(ROSTER_WEEKLY_QUEST)) or false
+
+    rec.bountyLooted = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
+        and C_QuestLog.IsQuestFlaggedCompleted(TROVE_LOOT_QUEST)) or false
 
     local prog, total, slots = 0, 0, 0
     local ok, acts = pcall(function()
@@ -1052,6 +1104,7 @@ local function BeginDelveRun(name, kind)
     runState.boss          = nil
     runState.lastResult    = nil
     runState.trovehunterPopupShown = false
+    runState.roleNudgeShown = false
     -- Persist run start so duration survives /reload (GetTime() is continuous
     -- across /reload; startedAt is wall-clock for the staleness check).
     if E.db then
@@ -1100,6 +1153,13 @@ local function BeginDelveRun(name, kind)
             E:MaybeShowTrovehunterReminder()
         end
     end)
+
+    -- Companion trait data loads late, so stagger checks off the heartbeat (it cancels early).
+    for _, delay in ipairs({ 3, 7, 12 }) do
+        C_Timer.After(delay, function()
+            if E.MaybeWarnCompanionRoleUnset then E:MaybeWarnCompanionRoleUnset() end
+        end)
+    end
 end
 
 local function EndDelveRun()
@@ -1116,6 +1176,7 @@ local function EndDelveRun()
     runState.story         = nil
     runState.boss          = nil
     runState.trovehunterPopupShown = false
+    runState.roleNudgeShown = false
     if E._popupHeartbeat then
         E._popupHeartbeat:Cancel()
         E._popupHeartbeat = nil
@@ -1123,6 +1184,26 @@ local function EndDelveRun()
     if E.db then
         E.db.activeRun = nil
     end
+end
+
+-- Only warns once resolved, so a not-yet-loaded read never false-warns.
+function E:MaybeWarnCompanionRoleUnset()
+    if runState.roleNudgeShown or not runState.inDelve then return end
+    if not (self.db and self.db.alertCompanionRole ~= false) then return end
+    if not self.GetCompanionAssignedRole then return end
+
+    local role, resolved = self:GetCompanionAssignedRole()
+    if not resolved then return end
+    runState.roleNudgeShown = true
+    if role then return end
+
+    RaidNotice_AddMessage(RaidWarningFrame,
+        "Your Delve companion has no role assigned!", ChatTypeInfo["RAID_WARNING"])
+    if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then
+        PlaySound(SOUNDKIT.RAID_WARNING)
+    end
+    print("|cFFFF2222Everything Delves|r: Your Delve companion has no role assigned"
+        .. " - open the companion panel to set one.")
 end
 
 function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story, boss)

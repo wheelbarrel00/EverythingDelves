@@ -1,19 +1,23 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.22.0"
+local WHATS_NEW_VERSION = "1.23.0"
 
 local ENTRIES = {
     {
-        title = "Delver's Call progress on the map",
-        desc  = "Turn on the new checkbox at the bottom of the Delver's Call tab and every delve on the Delve Locations tab whose Delver's Call you've already turned in shows a green checkmark next to its name - an at-a-glance view of which ones you still owe. Thanks to DrahgunFyre for the suggestion!",
+        title = "Keybindings",
+        desc  = "Set keybinds for the main window, the curio recommendations, and the Delve HUD in the game's Key Bindings menu, under \"Everything Delves\".",
     },
     {
-        title = "Bug fix",
-        desc  = "The Nemesis Strongbox pack count no longer doubles (such as 3/6 instead of 0/3) after you leave a delve and quickly re-enter - it resets cleanly now and no longer sticks through a reload.",
+        title = "One-click bounty use",
+        desc  = "The Trovehunter's Bounty reminder now has a \"Use Trovehunter's Bounty\" button, so you can use the bounty right from the reminder before you finish the delve.",
     },
     {
-        title = "Special thanks",
-        desc  = "A special thank you to Agaman for his help making Everything Delves great.",
+        title = "Smarter curio picks",
+        desc  = "Curio recommendations - in the companion popup and the in-delve HUD - now read your companion's actual assigned role instead of guessing from your spec, so off-role players get the right picks. A new optional warning tells you when your companion has no role set at all.",
+    },
+    {
+        title = "Roster & Vault",
+        desc  = "The Roster tab adds weekly Coffer Key Shard progress (Wk Shards) and Trovehunter's Bounty looted status (Trove). Great Vault item levels now fill in at login, and Remix/Timerunning characters are left off the roster.",
     },
 }
 
