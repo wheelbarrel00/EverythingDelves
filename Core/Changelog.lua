@@ -3,6 +3,24 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.23.1", date = "2026-07-31",
+        sections = {
+            { head = "Fixed", items = {
+                "Gilded Stash progress counts only your own runs - an alt sharing a profile no longer reads your main's Tier 11 Bountiful runs as its own and shows \"earned\" before running anything.",
+                "Curio recommendations follow your actual companion - the slash command and keybind showed Brann's curios on a Midnight character, and pinned that wrong companion for the in-delve HUD too.",
+                "Escape now closes the Trovehunter reminder during combat, instead of doing nothing and possibly throwing an interface error.",
+                "The Tier Guide's \"Your Equipped iLvl\" no longer counts higher-item-level gear sitting in your bags, which could recommend a tier above your actual gear.",
+                "Shards per hour is accurate - the rate divided shards earned since opening the tab by the time since login. All session stats now start together when you first open the Shard Tracker.",
+                "Completing one of the day's Bountiful Delves no longer fires the \"New Bountiful Delves are available today!\" alert.",
+                "The Special Assignment alert is per character - it no longer announces an assignment you accepted days ago after swapping characters.",
+                "Delve Speed and average times ignore runs whose timer was scrubbed by the invalid-timer cleanup, which made clears look far faster than they were.",
+            }},
+            { head = "Thanks", items = {
+                "Special thanks to Agaman for his work on this update! I really appreciate all your help lately!",
+            }},
+        },
+    },
+    {
         version = "1.23.0", date = "2026-07-25",
         sections = {
             { head = "New", items = {

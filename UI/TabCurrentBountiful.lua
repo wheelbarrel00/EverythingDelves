@@ -392,37 +392,6 @@ local function RefreshBountifulData(force)
         E.currentBountifulStoryTier[delve.name] = si and si.tier or nil
     end
 
-    -- Alert when the daily rotation changes.
-    if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
-        if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
-        local currentIDs = E._bountifulIDBuf
-        wipe(currentIDs)
-        for _, delve in ipairs(bountifulList) do
-            table_insert(currentIDs, delve.poiID)
-        end
-        table_sort(currentIDs)
-
-        local storedIDs = E.db.lastKnownBountifulIDs or {}
-        local changed = (#currentIDs ~= #storedIDs)
-        if not changed then
-            for i, id in ipairs(currentIDs) do
-                if id ~= storedIDs[i] then
-                    changed = true
-                    break
-                end
-            end
-        end
-
-        if changed and #storedIDs > 0 then
-            print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available today! Open Everything Delves to see them.")
-        end
-        if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
-        wipe(E.db.lastKnownBountifulIDs)
-        for i = 1, #currentIDs do
-            E.db.lastKnownBountifulIDs[i] = currentIDs[i]
-        end
-    end
-
     -- Completing a bountiful delve removes its "delves-bountiful" atlas, so it
     -- drops out of the live list and the progress bar would shrink its
     -- denominator (0/4 -> 0/3) instead of counting it. Reconstruct the full
@@ -468,6 +437,45 @@ local function RefreshBountifulData(force)
                     end
                 end
             end
+        end
+    end
+
+    -- Must run AFTER the re-add above: a completed delve drops off the POI list,
+    -- and comparing without it reads as a rotation change.
+    if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
+        if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
+        local currentIDs = E._bountifulIDBuf
+        wipe(currentIDs)
+        for _, delve in ipairs(bountifulList) do
+            if delve.poiID then table_insert(currentIDs, delve.poiID) end
+        end
+        table_sort(currentIDs)
+
+        local storedIDs   = E.db.lastKnownBountifulIDs or {}
+        local storedEpoch = E.db.lastKnownBountifulEpoch or 0
+
+        -- A shorter list on the same day means POI data is incomplete, not a new rotation.
+        if #currentIDs >= #storedIDs or dailyResetEpoch > storedEpoch then
+            local changed = (#currentIDs ~= #storedIDs)
+            if not changed then
+                for i, id in ipairs(currentIDs) do
+                    if id ~= storedIDs[i] then
+                        changed = true
+                        break
+                    end
+                end
+            end
+
+            -- storedEpoch 0 = a pre-upgrade baseline that may be missing completions.
+            if changed and #storedIDs > 0 and storedEpoch > 0 then
+                print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available today! Open Everything Delves to see them.")
+            end
+            if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
+            wipe(E.db.lastKnownBountifulIDs)
+            for i = 1, #currentIDs do
+                E.db.lastKnownBountifulIDs[i] = currentIDs[i]
+            end
+            E.db.lastKnownBountifulEpoch = dailyResetEpoch
         end
     end
 

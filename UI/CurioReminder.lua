@@ -13,6 +13,8 @@ local CURIO_DATA = {
     },
 }
 
+local DEFAULT_COMPANION = "Valeera"
+
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
 
 -- roleType -> ED role (0 = Damage, 1 = Healer, 2 = Tank), verified live.
@@ -189,10 +191,10 @@ E:RegisterModule(function()
         roleRows[i] = rf
     end
 
-    local function Populate(companionName)
+    local function Populate(companionName, dontPin)
         local rows = CURIO_DATA[companionName]
         if not rows then popup:Hide(); return end
-        E.lastKnownCompanion = companionName
+        if not dontPin then E.lastKnownCompanion = companionName end
 
         local role, resolved = E:GetCompanionAssignedRole()
         local myRole, noRole
@@ -291,15 +293,22 @@ E:RegisterModule(function()
             popup:Hide()
             return
         end
-        local name = (arg and #arg > 0)
-            and (arg:sub(1,1):upper() .. arg:sub(2):lower())
-            or "Brann"
-        if not CURIO_DATA[name] then
-            print(E.CC.header .. "Everything Delves|r: unknown companion \""
-                .. arg .. "\". Use |cFFFFFFFFbrann|r or |cFFFFFFFFvaleera|r.")
-            return
+        local name, fromRead
+        if arg and #arg > 0 then
+            name = arg:sub(1,1):upper() .. arg:sub(2):lower()
+            if not CURIO_DATA[name] then
+                print(E.CC.header .. "Everything Delves|r: unknown companion \""
+                    .. arg .. "\". Use |cFFFFFFFFbrann|r or |cFFFFFFFFvaleera|r.")
+                return
+            end
+            fromRead = true
+        else
+            name = GetActiveCompanionName()
+            fromRead = name ~= nil
+            name = name or E.lastKnownCompanion or DEFAULT_COMPANION
+            if not CURIO_DATA[name] then name = DEFAULT_COMPANION end
         end
-        Populate(name)
+        Populate(name, not fromRead)
         AnchorPopup()
         popup:Show()
     end

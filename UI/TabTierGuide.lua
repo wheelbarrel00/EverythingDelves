@@ -5,7 +5,7 @@ local table_insert = table.insert
 
 -- Equipped iLvl is what matters inside a delve, not overall.
 local function GetPlayerIlvl()
-    local equipped, overall = GetAverageItemLevel()
+    local overall, equipped = GetAverageItemLevel()
     local ilvl = math_floor(equipped or overall or 0)
     return ilvl
 end
@@ -857,13 +857,16 @@ E:RegisterModule(function()
         -- boundary would count all-time runs and show a false "[Done]".
         local estimate = 0
         local history = E.db and E.db.delveHistory
+        -- Runs logged before the char stamp count for whoever is logged in.
+        local charKey = E.CharKey and E.CharKey()
         if haveReset and history then
             for _, entry in pairs(history) do
                 if entry.recentRuns then
                     for _, run in ipairs(entry.recentRuns) do
                         if (run.tier or 0) >= 11
                                 and run.wasBountiful
-                                and (run.timestamp or 0) >= lastReset then
+                                and (run.timestamp or 0) >= lastReset
+                                and (run.char == nil or run.char == charKey) then
                             estimate = estimate + 1
                         end
                     end

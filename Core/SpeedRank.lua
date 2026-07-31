@@ -64,8 +64,9 @@ function E:GetPersonalPaceBaseline()
     local sum, n = 0, 0
     for name, entry in pairs(self.db.delveHistory) do
         local life = entry.lifetime
-        if life and (life.totalRuns or 0) > 0 and (life.totalDuration or 0) > 0 then
-            local avg = life.totalDuration / life.totalRuns
+        local timed = life and (life.timedRuns or life.totalRuns or 0) or 0
+        if timed > 0 and (life.totalDuration or 0) > 0 then
+            local avg = life.totalDuration / timed
             -- Signature tier is stable, unlike the daily-rotating variant tier.
             local tier = self.DelveSignatureTier and self.DelveSignatureTier[name]
             local factor = tier and TIER_TIME_FACTOR[tier]
@@ -99,8 +100,9 @@ function E:GetDelveSpeed(delveName, tierOverride)
 
     local hist = self.GetDelveHistory and self:GetDelveHistory(delveName)
     local life = hist and hist.lifetime
-    if life and (life.totalRuns or 0) > 0 and (life.totalDuration or 0) > 0 then
-        local avg = math_floor(life.totalDuration / life.totalRuns)
+    local timed = life and (life.timedRuns or life.totalRuns or 0) or 0
+    if timed > 0 and (life.totalDuration or 0) > 0 then
+        local avg = math_floor(life.totalDuration / timed)
         if avg > 0 then
             return avg, "personal", self:GetDelveTierLetter(delveName, tierOverride)
         end

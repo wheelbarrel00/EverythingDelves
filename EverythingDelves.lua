@@ -118,8 +118,8 @@ local DEFAULTS = {
 -- wipe it. A new persistent data table belongs HERE, not in DEFAULTS.
 local DATA_DEFAULTS = {
     lastKnownBountifulIDs  = {},
-    lastKnownActiveSAs     = {},
-    saBaselineRecorded     = false,  -- distinguishes "no SAs, recorded" from "never scanned"
+    lastKnownBountifulEpoch = 0,
+    saStateByChar          = {},  -- [charKey] = { active = {questIDs}, recorded = bool }
     delversCallRoster      = {},
     delveBossMap           = {},
     gildedStashByChar      = {},
@@ -1231,6 +1231,8 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
 
     local now = time()
     local life = entry.lifetime
+    -- Legacy entries predate timedRuns: seed from totalRuns so the average holds.
+    if life.timedRuns == nil then life.timedRuns = life.totalRuns or 0 end
     life.totalRuns     = (life.totalRuns or 0) + 1
     life.totalDeaths   = (life.totalDeaths or 0) + (deaths or 0)
     life.totalDuration = (life.totalDuration or 0) + (duration or 0)
@@ -1239,6 +1241,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         life.highestTier = tier
     end
     if duration and duration > 0 then
+        life.timedRuns = life.timedRuns + 1
         if not life.fastestTime or life.fastestTime == 0
                 or duration < life.fastestTime then
             life.fastestTime = duration
@@ -1256,6 +1259,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         deaths       = deaths or 0,
         keyUsed      = keyUsed and true or false,
         timestamp    = now,
+        char         = CharKey(),
         wasBountiful = wasBountiful and true or false,
         story        = (story and story ~= "") and story or nil,
         boss         = (boss and boss ~= "") and boss or nil,
@@ -1324,6 +1328,7 @@ function E:DeleteRun(delveName, timestamp)
 
     local life = entry.lifetime
     if life then
+        if life.timedRuns == nil then life.timedRuns = life.totalRuns or 0 end
         -- totalRuns counts runs trimmed past the cap too, so keep it >= the
         -- rows on display; the History tab hides a delve once totalRuns hits 0.
         life.totalRuns     = math.max(#recent, (life.totalRuns or 1) - 1)
@@ -1331,6 +1336,9 @@ function E:DeleteRun(delveName, timestamp)
             (life.totalDeaths or 0) - (run.deaths or 0))
         life.totalDuration = math.max(0,
             (life.totalDuration or 0) - (run.duration or 0))
+        if (run.duration or 0) > 0 then
+            life.timedRuns = math.max(0, life.timedRuns - 1)
+        end
         if run.keyUsed then
             life.totalKeysUsed = math.max(0, (life.totalKeysUsed or 0) - 1)
         end
@@ -1417,11 +1425,17 @@ function E:RepairAbsurdDurations()
         local recent = entry.recentRuns
         local life   = entry.lifetime
         if recent then
+            if life and life.timedRuns == nil then
+                life.timedRuns = life.totalRuns or 0
+            end
             for _, run in ipairs(recent) do
                 if (run.duration or 0) > MAX_RESUME_AGE then
                     if life and life.totalDuration then
                         life.totalDuration =
                             math.max(0, life.totalDuration - run.duration)
+                    end
+                    if life and (life.timedRuns or 0) > 0 then
+                        life.timedRuns = life.timedRuns - 1
                     end
                     -- Do NOT decrement totalRuns: a delve renders only while
                     -- totalRuns > 0, so decrementing could hide a delve whose

@@ -572,8 +572,8 @@ E:RegisterModule(function()
     end
 
     local function SetHeaderStats(row, life, latest)
-        local avg = (life.totalRuns and life.totalRuns > 0)
-            and math_floor(life.totalDuration / life.totalRuns) or 0
+        local timed = life.timedRuns or life.totalRuns or 0
+        local avg = timed > 0 and math_floor((life.totalDuration or 0) / timed) or 0
         row.runsFS:SetText(
             E.CC.muted .. "Runs: " .. E.CC.close
             .. E.CC.body .. (life.totalRuns or 0) .. E.CC.close)

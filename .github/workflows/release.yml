@@ -43,7 +43,8 @@ jobs:
           echo "Ref: $GITHUB_REF"
           TAG="${GITHUB_REF#refs/tags/}"
           echo "Tag: $TAG"
-          TYPE=$(git cat-file -t "$TAG" || echo "unknown")
+          git fetch --force --tags origin >/dev/null 2>&1 || true
+          TYPE=$(git cat-file -t "$TAG" 2>/dev/null || echo "unknown")
           echo "Tag object type: $TYPE  (should be 'tag' for an annotated release)"
           if [ "$TYPE" != "tag" ]; then
             echo "::warning::Lightweight tag detected. The packager will treat this as an alpha build."

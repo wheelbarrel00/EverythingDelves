@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.1] - 2026-07-31
+
+### Bug Fixes
+
+- **Gilded Stash counts only your own runs** - If you point more than one character at the same profile, an alt read your main's Tier 11 Bountiful runs as its own and could show "Gilded Stash earned!" before running anything, causing you to skip the runs and lose the reward.
+- **Curio recommendations follow your actual companion** - Opening the curio list from the slash command or the keybind showed Brann's curios on a Midnight character, and pinned that wrong companion for the in-delve HUD too. It now reads your active companion and falls back to Valeera.
+- **Escape closes the Trovehunter reminder during combat** - Pressing Escape on the reminder mid-fight did nothing and could produce an interface error. It now closes as soon as combat ends.
+- **Tier Guide reads your equipped item level** - The "Your Equipped iLvl" readout was picking up higher-item-level gear sitting in your bags, which could recommend a tier above your actual gear and disagree with the delve entrance panel.
+- **Shards per hour is accurate** - The session rate divided the shards earned since you opened the Shard Tracker by the time since you logged in, so it read far lower than the truth. All three session stats now start together when you first open the tab, and a note on the tab explains it. Session stats still reset on /reload.
+- **No more false "New Bountiful Delves" alert** - Completing one of the day's Bountiful Delves fired the rotation-change alert, up to three times a day. It now fires only when the rotation actually changes.
+- **Special Assignment alert is per character** - With more than one character, the alert announced an assignment you had already accepted days earlier, and could stay silent on a genuinely new one. Each character now keeps its own record.
+- **Delve Speed and Avg times ignore broken timers** - Runs whose timer was scrubbed by the invalid-timer cleanup counted as instant clears, making a delve's Speed and average look far faster than any run you actually had and skewing the Speed colour on every other delve.
+
+### Thanks
+
+- Special thanks to Agaman for his work on this update! I really appreciate all your help lately!
+
 ## [1.23.0] - 2026-07-25
 
 ### New Features

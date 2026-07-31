@@ -422,9 +422,18 @@ E:RegisterModule(function()
     sessRateFS:SetPoint("TOPLEFT", sessTimeFS, "BOTTOMLEFT", 0, -2)
     sessRateFS:SetFont(sessRateFS:GetFont(), 10)
 
+    local sessNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    sessNoteFS:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -4)
+    sessNoteFS:SetFont(sessNoteFS:GetFont(), 10)
+    sessNoteFS:SetText(
+        E.CC.muted
+        .. "Tracking starts when you first open this tab, not at login. Resets on /reload."
+        .. E.CC.close
+    )
+
     local div3 = sc:CreateTexture(nil, "ARTWORK")
     div3:SetHeight(1)
-    div3:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -32)
+    div3:SetPoint("TOPLEFT", sessNoteFS, "BOTTOMLEFT", 0, -32)
     div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div3)
 
@@ -829,7 +838,7 @@ E:RegisterModule(function()
             sessionBaseline = {
                 shards = GetCurrency(E.CurrencyIDs.cofferKeyShards),
                 keys   = GetCurrency(E.CurrencyIDs.bountifulKeys),
-                time   = (E.sessionData and E.sessionData.loginTime) or time(),
+                time   = time(),
             }
         end
     end
@@ -1333,12 +1342,22 @@ E:RegisterModule(function()
         end
         table_sort(saActiveBuf)
 
-        local storedSAs = E.db.lastKnownActiveSAs or {}
+        -- SA quests are per character, so a shared baseline alerts on the wrong one.
+        local store = E.db.saStateByChar
+        if not store then return end
+        local charKey = E.CharKey and E.CharKey() or "?"
+        local saState = store[charKey]
+        if not saState then
+            saState = { active = {} }
+            store[charKey] = saState
+        end
+
+        local storedSAs = saState.active or {}
         for _, id in ipairs(storedSAs) do saLookupBuf[id] = true end
 
         -- An empty baseline is ambiguous (no SAs vs never scanned); the flag
         -- lets a first scan seed silently while a later empty -> active alerts.
-        local recorded = E.db.saBaselineRecorded or #storedSAs > 0
+        local recorded = saState.recorded or #storedSAs > 0
 
         local hasNew = false
         if recorded then
@@ -1353,12 +1372,12 @@ E:RegisterModule(function()
         if hasNew then
             print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
         end
-        E.db.saBaselineRecorded = true
+        saState.recorded = true
         -- Mutate in place rather than replacing the reference each refresh.
-        if not E.db.lastKnownActiveSAs then E.db.lastKnownActiveSAs = {} end
-        wipe(E.db.lastKnownActiveSAs)
+        if not saState.active then saState.active = {} end
+        wipe(saState.active)
         for i = 1, #saActiveBuf do
-            E.db.lastKnownActiveSAs[i] = saActiveBuf[i]
+            saState.active[i] = saActiveBuf[i]
         end
     end
 

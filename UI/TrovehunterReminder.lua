@@ -131,7 +131,20 @@ local function CreateReminderFrame()
     dismissBtn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
     dismissBtn:SetScript("OnClick", RequestHide)
 
-    tinsert(UISpecialFrames, "EverythingDelvesTrovehunterReminder") -- ESC closes the frame
+    -- Not UISpecialFrames: its ESC path calls Hide() directly, which combat blocks once useBtn exists.
+    f:EnableKeyboard(true)
+    -- SetPropagateKeyboardInput is itself blocked in combat, so only toggle it out of combat.
+    f:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then
+            if key == "ESCAPE" then RequestHide() end
+            return
+        end
+        self:SetPropagateKeyboardInput(key ~= "ESCAPE")
+        if key == "ESCAPE" then RequestHide() end
+    end)
+    f:SetScript("OnShow", function(self)
+        if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+    end)
 
     f:Hide()
 
