@@ -1,23 +1,15 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.23.0"
+local WHATS_NEW_VERSION = "1.24.0"
 
 local ENTRIES = {
     {
-        title = "Keybindings",
-        desc  = "Set keybinds for the main window, the curio recommendations, and the Delve HUD in the game's Key Bindings menu, under \"Everything Delves\".",
+        title = "Two new Delves",
+        desc  = "Gnarldor Isle and The Ring of Glory, the new Delves on The Coiled Isle, are now on the Delve Locations tab with map pins, TomTom waypoints, today's story, and their Stories and Discoveries achievements.",
     },
     {
-        title = "One-click bounty use",
-        desc  = "The Trovehunter's Bounty reminder now has a \"Use Trovehunter's Bounty\" button, so you can use the bounty right from the reminder before you finish the delve.",
-    },
-    {
-        title = "Smarter curio picks",
-        desc  = "Curio recommendations - in the companion popup and the in-delve HUD - now read your companion's actual assigned role instead of guessing from your spec, so off-role players get the right picks. A new optional warning tells you when your companion has no role set at all.",
-    },
-    {
-        title = "Roster & Vault",
-        desc  = "The Roster tab adds weekly Coffer Key Shard progress (Wk Shards) and Trovehunter's Bounty looted status (Trove). Great Vault item levels now fill in at login, and Remix/Timerunning characters are left off the roster.",
+        title = "More new-Delve data coming next",
+        desc  = "Bountiful tracking, Delver's Call quests, boss tactics, and Tier ratings for the two new Delves aren't in yet - that data only becomes readable once the patch is live and the Delves have been run. It lands in the next update.",
     },
 }
 

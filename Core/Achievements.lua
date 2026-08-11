@@ -1,5 +1,5 @@
--- Achievement IDs verified against the live achievement DB (build 12.0.5);
--- criteria names/completion are read live each hover so they self-correct.
+-- Achievement IDs verified against the live achievement DB (build 12.1.0).
+-- Criteria names and completion are read live each hover so they self-correct.
 local E = EverythingDelves
 
 E.DelveAchievements = {
@@ -13,9 +13,11 @@ E.DelveAchievements = {
     ["The Grudge Pit"]      = { stories = 61724, discoveries = 61897 },
     ["Collegiate Calamity"] = { stories = 61726, discoveries = 61894 },
     ["The Darkway"]         = { stories = 61728, discoveries = 61895 },
+    ["Gnarldor Isle"]       = { stories = 63437, discoveries = 63170 },
+    ["The Ring of Glory"]   = { stories = 63436, discoveries = 63171 },
 }
 
--- Each series entry lists all 10 delves as criteria; ordered easiest-to-hardest
+-- Each series entry lists every delve as criteria. Ordered easiest-to-hardest
 -- so the tooltip surfaces the next step first.
 E.DelveDepthsSeries = {
     { id = 61707, label = "any tier" },

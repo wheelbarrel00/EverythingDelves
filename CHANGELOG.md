@@ -5,6 +5,16 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] - 2026-08-10
+
+### New Features
+
+- **The two new Delves are on the map** - Gnarldor Isle and The Ring of Glory, both on The Coiled Isle, now appear on the Delve Locations tab with map pins, TomTom waypoints, today's story variant, and their Stories and Discoveries achievements on the pin tooltip.
+
+### Notes
+
+- **The rest of the new Delve data arrives in the next update** - Bountiful tracking, Delver's Call quests, boss tactics, and Tier ratings for the two new Delves are not in yet. That information only becomes readable once the patch is live and the Delves have been run, so it lands in the next update.
+
 ## [1.23.1] - 2026-07-31
 
 ### Bug Fixes

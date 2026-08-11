@@ -8,6 +8,7 @@ E.Zones = {
     { name = "Zul'Aman",              mapID = 2437 },
     { name = "Silvermoon",            mapID = 2393 },
     { name = "Isle of Quel'Danas",    mapID = 2424 },
+    { name = "The Coiled Isle",       mapID = 2512 },
 }
 
 -- Confirmed live data from Midnight S1. Coordinates are percentages
@@ -83,6 +84,22 @@ E.DelveData = {
         mapID = 2393,
         poiID = 8440,  normalPoiID = 8439,
     },
+    -- Bountiful poiIDs for The Coiled Isle are unconfirmed. Do not guess them from
+    -- normalPoiID. The N/N+1 pairing above only holds for the original ID block.
+    {
+        name  = "Gnarldor Isle",
+        zone  = "The Coiled Isle",
+        x     = 64.54, y = 77.58,
+        mapID = 2512,
+        normalPoiID = 8761,
+    },
+    {
+        name  = "The Ring of Glory",
+        zone  = "The Coiled Isle",
+        x     = 71.35, y = 56.54,
+        mapID = 2512,
+        normalPoiID = 8764,
+    },
 }
 
 E.TOTAL_DELVES = #E.DelveData
@@ -110,6 +127,8 @@ end
 -- Fallback name lookup when GetRealZoneText()/GetInstanceInfo() don't
 -- return a recognizable delve name at SCENARIO_COMPLETED time.
 E.DelveZoneIDs = {
+    [2633] = "The Ring of Glory",
+    [2635] = "Gnarldor Isle",
     [2933] = "Collegiate Calamity",
     [2952] = "The Shadow Enclave",
     [2953] = "Parhelion Plaza",

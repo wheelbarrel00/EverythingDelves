@@ -3,6 +3,17 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.24.0", date = "2026-08-10",
+        sections = {
+            { head = "New", items = {
+                "The two new Delves are on the map - Gnarldor Isle and The Ring of Glory, both on The Coiled Isle, with map pins, TomTom waypoints, today's story, and their Stories and Discoveries achievements.",
+            }},
+            { head = "Coming next", items = {
+                "Bountiful tracking, Delver's Call quests, boss tactics, and Tier ratings for the two new Delves land in the next update - that data only becomes readable once the patch is live and the Delves have been run.",
+            }},
+        },
+    },
+    {
         version = "1.23.1", date = "2026-07-31",
         sections = {
             { head = "Fixed", items = {
