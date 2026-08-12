@@ -8,7 +8,7 @@
 </p>
 <p align="center">
   <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
-  <img src="https://img.shields.io/badge/WoW-Midnight%2012.0-8B0000?style=flat-square" alt="WoW Version" />
+  <img src="https://img.shields.io/badge/WoW-Midnight%2012.1-8B0000?style=flat-square" alt="WoW Version" />
   <img src="https://img.shields.io/badge/Interface-120100-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
   <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
@@ -38,7 +38,7 @@
 
 ## Overview
 
-Everything Delves is a display-only companion addon for WoW: Midnight (12.0 Season 1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
+Everything Delves is a display-only companion addon for WoW: Midnight (12.1 Season 1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
 
 Open with **`/ed`** or the minimap button. Right-click the minimap button to jump to Options.
 
@@ -46,7 +46,7 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 
 ## Everything in One Window
 
-- **Delve Locations** — all 10 Midnight delves across 6 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss
+- **Delve Locations** — all 12 Midnight delves across 7 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss
 - **Quickest Delve & Best Value** — every delve shows an expected clear time (your own average once you've run it, or a pace-calibrated estimate), a sortable Speed column to line up your fastest runs first, and a summary line calling out today's Quickest delve and the Best value pick
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths
@@ -66,7 +66,7 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 ## Features
 
 ### Delve Locations
-All 10 Midnight delves across 6 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
+All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
 
 A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then, color-graded relative to your own pace — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
@@ -111,7 +111,7 @@ Lifetime stats and recent run history for every Midnight delve, including the Se
 - Lifetime totals persist across sessions with minimal memory cost
 
 ### Delver's Call
-Tracks all 10 weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account. Flip on the checkbox at the bottom of the tab to mark every delve whose Delver's Call you've already turned in with a **green checkmark on the Delve Locations tab**.
+Tracks the weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account. Flip on the checkbox at the bottom of the tab to mark every delve whose Delver's Call you've already turned in with a **green checkmark on the Delve Locations tab**.
 
 ### Roster
 An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, weekly shard progress, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, whether the weekly delve quest is done, and whether this week's Trovehunter's Bounty is looted** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play. Remix/Timerunning characters are left off, since they have no Midnight delve data.
@@ -182,6 +182,9 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 | Voidstorm | Shadowguard Point, Sunkiller Sanctum, Torment's Rise (Seasonal Nemesis) |
 | Harandar | The Gulf of Memory, The Grudge Pit |
 | Silvermoon | Collegiate Calamity, The Darkway |
+| The Coiled Isle | Gnarldor Isle, The Ring of Glory |
+
+> **New in 12.1:** Gnarldor Isle and The Ring of Glory are listed with locations, waypoints, today's story, and their achievements. Bountiful tracking, Delver's Call quests, boss tactics, and tier ratings for these two arrive in the next update.
 
 ---
 
@@ -203,7 +206,7 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 |---|---|
 | Memory footprint | ~600 KB |
 | Lua files | 26 |
-| Interface version | 120100 (Midnight 12.0) |
+| Interface version | 120100 (Midnight 12.1) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 
