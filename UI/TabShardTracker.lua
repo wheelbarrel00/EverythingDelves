@@ -507,7 +507,7 @@ E:RegisterModule(function()
     warnFS:SetFont(warnFS:GetFont(), 11)
 
     -- SECTION 5: Coffer Shard World Quests (Midnight zones, currency 3310)
-    local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424 }
+    local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424, 2512 }
     local WQ_CURRENCY = 3310
     local MAX_WQ_ROWS = 12
 

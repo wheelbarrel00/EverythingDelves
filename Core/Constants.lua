@@ -39,7 +39,7 @@ E.TAB_NAMES = {
     "Delve Locations",
     "Current Bountiful Delves",
     "Tier Guide",
-    "Nullaeus",
+    "Azta'rec",
     "Shard Tracker",
     "Delve History",
     "Delver's Call",

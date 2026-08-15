@@ -1,15 +1,23 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.24.0"
+local WHATS_NEW_VERSION = "1.25.0"
 
 local ENTRIES = {
     {
-        title = "Two new Delves",
-        desc  = "Gnarldor Isle and The Ring of Glory, the new Delves on The Coiled Isle, are now on the Delve Locations tab with map pins, TomTom waypoints, today's story, and their Stories and Discoveries achievements.",
+        title = "Boss tactics for the two new Delves",
+        desc  = "Gnarldor Isle and The Ring of Glory now expand into full boss breakdowns with today's boss marked, covering Gralka Snake-Eater, Osseous Amalgamation, Drakta and Gnok - plus the whole Open Night arena gauntlet and which casts to interrupt.",
+    },
+    {
+        title = "The Nemesis tab now covers Season 2",
+        desc  = "Azta'rec in Venomfall Deeps replaces Nullaeus: his main-phase kit, the Sermon of Ula'tek memory pattern, what changes on Tier \"??\", and the Valeera role and curio setup including her new Poisons slot.",
+    },
+    {
+        title = "Bountiful tab fixes",
+        desc  = "Coffer Key Shards no longer reads \"0 / 0\", the progress bar no longer claims a Bountiful Delve exists until it is unlocked, and an empty list now explains itself instead of showing headers over blank space.",
     },
     {
         title = "More new-Delve data coming next",
-        desc  = "Bountiful tracking, Delver's Call quests, boss tactics, and Tier ratings for the two new Delves aren't in yet - that data only becomes readable once the patch is live and the Delves have been run. It lands in the next update.",
+        desc  = "Bountiful tracking, Delver's Call quests and Tier ratings for the two new Delves need data that will be updated very soon. 12.1 also added a new story to eight of the older Delves - those are coming too.",
     },
 }
 

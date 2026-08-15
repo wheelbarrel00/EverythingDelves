@@ -837,9 +837,11 @@ E:RegisterModule(function()
                 row.arrowFS:SetText(arrow)
 
                 local nem = E.NemesisDelve
+                local bossName = (E.NemesisBossByDelve and E.NemesisBossByDelve[key])
+                    or (nem and nem.boss)
                 local niceName = key
-                if nem and nem.boss then
-                    niceName = key .. " (" .. nem.boss .. ")"
+                if bossName then
+                    niceName = key .. " (" .. bossName .. ")"
                 end
                 row.nameFS:SetText(E.CC.gold .. niceName .. E.CC.close)
 

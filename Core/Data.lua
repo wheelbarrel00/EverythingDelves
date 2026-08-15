@@ -107,9 +107,16 @@ E.TOTAL_DELVES = #E.DelveData
 -- Seasonal Nemesis delve. Kept out of E.DelveData so location/bountiful
 -- iterators are unaffected.
 E.NemesisDelve = {
-    name  = "Torment's Rise",
-    boss  = "Nullaeus",
+    name  = "Venomfall Deeps",
+    boss  = "Azta'rec",
     tiers = { 8, 11 },
+}
+
+-- Every season's nemesis, so old history keeps its own boss label instead of
+-- inheriting the current season's.
+E.NemesisBossByDelve = {
+    ["Venomfall Deeps"] = "Azta'rec",
+    ["Torment's Rise"]  = "Nullaeus",
 }
 
 -- SCENARIO_COMPLETED filters on this so only Midnight delves are logged.
@@ -117,7 +124,9 @@ E.LoggableDelveNames = {}
 for _, d in ipairs(E.DelveData) do
     E.LoggableDelveNames[d.name] = "regular"
 end
-E.LoggableDelveNames[E.NemesisDelve.name] = "nemesis"
+for nemesisName in pairs(E.NemesisBossByDelve) do
+    E.LoggableDelveNames[nemesisName] = "nemesis"
+end
 
 E.DelveDataByName = {}
 for _, d in ipairs(E.DelveData) do
@@ -333,6 +342,63 @@ E.DelveBosses = {
             },
         },
     },
+    ["Gnarldor Isle"] = {
+        {
+            name  = "Gralka Snake-Eater",
+            brief = "Drag her out of her own venom, sidestep the Purging Breath waves, and do not spend a kick on the channel.",
+            notes = {
+                { role = "dps",     text = "Snake Eater grants her two stacks per cast. Game data has each stack raising the damage she TAKES by 15%, so a stacked Gralka is your burn window - hold cooldowns for it." },
+                { role = "general", text = "Every Snake Eater cast leaves a venom puddle where she fed. Pull her off it instead of fighting inside it." },
+                { role = "general", text = "Purging Breath is a 6 second channel that spends one stack every 2 seconds and throws a toxic wave at whoever she is targeting. The waves one-shot, but she stands completely still while channeling, so they are easy to walk out of." },
+                { role = "general", text = "Do not interrupt Purging Breath. It can be kicked, but she is stationary and the waves are dodgeable, so the kick is worth more elsewhere." },
+                { role = "healer",  text = "Venomblade Slash hits for physical and leaves a nature damage-over-time that ticks harder for every Snake Eater stack. Valeera as Healer dispels the poison and, just as usefully, will not waste the interrupt on Purging Breath." },
+            },
+        },
+        {
+            name  = "Osseous Amalgamation",
+            brief = "Marrowgar's kit in a delve: interrupt Bone Shield, run out of Bonestorm, keep moving off the spikes.",
+            notes = {
+                { role = "interrupt", text = "Bone Shield applies a large absorb. Kick it, or you chew through the whole shield before your damage counts again." },
+                { role = "general",   text = "Bonestorm deals physical damage to everything nearby - walk out and kite until it ends." },
+                { role = "general",   text = "Bone Spike erupts in a run of small spikes underneath you, one after another. Keep moving; a hit is moderate damage plus a short knockback." },
+            },
+        },
+    },
+    ["The Ring of Glory"] = {
+        {
+            name  = "Drakta, Hero of the Arena",
+            brief = "Fight him beside a pillar so you can break line of sight on both Death Grip and Roar of the Champion.",
+            notes = {
+                { role = "general", text = "Soul Cleave drops a large circle around him and leaves a voidzone behind. Move around the pillar rather than straight out, so Death Grip cannot drag you back into it." },
+                { role = "general", text = "Death Grip pulls his furthest target to him. Fighting next to a pillar is the whole answer - line of sight beats the pull." },
+                { role = "general", text = "Roar of the Champion slows him but raises his damage by 80%. Break line of sight and wait it out instead of trading with him." },
+            },
+        },
+        {
+            name  = "Gnok",
+            brief = "Dodge the Upheaval circles, then keep going - he dies once and comes back at full health.",
+            notes = {
+                { role = "general", text = "Phase 1: Upheaval marks his furthest target with a large circle and leaves a puddle where it lands. Move out before the cast finishes." },
+                { role = "general", text = "Phase 1: Pulverize is moderate damage on his current target." },
+                { role = "general", text = "At 0 health he is resurrected at full health and phase 2 begins - do not walk off when he drops." },
+                { role = "general", text = "Phase 2: Necrotic Upheaval is a frontal you can sidestep, and it leaves voidzones behind it." },
+                { role = "general", text = "Phase 2: Ejecting Decay spawns small circles around him plus a large circle on you and Valeera. The large ones throw you into the air, so clear both." },
+            },
+        },
+        {
+            name  = "Open Night arena champions",
+            brief = "Open Night is a gauntlet before Drakta: clear the floor, then Crushfoot, the Bluegill Brothers, Brinebeater, Guth'kar the Bound and Hexspitter Zit'ka.",
+            notes = {
+                { role = "general",   text = "Clear the arena floor first. On higher tiers some of those enemies are replaced by Nemesis mobs, so look before you pull." },
+                { role = "general",   text = "Crushfoot, a rhino, opens. Savage Gore bleeds his target, and Stampeding Charge hits hard unless you put a wall between you and him to break the cast." },
+                { role = "interrupt", text = "The Bluegill Brothers, three murlocs, come next - focus and interrupt the two smaller casters." },
+                { role = "interrupt", text = "Brinebeater, a sea giant, follows. Tidal Rage raises his damage by 60% and should be interrupted every time." },
+                { role = "general",   text = "Brinebeater's Tidal Smash drops a large circle around him, and Break Water puts a circle on you and Valeera that launches you if you stay in it." },
+                { role = "interrupt", text = "Guth'kar the Bound, a voidwalker, is straightforward as long as Curse of Dread is kicked. Valeera on DPS covers his Void Bolts." },
+                { role = "interrupt", text = "Three ghostly trolls close it out - focus Hexspitter Zit'ka and keep her interrupted." },
+            },
+        },
+    },
     ["Shadowguard Point"] = {
         {
             name  = "Chief-Arcanist Patram",
@@ -366,6 +432,17 @@ end
 -- is known from first login before any live ENCOUNTER_END capture. Some
 -- variants carry duplicate keys for alternate spellings the API returns.
 E.DelveBossByVariant = {
+    ["Gnarldor Isle"] = {
+        ["Speaking Their Language"]     = "Gralka Snake-Eater",
+        ["Olds and Ends"]               = "Gralka Snake-Eater",
+        ["Minchi's Osseous Adventure"]  = "Osseous Amalgamation",
+        ["Minchi's Osseous Adventurer"] = "Osseous Amalgamation",
+    },
+    ["The Ring of Glory"] = {
+        ["Open Night"]   = "Drakta, Hero of the Arena",
+        ["Game Day"]     = "Drakta, Hero of the Arena",
+        ["Adopt-a-thon"] = "Gnok",
+    },
     ["Collegiate Calamity"] = {
         ["Invasive Glow"]        = "Hydrangea",
         ["Faculty of Fear"]      = "Infiltrator Garand",

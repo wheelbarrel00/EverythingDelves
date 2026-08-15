@@ -3,6 +3,27 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.25.0", date = "2026-08-14",
+        sections = {
+            { head = "New", items = {
+                "Boss tactics for the two new Delves - Gnarldor Isle covers Gralka Snake-Eater and Osseous Amalgamation, The Ring of Glory covers Drakta, Hero of the Arena and Gnok, with today's boss marked.",
+                "The Open Night arena gauntlet is written out in full - Crushfoot, the Bluegill Brothers, Brinebeater, Guth'kar the Bound and Hexspitter Zit'ka, including which casts to interrupt.",
+                "The Nemesis tab now covers Season 2 - Azta'rec in Venomfall Deeps, with his main-phase kit, the Sermon of Ula'tek memory pattern, what changes on Tier \"??\", the Valeera role and curio setup including her new Poisons slot, and the reward list.",
+                "The World Quest scanner now covers The Coiled Isle, which was being skipped entirely.",
+            }},
+            { head = "Fixed", items = {
+                "Coffer Key Shards no longer reads \"0 / 0\" on the Bountiful tab - it compared your shards against a cap that is always zero for that currency, and now shows this week's real earn cap.",
+                "The Bountiful progress bar no longer reads \"0 / 1\" until Bountiful Delves are unlocked, claiming a Delve existed that did not.",
+                "The Bountiful tab now explains an empty list instead of leaving column headers over blank space, and says when data is still loading.",
+                "Delve History keeps the right Nemesis name - your existing Torment's Rise runs still show Nullaeus rather than the new season's boss.",
+            }},
+            { head = "Coming next", items = {
+                "Bountiful tracking, Delver's Call quests and Tier ratings for the two new Delves need data that will be updated very soon.",
+                "Patch 12.1 also added a new story variant to eight of the ten older Delves. Those are being worked through and land in upcoming updates.",
+            }},
+        },
+    },
+    {
         version = "1.24.0", date = "2026-08-10",
         sections = {
             { head = "New", items = {

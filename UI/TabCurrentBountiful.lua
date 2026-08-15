@@ -112,6 +112,8 @@ local delveRowPool = {}
 local bossRowPool  = {}
 local noteLinePool = {}
 local sc, scrollFrame, scrollBar
+local emptyStateFS
+local sawLivePOI = false
 local UpdateScrollRange
 
 local function RoleCC(role)
@@ -225,6 +227,7 @@ local function PopulateBountifulDelvesLive(out)
             end
         end
     end
+    if #out > 0 then sawLivePOI = true end
 end
 
 local function GetCurrencyAmount(currencyID)
@@ -242,8 +245,18 @@ local function GetBountifulKeys()
     return GetCurrencyAmount(E.CurrencyIDs.bountifulKeys)
 end
 
+-- maxQuantity is a static 0 for this currency, so the ceiling that means
+-- anything is the weekly earn cap.
 local function GetCofferShards()
-    return GetCurrencyAmount(E.CurrencyIDs.cofferKeyShards)
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.cofferKeyShards)
+        if info then
+            return info.quantity or 0,
+                   info.quantityEarnedThisWeek or 0,
+                   info.maxWeeklyQuantity or 0
+        end
+    end
+    return 0, 0, 0
 end
 
 local function KeysFromShards(shards)
@@ -841,6 +854,27 @@ function UpdateRows()
         end
     end
 
+    if #bountifulList == 0 then
+        if not emptyStateFS then
+            emptyStateFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            emptyStateFS:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -12)
+            emptyStateFS:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
+            emptyStateFS:SetJustifyH("LEFT")
+            emptyStateFS:SetFont(emptyStateFS:GetFont(), 12)
+        end
+        -- A cold POI cache returns nil for delves that really are bountiful, so
+        -- an empty list only means "none today" once one has resolved.
+        emptyStateFS:SetText(E.CC.muted .. (sawLivePOI
+            and "No bountiful delves are active right now."
+                .. "\nThey rotate daily - check back after reset."
+            or  "Loading bountiful delve data..."
+                .. "\nClick Refresh if this does not clear.") .. E.CC.close)
+        emptyStateFS:Show()
+        yCur = yCur + 48
+    elseif emptyStateFS then
+        emptyStateFS:Hide()
+    end
+
     sc:SetHeight(yCur + 8)
     if UpdateScrollRange then UpdateScrollRange() end
 end
@@ -864,7 +898,7 @@ E:RegisterModule(function()
 
     local function RefreshStats()
         local keys  = GetBountifulKeys()
-        local shards, maxShards = GetCofferShards()
+        local shards, shardsThisWeek, weeklyCap = GetCofferShards()
         local stage, cur, stageMax = GetJourneyProgress()
         local sessionDone = (E.sessionData and E.sessionData.bountifulCompleted) or 0
 
@@ -874,7 +908,10 @@ E:RegisterModule(function()
         statValues.bountifulKeys:SetText(E.CC.gold .. keys .. E.CC.close)
         statValues.cofferShards:SetText(
             E.CC.gold .. shards .. E.CC.close
-            .. E.CC.muted .. " / " .. maxShards .. E.CC.close
+            .. (weeklyCap > 0
+                and (E.CC.muted .. "  (" .. shardsThisWeek .. " / " .. weeklyCap
+                     .. " this week)" .. E.CC.close)
+                or "")
         )
         statValues.keysFromShards:SetText(
             E.CC.gold .. KeysFromShards(shards) .. E.CC.close
@@ -1044,7 +1081,7 @@ E:RegisterModule(function()
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
         end
-        progressBar:SetProgress(done, math_max(1, #bountifulList))
+        progressBar:SetProgress(done, #bountifulList)
     end)
     refreshBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
@@ -1150,7 +1187,7 @@ E:RegisterModule(function()
         for _, d in ipairs(bountifulList) do
             if d.completed then done = done + 1 end
         end
-        progressBar:SetProgress(done, math_max(1, #bountifulList))
+        progressBar:SetProgress(done, #bountifulList)
 
         UpdateRows()
         UpdateBestPick()
@@ -1186,7 +1223,7 @@ E:RegisterModule(function()
             for _, d in ipairs(bountifulList) do
                 if d.completed then done = done + 1 end
             end
-            progressBar:SetProgress(done, math_max(1, #bountifulList))
+            progressBar:SetProgress(done, #bountifulList)
             UpdateRows()
             UpdateBestPick()
         end

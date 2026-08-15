@@ -86,11 +86,12 @@ E:RegisterModule(function()
         return fs
     end
 
-    local NEMESIS_MAP   = 2405
-    local NEMESIS_X     = 61.17
-    local NEMESIS_Y     = 71.37
-    local NULLING_QUEST = 93525
-    local NEMESIS_ICON  = "Interface\\Icons\\Inv_120_raid_voidspire_hostgeneral"
+    local NEMESIS_MAP   = 2512
+    local NEMESIS_X     = 51.22
+    local NEMESIS_Y     = 30.27
+    -- "Fangs for the Memories" quest id is not known until Season 2 opens.
+    local NEMESIS_QUEST = nil
+    local NEMESIS_ICON  = "Interface\\Icons\\Ability_Creature_Poison_06"
     local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
     local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -110,8 +111,9 @@ E:RegisterModule(function()
     nemNameFS:SetPoint("LEFT", nemIcon, "RIGHT", 8, 8)
     nemNameFS:SetFont(nemNameFS:GetFont(), 14)
     nemNameFS:SetText(
-        E.CC.gold .. "Nullaeus" .. E.CC.close
-        .. E.CC.muted .. "  \226\128\148  Voidstorm  \226\128\148  Torment's Rise" .. E.CC.close
+        E.CC.gold .. "Azta'rec" .. E.CC.close
+        .. E.CC.muted .. "  \226\128\148  The Coiled Isle  \226\128\148  Venomfall Deeps"
+        .. E.CC.close
     )
 
     local nemSubFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -119,7 +121,7 @@ E:RegisterModule(function()
     nemSubFS:SetFont(nemSubFS:GetFont(), 10)
     nemSubFS:SetText(
         E.CC.muted
-        .. "Weekly bounty: beat him to 50%  \226\128\148  Torment's Rise delve: full kill"
+        .. "Season 2 Nemesis  \226\128\148  two difficulties, Tier \"?\" and Tier \"??\""
         .. E.CC.close
     )
 
@@ -133,7 +135,7 @@ E:RegisterModule(function()
     nemWpBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set Waypoint", "Pin Nullaeus on your map.")
+        E:ShowTooltip(self, "Set Waypoint", "Pin Venomfall Deeps on your map.")
     end)
     nemWpBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -145,14 +147,14 @@ E:RegisterModule(function()
     nemTTBtn.label:SetFont(nemTTBtn.label:GetFont(), 10)
     nemTTBtn:SetPoint("LEFT", nemWpBtn, "RIGHT", 4, 0)
     nemTTBtn:SetScript("OnClick", function()
-        E:AddTomTomWaypoint(NEMESIS_MAP, NEMESIS_X, NEMESIS_Y, "Nullaeus")
+        E:AddTomTomWaypoint(NEMESIS_MAP, NEMESIS_X, NEMESIS_Y, "Venomfall Deeps")
         E:FlashButtonConfirm(nemTTBtn)
     end)
     nemTTBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, "TomTom Waypoint", "Add a TomTom arrow to Nullaeus.")
+            E:ShowTooltip(self, "TomTom Waypoint", "Add a TomTom arrow to Venomfall Deeps.")
         else
             E:ShowTooltip(self, "TomTom Not Installed",
                           "Install the TomTom addon to use arrow waypoints.")
@@ -181,35 +183,42 @@ E:RegisterModule(function()
 
     local ovAnchor = overviewHeader
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.body .. "Nullaeus is the Midnight Season 1 Nemesis, and you can fight him "
+        E.CC.yellow .. "Venomfall Deeps only opens once Midnight Season 2 begins."
+        .. E.CC.close
+        .. E.CC.body .. " Until then the delve is not enterable, though Azta'rec himself "
+        .. "can already be met the other way listed below." .. E.CC.close)
+    ovAnchor = AddBodyLine(ovAnchor, -6, 10,
+        E.CC.body .. "Azta'rec is the Midnight Season 2 Nemesis, and you can meet him "
         .. "two separate ways:" .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Weekly bounty" .. E.CC.close
-        .. E.CC.body .. "  summon him with a Beacon of Hope (or catch his random spawn) "
-        .. "inside any delve and beat him to 50% HP, at which point he retreats and the "
-        .. "bounty completes. See the Beacon of Hope section below." .. E.CC.close)
+        .. E.CC.gold .. "Inside any delve" .. E.CC.close
+        .. E.CC.body .. "  he can appear at random in any Tier 8 or higher delve, and can "
+        .. "also be summoned on the spot with a Scalebound Herald's Flute." .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Torment's Rise" .. E.CC.close
-        .. E.CC.body .. "  the dedicated single-boss Nemesis delve in The Voidstorm, run "
-        .. "at Tier 8 or Tier 11. Here you must kill Nullaeus outright \226\128\148 that is "
-        .. "what awards the achievements, mount, and title. The mechanics and "
-        .. "intermissions below cover this full fight." .. E.CC.close)
+        .. E.CC.gold .. "Venomfall Deeps" .. E.CC.close
+        .. E.CC.body .. "  the dedicated Nemesis delve on The Coiled Isle. This is the "
+        .. "full fight \226\128\148 the mechanics and intermissions below cover it, and it is "
+        .. "what awards the achievements, mount, and titles." .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -8, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Tier 8" .. E.CC.close
-        .. E.CC.body .. "  unlocks after clearing any Tier 7 delve with at least one life "
-        .. "remaining. Recommended item level around 255." .. E.CC.close)
+        .. "|cFFFF8800" .. "Tier \"?\"" .. E.CC.close
+        .. E.CC.body .. "  the easier of the two. Recommended item level 290."
+        .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Tier 11" .. E.CC.close
-        .. E.CC.body .. "  unlocks after clearing any Tier 10 delve with at least one life "
-        .. "remaining. Recommended item level around 274." .. E.CC.close)
+        .. E.CC.red .. "Tier \"??\"" .. E.CC.close
+        .. E.CC.body .. "  everything hits far harder, and he summons an Echo of himself "
+        .. "during every intermission. This is the one the title and the Fabled title "
+        .. "require." .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.muted .. "The Torment's Rise entrance is a portal in the south-east of The "
-        .. "Voidstorm, just north of Obscurion Citadel (use Pin or TomTom above). Your "
-        .. "first kill there awards a bonus 30 Hero Dawncrests." .. E.CC.close)
+        E.CC.muted .. "The entrance is on the north side of The Coiled Isle, inside one of "
+        .. "the snake buildings (use Pin or TomTom above). Your first kill awards a bonus "
+        .. "30 Hero Mistcrests, which do not count toward the season maximum." .. E.CC.close)
+    ovAnchor = AddBodyLine(ovAnchor, -6, 10,
+        E.CC.muted .. "The encounter is deliberately punishing and expects deaths while "
+        .. "you learn it, especially at lower item levels." .. E.CC.close)
 
     local divO = sc:CreateTexture(nil, "ARTWORK")
     divO:SetHeight(1)
@@ -243,10 +252,10 @@ E:RegisterModule(function()
     beaconHintFS:SetFont(beaconHintFS:GetFont(), 10)
     beaconHintFS:SetText(
         E.CC.muted
-        .. "The weekly bounty: enter a T7+ delve, reach the first checkpoint, then use a "
-        .. "Beacon of Hope to summon Nullaeus (he can also appear as a random delve spawn). "
-        .. "Beat him to 50% HP and he retreats \226\128\148 the bounty is done. Killing him all "
-        .. "the way down is only for the Torment's Rise delve." .. E.CC.close
+        .. "Use a Beacon of Hope inside a delve to call the Nemesis rather than waiting on "
+        .. "his random spawn. Season 2 also introduces the Scalebound Herald's Flute, which "
+        .. "summons Azta'rec inside the delve \226\128\148 its cost and vendor are not tracked "
+        .. "here yet. The Undercoin bar tracks the Beacon, not the Flute." .. E.CC.close
     )
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
@@ -267,15 +276,13 @@ E:RegisterModule(function()
     mechIntroFS:SetJustifyH("LEFT")
     mechIntroFS:SetText(
         E.CC.muted
-        .. "Between intermissions Nullaeus loops three casts about every 20 seconds, "
-        .. "always in order: " .. E.CC.close
-        .. E.CC.gold .. "Devouring Essence" .. E.CC.close
-        .. E.CC.muted .. " (dispel) -> " .. E.CC.close
-        .. E.CC.gold .. "Emptiness of the Void" .. E.CC.close
-        .. E.CC.muted .. " (interrupt) -> " .. E.CC.close
-        .. E.CC.gold .. "Imploding Strike" .. E.CC.close
-        .. E.CC.muted .. " (tank hit). Keep your kick free for Emptiness of the Void."
-        .. E.CC.close
+        .. "The fight splits into a main phase and an intermission at 90%, 60% and 30% "
+        .. "health. Two casts decide whether you live: " .. E.CC.close
+        .. E.CC.gold .. "Soul Extinction" .. E.CC.close
+        .. E.CC.muted .. " (interrupt) and " .. E.CC.close
+        .. E.CC.gold .. "Void Toxin" .. E.CC.close
+        .. E.CC.muted .. " (dispel). Pull him to the edge of the room so the Noxious Bile "
+        .. "puddles land away from the middle." .. E.CC.close
     )
 
     local mechTipFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -285,30 +292,42 @@ E:RegisterModule(function()
     mechTipFS:SetJustifyH("LEFT")
     mechTipFS:SetText(
         E.CC.muted
-        .. "Companion: as melee or tank, set Valeera to Healer and she dispels "
-        .. "Devouring Essence (and the Ravager bleed); as a healer, set her to DPS "
-        .. "so she interrupts Emptiness of the Void for you."
+        .. "Companion: as DPS or tank, set Valeera to Healer and she dispels Void Toxin "
+        .. "while you cover the interrupt; as a healer, set her to DPS so she interrupts "
+        .. "Soul Extinction and you dispel instead."
         .. E.CC.close
     )
 
     local MECHANICS = {
         {
-            name     = "Emptiness of the Void",
+            name     = "Soul Extinction",
             tag      = "Interrupt - Top Priority",
             tagColor = E.CC.red,
-            desc     = "His signature cast, roughly every 20 seconds: a massive group-wide shadow blast that can outright kill you, and almost always one-shots at higher tiers. Interrupt it every single time. If your kick is down, use an immunity, a major damage reduction, or break line of sight. Solo kick-saver: Interrupt, Immunity, Interrupt, Defensive, Interrupt.",
+            desc     = "An interruptible cast that deals lethal damage if it completes. Kick it every single time. Valeera interrupts it for you when her role is set to DPS, which is the reason a healer should run her that way.",
         },
         {
-            name     = "Devouring Essence",
+            name     = "Void Toxin",
             tag      = "Dispel",
             tagColor = E.CC.yellow,
-            desc     = "A magic shadow damage-over-time on one player: moderate damage every 2 seconds for 18 seconds. Do not waste your interrupt on it; Emptiness of the Void follows immediately and must be kicked, so dispel the magic DoT instead (Valeera as Healer does this for you) or ride it out with a personal.",
+            desc     = "A dispellable magic debuff that ticks for heavy damage and cuts the damage you deal by 40%. Remove it as soon as it lands. Valeera dispels it for you when her role is set to Healer.",
         },
         {
-            name     = "Imploding Strike",
-            tag      = "Tank Hit",
+            name     = "Noxious Bile",
+            tag      = "Frontal",
             tagColor = "|cFFFF8800",
-            desc     = "A moderate physical hit on whoever holds threat, about every 20 seconds. It is predictable on the timer, so pre-mitigate or rotate a defensive into it; solo players can also kite between casts.",
+            desc     = "A frontal cone that hits hard if you stay in it, and it leaves venom puddles behind on the floor. Aim it toward the outside of the room and step out once he has aimed it, so the middle of the arena stays clean for the intermission.",
+        },
+        {
+            name     = "Venom Storm",
+            tag      = "Keep Moving",
+            tagColor = "|cFFFF8800",
+            desc     = "Summons venom waves that crawl slowly across the arena and deal heavy damage to anyone they catch. They are slow enough to walk away from, so keep moving rather than reacting late.",
+        },
+        {
+            name     = "Serpent's Strike",
+            tag      = "Tank Hit",
+            tagColor = E.CC.muted,
+            desc     = "Only used while you are in a tank specialization, and only a small amount of physical damage. Nothing to plan around.",
         },
     }
 
@@ -350,44 +369,34 @@ E:RegisterModule(function()
     phaseIntroFS:SetJustifyH("LEFT")
     phaseIntroFS:SetText(
         E.CC.muted
-        .. "In the Torment's Rise delve, Nullaeus becomes immune and channels a Void Orb "
-        .. "for about 30 seconds at 75%, 50%, and 25% health while adds spawn. Survive the "
-        .. "channel and burn the adds quickly to resume damage. Each intermission's hazard "
-        .. "lingers into the next phase. (In the weekly bounty he retreats at 50%, so you "
-        .. "only ever see the first intermission.)"
+        .. "At 90%, 60% and 30% health Azta'rec walks to the centre and channels "
+        .. "Sermon of Ula'tek, taking 99% reduced damage for the whole intermission. The "
+        .. "room splits into quarters: three flood with venom and one is safe. It is a "
+        .. "memory test, not a damage test \226\128\148 place four world markers on the "
+        .. "quadrants before you pull and call the safe spot by marker."
         .. E.CC.close
     )
 
     local PHASES = {
         {
-            pct   = "75%",
-            name  = "Razorshell Ravagers",
-            intro = "Two Razorshell Ravagers attack while a Void Orb seeds the floor with void zones.",
+            pct   = "90 / 60 / 30% HP",
+            name  = "Sermon of Ula'tek",
+            intro = "The same intermission runs at all three health thresholds, one step longer each time.",
             adds  = {
-                { n = "Spiny Leap", d = "The Ravager marks the furthest player with a circle, then leaps onto it for heavy nature damage. Step out of the circle." },
-                { n = "Jagged Rip", d = "A short cast that applies a strong bleed to its closest target. Dispellable (Valeera as Healer removes it)." },
-                { n = "Void Orb / Null Zones", d = "The orb spawns expanding void zones (Null Zones) that cover about a third of the room and rotate to fresh spots, never the same place twice in a row. Keep repositioning, and park Nullaeus near a zone edge so you always have a safe pocket. These zones linger into the next phase." },
+                { n = "Shown pattern", d = "He marks one safe quarter and covers the other three, with an animation showing which is which. You get a few seconds to run to the safe quarter. Stand close to him so every quarter is within reach." },
+                { n = "Repeated pattern", d = "He then replays the same sequence with no animation at all. You have to remember the order the safe zones came in - this is what kills people, not the damage." },
+                { n = "Length", d = "On Tier \"?\" the sequence runs 3 times, then 4, then 5 across the three intermissions. On Tier \"??\" it runs 5, then 6, then 7." },
+                { n = "Lingering venom", d = "Keep the middle of the room clear of Noxious Bile puddles during the main phase, or you will be dodging your own leftovers while running the pattern." },
             },
         },
         {
-            pct   = "50%",
-            name  = "Spitting Ticks",
-            intro = "Seven Spitting Ticks swarm in and a Gravity Well appears (some guides call it the Black Hole).",
+            pct   = "Tier \"??\" only",
+            name  = "Echo of Azta'rec",
+            intro = "On the harder difficulty he also summons an Echo of himself during the intermission.",
             adds  = {
-                { n = "Poisonous Spit", d = "Each hit is only moderate, but seven ticks stack the poison fast and can combo you down. Burst them with AoE immediately." },
-                { n = "Gravity Well", d = "A roaming orb that pulls you toward it, stronger the closer you get; reaching its center (the iris) deals heavy Shadow damage, and the pull drags you into void zones. Save a movement cooldown to break free." },
-            },
-        },
-        {
-            pct   = "25%",
-            name  = "Enslaved Voidcaster + Umbral Rage",
-            intro = "One durable Enslaved Voidcaster joins and Nullaeus gains Umbral Rage. The earlier void zones stay active and no new Void Orb spawns, so this intermission is mechanically the simplest, but the soft enrage turns it into a race.",
-            adds  = {
-                { n = "Shadow Bolt", d = "Interruptible single-target shadow damage from the Voidcaster." },
-                { n = "Shadow Crash", d = "Interruptible cast that drops a circle under you; step out of it." },
-                { n = "Curse of Hesitation", d = "A 5-minute curse that slows your movement by 30%. Remove it if you can (Valeera as Healer can decurse)." },
-                { n = "Umbral Rage", d = "A buff on Nullaeus that stacks, raising his damage by 10% per stack; it is the encounter's soft enrage, so the longer the final stretch drags, the harder he hits." },
-                { n = "Interrupt plan", d = "Kick the Voidcaster's first cast, then ignore it and save your interrupt for Nullaeus's Emptiness of the Void." },
+                { n = "Echo of Azta'rec", d = "It does not have much health, but it uses every ability from his main phase - including Soul Extinction, which will one-shot you if it lands. Crowd control it and kill it fast; leaving it up makes the whole intermission far harder." },
+                { n = "Cover the Echo's casts", d = "If Valeera is set to Healer, you must interrupt the Echo yourself. If she is set to DPS she covers the interrupt, but then you have to dispel Void Toxin." },
+                { n = "Extra venom sets", d = "Two additional venom coverings are added, so the pattern you must memorise reaches five safe zones." },
             },
         },
     }
@@ -398,7 +407,7 @@ E:RegisterModule(function()
         pctLine:SetPoint("TOPLEFT", phaseAnchor, "BOTTOMLEFT", (i == 1) and 0 or -12, (i == 1) and -10 or -16)
         pctLine:SetFont(pctLine:GetFont(), 11)
         pctLine:SetText(
-            E.CC.red .. ph.pct .. " HP" .. E.CC.close
+            E.CC.red .. ph.pct .. E.CC.close
             .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
             .. E.CC.gold .. ph.name .. E.CC.close
         )
@@ -440,10 +449,10 @@ E:RegisterModule(function()
     finalLine:SetText(
         E.CC.gold .. "Final push" .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-        .. E.CC.body .. "Below 25% there are no more intermissions, but Umbral Rage "
-        .. "keeps stacking (+10% damage each). Pop everything (Bloodlust/Heroism/Drums, "
-        .. "potions, every cooldown) and burn him before the stacks overwhelm you."
-        .. E.CC.close
+        .. E.CC.body .. "After the 30% intermission there are no more, and the main phase "
+        .. "runs until he dies. Save Bloodlust or Heroism for after the last intermission "
+        .. "on Tier \"?\", or during the last intermission on Tier \"??\" to kill the Echo "
+        .. "faster." .. E.CC.close
     )
 
     local tierLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -452,11 +461,12 @@ E:RegisterModule(function()
     tierLine:SetFont(tierLine:GetFont(), 10)
     tierLine:SetJustifyH("LEFT")
     tierLine:SetText(
-        "|cFFFF8800" .. "Tier 11" .. E.CC.close
+        "|cFFFF8800" .. "Before you pull" .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-        .. E.CC.body .. "Everything hits far harder and mistakes stop being recoverable: "
-        .. "a missed Emptiness of the Void interrupt is almost always lethal, and the "
-        .. "Gravity Well's pull is stronger. Aim for roughly item level 274." .. E.CC.close
+        .. E.CC.body .. "Drop a world marker on each of the four quadrants, then call the "
+        .. "safe zones by marker during the Sermon. Remembering \"blue, yellow, purple\" "
+        .. "is far easier than remembering positions on a venom-covered floor."
+        .. E.CC.close
     )
 
     phaseAnchor = tierLine
@@ -474,35 +484,46 @@ E:RegisterModule(function()
 
     local compAnchor = compHeader
     compAnchor = AddBodyLine(compAnchor, -6, 10,
-        E.CC.muted .. "Set your delve companion Valeera's role to cover whichever key "
-        .. "mechanic you cannot handle yourself:" .. E.CC.close)
+        E.CC.muted .. "Only two mechanics need covering, and Valeera can take exactly one "
+        .. "of them. Give her whichever you cannot cover yourself:" .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -6, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Melee / Tank" .. E.CC.close
-        .. E.CC.body .. "  run Valeera as Healer \226\128\148 she dispels Devouring Essence "
-        .. "and removes the Razorshell bleed, and you interrupt Emptiness of the Void."
-        .. E.CC.close)
+        .. E.CC.gold .. "DPS / Tank" .. E.CC.close
+        .. E.CC.body .. "  run Valeera as Healer \226\128\148 she dispels Void Toxin, and "
+        .. "you interrupt Soul Extinction yourself." .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
         .. E.CC.gold .. "Healer" .. E.CC.close
-        .. E.CC.body .. "  run Valeera as DPS \226\128\148 she interrupts Emptiness of the "
-        .. "Void, and you dispel Devouring Essence yourself." .. E.CC.close)
-    compAnchor = AddBodyLine(compAnchor, -3, 10,
-        E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Ranged DPS" .. E.CC.close
-        .. E.CC.body .. "  depends on your kick uptime; if you cannot cover every "
-        .. "Emptiness of the Void yourself, run Valeera as DPS." .. E.CC.close)
+        .. E.CC.body .. "  run Valeera as DPS \226\128\148 she interrupts Soul Extinction, "
+        .. "and you dispel Void Toxin yourself." .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -8, 10,
         E.CC.gold .. "Curios" .. E.CC.close
-        .. E.CC.body .. "  Combat: Porcelain Blade Tip (crit) or Sanctum's Edict (an "
-        .. "absorb shield that helps survive the one-shot). Utility: Time Lost Edict "
-        .. "(movement, cooldown and cast-speed boost) or Overflowing Voidspire."
+        .. E.CC.body .. "  Valeera has a third slot this season: Combat, Utility and a new "
+        .. "Poisons slot. The picks do not change with your own role." .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -6, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.gold .. "Poison" .. E.CC.close
+        .. E.CC.body .. "  Frosthearth Venom \226\128\148 cuts enemy attack and cast speed "
+        .. "by 20%, which buys time on both Soul Extinction and the Void Toxin dispel."
         .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -3, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.gold .. "Combat" .. E.CC.close
+        .. E.CC.body .. "  Corrosive Bilespear for straight damage. Ouroboric Curse is the "
+        .. "alternative, but much of this delve one-shots, so its effect is hard to keep "
+        .. "procced." .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -3, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.gold .. "Utility" .. E.CC.close
+        .. E.CC.body .. "  Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so "
+        .. "often it is close to permanent uptime, and the debuff sits on the boss, so "
+        .. "Valeera's own interrupts keep it up even while you play healer. 30% damage at "
+        .. "Rank 3 or higher." .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -6, 10,
         E.CC.gold .. "Consumables" .. E.CC.close
-        .. E.CC.body .. "  carry health and DPS potions, and save Bloodlust/Heroism/Drums "
-        .. "for the sub-25% Umbral Rage push. Boss-timer addons (DBM, BigWigs) help you "
-        .. "pre-empt Emptiness of the Void." .. E.CC.close)
+        .. E.CC.body .. "  carry health and DPS potions, and hold Bloodlust or Heroism for "
+        .. "after the final intermission on Tier \"?\", or for killing the Echo during the final "
+        .. "intermission on Tier \"??\"." .. E.CC.close)
 
     local divC = sc:CreateTexture(nil, "ARTWORK")
     divC:SetHeight(1)
@@ -519,21 +540,22 @@ E:RegisterModule(function()
     rewardNoteFS:SetPoint("TOPLEFT", rewardHeader, "BOTTOMLEFT", 0, -4)
     rewardNoteFS:SetFont(rewardNoteFS:GetFont(), 10)
     rewardNoteFS:SetText(
-        E.CC.muted .. "Collectibles for defeating Nullaeus this season "
-        .. "(hover an item for its tooltip):" .. E.CC.close
+        E.CC.muted .. "Collectibles for defeating Azta'rec this season "
+        .. "(item icons appear once their IDs are confirmed):" .. E.CC.close
     )
 
     local REWARDS = {
-        { name = "Nullaeus Domaneye",            kind = "Cosmetic Helm", itemID = 263413, color = E.CC.purple,
-          cond = "Defeat Nullaeus on either tier this season (My Shady Nemesis).", extra = "Also grants 30 Hero Dawncrests." },
-        { name = "Dominating Victory",           kind = "Toy",           itemID = 264413, color = E.CC.green,
-          cond = "Reward from the Nulling Nullaeus quest." },
-        { name = "Arcanovoid Construct",         kind = "Mount",         itemID = 263222, color = E.CC.purple,
-          cond = "Solo Nullaeus at Tier 11 (Let Me Solo Him: Nullaeus)." },
-        { name = "The Ominous",                  kind = "Title",                          color = E.CC.gold,
-          cond = "Defeat Nullaeus at Tier 11 (Lighting the Dark)." },
-        { name = "Fabled Vanquisher of Nullaeus", kind = "Title",                         color = E.CC.yellow,
-          cond = "Be among the first 4,000 in your region to solo him at Tier 11." },
+        { name = "Apophic Patagia",              kind = "Cloak Transmog", color = E.CC.purple,
+          cond = "Defeat Azta'rec on either difficulty during Season 2 (My Venomous Nemesis, a Feat of Strength).",
+          extra = "Your first kill also grants 30 Hero Mistcrests, which do not count toward the season maximum." },
+        { name = "Corrosive Victory",            kind = "Toy",            color = E.CC.green,
+          cond = "Reward from the Fangs for the Memories quest." },
+        { name = "Apophic Soul Crusher",         kind = "Mount",          color = E.CC.purple,
+          cond = "Solo Azta'rec (Let Me Solo Him: Azta'rec)." },
+        { name = "the Poisonous",                kind = "Title",          color = E.CC.gold,
+          cond = "Defeat Azta'rec on Tier \"??\" (Purging the Poison)." },
+        { name = "Fabled Vanquisher of Azta'rec", kind = "Title",         color = E.CC.yellow,
+          cond = "Defeat him in his lair on Tier \"??\" with no other players in your party, within the first week of Season 2 (Fabled Let Me Solo Him: Azta'rec)." },
     }
 
     local rewardAnchor = rewardNoteFS
@@ -594,31 +616,40 @@ E:RegisterModule(function()
     end
 
     local function RefreshNemesis()
+        if not NEMESIS_QUEST then
+            nemStatusFS:SetText(
+                E.CC.muted .. "Fangs for the Memories \226\128\148 the one-time seasonal "
+                .. "quest that awards the Corrosive Victory toy. Live tracking starts once "
+                .. "Season 2 opens and its quest ID is confirmed." .. E.CC.close
+            )
+            return
+        end
+
         local completed, inProgress = false, false
         if C_QuestLog then
             if C_QuestLog.IsQuestFlaggedCompleted then
-                completed = C_QuestLog.IsQuestFlaggedCompleted(NULLING_QUEST)
+                completed = C_QuestLog.IsQuestFlaggedCompleted(NEMESIS_QUEST)
             end
             if (not completed) and C_QuestLog.IsOnQuest then
-                inProgress = C_QuestLog.IsOnQuest(NULLING_QUEST)
+                inProgress = C_QuestLog.IsOnQuest(NEMESIS_QUEST)
             end
         end
 
         if completed then
             nemStatusFS:SetText(
-                E.CC.green .. "[Done] Nulling Nullaeus complete \226\128\148 "
-                .. "Dominating Victory earned." .. E.CC.close
+                E.CC.green .. "[Done] Fangs for the Memories complete \226\128\148 "
+                .. "Corrosive Victory earned." .. E.CC.close
             )
         elseif inProgress then
             nemStatusFS:SetText(
-                E.CC.yellow .. "Nulling Nullaeus in progress \226\128\148 "
+                E.CC.yellow .. "Fangs for the Memories in progress \226\128\148 "
                 .. "check your quest log." .. E.CC.close
             )
         else
             nemStatusFS:SetText(
-                E.CC.btnText .. "Nulling Nullaeus available" .. E.CC.close
+                E.CC.btnText .. "Fangs for the Memories available" .. E.CC.close
                 .. E.CC.muted
-                .. " \226\128\148 the one-time seasonal quest; defeat Nullaeus to earn it."
+                .. " \226\128\148 the one-time seasonal quest; defeat Azta'rec to earn it."
                 .. E.CC.close
             )
         end

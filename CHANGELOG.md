@@ -5,6 +5,26 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0] - 2026-08-14
+
+### New Features
+
+- **Boss tactics for the two new Delves** - Gnarldor Isle and The Ring of Glory now expand into full boss breakdowns like every other Delve, with today's boss marked. Gnarldor Isle covers Gralka Snake-Eater and Osseous Amalgamation. The Ring of Glory covers Drakta, Hero of the Arena and Gnok, plus a walkthrough of the Open Night arena gauntlet - Crushfoot, the Bluegill Brothers, Brinebeater, Guth'kar the Bound and Hexspitter Zit'ka - including which of their casts to interrupt.
+- **The Nemesis tab now covers Season 2** - The tab is now Azta'rec in Venomfall Deeps on The Coiled Isle. It has his full main-phase kit, the Sermon of Ula'tek intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the full reward list. Venomfall Deeps only opens once Season 2 begins, and the tab says so until then.
+- **Valeera's new Poisons slot** - The Nemesis tab's loadout advice covers all three of her curio slots, including the Poisons slot added this season.
+- **World Quest scanner covers The Coiled Isle** - Shard-rewarding world quests in the new zone were being skipped entirely.
+
+### Bug Fixes
+
+- **Coffer Key Shards no longer reads "0 / 0"** - The Current Bountiful Delves header compared your shards against a cap that is always zero for that currency, so it always looked like you were at a cap of nothing. It now shows what you have earned against this week's real cap.
+- **The Bountiful progress bar no longer invents a Delve** - Until Bountiful Delves are unlocked the bar read "0 / 1", claiming one existed and that you had not done it.
+- **The Bountiful tab explains itself when it is empty** - Instead of column headers sitting over blank space, it now tells you whether nothing is Bountiful right now or the data is still loading.
+- **Delve History keeps the right Nemesis name** - Your existing Torment's Rise runs still show Nullaeus instead of picking up the new season's boss name.
+
+### Notes
+
+- **The rest of the new Delve data is coming** - Bountiful tracking for Gnarldor Isle and The Ring of Glory, their Delver's Call quests, and Tier ratings all need data that will be updated very soon. Patch 12.1 also quietly added a new story variant to eight of the ten older Delves, and those are being worked through as well. It all lands in upcoming updates.
+
 ## [1.24.0] - 2026-08-10
 
 ### New Features
