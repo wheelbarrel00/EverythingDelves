@@ -38,7 +38,7 @@
 
 ## Overview
 
-Everything Delves is a display-only companion addon for WoW: Midnight (12.1 Season 1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
+Everything Delves is a display-only companion addon for WoW: Midnight (12.1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
 
 Open with **`/ed`** or the minimap button. Right-click the minimap button to jump to Options.
 
@@ -52,7 +52,7 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, your own gear tier highlighted
 - **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
-- **Nullaeus (Seasonal Nemesis)** — the weekly boss delve at Torment's Rise: boss mechanics, phase transitions, and the full reward track
+- **Azta'rec (Seasonal Nemesis)** — the Season 2 Nemesis delve, Venomfall Deeps on The Coiled Isle: boss mechanics, the Sermon of Ula'tek intermission, the Tier "?" and Tier "??" differences, companion and curio setup, and the full reward track
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Dawncrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
@@ -88,8 +88,8 @@ Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and 
 - **Gilded Stash** — 4× T11 Bountiful weekly reward progress
 - **Midnight Faction Renown** — Silvermoon Court, Amani Tribe, Hara'ti, The Singularity
 
-### Nullaeus (Seasonal Nemesis)
-A dedicated tab for the weekly **Nullaeus** boss delve in Torment's Rise (Voidstorm): quest status with a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, the full boss mechanics list, the three phase transitions, and the reward track — the Nullaeus Domaneye helm, Dominating Victory toy, Arcanovoid Construct mount, and the Ominous / Fabled Vanquisher titles, each with a live item tooltip.
+### Azta'rec (Seasonal Nemesis)
+A dedicated tab for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles. Venomfall Deeps only opens once Season 2 begins, and the tab says so until then.
 
 ### Shard Tracker
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 7 known shard sources with live quest completion tracking. Also includes:
@@ -97,11 +97,11 @@ Your shard economy dashboard. Currency overview with progress bars for next key 
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — all 8 tracked with unlock, active, and completed status
 - **Weekly Delve Quest** — "Midnight: Delves" completion status
-- **World Quest Scanner** — all 6 Midnight zones scanned for shard-rewarding WQs
+- **World Quest Scanner** — all 7 Midnight zones scanned for shard-rewarding WQs
 - **Low Shard Warning** — configurable threshold alert
 
 ### Delve History
-Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis (Torment's Rise / Nullaeus). Auto-detected — just play normally and runs are logged automatically. Grouped by delve with collapsible detail rows:
+Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis. Auto-detected — just play normally and runs are logged automatically. History from past seasons is kept and keeps its own boss name, so older Torment's Rise runs still read Nullaeus. Grouped by delve with collapsible detail rows:
 - **Total runs, highest tier, average & fastest times, total deaths, and keys used** per delve
 - **Latest run** time and date shown on each delve's summary line
 - **Per-run detail** for your recent runs: tier, time, deaths, Coffer Key used, story variant, the **boss you faced**, and the date + time of day
@@ -179,12 +179,12 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 | Isle of Quel'Danas | Parhelion Plaza |
 | Eversong Woods | The Shadow Enclave |
 | Zul'Aman | Atal'Aman, Twilight Crypt |
-| Voidstorm | Shadowguard Point, Sunkiller Sanctum, Torment's Rise (Seasonal Nemesis) |
+| Voidstorm | Shadowguard Point, Sunkiller Sanctum |
 | Harandar | The Gulf of Memory, The Grudge Pit |
 | Silvermoon | Collegiate Calamity, The Darkway |
-| The Coiled Isle | Gnarldor Isle, The Ring of Glory |
+| The Coiled Isle | Gnarldor Isle, The Ring of Glory, Venomfall Deeps (Seasonal Nemesis) |
 
-> **New in 12.1:** Gnarldor Isle and The Ring of Glory are listed with locations, waypoints, today's story, and their achievements. Bountiful tracking, Delver's Call quests, boss tactics, and tier ratings for these two arrive in the next update.
+> **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, and boss tactics for all four of their bosses plus the Open Night arena gauntlet. Bountiful tracking and tier ratings for these two are still to come, along with the extra story variant 12.1 added to eight of the older delves.
 
 ---
 
@@ -294,5 +294,5 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 <p align="center">
-  <sub>Made for the Midnight expansion · Season 1 · 2026</sub>
+  <sub>Made for the Midnight expansion · 2026</sub>
 </p>
