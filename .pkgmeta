@@ -14,6 +14,7 @@ ignore:
   - .pkgmeta
   - .github
   - .gitignore
+  - .luacheckrc
   - README.md
   - CHANGELOG.md
   - .vscode
