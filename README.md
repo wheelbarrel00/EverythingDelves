@@ -53,12 +53,12 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, your own gear tier highlighted
 - **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
 - **Azta'rec (Seasonal Nemesis)** — the Season 2 Nemesis delve, Venomfall Deeps on The Coiled Isle: boss mechanics, the Sermon of Ula'tek intermission, the Tier "?" and Tier "??" differences, companion and curio setup, and the full reward track
-- **Shard Tracker** — every shard source with quest tracking, currency bars, a Dawncrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
+- **Shard Tracker** — every shard source with quest tracking, currency bars, a Mistcrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
 - **Bonus Spoils tracker** — an optional in-delve overlay that tracks the two bonus chests (the Nemesis Strongbox packs and the Sanctified Banner) so you know you've grabbed the extra loot before pulling the boss; off by default
-- **Options, Profiles & About** — color themes, alerts, a curio reminder, Valeera (and Brann) audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
+- **Options, Profiles & About** — color themes, alerts, a curio reminder, Valeera and Dun-dun audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
 - **Plus** — delve achievements on world-map pin tooltips, a minimap/broker button with live status text, a dark Midnight theme, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
 
 ---
@@ -80,7 +80,7 @@ An optional on-screen panel that appears while you're inside a delve. It shows t
 Open a delve's entrance and a panel appears beside the difficulty picker with everything you need to choose a tier: that delve's **achievement status** (story, chests, and tier goals), and a **tier-by-tier reward table** with each tier's loot and Great Vault item levels (gear-track colored), your own gear tier highlighted.
 
 ### Tier Guide
-Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl — with the loot iLvls **colored by their gear track** (Adventurer, Veteran, Champion, Hero, Myth; hover a tier to see the track). Your equipped iLvl is read automatically and the recommended tier is highlighted. This tab also includes:
+Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl — with the loot iLvls **colored by their gear track** (Adventurer, Veteran, Champion, Hero, Myth; hover a tier to see the track). Your equipped iLvl is read automatically and the recommended tier is highlighted. The recommended iLvls are **read from the game itself** whenever you open a Delve entrance and remembered for the season, so they stay right across a season change instead of waiting on an addon update. This tab also includes:
 - **Great Vault Progress** — each of the three reward slots for Mythic+ Dungeons and Delves/World Content shown individually, with its reward item level and the progress needed to unlock it
 - **Delver's Journey** — your current Journey level, a progress bar to the next level, and a row of milestone reward icons for each renown level
 - **Valeera Companion** — her level and an XP bar showing progress to the next companion unlock, plus a one-click launcher for the companion configuration UI
@@ -93,7 +93,7 @@ A dedicated tab for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** o
 
 ### Shard Tracker
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 7 known shard sources with live quest completion tracking. Also includes:
-- **Dawncrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier
+- **Mistcrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — all 8 tracked with unlock, active, and completed status
 - **Weekly Delve Quest** — "Midnight: Delves" completion status
@@ -184,7 +184,7 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 | Silvermoon | Collegiate Calamity, The Darkway |
 | The Coiled Isle | Gnarldor Isle, The Ring of Glory, Venomfall Deeps (Seasonal Nemesis) |
 
-> **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, and boss tactics for all four of their bosses plus the Open Night arena gauntlet. Bountiful tracking and tier ratings for these two are still to come, along with the extra story variant 12.1 added to eight of the older delves.
+> **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, bountiful tracking, and boss tactics for all four of their bosses plus the Open Night arena gauntlet. Tier ratings and Delver's Call quests for these two are still to come, along with the extra story variant 12.1 added to eight of the older delves.
 
 ---
 

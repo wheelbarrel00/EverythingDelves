@@ -83,9 +83,9 @@ function E:GetPersonalPaceBaseline()
 end
 
 -- Gear-scaled pre-history baseline: an undergeared character clears slower, so
--- the estimate stretches below BASELINE_REF_ILVL. Never returns less than
--- FALLBACK_BASELINE (low gear is never faster). GetSpeedGrade uses the same
--- value so the speed-colour ratio stays equal to the tier factor.
+-- the estimate stretches below the reference tier's recGear. Never returns
+-- less than FALLBACK_BASELINE (low gear is never faster). GetSpeedGrade uses
+-- the same value so the speed-colour ratio stays equal to the tier factor.
 function E:GetFallbackBaseline()
     local equipped = GetAverageItemLevel and select(2, GetAverageItemLevel())
     local ilvl = math_floor(equipped or 0)
