@@ -183,13 +183,15 @@ E:RegisterModule(function()
     div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
     E:StyleAccentDivider(div1)
 
-    -- SECTION 1b: Dawncrests
+    -- SECTION 1b: crests
     -- "Season Max" is the per-tier seasonal cap (info.maxQuantity): Blizzard
     -- raises it weekly via hotfix, so it must be read live, never hardcoded.
     local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
     crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(crestHeader, "Dawncrests")
+    -- Season-neutral until the currency API resolves, then renamed to whatever
+    -- this season's crests are actually called (see RefreshCrestHeader).
+    E:StyleAccentHeader(crestHeader, "Crests")
 
     local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     crestHeaderDiv:SetHeight(1)
@@ -256,7 +258,7 @@ E:RegisterModule(function()
     local CREST_ROW_Y  = CREST_COL_Y - 16
     local crestRows    = {}
 
-    for i, crest in ipairs(E.Dawncrests) do
+    for i, crest in ipairs(E.Crests) do
         local rowY = CREST_ROW_Y - ((i - 1) * CREST_ROW_H)
 
         if i % 2 == 0 then
@@ -300,7 +302,24 @@ E:RegisterModule(function()
         }
     end
 
-    local crestBottomY = CREST_ROW_Y - ((#E.Dawncrests - 1) * CREST_ROW_H)
+    -- Crests are renamed every season, so take the name from the currency
+    -- itself. Runs at most once: StyleAccentHeader registers a themed closure
+    -- per call, and currency info is not loaded yet when the tab is built.
+    local crestHeaderNamed = false
+    local function RefreshCrestHeader()
+        if crestHeaderNamed then return end
+        local first = E.Crests and E.Crests[1]
+        if not (first and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then return end
+        local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, first.id)
+        local name = ok and type(info) == "table" and info.name
+        if type(name) ~= "string" then return end
+        local word = name:match("(%a+)%s*$")
+        if not word then return end
+        crestHeaderNamed = true
+        E:StyleAccentHeader(crestHeader, word .. "s")
+    end
+
+    local crestBottomY = CREST_ROW_Y - ((#E.Crests - 1) * CREST_ROW_H)
         - CREST_ROW_H
     local div1b = sc:CreateTexture(nil, "ARTWORK")
     div1b:SetHeight(1)
@@ -949,7 +968,7 @@ E:RegisterModule(function()
             )
         end
 
-        -- Section 1b: Dawncrests
+        RefreshCrestHeader()
         for _, row in ipairs(crestRows) do
             local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
                          and C_CurrencyInfo.GetCurrencyInfo(row.id)

@@ -13,13 +13,15 @@ local TIER_TIME_FACTOR = {
     F = 1.85,
 }
 
--- B-tier baseline (seconds) for a delve-geared character; the pre-history
--- estimate is this stretched by gear deficit (GetFallbackBaseline). Anchored
--- to E.TierData recGear: ref 210 = no stretch, T1 floor (170) = 1.5x, cap 2.5x.
-local FALLBACK_BASELINE = 360
-local BASELINE_REF_ILVL = 210
-local BASELINE_PER_ILVL = 0.0125
-local BASELINE_MAX_MULT = 2.5
+-- B-tier baseline (seconds) for a delve-geared character. The pre-history
+-- estimate is this stretched by gear deficit (GetFallbackBaseline). The
+-- no-stretch reference is T4's recGear so it follows the live tier ladder
+-- instead of freezing at one season's numbers.
+local FALLBACK_BASELINE  = 360
+local BASELINE_REF_TIER  = 4
+local BASELINE_REF_FLOOR = 210
+local BASELINE_PER_ILVL  = 0.0125
+local BASELINE_MAX_MULT  = 2.5
 
 local TIER_REWARD_WEIGHT = {
     S = 6, A = 5, B = 4, C = 3, D = 2, F = 1,
@@ -87,7 +89,8 @@ end
 function E:GetFallbackBaseline()
     local equipped = GetAverageItemLevel and select(2, GetAverageItemLevel())
     local ilvl = math_floor(equipped or 0)
-    local deficit = BASELINE_REF_ILVL - ilvl
+    local refRow = self.TierData and self.TierData[BASELINE_REF_TIER]
+    local deficit = ((refRow and refRow.recGear) or BASELINE_REF_FLOOR) - ilvl
     if ilvl <= 0 or deficit <= 0 then return FALLBACK_BASELINE end
     local mult = math_min(BASELINE_MAX_MULT, 1 + deficit * BASELINE_PER_ILVL)
     return math_floor(FALLBACK_BASELINE * mult)

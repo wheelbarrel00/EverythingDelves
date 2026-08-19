@@ -3,6 +3,26 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.26.0", date = "2026-08-18",
+        sections = {
+            { head = "Fixed", items = {
+                "Bountiful Delves count the full set again - Gnarldor Isle was invisible to every Bountiful code path because its Bountiful map pin ID had never been confirmed, so a day it rolled Bountiful counted one Delve too few and the progress bar read \"1 / 3\" instead of \"1 / 4\". Its real ID has been read off a live Bountiful day and written in, along with The Ring of Glory's.",
+                "The Tier Guide shows Season 2 item levels - every number in the tier table was still Season 1, so at 278 equipped it recommended Tier 11 when Tier 6 is the right answer.",
+                "Reward gear tracks are named correctly - Season 2's upgrade tracks overlap, so an item level alone cannot say which track it is, and several Bountiful Loot and Great Vault values were labelled one track too low.",
+                "The crest tracker follows Season 2 - the Shard Tracker was still watching last season's Dawncrests, so every row sat at zero while your Mistcrests were nowhere in the tab.",
+            }},
+            { head = "Improved", items = {
+                "The Tier Guide reads its recommended item levels from the game rather than a baked-in table. It is read from the Delve entrance whenever you open one and remembered for the season, so it corrects itself on your first Delve of a new season.",
+                "The crest panel takes its heading from the currency in game, so it will name itself correctly next season without an update.",
+                "The pre-run clear-time estimate was anchored to a Season 1 gear reference that every Season 2 character is past. It now follows the live tier table.",
+            }},
+            { head = "Coming next", items = {
+                "I am actively working to get all of Season 2's features live and we are getting close.",
+                "Still to come: Tier ratings for the two new Delves, their Delver's Call quests, and the new story variant 12.1 added to eight of the ten older Delves.",
+            }},
+        },
+    },
+    {
         version = "1.25.0", date = "2026-08-14",
         sections = {
             { head = "New", items = {

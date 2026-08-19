@@ -132,28 +132,21 @@ E:RegisterModule(function()
         local tierFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         tierFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y)
         tierFS:SetFont(tierFS:GetFont(), 10, "OUTLINE")
-        local tc = E:GetTierCC(td.tier)
-        tierFS:SetText(tc .. "T" .. td.tier .. E.CC.close)
         cell.tierFS = tierFS
 
         local gearFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         gearFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT)
         gearFS:SetFont(gearFS:GetFont(), 10)
-        gearFS:SetText(E.CC.body .. td.recGear .. E.CC.close)
         cell.gearFS = gearFS
 
         local bountFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         bountFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 2)
         bountFS:SetFont(bountFS:GetFont(), 10)
-        local _, bountCC = E:GetLootTrack(td.bountifulLoot)
-        bountFS:SetText(bountCC .. td.bountifulLoot .. E.CC.close)
         cell.bountFS = bountFS
 
         local vaultFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         vaultFS:SetPoint("TOPLEFT", frame, "TOPLEFT", colX, GRID_Y - ROW_HEIGHT * 3)
         vaultFS:SetFont(vaultFS:GetFont(), 10)
-        local _, vaultCC = E:GetLootTrack(td.greatVault)
-        vaultFS:SetText(vaultCC .. td.greatVault .. E.CC.close)
         cell.vaultFS = vaultFS
 
         local hitBox = CreateFrame("Frame", nil, frame)
@@ -172,8 +165,8 @@ E:RegisterModule(function()
             table_insert(tipLines, "")
             table_insert(tipLines, E.CC.muted .. "Recommended iLvl: " .. E.CC.close
                 .. E.CC.gold .. td.recGear .. "+" .. E.CC.close)
-            local bN, bC = E:GetLootTrack(td.bountifulLoot)
-            local vN, vC = E:GetLootTrack(td.greatVault)
+            local bN, bC = E:GetLootTrack(td.bountifulLoot, td.bountifulTrack)
+            local vN, vC = E:GetLootTrack(td.greatVault, td.vaultTrack)
             table_insert(tipLines, E.CC.muted .. "Bountiful Loot: " .. E.CC.close
                 .. bC .. td.bountifulLoot .. " (" .. bN .. ")" .. E.CC.close)
             table_insert(tipLines, E.CC.muted .. "Great Vault: " .. E.CC.close
@@ -184,6 +177,24 @@ E:RegisterModule(function()
 
         tierCells[td.tier] = cell
     end
+
+    -- Opening a delve entrance can move recGear, so the grid is repainted
+    -- rather than built once.
+    local function RefreshTierGrid()
+        for _, td in ipairs(E.TierData) do
+            local cell = tierCells[td.tier]
+            if cell then
+                cell.tierFS:SetText(
+                    E:GetTierCC(td.tier) .. "T" .. td.tier .. E.CC.close)
+                cell.gearFS:SetText(E.CC.body .. td.recGear .. E.CC.close)
+                local _, bountCC = E:GetLootTrack(td.bountifulLoot, td.bountifulTrack)
+                cell.bountFS:SetText(bountCC .. td.bountifulLoot .. E.CC.close)
+                local _, vaultCC = E:GetLootTrack(td.greatVault, td.vaultTrack)
+                cell.vaultFS:SetText(vaultCC .. td.greatVault .. E.CC.close)
+            end
+        end
+    end
+    RefreshTierGrid()
 
     E:RegisterThemed(function(p)
         for _, cell in pairs(tierCells) do
@@ -1012,6 +1023,7 @@ E:RegisterModule(function()
     end
 
     frame:SetScript("OnShow", function()
+        RefreshTierGrid()
         RefreshRecommendation()
         RefreshGreatVault()
         RefreshJourney()
@@ -1026,6 +1038,13 @@ E:RegisterModule(function()
     end)
 
     E:RegisterCallback("InventoryChanged", function()
+        if frame:IsShown() then
+            RefreshRecommendation()
+        end
+    end)
+
+    E:RegisterCallback("TierDataChanged", function()
+        RefreshTierGrid()
         if frame:IsShown() then
             RefreshRecommendation()
         end

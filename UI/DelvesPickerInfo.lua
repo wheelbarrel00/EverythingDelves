@@ -106,8 +106,8 @@ E:RegisterModule(function()
 
         local td = E.TierData[i]
         row.tier:SetText(E:GetTierCC(td.tier) .. "T" .. td.tier .. E.CC.close)
-        local _, lc = E:GetLootTrack(td.bountifulLoot)
-        local _, vc = E:GetLootTrack(td.greatVault)
+        local _, lc = E:GetLootTrack(td.bountifulLoot, td.bountifulTrack)
+        local _, vc = E:GetLootTrack(td.greatVault, td.vaultTrack)
         row.loot:SetText(lc .. td.bountifulLoot .. E.CC.close)
         row.vault:SetText(vc .. td.greatVault .. E.CC.close)
 
@@ -235,6 +235,14 @@ E:RegisterModule(function()
         C_Timer.After(0, FitHeight)
     end
 
+    -- An open picker is the only moment GetDelveEntranceTiers returns anything,
+    -- so the tier read has to sit outside Show(), which bails on a cosmetic
+    -- option and on any entrance whose name we do not recognise.
+    local function OnPickerShown()
+        if E.RefreshTierDataFromGame then E:RefreshTierDataFromGame() end
+        Show()
+    end
+
     -- Additive only: HookScript the secure picker; never modify or move it.
     local hooked = false
     local function TryHookPicker()
@@ -242,12 +250,12 @@ E:RegisterModule(function()
         local picker = _G.DelvesDifficultyPickerFrame
         if not (picker and picker.HookScript) then return end
         local ok = pcall(function()
-            picker:HookScript("OnShow", Show)
+            picker:HookScript("OnShow", OnPickerShown)
             picker:HookScript("OnHide", function() panel:Hide() end)
         end)
         if not ok then return end
         hooked = true
-        if picker:IsShown() then Show() end
+        if picker:IsShown() then OnPickerShown() end
     end
 
     local ef = CreateFrame("Frame")

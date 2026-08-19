@@ -5,6 +5,25 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0] - 2026-08-18
+
+### Bug Fixes
+
+- **Bountiful Delves count the full set again** - Gnarldor Isle was invisible to every Bountiful code path, because its Bountiful map pin ID had never been confirmed and there was no safe way to guess it. On any day it rolled Bountiful the tab counted one Delve too few, so after clearing one the progress bar read "1 / 3" instead of "1 / 4", and the Delve could not earn a gold star, Gilded Stash credit, or a Bountiful mark in your History. Its real ID has now been read off a live Bountiful day and written in, together with The Ring of Glory's.
+- **The Tier Guide shows Season 2 item levels** - Every number in the tier table was still Season 1, so the recommended tier was wrong for anyone in current gear. At 278 equipped it pointed at Tier 11 when Tier 6 is the right answer. All three columns are now Season 2.
+- **Reward gear tracks are named correctly** - Season 2's upgrade tracks overlap, each one starting partway into the track below it, so an item level on its own cannot say which track it belongs to. Several Bountiful Loot and Great Vault values were being labelled one track too low.
+- **The crest tracker follows Season 2** - The Shard Tracker was still watching last season's Dawncrests, so every row sat frozen at zero while the Mistcrests you are actually earning were nowhere in the tab.
+
+### Improvements
+
+- **The Tier Guide reads its item levels from the game** - The recommended item level for each tier is no longer a table baked into the addon. It is read from the Delve entrance itself whenever you open one, and remembered for the season. That means it corrects itself on your first Delve of a new season instead of waiting for an addon update.
+- **The crest panel names itself** - The Shard Tracker takes the crest heading from the currency in game, so it will say the right thing next season without an update.
+- **Speed estimates re-anchored to the current tiers** - The pre-run clear-time estimate was scaled against a Season 1 gear reference that every Season 2 character is already past, which flattened the estimate. It now follows the live tier table.
+
+### Notes
+
+- **Season 2 is being worked through** - I am actively working to get all of Season 2's features live, and we are getting close. Still to come: Tier ratings for the two new Delves, their Delver's Call quests, and the new story variant that patch 12.1 added to eight of the ten older Delves.
+
 ## [1.25.0] - 2026-08-14
 
 ### New Features

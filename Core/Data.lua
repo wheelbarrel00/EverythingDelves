@@ -11,8 +11,9 @@ E.Zones = {
     { name = "The Coiled Isle",       mapID = 2512 },
 }
 
--- Confirmed live data from Midnight S1. Coordinates are percentages
--- (45.4 = 0.454); SetWaypoint conversion happens at the call site.
+-- Coordinates are percentages (45.4 = 0.454). SetWaypoint conversion happens
+-- at the call site. Every poiID here has been read off a live POI except where
+-- an entry says otherwise.
 E.DelveData = {
     {
         name  = "Parhelion Plaza",
@@ -84,21 +85,23 @@ E.DelveData = {
         mapID = 2393,
         poiID = 8440,  normalPoiID = 8439,
     },
-    -- Bountiful poiIDs for The Coiled Isle are unconfirmed. Do not guess them from
-    -- normalPoiID. The N/N+1 pairing above only holds for the original ID block.
+    -- The Coiled Isle pair inverts the pairing: bountiful is normal-1, not
+    -- normal+1. 8760 was read live off a bountiful Gnarldor Isle on 2026-08-18.
     {
         name  = "Gnarldor Isle",
         zone  = "The Coiled Isle",
         x     = 64.54, y = 77.58,
         mapID = 2512,
-        normalPoiID = 8761,
+        poiID = 8760,  normalPoiID = 8761,
     },
+    -- 8763 is the matching AreaPOI.db2 row and has not been seen live yet. The
+    -- next Ring of Glory bountiful day confirms it.
     {
         name  = "The Ring of Glory",
         zone  = "The Coiled Isle",
         x     = 71.35, y = 56.54,
         mapID = 2512,
-        normalPoiID = 8764,
+        poiID = 8763,  normalPoiID = 8764,
     },
 }
 

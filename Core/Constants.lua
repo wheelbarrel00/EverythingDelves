@@ -50,20 +50,142 @@ E.TAB_NAMES = {
 }
 E.NUM_TABS = #E.TAB_NAMES
 
--- index == tier number (1-11); Midnight Season 1 iLvl references, static for S1.
+-- index == tier number (1-11). recGear is seeded from a live read of
+-- C_DelvesUI.GetDelveEntranceTiers().suggestedILvl and is re-read whenever the
+-- player opens a delve entrance, so a season flip corrects it on the first
+-- visit. The two reward columns have no live API and are hand-authored.
 E.TierData = {
-    { tier =  1, recGear = 170, bountifulLoot = 220, greatVault = 233 },
-    { tier =  2, recGear = 187, bountifulLoot = 224, greatVault = 237 },
-    { tier =  3, recGear = 200, bountifulLoot = 227, greatVault = 240 },
-    { tier =  4, recGear = 213, bountifulLoot = 230, greatVault = 243 },
-    { tier =  5, recGear = 222, bountifulLoot = 233, greatVault = 246 },
-    { tier =  6, recGear = 229, bountifulLoot = 237, greatVault = 253 },
-    { tier =  7, recGear = 235, bountifulLoot = 246, greatVault = 256 },
-    { tier =  8, recGear = 244, bountifulLoot = 250, greatVault = 259 },
-    { tier =  9, recGear = 250, bountifulLoot = 250, greatVault = 259 },
-    { tier = 10, recGear = 257, bountifulLoot = 250, greatVault = 259 },
-    { tier = 11, recGear = 265, bountifulLoot = 250, greatVault = 259 },
+    { tier =  1, recGear = 170, bountifulLoot = 266, greatVault = 279 },
+    { tier =  2, recGear = 187, bountifulLoot = 269, greatVault = 282 },
+    { tier =  3, recGear = 200, bountifulLoot = 272, greatVault = 285 },
+    { tier =  4, recGear = 259, bountifulLoot = 276, greatVault = 289 },
+    { tier =  5, recGear = 268, bountifulLoot = 279, greatVault = 292 },
+    { tier =  6, recGear = 275, bountifulLoot = 282, greatVault = 295 },
+    { tier =  7, recGear = 281, bountifulLoot = 292, greatVault = 298 },
+    { tier =  8, recGear = 290, bountifulLoot = 295, greatVault = 298 },
+    { tier =  9, recGear = 296, bountifulLoot = 295, greatVault = 298 },
+    { tier = 10, recGear = 303, bountifulLoot = 295, greatVault = 298 },
+    { tier = 11, recGear = 309, bountifulLoot = 295, greatVault = 298 },
 }
+
+-- Gear track per reward column. Season 2 track bands OVERLAP (each track starts
+-- at the previous track's rank 5/6), so an item level alone cannot name a track
+-- and these have to be stored rather than derived.
+local BOUNTIFUL_TRACK = {
+    "Adventurer", "Adventurer", "Adventurer", "Adventurer", "Veteran", "Veteran",
+    "Champion", "Champion", "Champion", "Champion", "Champion",
+}
+local VAULT_TRACK = {
+    "Veteran", "Veteran", "Veteran", "Veteran", "Champion", "Champion",
+    "Champion", "Champion", "Champion", "Champion", "Champion",
+}
+for i, td in ipairs(E.TierData) do
+    td.bountifulTrack = BOUNTIFUL_TRACK[i]
+    td.vaultTrack     = VAULT_TRACK[i]
+end
+
+-- Ritual Sites and Lairs (new in 12.1) share the delve entrance picker and
+-- quote their own item levels, so the ladder is only ours for type Delve.
+local function EntranceIsDelve()
+    if not (C_DelvesUI and C_DelvesUI.GetTieredEntranceType
+            and Enum and Enum.TieredEntranceType) then
+        return false
+    end
+    local ok, entranceType = pcall(C_DelvesUI.GetTieredEntranceType)
+    return ok and entranceType == Enum.TieredEntranceType.Delve
+end
+
+local function CurrentSeason()
+    if not (C_DelvesUI and C_DelvesUI.GetCurrentDelvesSeasonNumber) then return nil end
+    local ok, n = pcall(C_DelvesUI.GetCurrentDelvesSeasonNumber)
+    return (ok and type(n) == "number") and n or nil
+end
+
+-- suggestedILvl is what the picker renders as "Recommended for adventurers at
+-- item level %d". It only reads while a delve entrance interaction is open, so
+-- callers cache the result rather than asking at login.
+function E:ReadLiveTierData()
+    if not (C_DelvesUI and C_DelvesUI.GetDelveEntranceTiers) then return nil end
+    if not EntranceIsDelve() then return nil end
+    local ok, tiers = pcall(C_DelvesUI.GetDelveEntranceTiers)
+    if not ok or type(tiers) ~= "table" or #tiers == 0 then return nil end
+
+    local byTier = {}
+    for _, info in ipairs(tiers) do
+        if type(info) == "table" then
+            local tier, ilvl = info.tier, info.suggestedILvl
+            if type(tier) == "number" and type(ilvl) == "number"
+                    and tier >= 1 and tier <= #self.TierData and ilvl > 0 then
+                byTier[tier] = math.floor(ilvl)
+            end
+        end
+    end
+
+    return next(byTier) and byTier or nil
+end
+
+-- Both recommended-tier scans keep the LAST row the player's ilvl clears, so a
+-- non-ascending ladder silently recommends the wrong tier. A partial read merges
+-- into the shipped rows, so it is the MERGED result that has to ascend.
+-- Returns ok, changed -- the two are separate because a rejected ladder and an
+-- identical one are both "not changed" but only one may be cached.
+function E:ApplyTierData(byTier)
+    if type(byTier) ~= "table" then return false, false end
+
+    local merged, changed = {}, false
+    for tier, td in ipairs(self.TierData) do
+        local ilvl = byTier[tier]
+        if type(ilvl) ~= "number" then ilvl = td.recGear end
+        if tier > 1 and ilvl < merged[tier - 1] then return false, false end
+        merged[tier] = ilvl
+        if ilvl ~= td.recGear then changed = true end
+    end
+
+    for tier, ilvl in ipairs(merged) do
+        self.TierData[tier].recGear = ilvl
+    end
+    return true, changed
+end
+
+function E:RefreshTierDataFromGame()
+    local byTier = self:ReadLiveTierData()
+    if not byTier then return false end
+    local ok, changed = self:ApplyTierData(byTier)
+    if not ok then return false end
+
+    -- Cache only a ladder covering every tier. A partial one would be merged
+    -- with next season's stale shipped rows at login and read as a whole.
+    local complete = true
+    for tier = 1, #self.TierData do
+        if type(byTier[tier]) ~= "number" then complete = false break end
+    end
+
+    local season = CurrentSeason()
+    if complete and self.db and season then
+        -- Stamped with the build too: the season number advances at patch day
+        -- while the ladder is still the old season's, so season alone would
+        -- restore a pre-season capture as if it were current.
+        self.db.tierCache = {
+            season  = season,
+            build   = select(2, GetBuildInfo()),
+            recGear = byTier,
+        }
+    end
+    if changed and self.FireCallback then self:FireCallback("TierDataChanged") end
+    return true
+end
+
+-- A cache from another season or another build is worse than the shipped table,
+-- and so is one we cannot date, so every leg has to match before it is trusted.
+function E:RestoreCachedTierData()
+    local cache = self.db and self.db.tierCache
+    if type(cache) ~= "table" or type(cache.recGear) ~= "table" then return false end
+    local season = CurrentSeason()
+    if not season or cache.season ~= season then return false end
+    if cache.build ~= select(2, GetBuildInfo()) then return false end
+    local ok = self:ApplyTierData(cache.recGear)
+    return ok
+end
 
 function E:GetTierColor(tier)
     if tier <= 4 then
@@ -94,21 +216,32 @@ function E:GetGradeCC(letter)
     return GRADE_CC[letter] or "|cFFAAAAAA"
 end
 
--- Midnight S1 delve reward tracks by item level (Adventurer 220-230,
--- Veteran 233-243, Champion 246-256, Hero 259). Champion/Hero are both Epic
--- quality, so distinct track colors are used rather than the quality color.
-local LOOT_TRACKS = {
-    { max = 232, name = "Adventurer", cc = "|cFF1EFF00" },
-    { max = 244, name = "Veteran",    cc = "|cFF0070DD" },
-    { max = 256, name = "Champion",   cc = "|cFFA335EE" },
-    { max = 271, name = "Hero",       cc = "|cFFE268FF" },
+-- Champion/Hero are both Epic quality, so distinct track colors are used
+-- rather than the quality color.
+local TRACK_CC = {
+    Adventurer = "|cFF1EFF00",
+    Veteran    = "|cFF0070DD",
+    Champion   = "|cFFA335EE",
+    Hero       = "|cFFE268FF",
+    Myth       = "|cFFFF8000",
 }
-function E:GetLootTrack(ilvl)
+
+-- Season 2 track tops. Only a last-resort fallback: the bands overlap, so this
+-- under-names any item level that two tracks share. Pass the stored track name
+-- whenever the caller has one.
+local TRACK_TOPS = {
+    { max = 282, name = "Adventurer" },
+    { max = 295, name = "Veteran"    },
+    { max = 308, name = "Champion"   },
+    { max = 321, name = "Hero"       },
+}
+function E:GetLootTrack(ilvl, track)
+    if track and TRACK_CC[track] then return track, TRACK_CC[track] end
     ilvl = tonumber(ilvl) or 0
-    for _, t in ipairs(LOOT_TRACKS) do
-        if ilvl <= t.max then return t.name, t.cc end
+    for _, t in ipairs(TRACK_TOPS) do
+        if ilvl <= t.max then return t.name, TRACK_CC[t.name] end
     end
-    return "Myth", "|cFFFF8000"
+    return "Myth", TRACK_CC.Myth
 end
 
 -- trackable = true means completion is queryable via the quest API.
@@ -172,15 +305,19 @@ E.CurrencyIDs = {
     undercoins      = 2803,
 }
 
--- Always read the cap live (info.maxQuantity): a 2026-05-19 hotfix removed the
--- weekly caps, so maxQuantity reads 0 (uncapped). Never hardcode it. label is
--- only a fallback; the display name is read live from the currency API.
-E.Dawncrests = {
-    { id = 3383, label = "Adventurer Dawncrest" },
-    { id = 3341, label = "Veteran Dawncrest"    },
-    { id = 3343, label = "Champion Dawncrest"   },
-    { id = 3345, label = "Hero Dawncrest"       },
-    { id = 3347, label = "Myth Dawncrest"       },
+-- Season 2 Mistcrests, all five read off a live client on 2026-08-18. Always
+-- read the cap live (info.maxQuantity): a hotfix can drop it to 0 (uncapped).
+-- label is only a fallback, the display name comes from the currency API.
+-- Season 1 Dawncrests were 3383/3341/3343/3345/3347.
+-- ⚠️ 3440 and 3441 also resolve, with the SAME display names as Hero and Myth
+-- below, but maxQuantity 0 and discovered false. Five consecutive IDs from the
+-- first Mistcrest picks up those two decoys instead of the real currencies.
+E.Crests = {
+    { id = 3442, label = "Adventurer Mistcrest" },
+    { id = 3443, label = "Veteran Mistcrest"    },
+    { id = 3444, label = "Champion Mistcrest"   },
+    { id = 3445, label = "Hero Mistcrest"       },
+    { id = 3446, label = "Myth Mistcrest"       },
 }
 
 E.SHARDS_PER_KEY      = 100

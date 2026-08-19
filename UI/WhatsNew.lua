@@ -1,23 +1,23 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.25.0"
+local WHATS_NEW_VERSION = "1.26.0"
 
 local ENTRIES = {
     {
-        title = "Boss tactics for the two new Delves",
-        desc  = "Gnarldor Isle and The Ring of Glory now expand into full boss breakdowns with today's boss marked, covering Gralka Snake-Eater, Osseous Amalgamation, Drakta and Gnok - plus the whole Open Night arena gauntlet and which casts to interrupt.",
+        title = "Season 2 tier numbers, straight from the game",
+        desc  = "The whole Tier Guide was still on Season 1 values - at 278 equipped it recommended Tier 11 when Tier 6 is right. The recommended item levels are now read from the Delve entrance itself and remembered for the season, so they correct themselves when a new season starts.",
     },
     {
-        title = "The Nemesis tab now covers Season 2",
-        desc  = "Azta'rec in Venomfall Deeps replaces Nullaeus: his main-phase kit, the Sermon of Ula'tek memory pattern, what changes on Tier \"??\", and the Valeera role and curio setup including her new Poisons slot.",
+        title = "Bountiful Delves count the full set again",
+        desc  = "Gnarldor Isle was invisible to Bountiful tracking, so a day it rolled Bountiful counted one Delve too few and the bar read \"1 / 3\" instead of \"1 / 4\". Its real map pin ID has been confirmed on a live Bountiful day and written in.",
     },
     {
-        title = "Bountiful tab fixes",
-        desc  = "Coffer Key Shards no longer reads \"0 / 0\", the progress bar no longer claims a Bountiful Delve exists until it is unlocked, and an empty list now explains itself instead of showing headers over blank space.",
+        title = "Mistcrests replace Dawncrests",
+        desc  = "The Shard Tracker was still watching last season's crests, so every row sat at zero while the Mistcrests you are earning were nowhere in the tab. It now names the crest panel from the game, so it stays right next season too.",
     },
     {
-        title = "More new-Delve data coming next",
-        desc  = "Bountiful tracking, Delver's Call quests and Tier ratings for the two new Delves need data that will be updated very soon. 12.1 also added a new story to eight of the older Delves - those are coming too.",
+        title = "More of Season 2 is on the way",
+        desc  = "I am actively working to get all of Season 2's features live and we are getting close. Still to come: Tier ratings for the two new Delves, their Delver's Call quests, and the new story 12.1 added to eight of the older Delves.",
     },
 }
 

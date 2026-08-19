@@ -124,6 +124,7 @@ local DATA_DEFAULTS = {
     delveBossMap           = {},
     gildedStashByChar      = {},
     roster                 = {},
+    tierCache              = {},  -- { season, build, recGear = { [tier] = ilvl } }
 }
 
 -- Profile-scoped keys: the E.db proxy redirects these to the active profile.
@@ -378,8 +379,8 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             print("|cFFFF2222Everything Delves|r: currency API unavailable.")
             return
         end
-        print("|cFFFF2222Everything Delves|r: Dawncrest currency fields")
-        for _, crest in ipairs(E.Dawncrests or {}) do
+        print("|cFFFF2222Everything Delves|r: crest currency fields")
+        for _, crest in ipairs(E.Crests or {}) do
             local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, crest.id)
             if ok and info then
                 print(("  %d %s: qty=%s totalEarned=%s maxQty=%s"
@@ -498,6 +499,11 @@ end
 E:RegisterEvent("PLAYER_LOGIN", function(self)
     self:InitDB()
 
+    -- Must precede InitMainFrame: the tier grid reads recGear as it builds.
+    if self.RestoreCachedTierData then
+        self:RestoreCachedTierData()
+    end
+
     self:RepairAbsurdDurations()
 
     if self.InitMainFrame then
@@ -571,6 +577,10 @@ local function FireCallbacks(eventName)
             fn(E)
         end
     end
+end
+
+function E.FireCallback(_, eventName)
+    FireCallbacks(eventName)
 end
 
 -- QUEST_LOG_UPDATE / CURRENCY_DISPLAY_UPDATE can fire dozens of times per
