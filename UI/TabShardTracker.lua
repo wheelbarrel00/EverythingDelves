@@ -738,7 +738,7 @@ E:RegisterModule(function()
     end
 
     local function ScanCofferShardWQs(forceRescan)
-        if not forceRescan and #wqCache > 0
+        if not forceRescan and wqCacheTime > 0
                 and (time() - wqCacheTime) < WQ_CACHE_TTL then
             return wqCache
         end
@@ -838,7 +838,7 @@ E:RegisterModule(function()
             C_Timer.After(3, function()
                 wqRetryPending = false
                 wqCacheTime = 0
-                if RefreshAll and frame:IsShown() then
+                if RefreshAll and frame:IsVisible() then
                     RefreshAll(true)
                 end
             end)
@@ -1321,6 +1321,7 @@ E:RegisterModule(function()
     frame:SetScript("OnShow", function()
         EnsureBaseline()
         wqRetriesUsed = 0   -- fresh retry budget each time the tab opens
+        if #wqCache == 0 then wqCacheTime = 0 end
         RefreshAll()
         C_Timer.After(0, UpdateContentHeight)
         UpdateScrollRange()
@@ -1334,7 +1335,7 @@ E:RegisterModule(function()
         timerElapsed = timerElapsed + dt
         if timerElapsed >= 1 then
             timerElapsed = 0
-            if frame:IsShown() then
+            if frame:IsVisible() then
                 RefreshSessionTimer()
             end
         end
@@ -1403,8 +1404,8 @@ E:RegisterModule(function()
     -- Background event refreshes must not reset scroll: UpdateContentHeight can
     -- clamp it when content shrinks, so save and restore the value around it.
     local function RefreshPreservingScroll()
-        DetectSpecialAssignments()  -- before the IsShown gate: alert fires tab-closed
-        if not frame:IsShown() then return end
+        DetectSpecialAssignments()  -- before the visibility gate: alert fires tab-closed
+        if not frame:IsVisible() then return end
         local prevScroll = scrollFrame:GetVerticalScroll()
         RefreshAll()
         C_Timer.After(0, function()

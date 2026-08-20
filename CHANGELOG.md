@@ -5,6 +5,30 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0] - 2026-08-19
+
+### New Features
+
+- **The new story for eight of the older Delves** - Patch 12.1 gave every Season 1 Delve except The Gulf of Memory and Sunkiller Sanctum a Children of Ula'tek story, and the addon knew about none of them. All eight are in now, with their objectives and their bosses: Academic Antitoxin, Basilisk Blitz, Venomous Vapors, Fungal Pharmacon, Caustic Crush, Why'd It Have to Be Snakes?, Infiltrate and Ameliorate and Eggsplosive Growth.
+- **Tactics for the three new bosses** - Replicating Venomborne, Disciple of Vash'nik and Abominable Blunder each expand into a full breakdown like every other Delve boss, covering what to interrupt, what to dodge, and which adds heal the boss if you leave them alive.
+- **Objectives for the two new Delves' stories** - Olds and Ends, Minchi's Osseous Adventure, Speaking Their Language, Open Night, Game Day and Adopt-a-thon now tell you what the run actually asks of you.
+
+### Bug Fixes
+
+- **Delves no longer show a rating that belongs to a different story** - When today's story had no rating of its own, Delve Locations quietly fell back to the Delve's usual grade. For 12.1's new stories that meant Collegiate Calamity showing S, Parhelion Plaza A and The Shadow Enclave C for stories nobody has rated yet, and that borrowed A was driving the "Best value" pick. An unrated story now shows no grade rather than borrowing one. Your own recorded clear times are untouched.
+- **Today's boss is marked again on the Bountiful tab** - Twilight Crypt and The Gulf of Memory appear under their in-game map name, which differs slightly from the name the addon files them under, so neither could work out which boss was today's.
+- **The Great Vault no longer names the wrong reset day** - The Tier Guide told everyone rewards unlock on Tuesday, which is wrong outside the Americas - EU resets Wednesday, KR/TW/CN Thursday. It now counts down the time remaining instead of naming a day.
+- **Delve History no longer keeps an impossible fastest time** - The login cleanup that scrubs corrupted run timers left the Delve's "Fastest" record sitting at the bad value, so a Delve could read "Fastest: 26h 12m 40s" next to an empty average until you next cleared it.
+- **The Coffer Key Shard world quest list refreshes properly** - If it came up empty because the zone maps had not loaded yet, reopening the tab could keep showing nothing for up to a minute.
+
+### Improvements
+
+- **The addon stops doing work while its window is closed** - Whichever tab you last had open kept rebuilding itself on every currency, quest and map update for the rest of the session, with the window shut. On the Shard Tracker that was a full rebuild up to four times a second while questing. Every tab now waits until it is actually on screen, and refreshes when you open it.
+
+### Notes
+
+- **Ratings for 12.1's stories are still to come** - No guide ranks any of the new stories, so their grades can only come from timed runs. They show their objectives and bosses now, and a grade will follow rather than being guessed at.
+
 ## [1.26.0] - 2026-08-18
 
 ### Bug Fixes

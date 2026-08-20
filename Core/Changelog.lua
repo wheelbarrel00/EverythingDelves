@@ -3,6 +3,29 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.27.0", date = "2026-08-19",
+        sections = {
+            { head = "New", items = {
+                "The new story for eight of the older Delves - patch 12.1 gave every Season 1 Delve except The Gulf of Memory and Sunkiller Sanctum a Children of Ula'tek story, and the addon knew about none of them. All eight are in now, with their objectives and their bosses: Academic Antitoxin, Basilisk Blitz, Venomous Vapors, Fungal Pharmacon, Caustic Crush, Why'd It Have to Be Snakes?, Infiltrate and Ameliorate and Eggsplosive Growth.",
+                "Tactics for the three new bosses - Replicating Venomborne, Disciple of Vash'nik and Abominable Blunder each expand into a full breakdown like every other Delve boss, covering what to interrupt, what to dodge, and which adds heal the boss if you leave them alive.",
+                "Objectives for the two new Delves' stories - Olds and Ends, Minchi's Osseous Adventure, Speaking Their Language, Open Night, Game Day and Adopt-a-thon now tell you what the run actually asks of you.",
+            }},
+            { head = "Fixed", items = {
+                "Delves no longer show a rating that belongs to a different story - when today's story had no rating of its own, Delve Locations fell back to the Delve's usual grade. For 12.1's new stories that meant Collegiate Calamity showing S, Parhelion Plaza A and The Shadow Enclave C for stories nobody has rated, and that borrowed A was driving the \"Best value\" pick. Your own recorded clear times are untouched.",
+                "Today's boss is marked again on the Bountiful tab - Twilight Crypt and The Gulf of Memory appear under their in-game map name, which differs slightly from the name the addon files them under, so neither could work out which boss was today's.",
+                "The Great Vault no longer names the wrong reset day - the Tier Guide told everyone rewards unlock on Tuesday, which is wrong outside the Americas. It now counts down the time remaining instead of naming a day.",
+                "Delve History no longer keeps an impossible fastest time - the login cleanup that scrubs corrupted run timers left the Delve's \"Fastest\" record sitting at the bad value.",
+                "The Coffer Key Shard world quest list refreshes properly - if it came up empty because the zone maps had not loaded yet, reopening the tab could keep showing nothing for up to a minute.",
+            }},
+            { head = "Improved", items = {
+                "The addon stops doing work while its window is closed - whichever tab you last had open kept rebuilding itself on every currency, quest and map update for the rest of the session. On the Shard Tracker that was a full rebuild up to four times a second while questing.",
+            }},
+            { head = "Coming next", items = {
+                "Ratings for 12.1's stories are still to come. No guide ranks any of them, so their grades can only come from timed runs.",
+            }},
+        },
+    },
+    {
         version = "1.26.0", date = "2026-08-18",
         sections = {
             { head = "Fixed", items = {

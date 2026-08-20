@@ -417,7 +417,7 @@ E:RegisterModule(function()
     end)
 
     local function OnData()
-        if frame:IsShown() then RefreshAll() else E:CaptureRosterSnapshot() end
+        if frame:IsVisible() then RefreshAll() else E:CaptureRosterSnapshot() end
     end
     E:RegisterCallback("CurrencyUpdate",   OnData)
     E:RegisterCallback("QuestLogUpdate",   OnData)

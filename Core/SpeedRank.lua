@@ -47,13 +47,14 @@ function E:FormatClock(sec)
     return string.format("%d:%02d", m, s)
 end
 
--- Today's live story-variant tier wins; otherwise the delve's signature tier.
+-- Today's live story-variant tier wins. A known but unrated variant returns nil
+-- on purpose - the signature tier was earned by a different story.
 function E:GetDelveTierLetter(delveName, tierOverride)
     if tierOverride then return tierOverride end
     local story = self.GetDelveStoryVariant and self:GetDelveStoryVariant(delveName)
     if story and story ~= "" and self.GetStoryTier then
         local si = self:GetStoryTier(story)
-        if si and si.tier then return si.tier end
+        if si then return si.tier end
     end
     local sig = self.DelveSignatureTier and self.DelveSignatureTier[delveName]
     return sig

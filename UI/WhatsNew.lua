@@ -1,23 +1,23 @@
 local E = EverythingDelves
 
-local WHATS_NEW_VERSION = "1.26.0"
+local WHATS_NEW_VERSION = "1.27.0"
 
 local ENTRIES = {
     {
-        title = "Season 2 tier numbers, straight from the game",
-        desc  = "The whole Tier Guide was still on Season 1 values - at 278 equipped it recommended Tier 11 when Tier 6 is right. The recommended item levels are now read from the Delve entrance itself and remembered for the season, so they correct themselves when a new season starts.",
+        title = "The new story for eight of the older Delves",
+        desc  = "Patch 12.1 gave every Season 1 Delve except The Gulf of Memory and Sunkiller Sanctum a Children of Ula'tek story, and the addon knew about none of them. All eight are in now, with their objectives and their bosses.",
     },
     {
-        title = "Bountiful Delves count the full set again",
-        desc  = "Gnarldor Isle was invisible to Bountiful tracking, so a day it rolled Bountiful counted one Delve too few and the bar read \"1 / 3\" instead of \"1 / 4\". Its real map pin ID has been confirmed on a live Bountiful day and written in.",
+        title = "Tactics for the three new bosses",
+        desc  = "Replicating Venomborne, Disciple of Vash'nik and Abominable Blunder each expand into a full breakdown like every other Delve boss - what to interrupt, what to dodge, and which adds heal the boss if you leave them alive.",
     },
     {
-        title = "Mistcrests replace Dawncrests",
-        desc  = "The Shard Tracker was still watching last season's crests, so every row sat at zero while the Mistcrests you are earning were nowhere in the tab. It now names the crest panel from the game, so it stays right next season too.",
+        title = "No more ratings borrowed from a different story",
+        desc  = "When today's story had no rating of its own, the Tier column fell back to the Delve's usual grade. That showed Collegiate Calamity as S and Parhelion Plaza as A for stories nobody has rated, and it was driving the Best value pick. An unrated story now simply shows no grade.",
     },
     {
-        title = "More of Season 2 is on the way",
-        desc  = "I am actively working to get all of Season 2's features live and we are getting close. Still to come: Tier ratings for the two new Delves, their Delver's Call quests, and the new story 12.1 added to eight of the older Delves.",
+        title = "The window no longer works while it is closed",
+        desc  = "Whichever tab you last had open kept rebuilding itself on every currency, quest and map update for the rest of the session. Every tab now waits until it is actually on screen.",
     },
 }
 

@@ -66,7 +66,7 @@ for delveName, info in pairs(DELVE_NOTES) do
     E.DelveStories[delveName] = info.story
 end
 
--- Published for Core/SpeedRank.lua as a tier fallback when today's variant isn't rated.
+-- Published for Core/SpeedRank.lua as a tier fallback for an unrecognized variant.
 E.DelveSignatureTier = E.DelveSignatureTier or {}
 for delveName, info in pairs(DELVE_NOTES) do
     E.DelveSignatureTier[delveName] = info.tier
@@ -96,12 +96,13 @@ local function RefreshFilteredData()
     for _, delve in ipairs(E.DelveData) do
         local story = E.GetDelveStoryVariant and E:GetDelveStoryVariant(delve.name) or nil
         todayStoryByName[delve.name] = story
-        local tier
+        local tier, known
         if story and story ~= "" and E.GetStoryTier then
             local si = E:GetStoryTier(story)
-            tier = si and si.tier
+            if si then tier, known = si.tier, true end
         end
-        if not tier then
+        -- Known but unrated stays blank rather than borrow another story's tier.
+        if not known then
             local dn = DELVE_NOTES[delve.name]
             tier = dn and dn.tier
         end
@@ -781,11 +782,11 @@ E:RegisterModule(function()
     end)
 
     function E:RefreshDelveLocations()
-        if frame:IsShown() then Refresh() end
+        if frame:IsVisible() then Refresh() end
     end
 
     E:RegisterCallback("AreaPoisUpdated", function()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             Refresh()
         end
     end)

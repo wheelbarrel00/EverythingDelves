@@ -916,7 +916,7 @@ E:RegisterModule(function()
 
     -- Called by the delve logger when a run is recorded, or when history is cleared.
     function E:RefreshDelveHistoryTab()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             Refresh()
         end
     end

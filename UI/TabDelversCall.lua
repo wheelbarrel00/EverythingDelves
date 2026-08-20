@@ -389,7 +389,7 @@ E:RegisterModule(function()
 
     -- Keep the roster current even while the tab is closed; only repaint when visible.
     E:RegisterCallback("QuestLogUpdate", function()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshAll()
         else
             PersistRoster((ComputeStates()))

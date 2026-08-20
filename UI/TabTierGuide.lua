@@ -20,6 +20,16 @@ local function GetRecommendedTier(ilvl)
     return best
 end
 
+-- Reset weekday differs by region, so render the remaining time instead of naming a day.
+local function WeeklyResetIn()
+    if not (C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset) then return nil end
+    local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if not secs or secs <= 0 then return nil end
+    return math_floor(secs / 86400) .. "d "
+        .. math_floor((secs % 86400) / 3600) .. "h "
+        .. math_floor((secs % 3600) / 60) .. "m"
+end
+
 -- Delver's Journey is the season Delves faction's renown under the hood:
 -- C_DelvesUI.GetDelvesFactionForSeason() -> faction ID, then
 -- C_MajorFactions.GetMajorFactionRenownInfo / GetRenownRewardsForLevel.
@@ -387,7 +397,12 @@ E:RegisterModule(function()
     local gvNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvNoteFS:SetPoint("TOPLEFT", gvLastAnchor, "BOTTOMLEFT", 0, -4)
     gvNoteFS:SetFont(gvNoteFS:GetFont(), 9)
-    gvNoteFS:SetText(E.CC.muted .. "Rewards are claimable after the weekly reset (Tuesday)" .. E.CC.close)
+    local function RefreshGVNote()
+        local left = WeeklyResetIn()
+        gvNoteFS:SetText(E.CC.muted .. "Rewards are claimable after the weekly reset"
+            .. (left and (" (" .. left .. ")") or "") .. E.CC.close)
+    end
+    RefreshGVNote()
 
     local gvDiv = sc:CreateTexture(nil, "ARTWORK")
     gvDiv:SetHeight(1)
@@ -428,6 +443,7 @@ E:RegisterModule(function()
         end
 
         gvFallbackFS:Hide()
+        RefreshGVNote()
         gvNoteFS:Show()
 
         local byType = {}
@@ -479,7 +495,9 @@ E:RegisterModule(function()
                     cell.tipTitle = "Reward Slot " .. s
                     cell.tipLine1 = ilvl and ("Item level " .. ilvl) or "No reward unlocked yet"
                     if unlocked then
-                        cell.tipLine2 = E.CC.muted .. "Unlocked - claim after the Tuesday reset." .. E.CC.close
+                        local left = WeeklyResetIn()
+                        cell.tipLine2 = E.CC.muted .. "Unlocked - claim after the weekly reset"
+                            .. (left and (" (" .. left .. ")") or "") .. "." .. E.CC.close
                     else
                         cell.tipLine2 = E.CC.muted .. prog .. " / " .. threshold
                             .. "  (" .. (threshold - prog) .. " more)" .. E.CC.close
@@ -1038,20 +1056,20 @@ E:RegisterModule(function()
     end)
 
     E:RegisterCallback("InventoryChanged", function()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshRecommendation()
         end
     end)
 
     E:RegisterCallback("TierDataChanged", function()
         RefreshTierGrid()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshRecommendation()
         end
     end)
 
     E:RegisterCallback("QuestLogUpdate", function()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshTrovehunter()
             -- Companion XP and Journey renown both tick up during delves.
             RefreshCompanion()
@@ -1062,7 +1080,7 @@ E:RegisterModule(function()
     -- Gilded Stash / Great Vault / Renown update from their own events, not the
     -- quest/inventory ticks above, so an open tab would otherwise go stale.
     E:RegisterCallback("GildedStashChanged", function()
-        if frame:IsShown() then RefreshGildedStash() end
+        if frame:IsVisible() then RefreshGildedStash() end
     end)
     local liveEvents = CreateFrame("Frame")
     for _, ev in ipairs({ "WEEKLY_REWARDS_UPDATE",
@@ -1070,7 +1088,7 @@ E:RegisterModule(function()
         pcall(liveEvents.RegisterEvent, liveEvents, ev)
     end
     liveEvents:SetScript("OnEvent", function(_, event)
-        if not frame:IsShown() then return end
+        if not frame:IsVisible() then return end
         if event == "WEEKLY_REWARDS_UPDATE" then
             RefreshGreatVault()
         else

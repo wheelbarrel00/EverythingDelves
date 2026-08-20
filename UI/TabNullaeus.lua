@@ -719,11 +719,11 @@ E:RegisterModule(function()
     end)
 
     E:RegisterCallback("QuestLogUpdate", function()
-        if frame:IsShown() then RefreshNemesis() end
+        if frame:IsVisible() then RefreshNemesis() end
     end)
 
     E:RegisterCallback("BagUpdate", function()
-        if frame:IsShown() then RefreshBeacon() end
+        if frame:IsVisible() then RefreshBeacon() end
     end)
 
     E:RegisterTab(4, frame)

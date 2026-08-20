@@ -1431,6 +1431,7 @@ end
 function E:RepairAbsurdDurations()
     if not (self.db and self.db.delveHistory) then return 0 end
     local fixed = 0
+    local recordsFixed = false
     for _, entry in pairs(self.db.delveHistory) do
         local recent = entry.recentRuns
         local life   = entry.lifetime
@@ -1455,15 +1456,28 @@ function E:RepairAbsurdDurations()
                     fixed = fixed + 1
                 end
             end
+            -- No real run exceeds MAX_RESUME_AGE, so an absurd fastestTime is
+            -- a scrubbed run's value.
+            if life and (life.fastestTime or 0) > MAX_RESUME_AGE then
+                local fastest = 0
+                for _, r in ipairs(recent) do
+                    if (r.duration or 0) > 0
+                            and (fastest == 0 or r.duration < fastest) then
+                        fastest = r.duration
+                    end
+                end
+                life.fastestTime = fastest
+                recordsFixed = true
+            end
         end
     end
     if fixed > 0 then
         print(self.CC.header .. "Everything Delves|r: Cleaned up "
             .. fixed .. " run" .. (fixed == 1 and "" or "s")
             .. " with an invalid timer.")
-        if self.RefreshDelveHistoryTab then
-            self:RefreshDelveHistoryTab()
-        end
+    end
+    if (fixed > 0 or recordsFixed) and self.RefreshDelveHistoryTab then
+        self:RefreshDelveHistoryTab()
     end
     return fixed
 end

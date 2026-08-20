@@ -58,6 +58,7 @@ local STORY_TIERS = {
     ["Calamitous"]                  = { tier="D", note="Enormous mountable map with required secondary objectives in all three variants." },
     ["Arena Champion"]              = { tier="D", note="Defeat two named enemies then collect mold samples from Moldering Fighters." },
     ["March of the Arcane Brigade"] = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
+    ["March of the Arcane Parade"]  = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
     ["Bombing Run"]                 = { tier="F", note="Destroying void portals makes for one of the slowest clears." },
     ["Mirror Shine"]                = { tier="F", note="Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs." },
     ["Shadowy Supplies"]            = { tier="F", note="Collecting 30 supplies from enemies and the floor is very slow." },
@@ -68,6 +69,27 @@ local STORY_TIERS = {
     ["Lightbloom Invasion"]         = { tier="F", note="Free fighters and defend barricades against Thornmaws using nearby barrels." },
     ["Dastardly Rotstalk"]          = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
     ["Dastardly Rootstalks"]        = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
+
+    -- No source rates the 12.1 variants below, so a tier can only come from a
+    -- measured run.
+    ["Olds and Ends"]               = { note="Ally with the Tortollan Tormunda to rescue the elders the Djaradin captured, and recover their relics." },
+    ["Minchi's Osseous Adventure"]  = { note="Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation." },
+    ["Minchi's Osseous Adventurer"] = { note="Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation." },
+    ["Speaking Their Language"]     = { tier="D", note="Rescue the turtles and the supplies the Djaradin stole, then send the siege-trained turtles in as tanks." },
+    ["Open Night"]                  = { note="An arena gauntlet - clear the floor, then the champions, then Drakta." },
+    ["Game Day"]                    = { note="Ghostly Headball - collect skulls from your kills and kick them at the pillars to score." },
+    ["Adopt-a-thon"]                = { note="Rescue the small animals caught in the middle of the gladiator fights." },
+
+    ["Venomous Vapors"]             = { note="Escort Marla and clear the Children of Ula'tek poison contamination. Ends on Disciple of Vash'nik." },
+    ["Basilisk Blitz"]              = { note="Divert the shields, then kill the basilisks channeling energy to the boss." },
+    ["Basalisk Blitz"]              = { note="Divert the shields, then kill the basilisks channeling energy to the boss." },
+    ["Academic Antitoxin"]          = { note="Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss." },
+    ["An Elementary Antidote"]      = { note="Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss." },
+    ["Fungal Pharmacon"]            = { note="Loot Fungal Pharmacon from around the pit and break the four pillars the Children of Ula'tek burrow through." },
+    ["Caustic Crush"]               = { note="Stop the Children of Ula'tek summoning slimes, using Fungal Pharmacon and dodging the caustic waves." },
+    ["Why'd It Have to Be Snakes?"] = { note="Hunt snake relics through the crypts, clearing poison patches with Fungal Pharmacon." },
+    ["Infiltrate and Ameliorate"]   = { note="Sabotage the summoning - kick summoners into the abyss and spike the cauldrons with the wrong ingredients." },
+    ["Eggsplosive Growth"]          = { note="Destroy the Children of Ula'tek eggs nesting in the tunnels using the Venom-Clogged Leyline pylons." },
 }
 
 local function StripStoryPrefix(s)
@@ -307,7 +329,7 @@ local function UpdateBestPick()
     end
     if best then
         local si = GetStoryTier(best.storyVariant)
-        if si then
+        if si and si.tier then
             local cc = TierCC(si.tier)
             bestPickFS:SetText(
                 E.CC.muted .. "Best Pick: " .. E.CC.close
@@ -623,8 +645,10 @@ local function CreateDelveRow()
             GameTooltip:AddLine(self.delve.name, 1, 0.84, 0, true)
             local si = GetStoryTier(self.delve.storyVariant)
             if si then
-                local tc = TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
-                GameTooltip:AddLine(si.tier .. " Tier", tc[1], tc[2], tc[3], true)
+                if si.tier then
+                    local tc = TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
+                    GameTooltip:AddLine(si.tier .. " Tier", tc[1], tc[2], tc[3], true)
+                end
                 GameTooltip:AddLine(si.note, 0.80, 0.80, 0.80, true)
                 GameTooltip:AddLine(" ")
             end
@@ -794,7 +818,7 @@ function UpdateRows()
             else
                 row.tierText:SetTextColor(0.60, 0.60, 0.60)
             end
-            row.tierText:SetText(si.tier)
+            row.tierText:SetText(si.tier or "")
         else
             row.tierText:SetText("")
         end
@@ -805,7 +829,7 @@ function UpdateRows()
             local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
             if bosses then
                 local todaysBoss = E.GetTodaysBossName
-                    and E:GetTodaysBossName(delve.name)
+                    and E:GetTodaysBossName(delve.canonicalName or delve.name)
                 for bi, boss in ipairs(bosses) do
                     bUsed = bUsed + 1
                     local brow = AcquireBossRow(bUsed)
@@ -1199,7 +1223,7 @@ E:RegisterModule(function()
         elapsed = elapsed + dt
         if elapsed >= 1 then
             elapsed = 0
-            if self:IsShown() then
+            if self:IsVisible() then
                 statValues.resetTimer:SetText(
                     E.CC.gold .. GetResetTimeString() .. E.CC.close
                 )
@@ -1208,7 +1232,7 @@ E:RegisterModule(function()
     end)
 
     E:RegisterCallback("CurrencyUpdate", function()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshStats()
         end
     end)
@@ -1217,7 +1241,7 @@ E:RegisterModule(function()
         -- Refresh regardless of which tab is open, so E.currentBountifulNames
         -- stays current for other systems (Gilded Stash, Delve Locations).
         RefreshBountifulData()
-        if frame:IsShown() then
+        if frame:IsVisible() then
             RefreshStats()
             local done = 0
             for _, d in ipairs(bountifulList) do

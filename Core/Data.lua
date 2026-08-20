@@ -86,7 +86,7 @@ E.DelveData = {
         poiID = 8440,  normalPoiID = 8439,
     },
     -- The Coiled Isle pair inverts the pairing: bountiful is normal-1, not
-    -- normal+1. 8760 was read live off a bountiful Gnarldor Isle on 2026-08-18.
+    -- normal+1. Both IDs were read live off a bountiful day.
     {
         name  = "Gnarldor Isle",
         zone  = "The Coiled Isle",
@@ -94,8 +94,6 @@ E.DelveData = {
         mapID = 2512,
         poiID = 8760,  normalPoiID = 8761,
     },
-    -- 8763 is the matching AreaPOI.db2 row and has not been seen live yet. The
-    -- next Ring of Glory bountiful day confirms it.
     {
         name  = "The Ring of Glory",
         zone  = "The Coiled Isle",
@@ -192,6 +190,26 @@ E.BossRoleMeta = {
 -- Unlisted roles fall to the end.
 E.BossRoleOrder = { "interrupt", "dps", "general", "tank", "healer" }
 
+local VENOMBORNE = {
+    name  = "Replicating Venomborne",
+    brief = "Kill every Lesser Venomborne that Serpentogenesis spawns - each one still alive heals him on the next cast.",
+    notes = {
+        { role = "dps",     text = "Serpentogenesis spawns Lesser Venomborne adds. Kill them before the next cast, because every survivor heals him." },
+        { role = "general", text = "Venom Splash leaves poison pools where it lands. Move out of them." },
+        { role = "healer",  text = "Hydra Strike stacks a nature damage-over-time, so incoming damage climbs the longer the fight runs." },
+    },
+}
+
+local VASHNIK = {
+    name  = "Disciple of Vash'nik",
+    brief = "Interrupt Malignance every cast, sidestep the Living Venom channel, and kill the slime it leaves behind.",
+    notes = {
+        { role = "interrupt", text = "Malignance - his most dangerous cast. It stacks nature damage and slows you, so never let one finish." },
+        { role = "general",   text = "Step out of the Living Venom channel, then kill the slime add it spawns when the cast ends." },
+        { role = "healer",    text = "Toxic Froth is a short poison damage-over-time. Heal through it rather than saving a dispel for it." },
+    },
+}
+
 -- Keyed by the exact E.DelveData name.
 E.DelveBosses = {
     ["Collegiate Calamity"] = {
@@ -229,6 +247,15 @@ E.DelveBosses = {
                 { role = "dps",       text = "While Shadowveil Annihilation is channeling he is immune — destroy all three Shadow Orbs before it ends to shatter his shield and raise his damage taken." },
             },
         },
+        {
+            name  = "Abominable Blunder",
+            brief = "Dodge Searing Spew and the Acid Spray wave, and heal off the Corrosive Bile damage.",
+            notes = {
+                { role = "general", text = "Searing Spew is a telegraphed area attack. Move out of it." },
+                { role = "general", text = "Acid Spray is a channeled wave that leaves short-lived poison where it lands. Keep moving out of the poison." },
+                { role = "healer",  text = "Corrosive Bile is nature damage that has to be healed off rather than avoided." },
+            },
+        },
     },
     ["Parhelion Plaza"] = {
         {
@@ -241,6 +268,7 @@ E.DelveBosses = {
                 { role = "general",   text = "Dodge the Voidscar Raze directional line attack." },
             },
         },
+        VENOMBORNE,
     },
     ["Twilight Crypt"] = {
         {
@@ -252,6 +280,7 @@ E.DelveBosses = {
                 { role = "general", text = "Move Darza out of the Bask in the Twilight void zones — she gains 30% increased damage while standing in them." },
             },
         },
+        VENOMBORNE,
     },
     ["Atal'Aman"] = {
         {
@@ -262,6 +291,7 @@ E.DelveBosses = {
                 { role = "general", text = "Collect every spirit before Claim Spirits completes — each one left behind gives Jin'Ma a stacking damage buff." },
             },
         },
+        VASHNIK,
     },
     ["The Darkway"] = {
         {
@@ -273,6 +303,7 @@ E.DelveBosses = {
                 { role = "general",   text = "Keep your distance from the Illusory Deceit illusions before they explode." },
             },
         },
+        VENOMBORNE,
     },
     ["The Grudge Pit"] = {
         {
@@ -302,6 +333,7 @@ E.DelveBosses = {
                 { role = "general", text = "Fling Chair: sidestep it to avoid the knockback and disorient." },
             },
         },
+        VENOMBORNE,
     },
     ["The Gulf of Memory"] = {
         {
@@ -412,6 +444,7 @@ E.DelveBosses = {
                 { role = "general",   text = "Dodge the Discordant Hymn void zones — heavy damage if they catch you." },
             },
         },
+        VASHNIK,
     },
 }
 
@@ -431,9 +464,10 @@ function E:GetDelveBosses(delveName)
     return nil
 end
 
--- Story-variant -> boss for the four multi-boss delves, so "today's boss"
--- is known from first login before any live ENCOUNTER_END capture. Some
--- variants carry duplicate keys for alternate spellings the API returns.
+-- Story-variant -> boss for every multi-boss delve, so "today's boss" is known
+-- from first login before any live ENCOUNTER_END capture. Some variants carry
+-- duplicate keys for alternate spellings. A delve gaining a second boss must
+-- map ALL its variants. A variant with no final boss is deliberately absent.
 E.DelveBossByVariant = {
     ["Gnarldor Isle"] = {
         ["Speaking Their Language"]     = "Gralka Snake-Eater",
@@ -456,6 +490,7 @@ E.DelveBossByVariant = {
         ["Arena Champion"]       = "Gyrospore",
         ["Dastardly Rotstalk"]   = "Mycomight",
         ["Dastardly Rootstalks"] = "Mycomight",
+        ["Fungal Pharmacon"]     = "Replicating Venomborne",
     },
     ["The Gulf of Memory"] = {
         ["Alnmoth Munchies"]      = "Lumenia",
@@ -467,6 +502,47 @@ E.DelveBossByVariant = {
         ["Core of the Problem"]      = "Esuritus",
         ["The Gravitational Effect"] = "Esuritus",
         ["Not What I Expected"]      = "Corrupted Umbraroot",
+    },
+    ["Shadowguard Point"] = {
+        ["Calamitous"]        = "Chief-Arcanist Patram",
+        ["Captured Wildlife"] = "Chief-Arcanist Patram",
+        ["Captured Wild"]     = "Chief-Arcanist Patram",
+        ["Captured Widlife"]  = "Chief-Arcanist Patram",
+        ["Stolen Mana"]       = "Chief-Arcanist Patram",
+        ["Basilisk Blitz"]    = "Disciple of Vash'nik",
+        ["Basalisk Blitz"]    = "Disciple of Vash'nik",
+    },
+    ["Atal'Aman"] = {
+        ["Ritual Interrupted"]  = "Spiritflayer Jin'Ma",
+        ["Toadly Unbecoming"]   = "Spiritflayer Jin'Ma",
+        ["Totem Annihilation"]  = "Spiritflayer Jin'Ma",
+        ["Venomous Vapors"]     = "Disciple of Vash'nik",
+    },
+    ["Parhelion Plaza"] = {
+        ["Bombing Run"]                 = "Gladius Slaurna",
+        ["Holding the Line"]            = "Gladius Slaurna",
+        ["March of the Arcane Brigade"] = "Gladius Slaurna",
+        ["March of the Arcane Parade"]  = "Gladius Slaurna",
+        ["Caustic Crush"]               = "Replicating Venomborne",
+    },
+    ["Twilight Crypt"] = {
+        ["Loosed Loa"]                  = "Blademaster Darza",
+        ["Loose Loa"]                   = "Blademaster Darza",
+        ["Party Crasher"]               = "Blademaster Darza",
+        ["Trapped"]                     = "Blademaster Darza",
+        ["Why'd It Have to Be Snakes?"] = "Replicating Venomborne",
+    },
+    ["The Darkway"] = {
+        ["Focusers Under Pressure"] = "Infiltrator Gulkat",
+        ["Leyline Technician"]      = "Infiltrator Gulkat",
+        ["Ogre Powered"]            = "Infiltrator Gulkat",
+        ["Eggsplosive Growth"]      = "Replicating Venomborne",
+    },
+    ["The Shadow Enclave"] = {
+        ["Mirror Shine"]              = "Lord Antenorian",
+        ["Shadowy Supplies"]          = "Lord Antenorian",
+        ["Traitor's Due"]             = "Lord Antenorian",
+        ["Infiltrate and Ameliorate"] = "Abominable Blunder",
     },
 }
 
