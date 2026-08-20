@@ -46,7 +46,7 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 
 ## Everything in One Window
 
-- **Delve Locations** — all 12 Midnight delves across 7 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss
+- **Delve Locations** — all 12 Midnight delves across 7 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss — including 12.1's Children of Ula'tek stories and their three new bosses
 - **Quickest Delve & Best Value** — every delve shows an expected clear time (your own average once you've run it, or a pace-calibrated estimate), a sortable Speed column to line up your fastest runs first, and a summary line calling out today's Quickest delve and the Best value pick
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths
@@ -66,7 +66,7 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 ## Features
 
 ### Delve Locations
-All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
+All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
 
 A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then, color-graded relative to your own pace — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
@@ -184,7 +184,9 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 | Silvermoon | Collegiate Calamity, The Darkway |
 | The Coiled Isle | Gnarldor Isle, The Ring of Glory, Venomfall Deeps (Seasonal Nemesis) |
 
-> **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, bountiful tracking, and boss tactics for all four of their bosses plus the Open Night arena gauntlet. Tier ratings and Delver's Call quests for these two are still to come, along with the extra story variant 12.1 added to eight of the older delves.
+> **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, bountiful tracking, and boss tactics for all four of their bosses plus the Open Night arena gauntlet.
+>
+> Patch 12.1 also gave a **Children of Ula'tek story** to eight of the ten older delves — every one except The Gulf of Memory and Sunkiller Sanctum. All eight are covered, with their objectives and their bosses: Academic Antitoxin, Basilisk Blitz, Venomous Vapors, Fungal Pharmacon, Caustic Crush, Why'd It Have to Be Snakes?, Infiltrate and Ameliorate and Eggsplosive Growth. They bring three new bosses with them — **Replicating Venomborne**, **Disciple of Vash'nik** and **Abominable Blunder** — each with full role-by-role tactics, so six delves that used to end on a single boss now show both. Tier ratings for 12.1's stories and the Delver's Call quests for the two new delves are still to come.
 
 ---
 
@@ -215,10 +217,11 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 EverythingDelves/
 ├── EverythingDelves.lua          # Bootstrap: namespace, events, slash commands, run lifecycle
 ├── EverythingDelves.toc          # Addon manifest
+├── Bindings.xml                  # Keybindings (window, curios, HUD)
 ├── Core/
 │   ├── Constants.lua             # Colors, tier data, gear-track bands, shard sources, IDs
 │   ├── Changelog.lua             # In-addon changelog data (About tab)
-│   ├── Data.lua                  # Delve directory (names, zones, coordinates, POI IDs)
+│   ├── Data.lua                  # Delve directory, boss tactics, story-variant bosses
 │   ├── Utils.lua                 # UI factories, waypoint + SuperTrack helpers, tooltips
 │   ├── SpeedRank.lua             # Per-delve clear-time estimates + pace baseline
 │   └── Achievements.lua          # Delve achievement IDs for map-pin tooltips
@@ -242,6 +245,7 @@ EverythingDelves/
 │   ├── PinAchievements.lua       # Delve achievements on world-map pin tooltips
 │   ├── DelvesPickerInfo.lua      # Info panel beside the delve difficulty picker
 │   └── WhatsNew.lua              # One-time feature-release popup
+├── Media/                        # Icons and audio
 └── Libs/                         # LibStub, LibDataBroker, LibDBIcon, CallbackHandler
 ```
 
