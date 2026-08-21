@@ -5,6 +5,7 @@
 -- treated as a delve POI when its owner carries one of our areaPoiIDs, or it's
 -- a WorldMapFrame descendant whose title is a delve name.
 local E = EverythingDelves
+local L = E.L
 
 local GameTooltip, IsShiftKeyDown = GameTooltip, IsShiftKeyDown
 
@@ -14,7 +15,7 @@ for _, d in ipairs(E.DelveData or {}) do
     if d.normalPoiID then poiToDelve[d.normalPoiID] = d.name end
 end
 
-local HEADER_TEXT = "Delve Achievements"
+local HEADER_TEXT = L["Delve Achievements"]
 
 -- Hidden /ed achtip diagnostic: logs each detection and why it did/didn't append.
 local function DebugTip(msg)
@@ -96,7 +97,7 @@ local function AddDetailLines(status)
     if s and #s.criteria > 0 then
         local done = 0
         for _, c in ipairs(s.criteria) do if c.completed then done = done + 1 end end
-        AddAchHeader("Stories", done, #s.criteria)
+        AddAchHeader(L["Stories"], done, #s.criteria)
         for _, c in ipairs(s.criteria) do
             if c.name ~= "" then AddSubItem(c.name, c.completed) end
         end
@@ -104,13 +105,13 @@ local function AddDetailLines(status)
 
     local d = status.discoveries
     if d and d.total > 0 then
-        AddAchHeader("Sturdy Chests", d.found, d.total)
+        AddAchHeader(L["Sturdy Chests"], d.found, d.total)
     end
 
     if status.depths and #status.depths > 0 then
         local done = 0
         for _, t in ipairs(status.depths) do if t.completed then done = done + 1 end end
-        AddAchHeader("Delver of the Depths", done, #status.depths)
+        AddAchHeader(L["Delver of the Depths"], done, #status.depths)
         for _, t in ipairs(status.depths) do
             AddSubItem(t.label, t.completed)
         end
@@ -125,15 +126,15 @@ local function RenderSection(cur)
         AddDetailLines(cur.status)
     else
         GameTooltip:AddLine(
-            E.CC.body .. ("%d to earn here"):format(cur.status.summaryCount)
+            E.CC.body .. L["%d to earn here"]:format(cur.status.summaryCount)
                 .. E.CC.close
-                .. E.CC.muted .. "  (press Shift for details)" .. E.CC.close)
+                .. E.CC.muted .. "  " .. L["(press Shift for details)"] .. E.CC.close)
     end
 
     if cur.credit then
         GameTooltip:AddLine(
-            E.CC.green .. "Today's story (" .. cur.credit
-                .. ") still counts — run it today!" .. E.CC.close,
+            E.CC.green .. L["Today's story (%s) still counts — run it today!"]
+                :format(cur.credit) .. E.CC.close,
             nil, nil, nil, true)
     end
 

@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor = math.floor
 
@@ -40,7 +41,7 @@ E:RegisterModule(function()
     local achHeader = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     achHeader:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -32)
     achHeader:SetFont(achHeader:GetFont(), 10, "OUTLINE")
-    achHeader:SetText(E.CC.gold .. "Achievements" .. E.CC.close)
+    achHeader:SetText(E.CC.gold .. L["Achievements"] .. E.CC.close)
 
     local storyFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     storyFS:SetPoint("TOPLEFT",  achHeader, "BOTTOMLEFT", 0, -3)
@@ -76,9 +77,9 @@ E:RegisterModule(function()
         fs:SetFont(fs:GetFont(), 9)
         fs:SetText(E.CC.muted .. txt .. E.CC.close)
     end
-    HdrCol(TIER_X, "Tier")
-    HdrCol(LOOT_X, "Loot")
-    HdrCol(VAULT_X, "Vault")
+    HdrCol(TIER_X, L["Tier"])
+    HdrCol(LOOT_X, L["Loot"])
+    HdrCol(VAULT_X, L["Vault"])
 
     local rows = {}
     local prev = hdrRow
@@ -118,7 +119,7 @@ E:RegisterModule(function()
     local legendFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     legendFS:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -5)
     legendFS:SetFont(legendFS:GetFont(), 9)
-    legendFS:SetText(E.CC.muted .. "Highlighted = your gear tier" .. E.CC.close)
+    legendFS:SetText(E.CC.muted .. L["Highlighted = your gear tier"] .. E.CC.close)
 
     local function PlayerRecTier()
         local overall, equipped
@@ -149,23 +150,23 @@ E:RegisterModule(function()
 
         local st = E:GetDelveAchievementStatus(delve.name)
         if not st then
-            storyFS:SetText(E.CC.muted .. "Achievement data unavailable" .. E.CC.close)
+            storyFS:SetText(E.CC.muted .. L["Achievement data unavailable"] .. E.CC.close)
             chestFS:SetText("")
             depthFS:SetText("")
         elseif st.allDone then
-            storyFS:SetText(E.CC.green .. "All achievements complete" .. E.CC.close)
+            storyFS:SetText(E.CC.green .. L["All achievements complete"] .. E.CC.close)
             chestFS:SetText("")
             depthFS:SetText("")
         else
             if st.stories then
                 local base = st.stories.done
-                    and (E.CC.green .. "Complete" .. E.CC.close)
-                    or  (E.CC.red .. "Incomplete" .. E.CC.close)
+                    and (E.CC.green .. L["Complete"] .. E.CC.close)
+                    or  (E.CC.red .. L["Incomplete"] .. E.CC.close)
                 local credit = (not st.stories.done)
                     and E:GetTodaysStoryCredit(delve.name, st)
                 local extra = credit
-                    and (E.CC.gold .. "  (today counts!)" .. E.CC.close) or ""
-                storyFS:SetText(E.CC.muted .. "Story: " .. E.CC.close .. base .. extra)
+                    and (E.CC.gold .. "  " .. L["(today counts!)"] .. E.CC.close) or ""
+                storyFS:SetText(E.CC.muted .. L["Story:"] .. " " .. E.CC.close .. base .. extra)
             else
                 storyFS:SetText("")
             end
@@ -173,7 +174,7 @@ E:RegisterModule(function()
             if st.discoveries then
                 local d = st.discoveries
                 local cc = d.done and E.CC.green or E.CC.body
-                chestFS:SetText(E.CC.muted .. "Chests: " .. E.CC.close
+                chestFS:SetText(E.CC.muted .. L["Chests:"] .. " " .. E.CC.close
                     .. cc .. d.found .. "/" .. d.total .. E.CC.close)
             else
                 chestFS:SetText("")
@@ -182,11 +183,11 @@ E:RegisterModule(function()
             if st.depths and #st.depths > 0 then
                 local miss = #(st.depthsMissing or {})
                 if miss == 0 then
-                    depthFS:SetText(E.CC.muted .. "Tier goals: " .. E.CC.close
-                        .. E.CC.green .. "Done" .. E.CC.close)
+                    depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
+                        .. E.CC.green .. L["Done"] .. E.CC.close)
                 else
-                    depthFS:SetText(E.CC.muted .. "Tier goals: " .. E.CC.close
-                        .. E.CC.red .. miss .. " to go" .. E.CC.close)
+                    depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
+                        .. E.CC.red .. L["%d to go"]:format(miss) .. E.CC.close)
                 end
             else
                 depthFS:SetText("")
@@ -194,8 +195,8 @@ E:RegisterModule(function()
         end
 
         local recTier = PlayerRecTier()
-        lootHeader:SetText(E.CC.gold .. "Rewards by Tier" .. E.CC.close
-            .. E.CC.muted .. "   you: ~T" .. recTier .. E.CC.close)
+        lootHeader:SetText(E.CC.gold .. L["Rewards by Tier"] .. E.CC.close
+            .. E.CC.muted .. "   " .. L["you: ~T%d"]:format(recTier) .. E.CC.close)
         for i, row in ipairs(rows) do
             if i == recTier then row.hl:Show() else row.hl:Hide() end
         end

@@ -1,13 +1,14 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_max, math_min = math.max, math.min
 
 local ORANGE = "|cFFFF8800"
 local DC_STATE = {
-    fresh      = { text = "Available",   cc = E.CC.muted },
-    inProgress = { text = "In Progress", cc = ORANGE      },
-    ready      = { text = "Banked",      cc = E.CC.gold   },
-    completed  = { text = "Turned In",   cc = E.CC.green  },
+    fresh      = { text = L["Available"],   cc = E.CC.muted },
+    inProgress = { text = L["In Progress"], cc = ORANGE      },
+    ready      = { text = L["Banked"],      cc = E.CC.gold   },
+    completed  = { text = L["Turned In"],   cc = E.CC.green  },
 }
 
 local function GetState(questID)
@@ -112,12 +113,12 @@ E:RegisterModule(function()
     local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, "Delver's Call")
+    E:StyleAccentHeader(mainHeader, L["Delver's Call"])
 
     local subFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     subFS:SetPoint("LEFT", mainHeader, "RIGHT", 10, -1)
     subFS:SetFont(subFS:GetFont(), 11)
-    subFS:SetText(E.CC.muted .. "World Tour weekly quest tracker" .. E.CC.close)
+    subFS:SetText(E.CC.muted .. L["World Tour weekly quest tracker"] .. E.CC.close)
 
     local strategyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     strategyFS:SetPoint("TOPLEFT", mainHeader, "BOTTOMLEFT", 0, -8)
@@ -125,12 +126,10 @@ E:RegisterModule(function()
     strategyFS:SetFont(strategyFS:GetFont(), 11)
     strategyFS:SetJustifyH("LEFT")
     strategyFS:SetText(
-        E.CC.body .. "Each rotational delve has a Delver's Call quest. Run every"
-        .. " delve once to pick the quest up, but " .. E.CC.close
-        .. E.CC.gold .. "don't turn it in yet" .. E.CC.close
-        .. E.CC.body .. " \226\128\148 the XP scales to your level at turn-in."
-        .. " Bank all " .. (#E.DelversCall) .. ", then cash them in once you're"
-        .. " a few levels short of cap for a push through the final levels."
+        E.CC.body
+        .. L["Each rotational delve has a Delver's Call quest. Run every delve once to pick the quest up, but %s \226\128\148 the XP scales to your level at turn-in. Bank all %d, then cash them in once you're a few levels short of cap for a push through the final levels."]
+            :format(E.CC.gold .. L["don't turn it in yet"] .. E.CC.close .. E.CC.body,
+                    #E.DelversCall)
         .. E.CC.close
     )
 
@@ -147,17 +146,17 @@ E:RegisterModule(function()
     local colHead = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colHead:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", COL_NAME, -8)
     colHead:SetFont(colHead:GetFont(), 10)
-    colHead:SetText(E.CC.muted .. "Delve" .. E.CC.close)
+    colHead:SetText(E.CC.muted .. L["Delve"] .. E.CC.close)
 
     local colHeadZone = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colHeadZone:SetPoint("TOPLEFT", colHead, "TOPLEFT", COL_ZONE - COL_NAME, 0)
     colHeadZone:SetFont(colHeadZone:GetFont(), 10)
-    colHeadZone:SetText(E.CC.muted .. "Zone" .. E.CC.close)
+    colHeadZone:SetText(E.CC.muted .. L["Zone"] .. E.CC.close)
 
     local colHeadStatus = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colHeadStatus:SetPoint("TOPLEFT", colHead, "TOPLEFT", COL_STATUS - COL_NAME, 0)
     colHeadStatus:SetFont(colHeadStatus:GetFont(), 10)
-    colHeadStatus:SetText(E.CC.muted .. "Status" .. E.CC.close)
+    colHeadStatus:SetText(E.CC.muted .. L["Status"] .. E.CC.close)
 
     local rowWidgets = {}
     local rowAnchor  = colHead
@@ -206,7 +205,7 @@ E:RegisterModule(function()
     local rollupHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rollupHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", GRID_X, -16)
     rollupHeader:SetFont(rollupHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(rollupHeader, "Alt Rollup")
+    E:StyleAccentHeader(rollupHeader, L["Alt Rollup"])
 
     local rollupPool = {}
     local function GetRollupLine(i)
@@ -274,13 +273,13 @@ E:RegisterModule(function()
             local remaining = math_max(0, total - inProg - ready - done)
             local isCur   = (k == curKey)
             local nameCC  = isCur and E.CC.white or E.CC.body
-            local youTag  = isCur and (E.CC.muted .. "  (you)" .. E.CC.close) or ""
+            local youTag  = isCur and (E.CC.muted .. "  " .. L["(you)"] .. E.CC.close) or ""
 
             local line = GetRollupLine(idx)
             line:ClearAllPoints()
             line:SetPoint("TOPLEFT", last, "BOTTOMLEFT", (idx == 1) and 4 or 0, (idx == 1) and -8 or -4)
             line:SetText(string.format(
-                "%s%s|r %s(%s)|r%s  \226\128\148  %s%d|r in progress  %s%d|r banked  %s%d|r done  %s%d|r left",
+                L["%s%s|r %s(%s)|r%s  \226\128\148  %s%d|r in progress  %s%d|r banked  %s%d|r done  %s%d|r left"],
                 nameCC, rec.name or k,
                 E.CC.muted, rec.realm or "?", youTag,
                 ORANGE, inProg,
@@ -300,7 +299,7 @@ E:RegisterModule(function()
             local line = GetRollupLine(1)
             line:ClearAllPoints()
             line:SetPoint("TOPLEFT", rollupHeader, "BOTTOMLEFT", 4, -8)
-            line:SetText(E.CC.muted .. "No characters tracked yet." .. E.CC.close)
+            line:SetText(E.CC.muted .. L["No characters tracked yet."] .. E.CC.close)
             line:Show()
             last = line
         end
@@ -324,8 +323,8 @@ E:RegisterModule(function()
     doneLabel:SetWordWrap(true)
     doneLabel:SetFont(doneLabel:GetFont(), 11)
     doneLabel:SetText(E.CC.body
-        .. "Show a green checkmark on the Delve Locations tab for delves whose"
-        .. " Delver's Call you've turned in" .. E.CC.close)
+        .. L["Show a green checkmark on the Delve Locations tab for delves whose Delver's Call you've turned in"]
+        .. E.CC.close)
 
     doneCheck:SetScript("OnClick", function(self)
         if E.db then
@@ -365,7 +364,7 @@ E:RegisterModule(function()
         end
 
         summaryFS:SetText(string.format(
-            "%sThis character:|r  %s%d|r available   %s%d|r in progress   %s%d|r banked   %s%d|r turned in   %s(of %d)|r",
+            L["%sThis character:|r  %s%d|r available   %s%d|r in progress   %s%d|r banked   %s%d|r turned in   %s(of %d)|r"],
             E.CC.body,
             E.CC.muted, counts.fresh,
             ORANGE, counts.inProgress,

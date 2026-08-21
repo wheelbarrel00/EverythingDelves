@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local CURIO_DATA = {
     Brann = {
@@ -6,16 +7,20 @@ local CURIO_DATA = {
         { role = "Healer", combat = { name = "Nether Overlay Matrix", id = 239580 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
         { role = "Damage", combat = { name = "Quizzical Device",      id = 239578 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
     },
+    -- Season 2 and Season 1 curio IDs interleave, so never infer one from a neighbour.
     Valeera = {
-        { role = "Tank",   combat = { name = "Porcelain Blade Tip",   id = 257683 }, utility = { name = "Mandate of Sacred Death", id = 249225 } },
-        { role = "Healer", combat = { name = "Porcelain Blade Tip",   id = 257683 }, utility = { name = "Mandate of Sacred Death", id = 249225 } },
-        { role = "Damage", combat = { name = "Porcelain Blade Tip",   id = 257683 }, utility = { name = "Mandate of Sacred Death", id = 249225 } },
+        { role = "Tank",   combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
+        { role = "Healer", combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
+        { role = "Damage", combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
     },
 }
 
 local DEFAULT_COMPANION = "Valeera"
 
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
+
+-- CURIO_DATA rows stay keyed on the English role. ROLE_LABEL is only what gets drawn.
+local ROLE_LABEL = { Tank = L["Tank"], Healer = L["Healer"], Damage = L["Damage"] }
 
 -- roleType -> ED role (0 = Damage, 1 = Healer, 2 = Tank), verified live.
 local COMPANION_ROLE_BY_TYPE = { [0] = "Damage", [1] = "Healer", [2] = "Tank" }
@@ -120,21 +125,23 @@ E:RegisterModule(function()
     titleHit:SetPoint("BOTTOMRIGHT", titleDiv, "TOPRIGHT", 0,  0)
     titleHit:EnableMouse(true)
     titleHit:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Companion Curios",
-            "The Combat and Utility curios your delve companion needs, "
-            .. "listed for each role (Tank / Healer / Damage).",
-            "Your current role is highlighted in " .. E.CC.gold .. "gold"
-            .. E.CC.close .. " with a \"" .. E.CC.gold .. ">" .. E.CC.close .. "\".",
-            "Slot these curios on your companion to boost her in delves.")
+        E:ShowTooltip(self, L["Companion Curios"],
+            L["The Combat and Utility curios your delve companion needs, listed for each role (Tank / Healer / Damage)."],
+            L["Your current role is highlighted in %s with a \"%s\"."]
+                :format(E.CC.gold .. L["gold"] .. E.CC.close,
+                        E.CC.gold .. ">" .. E.CC.close),
+            L["Slot these curios on your companion to boost her in delves."],
+            L["Season 2 also gives her a Poison slot. This popup does not cover it yet - the Nemesis tab already recommends one for Azta'rec."])
     end)
     titleHit:SetScript("OnLeave", function() E:HideTooltip() end)
 
     local function ShowCountTip(self)
-        E:ShowTooltip(self, "Currently in your bags",
-            "How many of this curio you have on you right now.",
-            E.CC.green .. "Green" .. E.CC.close .. " = you have at least one.",
-            E.CC.red .. "Red" .. E.CC.close .. " = you have none yet \226\128\148 "
-            .. "pick one up before your next delve.")
+        E:ShowTooltip(self, L["Currently in your bags"],
+            L["How many of this curio you have on you right now."],
+            L["%s = you have at least one."]
+                :format(E.CC.green .. L["Green"] .. E.CC.close),
+            L["%s = you have none yet \226\128\148 pick one up before your next delve."]
+                :format(E.CC.red .. L["Red"] .. E.CC.close))
     end
 
     local roleRows = {}
@@ -206,15 +213,17 @@ E:RegisterModule(function()
             myRole = E:GetPlayerCurioRole()
         end
 
-        titleFS:SetText(E.CC.header .. "Curios \226\128\148 " .. companionName .. E.CC.close
-            .. (noRole and ("  " .. E.CC.red .. "(no role set)" .. E.CC.close) or ""))
+        titleFS:SetText(E.CC.header .. L["Curios"] .. " \226\128\148 " .. companionName
+            .. E.CC.close
+            .. (noRole and ("  " .. E.CC.red .. L["(no role set)"] .. E.CC.close) or ""))
 
         for i, row in ipairs(rows) do
             local rf    = roleRows[i]
             local isMe  = (row.role == myRole)
             local nameCC = isMe and E.CC.gold or E.CC.body
 
-            rf.labelFS:SetText(nameCC .. (isMe and "> " or "") .. row.role .. E.CC.close)
+            rf.labelFS:SetText(nameCC .. (isMe and "> " or "")
+                .. (ROLE_LABEL[row.role] or row.role) .. E.CC.close)
 
             ---@diagnostic disable-next-line: deprecated
             local cCount  = (C_Item and C_Item.GetItemCount) and C_Item.GetItemCount(row.combat.id,  false) or 0
@@ -224,12 +233,12 @@ E:RegisterModule(function()
             local uCountCC = uCount > 0 and E.CC.green or E.CC.red
 
             rf.combatFS:SetText(
-                E.CC.muted .. "Combat: "  .. E.CC.close
+                E.CC.muted .. L["Combat:"] .. " "  .. E.CC.close
                 .. E.CC.body .. row.combat.name  .. E.CC.close
             )
             rf.combatCountFS:SetText(cCountCC .. cCount .. E.CC.close)
             rf.utilFS:SetText(
-                E.CC.muted .. "Utility: " .. E.CC.close
+                E.CC.muted .. L["Utility:"] .. " " .. E.CC.close
                 .. E.CC.body .. row.utility.name .. E.CC.close
             )
             rf.utilCountFS:SetText(uCountCC .. uCount .. E.CC.close)
@@ -297,8 +306,9 @@ E:RegisterModule(function()
         if arg and #arg > 0 then
             name = arg:sub(1,1):upper() .. arg:sub(2):lower()
             if not CURIO_DATA[name] then
-                print(E.CC.header .. "Everything Delves|r: unknown companion \""
-                    .. arg .. "\". Use |cFFFFFFFFbrann|r or |cFFFFFFFFvaleera|r.")
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. L["unknown companion \"%s\". Use |cFFFFFFFFbrann|r or |cFFFFFFFFvaleera|r."]
+                        :format(arg))
                 return
             end
             fromRead = true

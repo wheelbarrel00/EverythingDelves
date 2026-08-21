@@ -14,11 +14,13 @@ ignore:
   - .pkgmeta
   - .github
   - .gitignore
+  - .gitattributes
   - .luacheckrc
   - README.md
   - CHANGELOG.md
   - .vscode
   - screenshots
+  - docs
   - LICENSE
   - claude.md
   - .claude

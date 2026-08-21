@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local pairs, ipairs = pairs, ipairs
 local math_floor, math_max = math.floor, math.max
@@ -33,63 +34,63 @@ local function TierCC(tier)
 end
 
 local STORY_TIERS = {
-    ["Invasive Glow"]               = { tier="S", note="Bomb DoT scales with tier — keep it rolling and the clear is trivial." },
-    ["Ogre Powered"]                = { tier="A", note="Straight shot to boss. Kill Unstable Aberrations before moving on." },
-    ["Sporasaur Special"]           = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
-    ["Sporasaurus Surprise"]        = { tier="A", note="Kite dinos and kick spores back to break their shields for bonus damage." },
-    ["Holding the Line"]            = { tier="A", note="Head down the staircase; kill enemies (not heal allies) for the fastest route." },
-    ["Academy Under Siege"]         = { tier="A", note="Scattered powerful items help, but it can't match Invasive Glow." },
-    ["Core of the Problem"]         = { tier="B", note="Use portals to shortcut around the map. Kill enemies and collect orbs." },
-    ["Faculty of Fear"]             = { tier="B", note="Revelation mechanic requires revealing many NPCs, adding significant time." },
-    ["Party Crasher"]               = { tier="B", note="Hit levers to disable traps while defeating 4 Twilight Summoners." },
-    ["Focusers Under Pressure"]     = { tier="B", note="Large crystal collection loop adds time compared to Ogre Powered." },
-    ["Toadly Unbecoming"]           = { tier="B", note="Decurse frogs to spawn the boss. Open layout adds traverse time even when mounted." },
-    ["Alnmoth Munchies"]            = { tier="C", note="Same quick route as Sporasaur Special but extra objectives slow it down." },
-    ["Not What I Expected"]         = { tier="C", note="Click Lightbloom crates and activate security. Displacement Portal clones help in combat." },
-    ["Trapped"]                     = { tier="C", note="Teleported inside — must rescue hostages on the way back to the entrance." },
-    ["Totem Annihilation"]          = { tier="C", note="Take the bird north. Avoid the captured loa's lightning — it hits hard." },
-    ["Traitor's Due"]               = { tier="C", note="Large unwalkable map. Defeat void foci and elites with the Eye of Antenorian buff." },
-    ["Leyline Technician"]          = { tier="D", note="Inspecting every leyline adds a lot of time." },
-    ["Descent of the Haranir"]      = { tier="D", note="Same quick pathing as Sporasaur but extra objectives add considerable time." },
-    ["The Gravitational Effect"]    = { tier="D", note="Flying to collect Singularity Coils breaks the route significantly." },
-    ["Loosed Loa"]                  = { tier="D", note="Use Evasive Elixir before the patrolling loa attacks to avoid a big stun." },
-    ["Loose Loa"]                   = { tier="D", note="Use Evasive Elixir before the patrolling loa attacks to avoid a big stun." },
-    ["Ritual Interrupted"]          = { tier="D", note="Navigate south freeing furbolgs. Haunted weapons deal decent bonus damage." },
-    ["Calamitous"]                  = { tier="D", note="Enormous mountable map with required secondary objectives in all three variants." },
-    ["Arena Champion"]              = { tier="D", note="Defeat two named enemies then collect mold samples from Moldering Fighters." },
-    ["March of the Arcane Brigade"] = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
-    ["March of the Arcane Parade"]  = { tier="F", note="Activating sentinels is slow with no direct path to the boss." },
-    ["Bombing Run"]                 = { tier="F", note="Destroying void portals makes for one of the slowest clears." },
-    ["Mirror Shine"]                = { tier="F", note="Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs." },
-    ["Shadowy Supplies"]            = { tier="F", note="Collecting 30 supplies from enemies and the floor is very slow." },
-    ["Captured Wild"]               = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
-    ["Captured Wildlife"]           = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
-    ["Captured Widlife"]            = { tier="F", note="Free caged wildlife; use worm bait on Void Researchers to spawn the boss." },
-    ["Stolen Mana"]                 = { tier="F", note="Use the Galvanic Rifle on mana barrels and free 8 prisoners from Mana Siphoners." },
-    ["Lightbloom Invasion"]         = { tier="F", note="Free fighters and defend barricades against Thornmaws using nearby barrels." },
-    ["Dastardly Rotstalk"]          = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
-    ["Dastardly Rootstalks"]        = { tier="F", note="Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed." },
+    ["Invasive Glow"]               = { tier="S", note=L["Bomb DoT scales with tier — keep it rolling and the clear is trivial."] },
+    ["Ogre Powered"]                = { tier="A", note=L["Straight shot to boss. Kill Unstable Aberrations before moving on."] },
+    ["Sporasaur Special"]           = { tier="A", note=L["Kite dinos and kick spores back to break their shields for bonus damage."] },
+    ["Sporasaurus Surprise"]        = { tier="A", note=L["Kite dinos and kick spores back to break their shields for bonus damage."] },
+    ["Holding the Line"]            = { tier="A", note=L["Head down the staircase; kill enemies (not heal allies) for the fastest route."] },
+    ["Academy Under Siege"]         = { tier="A", note=L["Scattered powerful items help, but it can't match Invasive Glow."] },
+    ["Core of the Problem"]         = { tier="B", note=L["Use portals to shortcut around the map. Kill enemies and collect orbs."] },
+    ["Faculty of Fear"]             = { tier="B", note=L["Revelation mechanic requires revealing many NPCs, adding significant time."] },
+    ["Party Crasher"]               = { tier="B", note=L["Hit levers to disable traps while defeating 4 Twilight Summoners."] },
+    ["Focusers Under Pressure"]     = { tier="B", note=L["Large crystal collection loop adds time compared to Ogre Powered."] },
+    ["Toadly Unbecoming"]           = { tier="B", note=L["Decurse frogs to spawn the boss. Open layout adds traverse time even when mounted."] },
+    ["Alnmoth Munchies"]            = { tier="C", note=L["Same quick route as Sporasaur Special but extra objectives slow it down."] },
+    ["Not What I Expected"]         = { tier="C", note=L["Click Lightbloom crates and activate security. Displacement Portal clones help in combat."] },
+    ["Trapped"]                     = { tier="C", note=L["Teleported inside — must rescue hostages on the way back to the entrance."] },
+    ["Totem Annihilation"]          = { tier="C", note=L["Take the bird north. Avoid the captured loa's lightning — it hits hard."] },
+    ["Traitor's Due"]               = { tier="C", note=L["Large unwalkable map. Defeat void foci and elites with the Eye of Antenorian buff."] },
+    ["Leyline Technician"]          = { tier="D", note=L["Inspecting every leyline adds a lot of time."] },
+    ["Descent of the Haranir"]      = { tier="D", note=L["Same quick pathing as Sporasaur but extra objectives add considerable time."] },
+    ["The Gravitational Effect"]    = { tier="D", note=L["Flying to collect Singularity Coils breaks the route significantly."] },
+    ["Loosed Loa"]                  = { tier="D", note=L["Use Evasive Elixir before the patrolling loa attacks to avoid a big stun."] },
+    ["Loose Loa"]                   = { tier="D", note=L["Use Evasive Elixir before the patrolling loa attacks to avoid a big stun."] },
+    ["Ritual Interrupted"]          = { tier="D", note=L["Navigate south freeing furbolgs. Haunted weapons deal decent bonus damage."] },
+    ["Calamitous"]                  = { tier="D", note=L["Enormous mountable map with required secondary objectives in all three variants."] },
+    ["Arena Champion"]              = { tier="D", note=L["Defeat two named enemies then collect mold samples from Moldering Fighters."] },
+    ["March of the Arcane Brigade"] = { tier="F", note=L["Activating sentinels is slow with no direct path to the boss."] },
+    ["March of the Arcane Parade"]  = { tier="F", note=L["Activating sentinels is slow with no direct path to the boss."] },
+    ["Bombing Run"]                 = { tier="F", note=L["Destroying void portals makes for one of the slowest clears."] },
+    ["Mirror Shine"]                = { tier="F", note=L["Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs."] },
+    ["Shadowy Supplies"]            = { tier="F", note=L["Collecting 30 supplies from enemies and the floor is very slow."] },
+    ["Captured Wild"]               = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
+    ["Captured Wildlife"]           = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
+    ["Captured Widlife"]            = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
+    ["Stolen Mana"]                 = { tier="F", note=L["Use the Galvanic Rifle on mana barrels and free 8 prisoners from Mana Siphoners."] },
+    ["Lightbloom Invasion"]         = { tier="F", note=L["Free fighters and defend barricades against Thornmaws using nearby barrels."] },
+    ["Dastardly Rotstalk"]          = { tier="F", note=L["Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed."] },
+    ["Dastardly Rootstalks"]        = { tier="F", note=L["Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed."] },
 
     -- No source rates the 12.1 variants below, so a tier can only come from a
     -- measured run.
-    ["Olds and Ends"]               = { note="Ally with the Tortollan Tormunda to rescue the elders the Djaradin captured, and recover their relics." },
-    ["Minchi's Osseous Adventure"]  = { note="Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation." },
-    ["Minchi's Osseous Adventurer"] = { note="Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation." },
-    ["Speaking Their Language"]     = { tier="D", note="Rescue the turtles and the supplies the Djaradin stole, then send the siege-trained turtles in as tanks." },
-    ["Open Night"]                  = { note="An arena gauntlet - clear the floor, then the champions, then Drakta." },
-    ["Game Day"]                    = { note="Ghostly Headball - collect skulls from your kills and kick them at the pillars to score." },
-    ["Adopt-a-thon"]                = { note="Rescue the small animals caught in the middle of the gladiator fights." },
+    ["Olds and Ends"]               = { note=L["Ally with the Tortollan Tormunda to rescue the elders the Djaradin captured, and recover their relics."] },
+    ["Minchi's Osseous Adventure"]  = { note=L["Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation."] },
+    ["Minchi's Osseous Adventurer"] = { note=L["Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation."] },
+    ["Speaking Their Language"]     = { tier="D", note=L["Rescue the turtles and the supplies the Djaradin stole, then send the siege-trained turtles in as tanks."] },
+    ["Open Night"]                  = { note=L["An arena gauntlet - clear the floor, then the champions, then Drakta."] },
+    ["Game Day"]                    = { note=L["Ghostly Headball - collect skulls from your kills and kick them at the pillars to score."] },
+    ["Adopt-a-thon"]                = { note=L["Rescue the small animals caught in the middle of the gladiator fights."] },
 
-    ["Venomous Vapors"]             = { note="Escort Marla and clear the Children of Ula'tek poison contamination. Ends on Disciple of Vash'nik." },
-    ["Basilisk Blitz"]              = { note="Divert the shields, then kill the basilisks channeling energy to the boss." },
-    ["Basalisk Blitz"]              = { note="Divert the shields, then kill the basilisks channeling energy to the boss." },
-    ["Academic Antitoxin"]          = { note="Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss." },
-    ["An Elementary Antidote"]      = { note="Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss." },
-    ["Fungal Pharmacon"]            = { note="Loot Fungal Pharmacon from around the pit and break the four pillars the Children of Ula'tek burrow through." },
-    ["Caustic Crush"]               = { note="Stop the Children of Ula'tek summoning slimes, using Fungal Pharmacon and dodging the caustic waves." },
-    ["Why'd It Have to Be Snakes?"] = { note="Hunt snake relics through the crypts, clearing poison patches with Fungal Pharmacon." },
-    ["Infiltrate and Ameliorate"]   = { note="Sabotage the summoning - kick summoners into the abyss and spike the cauldrons with the wrong ingredients." },
-    ["Eggsplosive Growth"]          = { note="Destroy the Children of Ula'tek eggs nesting in the tunnels using the Venom-Clogged Leyline pylons." },
+    ["Venomous Vapors"]             = { note=L["Escort Marla and clear the Children of Ula'tek poison contamination. Ends on Disciple of Vash'nik."] },
+    ["Basilisk Blitz"]              = { note=L["Divert the shields, then kill the basilisks channeling energy to the boss."] },
+    ["Basalisk Blitz"]              = { note=L["Divert the shields, then kill the basilisks channeling energy to the boss."] },
+    ["Academic Antitoxin"]          = { note=L["Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss."] },
+    ["An Elementary Antidote"]      = { note=L["Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss."] },
+    ["Fungal Pharmacon"]            = { note=L["Loot Fungal Pharmacon from around the pit and break the four pillars the Children of Ula'tek burrow through."] },
+    ["Caustic Crush"]               = { note=L["Stop the Children of Ula'tek summoning slimes, using Fungal Pharmacon and dodging the caustic waves."] },
+    ["Why'd It Have to Be Snakes?"] = { note=L["Hunt snake relics through the crypts, clearing poison patches with Fungal Pharmacon."] },
+    ["Infiltrate and Ameliorate"]   = { note=L["Sabotage the summoning - kick summoners into the abyss and spike the cauldrons with the wrong ingredients."] },
+    ["Eggsplosive Growth"]          = { note=L["Destroy the Children of Ula'tek eggs nesting in the tunnels using the Venom-Clogged Leyline pylons."] },
 }
 
 local function StripStoryPrefix(s)
@@ -146,7 +147,7 @@ local function RoleCC(role)
 end
 local function RoleLabel(role)
     local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    return (m and m.label or "Note") .. ":"
+    return (m and m.label or L["Note"]) .. ":"
 end
 
 local function AcquireBountifulEntry()
@@ -293,10 +294,10 @@ local function GetResetTimeString()
         if secs and secs > 0 then
             local hours = math_floor(secs / 3600)
             local mins  = math_floor((secs % 3600) / 60)
-            return string_format("Resets in %dh %dm", hours, mins)
+            return string_format(L["Resets in %dh %dm"], hours, mins)
         end
     end
-    return "Reset timer unavailable"
+    return L["Reset timer unavailable"]
 end
 
 local function GetJourneyProgress()
@@ -332,12 +333,12 @@ local function UpdateBestPick()
         if si and si.tier then
             local cc = TierCC(si.tier)
             bestPickFS:SetText(
-                E.CC.muted .. "Best Pick: " .. E.CC.close
+                E.CC.muted .. L["Best Pick:"] .. " " .. E.CC.close
                 .. E.CC.gold .. best.name .. E.CC.close
                 .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
                 .. E.CC.body .. StripStoryPrefix(best.storyVariant) .. E.CC.close
                 .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                .. cc .. si.tier .. " Tier|r"
+                .. cc .. L["%s Tier"]:format(si.tier) .. "|r"
             )
             return
         end
@@ -503,7 +504,8 @@ local function RefreshBountifulData(force)
 
             -- storedEpoch 0 = a pre-upgrade baseline that may be missing completions.
             if changed and #storedIDs > 0 and storedEpoch > 0 then
-                print("|cFFFF2222[Everything Delves]|r New Bountiful Delves are available today! Open Everything Delves to see them.")
+                print("|cFFFF2222[Everything Delves]|r "
+                    .. L["New Bountiful Delves are available today! Open Everything Delves to see them."])
             end
             if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
             wipe(E.db.lastKnownBountifulIDs)
@@ -622,11 +624,11 @@ local function CreateDelveRow()
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, "TomTom Waypoint",
-                          "Add an arrow waypoint via TomTom.")
+            E:ShowTooltip(self, L["TomTom Waypoint"],
+                          L["Add an arrow waypoint via TomTom."])
         else
-            E:ShowTooltip(self, "TomTom Not Installed",
-                          "Install the TomTom addon to use arrow waypoints.")
+            E:ShowTooltip(self, L["TomTom Not Installed"],
+                          L["Install the TomTom addon to use arrow waypoints."])
         end
     end)
     ttBtn:SetScript("OnLeave", function(self)
@@ -647,13 +649,14 @@ local function CreateDelveRow()
             if si then
                 if si.tier then
                     local tc = TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
-                    GameTooltip:AddLine(si.tier .. " Tier", tc[1], tc[2], tc[3], true)
+                    GameTooltip:AddLine(L["%s Tier"]:format(si.tier),
+                                        tc[1], tc[2], tc[3], true)
                 end
                 GameTooltip:AddLine(si.note, 0.80, 0.80, 0.80, true)
                 GameTooltip:AddLine(" ")
             end
             if self.delve.overcharged then
-                GameTooltip:AddLine("Overcharged", 1, 1, 0, true)
+                GameTooltip:AddLine(L["Overcharged"], 1, 1, 0, true)
             end
             GameTooltip:AddLine(self.delve.storyVariant,
                                 0.88, 0.88, 0.88, true)
@@ -661,8 +664,8 @@ local function CreateDelveRow()
             if bosses then
                 GameTooltip:AddLine(" ")
                 GameTooltip:AddLine(expandedDelve[self.delve.name]
-                    and "Click to hide boss tactics"
-                    or  "Click to show boss tactics", 0.55, 0.55, 0.55, true)
+                    and L["Click to hide boss tactics"]
+                    or  L["Click to show boss tactics"], 0.55, 0.55, 0.55, true)
             end
             GameTooltip:Show()
         end
@@ -771,7 +774,7 @@ function UpdateRows()
             )
             row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
             local completedPrefix = delve.overcharged
-                and (E.CC.muted .. "Overcharged" .. E.CC.close
+                and (E.CC.muted .. L["Overcharged"] .. E.CC.close
                          .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
                 or ""
             row.variantText:SetText(
@@ -792,12 +795,12 @@ function UpdateRows()
                                  delve.mapID, delve.normalPoiID)
                 if nPoi then
                     normalNote = E.CC.muted
-                        .. " (Normal version available)" .. E.CC.close
+                        .. " " .. L["(Normal version available)"] .. E.CC.close
                 end
             end
 
             local overchargedPrefix = delve.overcharged
-                and (E.CC.yellow .. "Overcharged" .. E.CC.close
+                and (E.CC.yellow .. L["Overcharged"] .. E.CC.close
                      .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
                 or ""
             row.variantText:SetText(
@@ -844,7 +847,7 @@ function UpdateRows()
                         brow.nameFS:SetText(
                             "|TInterface\\Common\\FavoritesIcon:14:14|t "
                             .. E.CC.gold .. boss.name .. E.CC.close
-                            .. E.CC.muted .. "   (today's boss)" .. E.CC.close)
+                            .. E.CC.muted .. "   " .. L["(today's boss)"] .. E.CC.close)
                     else
                         brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
                     end
@@ -889,10 +892,8 @@ function UpdateRows()
         -- A cold POI cache returns nil for delves that really are bountiful, so
         -- an empty list only means "none today" once one has resolved.
         emptyStateFS:SetText(E.CC.muted .. (sawLivePOI
-            and "No bountiful delves are active right now."
-                .. "\nThey rotate daily - check back after reset."
-            or  "Loading bountiful delve data..."
-                .. "\nClick Refresh if this does not clear.") .. E.CC.close)
+            and L["No bountiful delves are active right now.\nThey rotate daily - check back after reset."]
+            or  L["Loading bountiful delve data...\nClick Refresh if this does not clear."]) .. E.CC.close)
         emptyStateFS:Show()
         yCur = yCur + 48
     elseif emptyStateFS then
@@ -912,13 +913,13 @@ E:RegisterModule(function()
     local COL2_X = 310
 
     local keyIconTex, cofferShardIconTex
-    statValues.bountifulKeys, keyIconTex   = CreateStatRow(frame, "Bountiful Keys:", STAT_Y, nil, E.ItemIcons.cofferKey)
-    statValues.cofferShards, cofferShardIconTex = CreateStatRow(frame, "Coffer Key Shards:", STAT_Y - 18, nil, E.ItemIcons.cofferShard)
-    statValues.keysFromShards= CreateStatRow(frame, "Keys from Shards:", STAT_Y - 36)
+    statValues.bountifulKeys, keyIconTex   = CreateStatRow(frame, L["Bountiful Keys:"], STAT_Y, nil, E.ItemIcons.cofferKey)
+    statValues.cofferShards, cofferShardIconTex = CreateStatRow(frame, L["Coffer Key Shards:"], STAT_Y - 18, nil, E.ItemIcons.cofferShard)
+    statValues.keysFromShards= CreateStatRow(frame, L["Keys from Shards:"], STAT_Y - 36)
 
-    statValues.journey       = CreateStatRow(frame, "Journey:", STAT_Y, COL2_X)
-    statValues.resetTimer    = CreateStatRow(frame, "Bountiful Reset:", STAT_Y - 18, COL2_X)
-    statValues.sessionCount  = CreateStatRow(frame, "Session Completions:", STAT_Y - 36, COL2_X)
+    statValues.journey       = CreateStatRow(frame, L["Journey:"], STAT_Y, COL2_X)
+    statValues.resetTimer    = CreateStatRow(frame, L["Bountiful Reset:"], STAT_Y - 18, COL2_X)
+    statValues.sessionCount  = CreateStatRow(frame, L["Session Completions:"], STAT_Y - 36, COL2_X)
 
     local function RefreshStats()
         local keys  = GetBountifulKeys()
@@ -933,8 +934,9 @@ E:RegisterModule(function()
         statValues.cofferShards:SetText(
             E.CC.gold .. shards .. E.CC.close
             .. (weeklyCap > 0
-                and (E.CC.muted .. "  (" .. shardsThisWeek .. " / " .. weeklyCap
-                     .. " this week)" .. E.CC.close)
+                and (E.CC.muted .. "  "
+                     .. L["(%d / %d this week)"]:format(shardsThisWeek, weeklyCap)
+                     .. E.CC.close)
                 or "")
         )
         statValues.keysFromShards:SetText(
@@ -943,21 +945,21 @@ E:RegisterModule(function()
             .. E.SHARDS_PER_KEY .. ")" .. E.CC.close
         )
         statValues.journey:SetText(
-            E.CC.gold .. "Stage " .. stage .. E.CC.close
+            E.CC.gold .. L["Stage %d"]:format(stage) .. E.CC.close
             .. E.CC.muted .. " - " .. cur .. " / " .. stageMax .. E.CC.close
         )
         statValues.resetTimer:SetText(E.CC.gold .. GetResetTimeString() .. E.CC.close)
         statValues.sessionCount:SetText(E.CC.gold .. sessionDone .. E.CC.close)
     end
 
-    local progressBar = E:CreateProgressBar(frame, 0, 14, "Bountiful Delves Completed")
+    local progressBar = E:CreateProgressBar(frame, 0, 14, L["Bountiful Delves Completed"])
     progressBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, STAT_Y - 60)
     progressBar:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
     frame.progressBar = progressBar
 
     local ACTIONS_Y = STAT_Y - 84
 
-    local gvBtn = E:CreateButton(frame, 90, 24, "Great Vault")
+    local gvBtn = E:CreateButton(frame, 90, 24, L["Great Vault"])
     gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
     gvBtn:SetScript("OnClick", function()
         -- Blizzard_WeeklyRewards is load-on-demand; force-load before use.
@@ -975,13 +977,14 @@ E:RegisterModule(function()
             ---@diagnostic disable-next-line: undefined-global
             ToggleGreatVaultUI()
         else
-            print(E.CC.header .. "Everything Delves|r: Great Vault UI could not be loaded.")
+            print(E.CC.header .. "Everything Delves|r: "
+                .. L["Great Vault UI could not be loaded."])
         end
     end)
     gvBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Great Vault", "Open the Great Vault reward panel.")
+        E:ShowTooltip(self, L["Great Vault"], L["Open the Great Vault reward panel."])
     end)
     gvBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -989,7 +992,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    local lfgStartBtn = E:CreateButton(frame, 90, 24, "Start LFG")
+    local lfgStartBtn = E:CreateButton(frame, 90, 24, L["Start LFG"])
     lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
 
     local function OpenDelveLFG()
@@ -999,7 +1002,8 @@ E:RegisterModule(function()
             EnsureBlizzardAddon("Blizzard_PVPUI")
         end
         if not PVEFrame then
-            print(E.CC.header .. "Everything Delves|r: LFG UI could not be loaded.")
+            print(E.CC.header .. "Everything Delves|r: "
+                .. L["LFG UI could not be loaded."])
             return
         end
         if not PVEFrame:IsShown() then
@@ -1029,14 +1033,14 @@ E:RegisterModule(function()
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         if IsInRaid() then
-            E:ShowTooltip(self, "Start LFG",
-                          E.CC.red .. "Cannot list while in a raid group." .. E.CC.close)
+            E:ShowTooltip(self, L["Start LFG"],
+                          E.CC.red .. L["Cannot list while in a raid group."] .. E.CC.close)
         elseif IsInGroup() and not UnitIsGroupLeader("player") then
-            E:ShowTooltip(self, "Start LFG",
-                          E.CC.red .. "Only the group leader can list." .. E.CC.close)
+            E:ShowTooltip(self, L["Start LFG"],
+                          E.CC.red .. L["Only the group leader can list."] .. E.CC.close)
         else
-            E:ShowTooltip(self, "Start LFG",
-                          "Open the Group Finder to list a Delve group.")
+            E:ShowTooltip(self, L["Start LFG"],
+                          L["Open the Group Finder to list a Delve group."])
         end
     end)
     lfgStartBtn:SetScript("OnLeave", function(self)
@@ -1074,7 +1078,7 @@ E:RegisterModule(function()
     local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
     listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(listHeader, "Today's Bountiful Delves")
+    E:StyleAccentHeader(listHeader, L["Today's Bountiful Delves"])
 
     bestPickFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     bestPickFS:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 2, -2)
@@ -1090,10 +1094,10 @@ E:RegisterModule(function()
     local unlockWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     unlockWarning:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 0, -8)
     unlockWarning:SetFont(unlockWarning:GetFont(), 12)
-    unlockWarning:SetText(E.CC.red .. "Delves unlock at Level 68" .. E.CC.close)
+    unlockWarning:SetText(E.CC.red .. L["Delves unlock at Level 68"] .. E.CC.close)
     unlockWarning:Hide()
 
-    local refreshBtn = E:CreateButton(frame, 70, 22, "Refresh")
+    local refreshBtn = E:CreateButton(frame, 70, 22, L["Refresh"])
     refreshBtn.label:SetFont(refreshBtn.label:GetFont(), 10)
     refreshBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 2)
     refreshBtn:SetScript("OnClick", function()
@@ -1110,8 +1114,8 @@ E:RegisterModule(function()
     refreshBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Refresh",
-                      "Re-query bountiful delve data and currency values.")
+        E:ShowTooltip(self, L["Refresh"],
+                      L["Re-query bountiful delve data and currency values."])
     end)
     refreshBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -1121,11 +1125,11 @@ E:RegisterModule(function()
 
     local COL_Y = LIST_Y - 50
     for _, col in ipairs({
-        { label = "Delve Name",  x = 8   },
-        { label = "Zone",        x = 234 },
-        { label = "Tier",        x = 338 },
-        { label = "Pin",         x = 374 },
-        { label = "TomTom",      x = 412 },
+        { label = L["Delve Name"], x = 8   },
+        { label = L["Zone"],       x = 234 },
+        { label = L["Tier"],       x = 338 },
+        { label = L["Pin"],        x = 374 },
+        { label = "TomTom",        x = 412 },
     }) do
         local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", frame, "TOPLEFT", col.x, COL_Y)

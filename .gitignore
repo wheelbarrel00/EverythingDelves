@@ -14,6 +14,15 @@ Desktop.ini
 *.bak
 *.orig
 
-# Local tooling
-docs/
+# Local tooling. docs/_verify_locale.py is deliberately NOT here - a lone checkout has
+# to be able to gate its own locale files, the same way EQOT and CDM do.
+docs/list_comments.py
+docs/verify_comments_only.py
+__pycache__/
 session_qr.png
+
+# Markdown docs are internal notes, EXCEPT the repo README and CHANGELOG.
+# (CHANGELOG.md is rewritten + committed by the release git-sequence, so it must stay tracked.)
+*.md
+!/README.md
+!/CHANGELOG.md

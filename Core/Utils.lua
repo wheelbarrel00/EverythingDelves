@@ -1,5 +1,6 @@
 ---@diagnostic disable: undefined-global, undefined-field
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
@@ -49,7 +50,7 @@ end
 -- Coords are percentages (0-100); converted to 0-1 for the API.
 function E:AddTomTomWaypoint(mapID, x, y, title)
     if not self:IsTomTomLoaded() then
-        print(E.CC.header .. "Everything Delves|r: TomTom is not installed.")
+        print(E.CC.header .. "Everything Delves|r: " .. L["TomTom is not installed."])
         return false
     end
     TomTom:AddWaypoint(mapID, x / 100, y / 100, { title = title })
@@ -67,10 +68,11 @@ function E:SetWaypoint(mapID, x, y)
             end
         end)
         if not ok then
-            print("|cFFFF2222[Everything Delves]|r Could not set waypoint: " .. tostring(err))
+            print("|cFFFF2222[Everything Delves]|r "
+                .. string_format(L["Could not set waypoint: %s"], tostring(err)))
         end
     else
-        print(E.CC.header .. "Everything Delves|r: Waypoint API unavailable.")
+        print(E.CC.header .. "Everything Delves|r: " .. L["Waypoint API unavailable."])
     end
 end
 
@@ -158,13 +160,13 @@ function E:WireDelvePinButton(btn, getDelve)
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         local delve = getDelve()
         if delve and E:IsSuperTrackingDelve(delve) then
-            E:ShowTooltip(self, "Tracking This Delve",
-                          "The on-screen arrow is guiding you here.",
-                          E.CC.muted .. "Click to stop tracking." .. E.CC.close)
+            E:ShowTooltip(self, L["Tracking This Delve"],
+                          L["The on-screen arrow is guiding you here."],
+                          E.CC.muted .. L["Click to stop tracking."] .. E.CC.close)
         else
-            E:ShowTooltip(self, "Track This Delve",
-                          "Point the on-screen arrow at this entrance.",
-                          E.CC.muted .. "Click again to stop." .. E.CC.close)
+            E:ShowTooltip(self, L["Track This Delve"],
+                          L["Point the on-screen arrow at this entrance."],
+                          E.CC.muted .. L["Click again to stop."] .. E.CC.close)
         end
     end)
     btn:SetScript("OnLeave", function(self)
@@ -184,7 +186,7 @@ end)
 function E:FlashButtonConfirm(btn)
     if not btn or not btn.label then return end
     local original = btn.label:GetText()
-    btn.label:SetText("|cFF00FF00Set!|r")
+    btn.label:SetText("|cFF00FF00" .. L["Set!"] .. "|r")
     C_Timer.After(1.5, function()
         if btn.label then
             btn.label:SetText(original)

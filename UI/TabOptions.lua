@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 
@@ -164,12 +165,12 @@ E:RegisterModule(function()
     local genHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     genHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     genHeader:SetFont(genHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(genHeader, "General")
+    E:StyleAccentHeader(genHeader, L["General"])
     Y = Y - 20
 
     local defaultTabSlider = CreateSlider(
         content, SECT_X, Y,
-        "Default Tab (opens to this tab)",
+        L["Default Tab (opens to this tab)"],
         1, E.NUM_TABS, 1,
         "defaultTab",
         function(v) return E.TAB_NAMES[v] or v end
@@ -180,7 +181,7 @@ E:RegisterModule(function()
     local scaleLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     scaleLabel:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     scaleLabel:SetFont(scaleLabel:GetFont(), 11)
-    scaleLabel:SetText(E.CC.body .. "UI Scale" .. E.CC.close)
+    scaleLabel:SetText(E.CC.body .. L["UI Scale"] .. E.CC.close)
 
     local scaleSlider = CreateFrame("Slider",
         "EverythingDelvesUIScaleSlider", content, "OptionsSliderTemplate")
@@ -210,7 +211,7 @@ E:RegisterModule(function()
     pctLabel:SetFont(pctLabel:GetFont(), 11)
     pctLabel:SetText(E.CC.body .. "%" .. E.CC.close)
 
-    local resetBtn = E:CreateButton(content, 50, 22, "Reset")
+    local resetBtn = E:CreateButton(content, 50, 22, L["Reset"])
     resetBtn:SetPoint("LEFT", pctLabel, "RIGHT", 8, 0)
     resetBtn:SetScript("OnClick", function()
         local defaultPct = 100
@@ -258,7 +259,7 @@ E:RegisterModule(function()
 
     local minimapCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Minimap / Broker Button",
+        L["Show Minimap / Broker Button"],
         nil
     )
     -- minimapButton.show lives in a sub-table, handled manually
@@ -271,14 +272,12 @@ E:RegisterModule(function()
 
     local shardWeeklyCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show weekly earnable shards in button tooltip",
+        L["Show weekly earnable shards in button tooltip"],
         "showShardWeekly"
     )
     shardWeeklyCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Weekly Shards in Tooltip",
-            "On the minimap / broker button tooltip, shows your",
-            "Coffer Key Shards as owned / still-earnable-this-week",
-            "instead of just the owned count.")
+        E:ShowTooltip(self, L["Weekly Shards in Tooltip"],
+            L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."])
     end)
     shardWeeklyCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 28
@@ -286,7 +285,7 @@ E:RegisterModule(function()
     -- Anchored beside the Default Tab slider so it doesn't consume a Y row
     local troveCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Trovehunter's Bounty reminder on Delve entry",
+        L["Show Trovehunter's Bounty reminder on Delve entry"],
         "showTrovehunterReminder"
     )
     troveCB:ClearAllPoints()
@@ -311,19 +310,19 @@ E:RegisterModule(function()
     local dispHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     dispHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     dispHeader:SetFont(dispHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(dispHeader, "Display")
+    E:StyleAccentHeader(dispHeader, L["Display"])
     Y = Y - 20
 
     local accentOptions = {
-        { value = "gold",     label = "|cFFFFD100Gold|r (default)" },
-        { value = "red",      label = "|cFFFF2222Red|r" },
-        { value = "purple",   label = "|cFFB280FFPurple|r" },
-        { value = "green",    label = "|cFF4CD94CDark Green|r" },
-        { value = "darkblue", label = "|cFF3388FFDark Blue|r" },
+        { value = "gold",     label = L["%s (default)"]:format("|cFFFFD100" .. L["Gold"] .. "|r") },
+        { value = "red",      label = "|cFFFF2222" .. L["Red"] .. "|r" },
+        { value = "purple",   label = "|cFFB280FF" .. L["Purple"] .. "|r" },
+        { value = "green",    label = "|cFF4CD94C" .. L["Dark Green"] .. "|r" },
+        { value = "darkblue", label = "|cFF3388FF" .. L["Dark Blue"] .. "|r" },
     }
     local accentRadios = CreateRadioGroup(
         content, SECT_X, Y,
-        "Accent Color",
+        L["Accent Color"],
         "accentColor",
         accentOptions,
         function(value)
@@ -336,13 +335,13 @@ E:RegisterModule(function()
     Y = Y - 12
 
     local achTipOptions = {
-        { value = "summary", label = "Summary line — hold Shift for details (default)" },
-        { value = "full",    label = "Always show full details" },
-        { value = "off",     label = "Off" },
+        { value = "summary", label = L["Summary line — hold Shift for details (default)"] },
+        { value = "full",    label = L["Always show full details"] },
+        { value = "off",     label = L["Off"] },
     }
     local achTipRadios = CreateRadioGroup(
         content, SECT_X, Y,
-        "Delve Achievements on Map Tooltips",
+        L["Delve Achievements on Map Tooltips"],
         "achievementTooltip",
         achTipOptions
     )
@@ -351,7 +350,7 @@ E:RegisterModule(function()
 
     local objCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Bonus Spoils Tracker",
+        L["Show Bonus Spoils Tracker"],
         "showDelveObjectives",
         function()
             if E.UpdateDelveObjectivesWindow then
@@ -360,20 +359,17 @@ E:RegisterModule(function()
         end
     )
     objCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Bonus Spoils Tracker",
-            "While inside a delve, tracks the two bonus-chest",
-            "objectives - Nemesis Strongbox packs and the",
-            "Sanctified Banner - so you know you've grabbed the",
-            "extra loot before pulling the boss.",
+        E:ShowTooltip(self, L["Bonus Spoils Tracker"],
+            L["While inside a delve, tracks the two bonus-chest objectives - Nemesis Strongbox packs and the Sanctified Banner - so you know you've grabbed the extra loot before pulling the boss."],
             " ",
-            "Drag the tracker to move it.")
+            L["Drag the tracker to move it."])
     end)
     objCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     local timerCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Run Timer",
+        L["Show Run Timer"],
         "showRunTimer",
         function()
             if E.UpdateDelveObjectivesWindow then
@@ -382,19 +378,17 @@ E:RegisterModule(function()
         end
     )
     timerCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Run Timer",
-            "Shows your elapsed run time on a small on-screen",
-            "display while you're inside a delve. Works on its",
-            "own - you don't need the Bonus Spoils tracker.",
+        E:ShowTooltip(self, L["Run Timer"],
+            L["Shows your elapsed run time on a small on-screen display while you're inside a delve. Works on its own - you don't need the Bonus Spoils tracker."],
             " ",
-            "Drag the display to move it.")
+            L["Drag the display to move it."])
     end)
     timerCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     local hudCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Delve HUD",
+        L["Show Delve HUD"],
         "showDelveHUD",
         function()
             if E.UpdateDelveObjectivesWindow then
@@ -403,20 +397,17 @@ E:RegisterModule(function()
         end
     )
     hudCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Delve HUD",
-            "An on-screen panel while inside a delve showing the",
-            "story variant and its grade, the recommended curios",
-            "for your role, your run timer, and your death count.",
+        E:ShowTooltip(self, L["Delve HUD"],
+            L["An on-screen panel while inside a delve showing the story variant and its grade, the recommended curios for your role, your run timer, and your death count."],
             " ",
-            "Shares the on-screen frame with the Run Timer and",
-            "Bonus Spoils tracker - drag any of them to move it.")
+            L["Shares the on-screen frame with the Run Timer and Bonus Spoils tracker - drag any of them to move it."])
     end)
     hudCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     local resultCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Best Time & keep timer after boss",
+        L["Show Best Time & keep timer after boss"],
         "showRunResult",
         function()
             if E.UpdateDelveObjectivesWindow then
@@ -425,27 +416,20 @@ E:RegisterModule(function()
         end
     )
     resultCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Best Time & Run Result",
-            "Adds your fastest time for the current delve to the",
-            "on-screen panel (your best at this tier, or your overall",
-            "best labelled with its tier), and keeps the run timer up",
-            "after you beat the boss - green if you beat your best time",
-            "at this tier, red if not. Needs one previous run logged.")
+        E:ShowTooltip(self, L["Best Time & Run Result"],
+            L["Adds your fastest time for the current delve to the on-screen panel (your best at this tier, or your overall best labelled with its tier), and keeps the run timer up after you beat the boss - green if you beat your best time at this tier, red if not. Needs one previous run logged."])
     end)
     resultCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
 
     local pickerCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Show Tier & Achievement Panel at Delve Entrance",
+        L["Show Tier & Achievement Panel at Delve Entrance"],
         "showPickerInfo"
     )
     pickerCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Tier & Achievement Panel",
-            "When you open a delve's difficulty picker at its",
-            "entrance, shows a panel with the loot and Great Vault",
-            "item levels for every tier, plus your story, chest,",
-            "and tier-goal achievement progress for that delve.")
+        E:ShowTooltip(self, L["Tier & Achievement Panel"],
+            L["When you open a delve's difficulty picker at its entrance, shows a panel with the loot and Great Vault item levels for every tier, plus your story, chest, and tier-goal achievement progress for that delve."])
     end)
     pickerCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
@@ -463,43 +447,43 @@ E:RegisterModule(function()
     local alertHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     alertHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     alertHeader:SetFont(alertHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(alertHeader, "Alerts & Tracking")
+    E:StyleAccentHeader(alertHeader, L["Alerts & Tracking"])
     Y = Y - 20
 
 
     local lowWarnCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Low Shard Warning",
+        L["Low Shard Warning"],
         "lowShardWarning"
     )
     Y = Y - 30
 
     local threshSlider = CreateSlider(
         content, SECT_X + 28, Y,
-        "Warning Threshold",
+        L["Warning Threshold"],
         50, 1000, 50,
         "lowShardThreshold",
-        function(v) return v .. " shards" end
+        function(v) return L["%d shards"]:format(v) end
     )
     Y = Y - 50
 
     local bountAlertCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Chat Alert When New Bountiful Delves Rotate In",
+        L["Chat Alert When New Bountiful Delves Rotate In"],
         "alertNewBountiful"
     )
     Y = Y - 26
 
     local specAlertCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Chat Alert for Special Assignments",
+        L["Chat Alert for Special Assignments"],
         "alertSpecialAssignment"
     )
     Y = Y - 26
 
     local roleAlertCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Warn When Companion Has No Role Assigned",
+        L["Warn When Companion Has No Role Assigned"],
         "alertCompanionRole"
     )
     Y = Y - 30
@@ -517,12 +501,12 @@ E:RegisterModule(function()
     local audioHeader = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     audioHeader:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     audioHeader:SetFont(audioHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(audioHeader, "Companion Audio")
+    E:StyleAccentHeader(audioHeader, L["Companion Audio"])
     Y = Y - 20
 
     local muteValeeraCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Mute Valeera voice lines",
+        L["Mute Valeera voice lines"],
         "muteValeera",
         function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
     )
@@ -530,7 +514,7 @@ E:RegisterModule(function()
 
     local muteBubblesCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Suppress Valeera speech bubbles",
+        L["Suppress Valeera speech bubbles"],
         "muteValeeraBubbles",
         function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
     )
@@ -538,16 +522,13 @@ E:RegisterModule(function()
 
     local muteDundunCB = CreateCheckbox(
         content, SECT_X, Y,
-        "Mute Dundun (Abundance event rat) voice lines",
+        L["Mute Dundun (Abundance event rat) voice lines"],
         "muteDundun",
         function() if E.ApplyCompanionAudio then E:ApplyCompanionAudio() end end
     )
     muteDundunCB:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Who is Dundun?",
-            "Dundun is the rat loa who hosts the Abundance",
-            "cave events and repeats his voice lines endlessly.",
-            "Muting only silences his audio - the event",
-            "itself is unaffected.")
+        E:ShowTooltip(self, L["Who is Dundun?"],
+            L["Dundun is the rat loa who hosts the Abundance cave events and repeats his voice lines endlessly. Muting only silences his audio - the event itself is unaffected."])
     end)
     muteDundunCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 30
@@ -562,16 +543,16 @@ E:RegisterModule(function()
     Y = Y - 34
 
     StaticPopupDialogs["EVERYTHINGDELVES_RESET"] = {
-        text = "Reset all Everything Delves settings to defaults?",
-        button1 = "Yes",
-        button2 = "Cancel",
+        text = L["Reset all Everything Delves settings to defaults?"],
+        button1 = L["Yes"],
+        button2 = L["Cancel"],
         OnAccept = function()
             E:ResetDB()
             if frame:IsShown() then
                 frame:Hide()
                 frame:Show()
             end
-            print(E.CC.header .. "Everything Delves|r: All settings reset.")
+            print(E.CC.header .. "Everything Delves|r: " .. L["All settings reset."])
         end,
         timeout = 0,
         whileDead = true,
@@ -580,15 +561,12 @@ E:RegisterModule(function()
     }
 
     StaticPopupDialogs["EVERYTHINGDELVES_CLEAR_HISTORY"] = {
-        text = "Are you sure you want to clear all Delve History?\n\n"
-            .. "This will permanently erase all lifetime stats, run "
-            .. "history, and personal bests for every delve on this "
-            .. "character. This cannot be undone.",
-        button1 = "Yes, Erase Everything",
-        button2 = "Cancel",
+        text = L["Are you sure you want to clear all Delve History?\n\nThis will permanently erase all lifetime stats, run history, and personal bests for every delve on this character. This cannot be undone."],
+        button1 = L["Yes, Erase Everything"],
+        button2 = L["Cancel"],
         OnAccept = function()
             E:ClearDelveHistory()
-            print(E.CC.header .. "Everything Delves|r: Delve history cleared.")
+            print(E.CC.header .. "Everything Delves|r: " .. L["Delve history cleared."])
         end,
         timeout = 0,
         whileDead = true,
@@ -596,7 +574,7 @@ E:RegisterModule(function()
         preferredIndex = 3,
     }
 
-    local resetBtn = E:CreateButton(content, 130, 24, "Reset All Settings")
+    local resetBtn = E:CreateButton(content, 130, 24, L["Reset All Settings"])
     resetBtn:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, Y)
     resetBtn:SetScript("OnClick", function()
         StaticPopup_Show("EVERYTHINGDELVES_RESET")
@@ -604,9 +582,9 @@ E:RegisterModule(function()
     resetBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Reset Settings",
-            "Restore every option to its default value.",
-            E.CC.red .. "This cannot be undone." .. E.CC.close)
+        E:ShowTooltip(self, L["Reset Settings"],
+            L["Restore every option to its default value."],
+            E.CC.red .. L["This cannot be undone."] .. E.CC.close)
     end)
     resetBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -614,7 +592,7 @@ E:RegisterModule(function()
         E:HideTooltip()
     end)
 
-    local clearHistBtn = E:CreateButton(content, 150, 24, "Clear Delve History")
+    local clearHistBtn = E:CreateButton(content, 150, 24, L["Clear Delve History"])
     clearHistBtn:SetPoint("LEFT", resetBtn, "RIGHT", 10, 0)
     clearHistBtn:SetScript("OnClick", function()
         StaticPopup_Show("EVERYTHINGDELVES_CLEAR_HISTORY")
@@ -622,11 +600,10 @@ E:RegisterModule(function()
     clearHistBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Clear Delve History",
-            "Erase all recorded delve runs and lifetime stats",
-            "for this character.",
+        E:ShowTooltip(self, L["Clear Delve History"],
+            L["Erase all recorded delve runs and lifetime stats for this character."],
             "",
-            E.CC.red .. "This cannot be undone." .. E.CC.close)
+            E.CC.red .. L["This cannot be undone."] .. E.CC.close)
     end)
     clearHistBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg

@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local TROVE_ICON     = 1064187
 local TROVE_AURA     = 1254631 -- buff spell id, active once the bounty is consumed
@@ -76,7 +77,7 @@ local function CreateReminderFrame()
     title:SetFont(title:GetFont(), 14, "OUTLINE")
     title:SetText(
         E.CC.header
-        .. "Trovehunter's Bounty Reminder"
+        .. L["Trovehunter's Bounty Reminder"]
         .. E.CC.close
     )
 
@@ -101,7 +102,7 @@ local function CreateReminderFrame()
     body:SetFont(body:GetFont(), 12)
     body:SetText(
         E.CC.body
-        .. "Don't forget to use your Trovehunter's Bounty before completing this Delve!"
+        .. L["Don't forget to use your Trovehunter's Bounty before completing this Delve!"]
         .. E.CC.close
     )
     body:SetWordWrap(true)
@@ -114,7 +115,7 @@ local function CreateReminderFrame()
     cbLabel:SetFont(cbLabel:GetFont(), 11)
     cbLabel:SetText(
         E.CC.muted
-        .. "Don't show this reminder again"
+        .. L["Don't show this reminder again"]
         .. E.CC.close
     )
     cb:SetScript("OnClick", function(self)
@@ -149,7 +150,8 @@ local function CreateReminderFrame()
     f:Hide()
 
     -- Create after f:Hide(): a SecureActionButton child makes f Protected (unhideable in combat).
-    local useBtn = E:CreateButton(f, 200, 24, "Use Trovehunter's Bounty", "SecureActionButtonTemplate")
+    local useBtn = E:CreateButton(f, 200, 24, L["Use Trovehunter's Bounty"],
+        "SecureActionButtonTemplate")
     local function ConfigureUseButton()
         useBtn:SetSize(200, 24)
         useBtn:SetPoint("TOP", f, "TOP", 0, -104)
@@ -250,10 +252,10 @@ local function AddBountyTooltipLine(tooltip, data)
     tooltip:AddLine(" ")
     if auraActive then
         tooltip:AddLine(E.CC.green
-            .. "Bounty active this week - happy looting!" .. E.CC.close)
+            .. L["Bounty active this week - happy looting!"] .. E.CC.close)
     else
         tooltip:AddLine(E.CC.yellow
-            .. "Not used yet - use it inside a Bountiful Delve." .. E.CC.close)
+            .. L["Not used yet - use it inside a Bountiful Delve."] .. E.CC.close)
     end
 end
 

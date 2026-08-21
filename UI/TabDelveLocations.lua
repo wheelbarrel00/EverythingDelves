@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local table_insert, table_sort = table.insert, table.sort
@@ -48,16 +49,16 @@ local DLOC_TIER_COLORS = {
 local DLOC_TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
 
 local DELVE_NOTES = {
-    ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note="Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear." },
-    ["The Gulf of Memory"]  = { tier="A", story="Sporasaur Special",   note="Glide or use a parasol toy to reach the boss platform quickly. Kite dinos and kick spores back to break their shields." },
-    ["The Darkway"]         = { tier="A", story="Ogre Powered",        note="Straightforward paths to the boss. Kill Unstable Aberrations before moving — they leash and give chase." },
-    ["Parhelion Plaza"]     = { tier="A", story="Holding the Line",    note="Take the staircase down for the fastest route. Kill enemies instead of healing allies for quicker progress." },
-    ["Sunkiller Sanctum"]   = { tier="B", story="Core of the Problem", note="Straight routes with easy kill objectives. Use portals in Core of the Problem to shortcut around the map." },
-    ["Twilight Crypt"]      = { tier="B", story="Party Crasher",       note="Pull levers to deactivate traps before advancing — limits large pulls. Party Crasher is the most direct variant." },
-    ["Atal'Aman"]           = { tier="B", story="Toadly Unbecoming",   note="Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss." },
-    ["The Shadow Enclave"]  = { tier="C", story="Traitor's Due",       note="Large unwalkable map — slow regardless of story. Use the Eye of Antenorian buff whenever it's available." },
-    ["The Grudge Pit"]      = { tier="D", story="Arena Champion",      note="Compact and mountable but long RP transitions and non-combat objectives in all three variants hurt efficiency." },
-    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note="Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today." },
+    ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note=L["Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear."] },
+    ["The Gulf of Memory"]  = { tier="A", story="Sporasaur Special",   note=L["Glide or use a parasol toy to reach the boss platform quickly. Kite dinos and kick spores back to break their shields."] },
+    ["The Darkway"]         = { tier="A", story="Ogre Powered",        note=L["Straightforward paths to the boss. Kill Unstable Aberrations before moving — they leash and give chase."] },
+    ["Parhelion Plaza"]     = { tier="A", story="Holding the Line",    note=L["Take the staircase down for the fastest route. Kill enemies instead of healing allies for quicker progress."] },
+    ["Sunkiller Sanctum"]   = { tier="B", story="Core of the Problem", note=L["Straight routes with easy kill objectives. Use portals in Core of the Problem to shortcut around the map."] },
+    ["Twilight Crypt"]      = { tier="B", story="Party Crasher",       note=L["Pull levers to deactivate traps before advancing — limits large pulls. Party Crasher is the most direct variant."] },
+    ["Atal'Aman"]           = { tier="B", story="Toadly Unbecoming",   note=L["Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss."] },
+    ["The Shadow Enclave"]  = { tier="C", story="Traitor's Due",       note=L["Large unwalkable map — slow regardless of story. Use the Eye of Antenorian buff whenever it's available."] },
+    ["The Grudge Pit"]      = { tier="D", story="Arena Champion",      note=L["Compact and mountable but long RP transitions and non-combat objectives in all three variants hurt efficiency."] },
+    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note=L["Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today."] },
 }
 
 -- Published for other tabs as a story fallback when a run captured no live story.
@@ -80,7 +81,7 @@ local function RoleCC(role)
 end
 local function RoleLabel(role)
     local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    return (m and m.label or "Note") .. ":"
+    return (m and m.label or L["Note"]) .. ":"
 end
 
 local function RefreshFilteredData()
@@ -278,11 +279,11 @@ E:RegisterModule(function()
             local hc = E.Colors.buttonHover
             self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
             if E:IsTomTomLoaded() then
-                E:ShowTooltip(self, "TomTom Waypoint",
-                              "Add an arrow waypoint via TomTom.")
+                E:ShowTooltip(self, L["TomTom Waypoint"],
+                              L["Add an arrow waypoint via TomTom."])
             else
-                E:ShowTooltip(self, "TomTom Not Installed",
-                              "Install the TomTom addon to use arrow waypoints.")
+                E:ShowTooltip(self, L["TomTom Not Installed"],
+                              L["Install the TomTom addon to use arrow waypoints."])
             end
         end)
         ttBtn:SetScript("OnLeave", function(self)
@@ -313,10 +314,11 @@ E:RegisterModule(function()
                 local tipLines = hoverTipLines
                 wipe(tipLines)
                 if self.isBountiful then
-                    table_insert(tipLines, E.CC.gold .. "* Bountiful Delve today!" .. E.CC.close)
+                    table_insert(tipLines,
+                        E.CC.gold .. L["* Bountiful Delve today!"] .. E.CC.close)
                 end
                 table_insert(tipLines,
-                    E.CC.muted .. "Zone: " .. E.CC.close
+                    E.CC.muted .. L["Zone:"] .. " " .. E.CC.close
                         .. E.CC.body .. self.delve.zone .. E.CC.close)
 
                 local todayStory = todayStoryByName[self.delve.name]
@@ -328,13 +330,13 @@ E:RegisterModule(function()
                         local cc = string_format("|cFF%02X%02X%02X",
                             math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
                         table_insert(tipLines,
-                            E.CC.muted .. "Today's Story: " .. E.CC.close
+                            E.CC.muted .. L["Today's Story:"] .. " " .. E.CC.close
                             .. E.CC.body .. todayStory .. E.CC.close
                             .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                            .. cc .. si.tier .. " Tier|r")
+                            .. cc .. L["%s Tier"]:format(si.tier) .. "|r")
                     else
                         table_insert(tipLines,
-                            E.CC.muted .. "Today's Story: " .. E.CC.close
+                            E.CC.muted .. L["Today's Story:"] .. " " .. E.CC.close
                             .. E.CC.body .. todayStory .. E.CC.close)
                     end
                     if si and si.note then
@@ -352,16 +354,16 @@ E:RegisterModule(function()
                     table_insert(tipLines, "")
                     if src == "personal" then
                         table_insert(tipLines,
-                            E.CC.muted .. "Your average clear: " .. E.CC.close
+                            E.CC.muted .. L["Your average clear:"] .. " " .. E.CC.close
                             .. gcc .. E:FormatClock(secs) .. "|r"
                             .. E.CC.muted .. "  (" .. label .. ")" .. E.CC.close)
                     else
                         table_insert(tipLines,
-                            E.CC.muted .. "Estimated clear: " .. E.CC.close
+                            E.CC.muted .. L["Estimated clear:"] .. " " .. E.CC.close
                             .. gcc .. E:FormatClock(secs) .. "|r"
                             .. E.CC.muted .. "  (" .. label .. ")" .. E.CC.close)
                         table_insert(tipLines, E.CC.muted
-                            .. "Run it once to replace this with your own time."
+                            .. L["Run it once to replace this with your own time."]
                             .. E.CC.close)
                     end
                 end
@@ -371,8 +373,8 @@ E:RegisterModule(function()
                     table_insert(tipLines, "")
                     table_insert(tipLines, E.CC.muted
                         .. (expandedDelve[self.delve.name]
-                            and "Click to hide boss tactics"
-                            or  "Click to show boss tactics")
+                            and L["Click to hide boss tactics"]
+                            or  L["Click to show boss tactics"])
                         .. E.CC.close)
                 end
 
@@ -445,29 +447,28 @@ E:RegisterModule(function()
         return fs
     end
 
-    local setAllBtn = E:CreateButton(frame, 130, 24, "Set All Waypoints")
+    local setAllBtn = E:CreateButton(frame, 130, 24, L["Set All Waypoints"])
     setAllBtn.label:SetFont(setAllBtn.label:GetFont(), 10)
     setAllBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, TOOLBAR_Y)
     setAllBtn:SetScript("OnClick", function()
         if not E:IsTomTomLoaded() then
             print(E.CC.header .. "Everything Delves|r: "
-                .. "TomTom is required for bulk waypoints.")
+                .. L["TomTom is required for bulk waypoints."])
             return
         end
         for _, delve in ipairs(filteredData) do
             E:AddTomTomWaypoint(delve.mapID, delve.x, delve.y, delve.name)
         end
-        print(E.CC.header .. "Everything Delves|r: Added "
-            .. #filteredData .. " TomTom waypoints.")
+        print(E.CC.header .. "Everything Delves|r: "
+            .. L["Added %d TomTom waypoints."]:format(#filteredData))
     end)
     setAllBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set All Waypoints",
-                      "Adds TomTom waypoints for every delve",
-                      "in the list.",
+        E:ShowTooltip(self, L["Set All Waypoints"],
+                      L["Adds TomTom waypoints for every delve in the list."],
                       "",
-                      E.CC.muted .. "Requires TomTom addon." .. E.CC.close)
+                      E.CC.muted .. L["Requires TomTom addon."] .. E.CC.close)
     end)
     setAllBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -509,7 +510,7 @@ E:RegisterModule(function()
         local qSuffix = (quickSrc == "estimate")
             and (E.CC.muted .. "*" .. E.CC.close) or ""
         local qcc = E.SpeedColorCode and E:SpeedColorCode(quickSecs) or E.CC.body
-        local text = E.CC.gold .. "Quickest: " .. E.CC.close
+        local text = E.CC.gold .. L["Quickest:"] .. " " .. E.CC.close
             .. E.CC.body .. quickName .. E.CC.close
             .. E.CC.muted .. " " .. E.CC.close
             .. qcc .. E:FormatClock(quickSecs) .. "|r" .. qSuffix
@@ -523,7 +524,7 @@ E:RegisterModule(function()
                 and (E.CC.muted .. "*" .. E.CC.close) or ""
             text = text
                 .. E.CC.muted .. "      \226\128\162      " .. E.CC.close
-                .. E.CC.gold .. "Best value: " .. E.CC.close
+                .. E.CC.gold .. L["Best value:"] .. " " .. E.CC.close
                 .. E.CC.body .. bestName .. E.CC.close
                 .. E.CC.muted .. " " .. E.CC.close
                 .. tcc .. (bestTier or "?") .. "|r"
@@ -538,7 +539,7 @@ E:RegisterModule(function()
     sortHint:SetFont(sortHint:GetFont(), 9)
     sortHint:SetTextColor(0.38, 0.38, 0.38, 1)
     sortHint:SetJustifyH("RIGHT")
-    sortHint:SetText("Click a delve for boss tactics  \226\128\148  click headers to sort")
+    sortHint:SetText(L["Click a delve for boss tactics  \226\128\148  click headers to sort"])
 
     local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
     headerLineTop:SetHeight(1)
@@ -548,9 +549,9 @@ E:RegisterModule(function()
 
     do
         local cols = {
-            { field = "name", label = "Delve Name",  width = 250, anchor = 0   },
-            { field = "zone", label = "Zone",         width = 120, anchor = 256 },
-            { field = "tier", label = "Tier",         width = 35,  anchor = 378 },
+            { field = "name", label = L["Delve Name"], width = 250, anchor = 0   },
+            { field = "zone", label = L["Zone"],       width = 120, anchor = 256 },
+            { field = "tier", label = L["Tier"],       width = 35,  anchor = 378 },
         }
         for _, col in ipairs(cols) do
             local btn = CreateFrame("Button", nil, frame)
@@ -576,9 +577,9 @@ E:RegisterModule(function()
         end
 
         for _, info in ipairs({
-            { label = "Pin",            x = 422 },
-            { label = "TomTom",         x = 462 },
-            { label = "Today's Story",  x = 520 },
+            { label = L["Pin"],           x = 422 },
+            { label = "TomTom",           x = 462 },
+            { label = L["Today's Story"], x = 520 },
         }) do
             local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             fs:SetPoint("LEFT", frame, "TOPLEFT", info.x, LIST_Y + 22 - 11)
@@ -592,7 +593,7 @@ E:RegisterModule(function()
         local shText = speedHeader:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         shText:SetPoint("RIGHT")
         shText:SetFont(shText:GetFont(), 11, "OUTLINE")
-        E:StyleAccentHeader(shText, "Speed")
+        E:StyleAccentHeader(shText, L["Speed"])
         speedHeader:SetScript("OnClick", function()
             if sortField == "speed" then
                 sortAscending = not sortAscending
@@ -603,10 +604,8 @@ E:RegisterModule(function()
             if Refresh then Refresh() end
         end)
         speedHeader:SetScript("OnEnter", function(self)
-            E:ShowTooltip(self, "Sort by Speed",
-                "Quickest clear first. Shows your own average time once",
-                "you've run a delve, or a tier- and gear-based estimate",
-                "(marked *) until then.")
+            E:ShowTooltip(self, L["Sort by Speed"],
+                L["Quickest clear first. Shows your own average time once you've run a delve, or a tier- and gear-based estimate (marked *) until then."])
         end)
         speedHeader:SetScript("OnLeave", function() E:HideTooltip() end)
     end
@@ -734,7 +733,7 @@ E:RegisterModule(function()
                             brow.nameFS:SetText(
                                 "|TInterface\\Common\\FavoritesIcon:14:14|t "
                                 .. E.CC.gold .. boss.name .. E.CC.close
-                                .. E.CC.muted .. "   (today's boss)" .. E.CC.close)
+                                .. E.CC.muted .. "   " .. L["(today's boss)"] .. E.CC.close)
                         else
                             brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
                         end

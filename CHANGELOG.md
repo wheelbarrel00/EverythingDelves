@@ -5,6 +5,25 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.28.0] - 2026-08-20
+
+### New Features
+
+- **Everything Delves now speaks six more languages** - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese. Around 750 phrases across every tab, the HUD, the reminders and the slash commands are now translatable. Anything not yet translated simply shows in English, so a partial translation is never a broken one. Most of the addon is still English today, because the translations are only just starting, but will be coming very soon! Delve, boss, zone and story names deliberately stay exactly as your own client shows them, because the addon matches them against the game's own text.
+- **Translations are shared with the author's other addons** - they live in one place, so a phrase used by more than one addon only ever gets translated once, and corrections reach every addon at the same time. Contributions are very welcome: see the Translations section of the README for how to send one.
+- **Translator credits on the About tab** - Zox, Malevi4, labrie75, Keriaovo, BNS333 and Stonetwist, whose work every non-English string in this addon comes from.
+
+### Bug Fixes
+
+- **The curio reminder recommended last season's curios** - it still suggested Porcelain Blade Tip and Mandate of Sacred Death, which are Season 1 items. It now recommends Season 2's Corrosive Bilespear for Combat and Soul-Cracking Dreamcatcher for Utility, for all three companion roles.
+- **The Nemesis tab said Venomfall Deeps had not opened yet** - it told you the delve only opens once Season 2 begins, which stopped being true on 18 August. It now explains what actually gates it: clear a Tier 7 delve with at least one life left to unlock the lower difficulty, or a Tier 10 clear for the harder one, and the clear does not have to be in Venomfall Deeps.
+- **The About tab named the wrong patch** - it read 12.0.x when the addon targets 12.1.0.
+
+### Notes
+
+- **Curios are not finished yet, and another update is coming soon** - Season 2 also gave your companion a Poisons slot, and the curio reminder does not cover it yet. Poison recommendations, and the rest of the Season 2 curio list, are the next thing being worked on. The Nemesis tab already recommends a poison for Azta'rec in the meantime.
+- **Ratings for 12.1's stories are still to come** - no guide ranks any of the new stories, so their grades can only come from timed runs. They show their objectives and bosses now, and a grade will follow rather than being guessed at.
+
 ## [1.27.0] - 2026-08-19
 
 ### New Features

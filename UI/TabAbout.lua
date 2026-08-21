@@ -1,15 +1,16 @@
 local E = EverythingDelves
+local L = E.L
 
 local ipairs = ipairs
 local math_max, math_min = math.max, math.min
 
 local COMMANDS = {
-    { cmd = "/ed",          desc = "Open or close the main window" },
-    { cmd = "/ed obj",      desc = "Toggle the Bonus Spoils tracker (also /ed spoils)" },
-    { cmd = "/ed curios",   desc = "Toggle the curio reminder popup" },
-    { cmd = "/ed whatsnew", desc = "Show the What's New popup again" },
-    { cmd = "/ed about",    desc = "Open this About tab" },
-    { cmd = "/ed reset",    desc = "Reset all settings to defaults" },
+    { cmd = "/ed",          desc = L["Open or close the main window"] },
+    { cmd = "/ed obj",      desc = L["Toggle the Bonus Spoils tracker (also /ed spoils)"] },
+    { cmd = "/ed curios",   desc = L["Toggle the curio reminder popup"] },
+    { cmd = "/ed whatsnew", desc = L["Show the What's New popup again"] },
+    { cmd = "/ed about",    desc = L["Open this About tab"] },
+    { cmd = "/ed reset",    desc = L["Reset all settings to defaults"] },
 }
 
 local CURSEFORGE_URL = "https://www.curseforge.com/wow/addons/everything-delves"
@@ -25,7 +26,18 @@ local OTHER_ADDONS = {
       gh   = "https://github.com/wheelbarrel00/LootPro" },
 }
 
-local THANKS = "BanditC64, Puzzleheaded-Pie-506, 8six753o9, herky4life"
+local COMMUNITY = "BanditC64, Puzzleheaded-Pie-506, 8six753o9, herky4life"
+
+-- One key per credit rather than a shared prefix plus a tail, so the name is a %s a
+-- translator can move. Korean puts it elsewhere in the sentence and a concatenation cannot.
+local TRANSLATORS = {
+    { name = "Zox",        line = L["Special thanks to %s for the many hours spent translating Everything Delves into French."] },
+    { name = "Malevi4",    line = L["Special thanks to %s for the many hours spent translating Everything Delves into Russian."] },
+    { name = "labrie75",   line = L["Special thanks to %s for the many hours spent translating Everything Delves into Korean."] },
+    { name = "Keriaovo",   line = L["Special thanks to %s for the many hours spent translating Everything Delves into Simplified Chinese."] },
+    { name = "BNS333",     line = L["Special thanks to %s for the many hours spent translating Everything Delves into Traditional Chinese."] },
+    { name = "Stonetwist", line = L["Special thanks to %s for the many hours spent translating Everything Delves into German."] },
+}
 
 E:RegisterModule(function()
     local frame = CreateFrame("Frame", "EverythingDelvesTab10Content")
@@ -173,25 +185,26 @@ E:RegisterModule(function()
     sub:SetFont(sub:GetFont(), 11)
     sub:SetText(
         E.CC.gold .. "v" .. (E.version or "?") .. E.CC.close
-        .. E.CC.muted .. "    by Wheelbarrel00    -    for WoW Midnight (12.0.x)"
+        .. E.CC.muted .. "    "
+        .. L["by Wheelbarrel00    -    for WoW Midnight (%s)"]:format("12.1.0")
         .. E.CC.close)
     Y = Y - 22
 
-    body(E.CC.body .. "A complete Delves companion: track delve locations,"
-        .. " bountiful status, coffer key shards, tiers, your run history,"
-        .. " and more - all in one window." .. E.CC.close)
+    body(E.CC.body
+        .. L["A complete Delves companion: track delve locations, bountiful status, coffer key shards, tiers, your run history, and more - all in one window."]
+        .. E.CC.close)
     gap(10)
 
     linkRow({
-        { label = "Join our Discord", onClick = function() E:ShowDiscord() end },
-        { label = "CurseForge",       onClick = function() E:ShowURL(CURSEFORGE_URL) end },
-        { label = "GitHub",           onClick = function() E:ShowURL(GITHUB_URL) end },
-        { label = "Report a Bug",     onClick = function() E:ShowURL(BUG_URL) end },
-        { label = "What's New",       onClick = function() if E.ShowWhatsNew then E:ShowWhatsNew() end end },
+        { label = L["Join our Discord"], onClick = function() E:ShowDiscord() end },
+        { label = "CurseForge",          onClick = function() E:ShowURL(CURSEFORGE_URL) end },
+        { label = "GitHub",              onClick = function() E:ShowURL(GITHUB_URL) end },
+        { label = L["Report a Bug"],     onClick = function() E:ShowURL(BUG_URL) end },
+        { label = L["What's New"],       onClick = function() if E.ShowWhatsNew then E:ShowWhatsNew() end end },
     })
     gap(8)
 
-    header("Commands")
+    header(L["Commands"])
     gap(2)
     for _, c in ipairs(COMMANDS) do
         local cmd = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -205,18 +218,18 @@ E:RegisterModule(function()
         Y = Y - 18
     end
     gap(2)
-    body(E.CC.muted .. "Tip: right-click the minimap button to jump to Options."
-        .. " For support, the author may ask you to run a debug command."
+    body(E.CC.muted
+        .. L["Tip: right-click the minimap button to jump to Options. For support, the author may ask you to run a debug command."]
         .. E.CC.close, 0, 10)
     gap(10)
 
-    header("Tutorials")
+    header(L["Tutorials"])
     gap(2)
-    body(E.CC.muted .. "Video tutorials are coming soon - watch this space."
+    body(E.CC.muted .. L["Video tutorials are coming soon - watch this space."]
         .. E.CC.close)
     gap(10)
 
-    header("More Add-ons by Wheelbarrel00")
+    header(L["More Add-ons by Wheelbarrel00"])
     gap(2)
     for _, a in ipairs(OTHER_ADDONS) do
         local n = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -235,14 +248,23 @@ E:RegisterModule(function()
     end
     gap(10)
 
-    header("Thanks")
+    header(L["Thanks"])
     gap(2)
-    body(E.CC.body .. "Built with feedback, reports, and ideas from the"
-        .. " community - especially " .. E.CC.gold .. THANKS .. E.CC.close
-        .. E.CC.body .. ". Thank you!" .. E.CC.close)
+    body(E.CC.body
+        .. L["Built with feedback, reports, and ideas from the community - especially %s. Thank you!"]
+            :format(E.CC.gold .. COMMUNITY .. E.CC.close .. E.CC.body)
+        .. E.CC.close)
+    gap(6)
+    for _, t in ipairs(TRANSLATORS) do
+        -- body is re-opened after the name because |r resets to the font's own color
+        -- rather than popping back to the enclosing escape.
+        body(E.CC.body
+            .. t.line:format(E.CC.gold .. t.name .. E.CC.close .. E.CC.body)
+            .. E.CC.close)
+    end
     gap(10)
 
-    header("Changelog")
+    header(L["Changelog"])
     gap(2)
     for _, entry in ipairs(E.Changelog or {}) do
         local vh = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -265,7 +287,7 @@ E:RegisterModule(function()
         gap(8)
     end
 
-    local older = makeLink("Older versions are on CurseForge", function()
+    local older = makeLink(L["Older versions are on CurseForge"], function()
         E:ShowURL(CURSEFORGE_URL)
     end)
     older:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)

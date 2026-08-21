@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local pairs, ipairs, type, time = pairs, ipairs, type, time
 local math_floor, math_max, math_min = math.floor, math.max, math.min
@@ -119,7 +120,7 @@ E:RegisterModule(function()
     local currHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     currHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", SECT_X, SECT_Y)
     currHeader:SetFont(currHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(currHeader, "Currency Overview")
+    E:StyleAccentHeader(currHeader, L["Currency Overview"])
 
     local shardIcon = sc:CreateTexture(nil, "ARTWORK")
     shardIcon:SetPoint("TOPLEFT", currHeader, "BOTTOMLEFT", 0, -4)
@@ -128,7 +129,7 @@ E:RegisterModule(function()
     local shardLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     shardLabelFS:SetPoint("LEFT", shardIcon, "RIGHT", 4, 0)
     shardLabelFS:SetFont(shardLabelFS:GetFont(), 11)
-    shardLabelFS:SetText(E.CC.muted .. "Coffer Key Shards:" .. E.CC.close)
+    shardLabelFS:SetText(E.CC.muted .. L["Coffer Key Shards:"] .. E.CC.close)
 
     local shardValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     shardValueFS:SetPoint("LEFT", shardLabelFS, "RIGHT", 6, 0)
@@ -141,7 +142,7 @@ E:RegisterModule(function()
     local keyLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     keyLabelFS:SetPoint("LEFT", keyIcon, "RIGHT", 4, 0)
     keyLabelFS:SetFont(keyLabelFS:GetFont(), 11)
-    keyLabelFS:SetText(E.CC.muted .. "Bountiful Keys:" .. E.CC.close)
+    keyLabelFS:SetText(E.CC.muted .. L["Bountiful Keys:"] .. E.CC.close)
 
     local keyValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     keyValueFS:SetPoint("LEFT", keyLabelFS, "RIGHT", 6, 0)
@@ -154,13 +155,13 @@ E:RegisterModule(function()
     local ucLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     ucLabelFS:SetPoint("LEFT", ucIcon, "RIGHT", 4, 0)
     ucLabelFS:SetFont(ucLabelFS:GetFont(), 11)
-    ucLabelFS:SetText(E.CC.muted .. "Undercoins:" .. E.CC.close)
+    ucLabelFS:SetText(E.CC.muted .. L["Undercoins:"] .. E.CC.close)
 
     local ucValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     ucValueFS:SetPoint("LEFT", ucLabelFS, "RIGHT", 6, 0)
     ucValueFS:SetFont(ucValueFS:GetFont(), 13, "OUTLINE")
 
-    local nextKeyBar = E:CreateProgressBar(sc, 0, 14, "Shards to Next Key")
+    local nextKeyBar = E:CreateProgressBar(sc, 0, 14, L["Shards to Next Key"])
     nextKeyBar:SetPoint("TOPLEFT", ucIcon, "BOTTOMLEFT", 0, -8)
     nextKeyBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 
@@ -168,7 +169,7 @@ E:RegisterModule(function()
     nextKeyNote:SetPoint("TOPLEFT", nextKeyBar, "BOTTOMLEFT", 0, -2)
     nextKeyNote:SetFont(nextKeyNote:GetFont(), 10)
 
-    local weeklyCapBar = E:CreateProgressBar(sc, 0, 14, "Weekly Shard Cap")
+    local weeklyCapBar = E:CreateProgressBar(sc, 0, 14, L["Weekly Shard Cap"])
     weeklyCapBar:SetPoint("TOPLEFT", nextKeyNote, "BOTTOMLEFT", 0, -6)
     weeklyCapBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
 
@@ -191,7 +192,7 @@ E:RegisterModule(function()
     crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     -- Season-neutral until the currency API resolves, then renamed to whatever
     -- this season's crests are actually called (see RefreshCrestHeader).
-    E:StyleAccentHeader(crestHeader, "Crests")
+    E:StyleAccentHeader(crestHeader, L["Crests"])
 
     local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     crestHeaderDiv:SetHeight(1)
@@ -204,45 +205,41 @@ E:RegisterModule(function()
     local CREST_COL_Y = -12
     local CREST_COL_TIPS = {
         ["On Hand"] = {
-            title = "On Hand",
+            title = L["On Hand"],
             lines = {
-                "How many of this crest you currently have",
-                "available to spend on gear upgrades.",
+                L["How many of this crest you currently have available to spend on gear upgrades."],
             },
         },
         ["Season Max"] = {
-            title = "Season Max",
+            title = L["Season Max"],
             lines = {
-                "The most of this crest you're allowed to earn",
-                "this season - the seasonal earning cap.",
+                L["The most of this crest you're allowed to earn this season - the seasonal earning cap."],
                 " ",
-                "Shows \"Uncapped\" when Blizzard has lifted the",
-                "cap for the rest of the season.",
+                L["Shows \"Uncapped\" when Blizzard has lifted the cap for the rest of the season."],
             },
         },
         ["Season Total"] = {
-            title = "Season Total",
+            title = L["Season Total"],
             lines = {
-                "How many of this crest you've earned in total",
-                "this season - including any you've already",
-                "spent on upgrades.",
+                L["How many of this crest you've earned in total this season - including any you've already spent on upgrades."],
                 " ",
-                "Usually higher than \"On Hand\" for that reason.",
+                L["Usually higher than \"On Hand\" for that reason."],
             },
         },
     }
+    -- `key` stays English because it indexes CREST_COL_TIPS. `label` is what is drawn.
     for _, col in ipairs({
-        { label = "Crest",        x = 0   },
-        { label = "On Hand",      x = 260 },
-        { label = "Season Max",   x = 360 },
-        { label = "Season Total", x = 460 },
+        { key = "Crest",        label = L["Crest"],        x = 0   },
+        { key = "On Hand",      label = L["On Hand"],      x = 260 },
+        { key = "Season Max",   label = L["Season Max"],   x = 360 },
+        { key = "Season Total", label = L["Season Total"], x = 460 },
     }) do
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", col.x, CREST_COL_Y)
         fs:SetFont(fs:GetFont(), 10, "OUTLINE")
         fs:SetText(E.CC.muted .. col.label .. E.CC.close)
 
-        local tip = CREST_COL_TIPS[col.label]
+        local tip = CREST_COL_TIPS[col.key]
         if tip then
             local hover = CreateFrame("Button", nil, sc)
             hover:SetPoint("TOPLEFT", fs, "TOPLEFT", -3, 2)
@@ -331,7 +328,7 @@ E:RegisterModule(function()
     local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     srcHeader:SetPoint("TOPLEFT", div1b, "BOTTOMLEFT", 0, -32)
     srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(srcHeader, "Weekly Shard Sources")
+    E:StyleAccentHeader(srcHeader, L["Weekly Shard Sources"])
 
     local srcHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
     srcHeaderDiv:SetHeight(1)
@@ -347,22 +344,22 @@ E:RegisterModule(function()
     local colNameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colNameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, COL_HEADERS_Y)
     colNameFS:SetFont(colNameFS:GetFont(), 10, "OUTLINE")
-    colNameFS:SetText(E.CC.muted .. "Source" .. E.CC.close)
+    colNameFS:SetText(E.CC.muted .. L["Source"] .. E.CC.close)
 
     local colPerFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colPerFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 260, 0)
     colPerFS:SetFont(colPerFS:GetFont(), 10, "OUTLINE")
-    colPerFS:SetText(E.CC.muted .. "Per" .. E.CC.close)
+    colPerFS:SetText(E.CC.muted .. L["Per"] .. E.CC.close)
 
     local colCapFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colCapFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 310, 0)
     colCapFS:SetFont(colCapFS:GetFont(), 10, "OUTLINE")
-    colCapFS:SetText(E.CC.muted .. "Weekly Cap" .. E.CC.close)
+    colCapFS:SetText(E.CC.muted .. L["Weekly Cap"] .. E.CC.close)
 
     local colStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     colStatusFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 405, 0)
     colStatusFS:SetFont(colStatusFS:GetFont(), 10, "OUTLINE")
-    colStatusFS:SetText(E.CC.muted .. "Status" .. E.CC.close)
+    colStatusFS:SetText(E.CC.muted .. L["Status"] .. E.CC.close)
 
     local ROW_HEIGHT    = 20
     local SOURCE_ROW_Y  = COL_HEADERS_Y - 16
@@ -411,7 +408,7 @@ E:RegisterModule(function()
     local footnoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     footnoteFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 2)
     footnoteFS:SetFont(footnoteFS:GetFont(), 9)
-    footnoteFS:SetText(E.CC.muted .. "* Value unconfirmed - may differ in game" .. E.CC.close)
+    footnoteFS:SetText(E.CC.muted .. L["* Value unconfirmed - may differ in game"] .. E.CC.close)
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
     div2:SetHeight(1)
@@ -423,7 +420,7 @@ E:RegisterModule(function()
     local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     sessHeader:SetFont(sessHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(sessHeader, "Session Tracker")
+    E:StyleAccentHeader(sessHeader, L["Session Tracker"])
 
     local sessShardsFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sessShardsFS:SetPoint("TOPLEFT", sessHeader, "BOTTOMLEFT", 0, -4)
@@ -446,7 +443,7 @@ E:RegisterModule(function()
     sessNoteFS:SetFont(sessNoteFS:GetFont(), 10)
     sessNoteFS:SetText(
         E.CC.muted
-        .. "Tracking starts when you first open this tab, not at login. Resets on /reload."
+        .. L["Tracking starts when you first open this tab, not at login. Resets on /reload."]
         .. E.CC.close
     )
 
@@ -472,7 +469,7 @@ E:RegisterModule(function()
     local saHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
     saHeader:SetFont(saHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(saHeader, "Special Assignments")
+    E:StyleAccentHeader(saHeader, L["Special Assignments"])
 
     local saSummaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     saSummaryFS:SetPoint("LEFT", saHeader, "RIGHT", 12, 0)
@@ -502,7 +499,7 @@ E:RegisterModule(function()
     local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -32)
     wdqHeader:SetFont(wdqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(wdqHeader, "Weekly Delve Quests")
+    E:StyleAccentHeader(wdqHeader, L["Weekly Delve Quests"])
 
     local wdqRows = {}
     for i, wq in ipairs(WEEKLY_DELVE_QUESTS) do
@@ -539,20 +536,20 @@ E:RegisterModule(function()
     local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -32)
     wqHeader:SetFont(wqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(wqHeader, "Coffer Shard World Quests")
+    E:StyleAccentHeader(wqHeader, L["Coffer Shard World Quests"])
 
     local wqCountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     wqCountFS:SetPoint("LEFT", wqHeader, "RIGHT", 12, 0)
     wqCountFS:SetFont(wqCountFS:GetFont(), 11)
 
-    local wqRefreshBtn = E:CreateButton(sc, 60, 18, "Refresh")
+    local wqRefreshBtn = E:CreateButton(sc, 60, 18, L["Refresh"])
     wqRefreshBtn.label:SetFont(wqRefreshBtn.label:GetFont(), 9)
     wqRefreshBtn:SetPoint("LEFT", wqCountFS, "RIGHT", 12, 0)
     wqRefreshBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Refresh WQs",
-            "Force rescan all Midnight zones for\nCoffer Key Shard world quests.")
+        E:ShowTooltip(self, L["Refresh WQs"],
+            L["Force rescan all Midnight zones for\nCoffer Key Shard world quests."])
     end)
     wqRefreshBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -564,8 +561,9 @@ E:RegisterModule(function()
     wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -14)
     wqNoteFS:SetFont(wqNoteFS:GetFont(), 9)
     wqNoteFS:SetText(
-        E.CC.muted .. "WQs rewarding Coffer Key Shards. Rewards rotate - "
-        .. "click Refresh to update." .. E.CC.close
+        E.CC.muted
+        .. L["WQs rewarding Coffer Key Shards. Rewards rotate - click Refresh to update."]
+        .. E.CC.close
     )
 
     local wqCapWarningFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -574,7 +572,9 @@ E:RegisterModule(function()
     wqCapWarningFS:SetWidth(540)
     wqCapWarningFS:SetJustifyH("LEFT")
     wqCapWarningFS:SetText(
-        E.CC.gold .. "Weekly shard cap reached — shards will not be awarded until reset." .. E.CC.close
+        E.CC.gold
+        .. L["Weekly shard cap reached — shards will not be awarded until reset."]
+        .. E.CC.close
     )
     wqCapWarningFS:Hide()
 
@@ -587,11 +587,11 @@ E:RegisterModule(function()
     E:StyleGreyLine(wqHdrLineTop)
 
     for _, col in ipairs({
-        { label = "Zone",   x = 0   },
-        { label = "Quest",  x = 140 },
-        { label = "Shards", x = 380 },
-        { label = "Pin",    x = 430 },
-        { label = "TomTom", x = 470 },
+        { label = L["Zone"],   x = 0   },
+        { label = L["Quest"],  x = 140 },
+        { label = L["Shards"], x = 380 },
+        { label = L["Pin"],    x = 430 },
+        { label = "TomTom",    x = 470 },
     }) do
         local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fs:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", col.x, wqColY)
@@ -659,11 +659,11 @@ E:RegisterModule(function()
                 self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
             end
             if E:IsTomTomLoaded() then
-                E:ShowTooltip(self, "TomTom Waypoint",
-                              "Add an arrow waypoint via TomTom.")
+                E:ShowTooltip(self, L["TomTom Waypoint"],
+                              L["Add an arrow waypoint via TomTom."])
             else
-                E:ShowTooltip(self, "TomTom Not Installed",
-                              "Install the TomTom addon to use arrow waypoints.")
+                E:ShowTooltip(self, L["TomTom Not Installed"],
+                              L["Install the TomTom addon to use arrow waypoints."])
             end
         end)
         ttBtn:SetScript("OnLeave", function(self)
@@ -703,9 +703,9 @@ E:RegisterModule(function()
     wqEmptyFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, wqColY - 35)
     wqEmptyFS:SetFont(wqEmptyFS:GetFont(), 10)
     wqEmptyFS:SetText(
-        E.CC.yellow .. "No Coffer Key Shard WQs found. Click Refresh to rescan.\n"
+        E.CC.yellow .. L["No Coffer Key Shard WQs found. Click Refresh to rescan."] .. "\n"
         .. E.CC.close .. E.CC.muted
-        .. "Tip: Open your World Map to each Midnight zone first to load quest data."
+        .. L["Tip: Open your World Map to each Midnight zone first to load quest data."]
         .. E.CC.close
     )
     wqEmptyFS:Hide()
@@ -715,7 +715,7 @@ E:RegisterModule(function()
     wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
     wqBottomFS:SetFont(wqBottomFS:GetFont(), 9)
     wqBottomFS:SetText(
-        E.CC.muted .. "* Tip: Visit zone maps to load WQ data before refreshing." .. E.CC.close
+        E.CC.muted .. L["* Tip: Visit zone maps to load WQ data before refreshing."] .. E.CC.close
     )
 
     local wqCache      = {}
@@ -786,7 +786,7 @@ E:RegisterModule(function()
                         if currencies then
                             for _, ci in ipairs(currencies) do
                                 if ci.currencyID == WQ_CURRENCY then
-                                    local title = "Unknown Quest"
+                                    local title = L["Unknown Quest"]
                                     if C_TaskQuest.GetQuestInfoByQuestID then
                                         title = C_TaskQuest
                                             .GetQuestInfoByQuestID(qid)
@@ -799,7 +799,7 @@ E:RegisterModule(function()
                                                    and C_Map.GetMapInfo(questMapID)
                                         zoneNameCache[questMapID] =
                                             (mi and mi.name)
-                                            or ("Zone " .. questMapID)
+                                            or L["Zone %d"]:format(questMapID)
                                     end
                                     seenQuestIDs[qid] = true
                                     local n = #wqEntryPool
@@ -882,24 +882,24 @@ E:RegisterModule(function()
 
         sessShardsFS:SetText(
             sessShards >= 0
-                and string_format("|cFF999999Shards earned: |r|cFFFFD700+%s|r", FormatNumber(sessShards))
-                or  string_format("|cFF999999Shards earned: |r|cFFFF3333%s|r", FormatNumber(sessShards))
+                and string_format(L["|cFF999999Shards earned: |r|cFFFFD700+%s|r"], FormatNumber(sessShards))
+                or  string_format(L["|cFF999999Shards earned: |r|cFFFF3333%s|r"], FormatNumber(sessShards))
         )
 
         sessKeysFS:SetText(
             sessKeys >= 0
-                and string_format("|cFF999999Keys earned: |r|cFFFFD700+%d|r", sessKeys)
-                or  string_format("|cFF999999Keys earned: |r|cFFFF3333%d|r", sessKeys)
+                and string_format(L["|cFF999999Keys earned: |r|cFFFFD700+%d|r"], sessKeys)
+                or  string_format(L["|cFF999999Keys earned: |r|cFFFF3333%d|r"], sessKeys)
         )
 
         sessTimeFS:SetText(
-            string_format("|cFF999999Session time: |r|cFFE0E0E0%s|r", elapsed)
+            string_format(L["|cFF999999Session time: |r|cFFE0E0E0%s|r"], elapsed)
         )
 
         if sessTime >= 60 and sessShards > 0 then
             local perHour = math_floor(sessShards / (sessTime / 3600))
             sessRateFS:SetText(
-                string_format("|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r", FormatNumber(perHour))
+                string_format(L["|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r"], FormatNumber(perHour))
             )
             sessRateFS:Show()
         else
@@ -945,18 +945,18 @@ E:RegisterModule(function()
         nextKeyBar:SetProgress(partial, E.SHARDS_PER_KEY)
         local remaining = E.SHARDS_PER_KEY - partial
         nextKeyNote:SetText(
-            E.CC.muted .. "Progress toward next key - "
-            .. E.CC.close .. E.CC.gold .. remaining
-            .. E.CC.close .. E.CC.muted .. " shards remaining"
+            E.CC.muted .. L["Progress toward next key - %s shards remaining"]:format(
+                E.CC.close .. E.CC.gold .. remaining .. E.CC.close .. E.CC.muted)
             .. E.CC.close
         )
 
         if weeklyCap > 0 then
             weeklyCapBar:SetProgress(weeklyEarned, weeklyCap)
             weeklyCapNote:SetText(
-                E.CC.muted .. "Weekly shard cap - "
-                .. E.CC.close .. E.CC.gold .. weeklyRemaining
-                .. E.CC.close .. E.CC.muted .. " shards remaining this week"
+                E.CC.muted
+                .. L["Weekly shard cap - %s shards remaining this week"]:format(
+                    E.CC.close .. E.CC.gold .. weeklyRemaining
+                    .. E.CC.close .. E.CC.muted)
                 .. E.CC.close
             )
             weeklyCapBar:Show()
@@ -964,7 +964,7 @@ E:RegisterModule(function()
         else
             weeklyCapBar:Hide()
             weeklyCapNote:SetText(
-                E.CC.muted .. "Weekly shard cap data unavailable" .. E.CC.close
+                E.CC.muted .. L["Weekly shard cap data unavailable"] .. E.CC.close
             )
         end
 
@@ -988,7 +988,7 @@ E:RegisterModule(function()
                 row.handFS:SetText(E.CC.gold .. FormatNumber(qty) .. E.CC.close)
                 row.maxFS:SetText(seasonMax > 0
                     and (E.CC.body .. FormatNumber(seasonMax) .. E.CC.close)
-                    or  (E.CC.muted .. "Uncapped" .. E.CC.close))
+                    or  (E.CC.muted .. L["Uncapped"] .. E.CC.close))
                 -- Red once at cap: further crests from capped sources are lost.
                 local seasonColor = E.CC.body
                 if seasonMax > 0 and season >= seasonMax then
@@ -1074,12 +1074,12 @@ E:RegisterModule(function()
                     )
                 else
                     row.statusFS:SetText(
-                        E.CC.green .. "Trackable" .. E.CC.close
+                        E.CC.green .. L["Trackable"] .. E.CC.close
                     )
                 end
             else
                 row.statusFS:SetText(
-                    E.CC.muted .. "Manual" .. E.CC.close
+                    E.CC.muted .. L["Manual"] .. E.CC.close
                 )
             end
         end
@@ -1087,8 +1087,8 @@ E:RegisterModule(function()
         -- Live cap from the currency API (600 in S1), not a sum of rows, so it never goes stale.
         if weeklyCap and weeklyCap > 0 then
             weeklyTotalFS:SetText(
-                E.CC.muted .. "Weekly cap: " .. E.CC.close
-                .. E.CC.gold .. FormatNumber(weeklyCap) .. " shards/week"
+                E.CC.muted .. L["Weekly cap:"] .. " " .. E.CC.close
+                .. E.CC.gold .. L["%s shards/week"]:format(FormatNumber(weeklyCap))
                 .. E.CC.close
             )
         else
@@ -1109,8 +1109,8 @@ E:RegisterModule(function()
 
             if not unlocked then
                 row.fs:SetText(
-                    E.CC.red .. "  SA: " .. row.title
-                    .. " - Locked" .. E.CC.close
+                    E.CC.red .. "  " .. L["SA: %s - Locked"]:format(row.title)
+                    .. E.CC.close
                 )
             else
                 local done = false
@@ -1125,28 +1125,28 @@ E:RegisterModule(function()
                 if done then
                     saCompleted = saCompleted + 1
                     row.fs:SetText(
-                        "|cFF33FF33" .. "  [Done] SA: " .. row.title .. E.CC.close
+                        "|cFF33FF33" .. "  " .. L["[Done] SA: %s"]:format(row.title)
+                        .. E.CC.close
                     )
                 elseif active then
                     saActive = saActive + 1
                     row.fs:SetText(
-                        E.CC.green .. "  > SA: " .. row.title
-                        .. " - active" .. E.CC.close
+                        E.CC.green .. "  > " .. L["SA: %s - active"]:format(row.title)
+                        .. E.CC.close
                     )
                 else
                     row.fs:SetText(
-                        E.CC.muted .. "  - SA: " .. row.title .. E.CC.close
+                        E.CC.muted .. "  - " .. L["SA: %s"]:format(row.title) .. E.CC.close
                     )
                 end
             end
         end
 
         saSummaryFS:SetText(
-            E.CC.gold .. saCompleted .. E.CC.close
-            .. E.CC.muted .. " / " .. SA_WEEKLY_MAX .. " completed"
+            E.CC.muted .. L["%s / %d completed"]:format(
+                E.CC.gold .. saCompleted .. E.CC.close .. E.CC.muted, SA_WEEKLY_MAX)
             .. (saActive > 0
-                and (" - " .. E.CC.green .. saActive
-                     .. " active" .. E.CC.close)
+                and (" - " .. E.CC.green .. L["%d active"]:format(saActive) .. E.CC.close)
                 or "")
             .. E.CC.close
         )
@@ -1162,13 +1162,13 @@ E:RegisterModule(function()
             end
             if done then
                 row.fs:SetText(
-                    "|cFF33FF33" .. "  [Done] " .. row.title
-                    .. " - completed" .. E.CC.close
+                    "|cFF33FF33" .. "  " .. L["[Done] %s - completed"]:format(row.title)
+                    .. E.CC.close
                 )
             else
                 row.fs:SetText(
-                    E.CC.green .. "  - " .. row.title
-                    .. " - not yet done" .. E.CC.close
+                    E.CC.green .. "  - " .. L["%s - not yet done"]:format(row.title)
+                    .. E.CC.close
                 )
             end
         end
@@ -1178,12 +1178,12 @@ E:RegisterModule(function()
             local threshold = E.db.lowShardThreshold or 100
             if shards < threshold then
                 warnFS:SetText(
-                    E.CC.red .. "(!) Low shards! " .. E.CC.close
-                    .. E.CC.body .. "You have "
-                    .. E.CC.gold .. FormatNumber(shards) .. E.CC.close
-                    .. E.CC.body .. " shards, below your "
-                    .. E.CC.gold .. FormatNumber(threshold) .. E.CC.close
-                    .. E.CC.body .. " threshold." .. E.CC.close
+                    E.CC.red .. L["(!) Low shards!"] .. " " .. E.CC.close
+                    .. E.CC.body
+                    .. L["You have %s shards, below your %s threshold."]:format(
+                        E.CC.gold .. FormatNumber(shards) .. E.CC.close .. E.CC.body,
+                        E.CC.gold .. FormatNumber(threshold) .. E.CC.close .. E.CC.body)
+                    .. E.CC.close
                 )
                 warnFS:Show()
             else
@@ -1196,8 +1196,8 @@ E:RegisterModule(function()
         -- Section 5: Coffer Shard World Quests
         local wqs = ScanCofferShardWQs(forceWQRescan)
         wqCountFS:SetText(
-            E.CC.gold .. #wqs .. E.CC.close
-            .. E.CC.muted .. " active" .. E.CC.close
+            E.CC.muted .. L["%s active"]:format(
+                E.CC.gold .. #wqs .. E.CC.close .. E.CC.muted) .. E.CC.close
         )
 
         if isAtCap then
@@ -1390,7 +1390,8 @@ E:RegisterModule(function()
         end
 
         if hasNew then
-            print("|cFFFF2222[Everything Delves]|r A Special Assignment is now available! Check the Shard Tracker tab.")
+            print("|cFFFF2222[Everything Delves]|r "
+                .. L["A Special Assignment is now available! Check the Shard Tracker tab."])
         end
         saState.recorded = true
         -- Mutate in place rather than replacing the reference each refresh.

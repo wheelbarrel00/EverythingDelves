@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_huge, math_min = math.floor, math.huge, math.min
 
@@ -32,11 +33,11 @@ local BOUNTIFUL_VALUE_MULT = 1.5
 -- Speed grade buckets, measured as a ratio to the player's own pace baseline
 -- (1.0 = a typical clear for you).
 local SPEED_GRADES = {
-    { max = 0.75,     label = "Fast",    rgb = { 0.25, 0.90, 0.40 } },
-    { max = 0.95,     label = "Brisk",   rgb = { 0.60, 0.85, 0.25 } },
-    { max = 1.15,     label = "Average", rgb = { 0.95, 0.82, 0.25 } },
-    { max = 1.50,     label = "Slow",    rgb = { 0.95, 0.55, 0.25 } },
-    { max = math_huge,label = "Long",    rgb = { 0.88, 0.40, 0.34 } },
+    { max = 0.75,     label = L["Fast"],    rgb = { 0.25, 0.90, 0.40 } },
+    { max = 0.95,     label = L["Brisk"],   rgb = { 0.60, 0.85, 0.25 } },
+    { max = 1.15,     label = L["Average"], rgb = { 0.95, 0.82, 0.25 } },
+    { max = 1.50,     label = L["Slow"],    rgb = { 0.95, 0.55, 0.25 } },
+    { max = math_huge,label = L["Long"],    rgb = { 0.88, 0.40, 0.34 } },
 }
 
 function E:FormatClock(sec)

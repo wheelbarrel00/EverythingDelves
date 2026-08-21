@@ -3,6 +3,7 @@
 -- a player collects after the delve boss. Detection is lockdown-safe (no
 -- combat log / no enemy nameplates — see banner/nemesis notes) and pcall-guarded.
 local E = EverythingDelves
+local L = E.L
 
 local WIN_W      = 290
 local PAD        = 10
@@ -180,19 +181,20 @@ E:RegisterModule(function()
         GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
         GameTooltip:AddLine("Everything Delves", 1, 1, 1)
         if E.db and E.db.showDelveObjectives then
-            GameTooltip:AddLine("Bonus Spoils: Nemesis Strongbox packs"
-                .. " + the Sanctified Banner — the bonus loot to grab"
-                .. " before the boss.", 0.7, 0.7, 0.7, true)
-        end
-        if E.db and E.db.showDelveHUD then
-            GameTooltip:AddLine("Delve HUD: variant, grade, recommended"
-                .. " curios and deaths for this run.", 0.7, 0.7, 0.7, true)
-        end
-        if E.db and E.db.showRunTimer then
-            GameTooltip:AddLine("The clock shows your elapsed run time.",
+            GameTooltip:AddLine(
+                L["Bonus Spoils: Nemesis Strongbox packs + the Sanctified Banner — the bonus loot to grab before the boss."],
                 0.7, 0.7, 0.7, true)
         end
-        GameTooltip:AddLine("Drag to move; toggle in Options.",
+        if E.db and E.db.showDelveHUD then
+            GameTooltip:AddLine(
+                L["Delve HUD: variant, grade, recommended curios and deaths for this run."],
+                0.7, 0.7, 0.7, true)
+        end
+        if E.db and E.db.showRunTimer then
+            GameTooltip:AddLine(L["The clock shows your elapsed run time."],
+                0.7, 0.7, 0.7, true)
+        end
+        GameTooltip:AddLine(L["Drag to move; toggle in Options."],
             0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
@@ -430,7 +432,7 @@ E:RegisterModule(function()
         if ScanVignettes then pcall(ScanVignettes) end
         if PollPartyAuras then pcall(PollPartyAuras) end
 
-        local name = (rs and rs.delveName) or GetRealZoneText() or "Delve"
+        local name = (rs and rs.delveName) or GetRealZoneText() or L["Delve"]
         local stepInfo
         if C_ScenarioInfo and C_ScenarioInfo.GetScenarioStepInfo then
             local ok, si = pcall(C_ScenarioInfo.GetScenarioStepInfo)
@@ -450,7 +452,7 @@ E:RegisterModule(function()
                     grade = "  " .. E:GetGradeCC(si.tier)
                         .. "(" .. si.tier .. ")" .. E.CC.close
                 end
-                AddLine(E.CC.muted .. "Variant:" .. E.CC.close .. " "
+                AddLine(E.CC.muted .. L["Variant:"] .. E.CC.close .. " "
                     .. E.CC.body .. variant .. E.CC.close .. grade)
             end
             local role = (E.GetCompanionAssignedRole and E:GetCompanionAssignedRole())
@@ -460,8 +462,8 @@ E:RegisterModule(function()
                 combat, utility = E:GetRecommendedCurios(
                     E.lastKnownCompanion or "Valeera", role)
             end
-            local cl = CurioLine("Combat:", combat)
-            local ul = CurioLine("Utility:", utility)
+            local cl = CurioLine(L["Combat:"], combat)
+            local ul = CurioLine(L["Utility:"], utility)
             if cl then AddLine(cl) end
             if ul then AddLine(ul) end
             local knownTier = liveTier or (rs.tier or 0)
@@ -470,10 +472,10 @@ E:RegisterModule(function()
             if lives then
                 local livesCC = (lives <= 1 and E.CC.red)
                     or (lives <= 2 and E.CC.yellow) or E.CC.green
-                statLine = E.CC.muted .. "Lives:" .. E.CC.close .. " "
+                statLine = E.CC.muted .. L["Lives:"] .. E.CC.close .. " "
                     .. livesCC .. lives .. E.CC.close .. "   "
             end
-            statLine = statLine .. E.CC.muted .. "Deaths:" .. E.CC.close .. " "
+            statLine = statLine .. E.CC.muted .. L["Deaths:"] .. E.CC.close .. " "
                 .. E.CC.gold .. tostring(rs.deaths or 0) .. E.CC.close
             AddLine(statLine)
         end
@@ -485,7 +487,7 @@ E:RegisterModule(function()
             if curTier > 0 then best = E:GetBestRunTime(name, curTier) end
             if not best then best, bestTier = E:GetBestRunTime(name) end
             if best and best > 0 then
-                local line = E.CC.muted .. "Best:" .. E.CC.close .. " "
+                local line = E.CC.muted .. L["Best:"] .. E.CC.close .. " "
                     .. E.CC.gold .. E:FormatClock(best) .. E.CC.close
                 if bestTier and bestTier ~= curTier then
                     line = line .. E.CC.muted .. " (T" .. bestTier .. ")" .. E.CC.close
@@ -510,32 +512,32 @@ E:RegisterModule(function()
                 local total  = math.max(expected, nemesisKilledBase + nemesisSeenCount)
                 local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
                 EmitObjective(
-                    "Nemesis Strongbox: " .. killed .. "/" .. total .. " packs",
+                    L["Nemesis Strongbox: %d/%d packs"]:format(killed, total),
                     killed >= total, false, nil)
             end
 
             if bannerState == "grand" then
-                EmitObjective("Sanctified Banner - Grand Spoils earned!",
+                EmitObjective(L["Sanctified Banner - Grand Spoils earned!"],
                     true, false, nil)
             elseif bannerState == "buffed" or bannerState == "clicked" then
-                EmitObjective("Sanctified Banner found - bonus Spoils secured",
+                EmitObjective(L["Sanctified Banner found - bonus Spoils secured"],
                     true, false, nil)
             elseif bannerState == "eliteUp" then
-                EmitObjective("Sanctified Banner - kill the Voidfused Rager!",
+                EmitObjective(L["Sanctified Banner - kill the Voidfused Rager!"],
                     false, false, nil)
             elseif rs and rs.inDelve
                     and (rs.wasBountiful or bannerState == "announced") then
-                EmitObjective("Sanctified Banner - find it for bonus loot",
+                EmitObjective(L["Sanctified Banner - find it for bonus loot"],
                     false, false, nil)
             end
 
             if objTotal > 0 and objDone >= objTotal then
                 AddLine(ICON_DONE .. E.CC.green
-                    .. "Bonus loot secured - go get the boss!" .. E.CC.close, true)
+                    .. L["Bonus loot secured - go get the boss!"] .. E.CC.close, true)
             elseif objTotal == 0 then
                 -- Phrased to fit both "no bonus mechanics" and "run already ended".
                 AddLine(ICON_DONE .. E.CC.green
-                    .. "All bonus loot accounted for." .. E.CC.close)
+                    .. L["All bonus loot accounted for."] .. E.CC.close)
             end
         end
 

@@ -1,6 +1,13 @@
 ﻿-- EverythingDelves.lua — addon bootstrap: namespace, SavedVariables, events, slash commands.
+local _, ns = ...
+
 EverythingDelves = {}
 local E = EverythingDelves
+
+-- Locales/ must spell this `local L = ns.L`: the EverythingLocales tooling matches that
+-- literal line to find where the generated body starts. Do not collapse the two names.
+E.L = ns.L
+local L = E.L
 
 E.name = "EverythingDelves"
 
@@ -10,8 +17,8 @@ E.version = C_AddOns.GetAddOnMetadata("EverythingDelves", "Version") or "1.0.0"
 E.DISCORD_URL = "https://discord.gg/vm8K2WfQUE"
 
 StaticPopupDialogs["EVERYTHINGDELVES_DISCORD"] = {
-    text = "Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):",
-    button1 = "Close",
+    text = L["Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):"],
+    button1 = L["Close"],
     hasEditBox = true,
     editBoxWidth = 220,
     OnShow = function(self)
@@ -40,8 +47,8 @@ function E:ShowDiscord()
 end
 
 StaticPopupDialogs["EVERYTHINGDELVES_URL"] = {
-    text = "Copy the link below (it's pre-selected - just press Ctrl+C):",
-    button1 = "Close",
+    text = L["Copy the link below (it's pre-selected - just press Ctrl+C):"],
+    button1 = L["Close"],
     hasEditBox = true,
     editBoxWidth = 260,
     OnShow = function(self)
@@ -275,17 +282,17 @@ end
 
 function E:CreateProfile(name)
     local sv = EverythingDelvesDB
-    if not sv or not name or name == "" then return false, "Invalid name." end
-    if sv.profiles[name] then return false, "A profile with that name already exists." end
+    if not sv or not name or name == "" then return false, L["Invalid name."] end
+    if sv.profiles[name] then return false, L["A profile with that name already exists."] end
     sv.profiles[name] = NormalizeProfile({})
     return E:SwitchProfile(name)
 end
 
 function E:CopyProfile(sourceName, newName)
     local sv = EverythingDelvesDB
-    if not sv or not sv.profiles[sourceName] then return false, "Source profile missing." end
-    if not newName or newName == "" then return false, "Invalid name." end
-    if sv.profiles[newName] then return false, "A profile with that name already exists." end
+    if not sv or not sv.profiles[sourceName] then return false, L["Source profile missing."] end
+    if not newName or newName == "" then return false, L["Invalid name."] end
+    if sv.profiles[newName] then return false, L["A profile with that name already exists."] end
     sv.profiles[newName] = NormalizeProfile(CopyTable(sv.profiles[sourceName]))
     return E:SwitchProfile(newName)
 end
@@ -294,9 +301,9 @@ end
 -- profile fall back to a fresh per-character one on next login.
 function E:DeleteProfile(name)
     local sv = EverythingDelvesDB
-    if not sv or not sv.profiles[name] then return false, "Profile missing." end
+    if not sv or not sv.profiles[name] then return false, L["Profile missing."] end
     if name == E.activeProfileName then
-        return false, "Can't delete the profile you're currently using."
+        return false, L["Can't delete the profile you're currently using."]
     end
     sv.profiles[name] = nil
     for ck, pk in pairs(sv.profileKeys) do
@@ -337,9 +344,9 @@ end
 
 -- Bindings run in global scope, so E's methods need global wrappers.
 BINDING_HEADER_EVERYTHINGDELVES = "Everything Delves"
-BINDING_NAME_EVERYTHINGDELVES_TOGGLE = "Toggle Main Window"
-BINDING_NAME_EVERYTHINGDELVES_CURIOS = "Toggle Curio Recommendations"
-BINDING_NAME_EVERYTHINGDELVES_HUD = "Toggle Delve HUD"
+BINDING_NAME_EVERYTHINGDELVES_TOGGLE = L["Toggle Main Window"]
+BINDING_NAME_EVERYTHINGDELVES_CURIOS = L["Toggle Curio Recommendations"]
+BINDING_NAME_EVERYTHINGDELVES_HUD = L["Toggle Delve HUD"]
 
 function EverythingDelves_ToggleMainWindow()
     E:ToggleMainFrame()
@@ -353,8 +360,8 @@ function EverythingDelves_ToggleHUD()
     if not E.db then return end
     E.db.showDelveHUD = (E.db.showDelveHUD == false)
     if E.UpdateDelveObjectivesWindow then E:UpdateDelveObjectivesWindow() end
-    print("|cFFFF2222Everything Delves|r: Delve HUD "
-        .. (E.db.showDelveHUD and "enabled" or "disabled") .. ".")
+    print("|cFFFF2222Everything Delves|r: "
+        .. (E.db.showDelveHUD and L["Delve HUD enabled."] or L["Delve HUD disabled."]))
 end
 
 SLASH_EVERYTHINGDELVES1 = "/ed"
@@ -364,7 +371,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     msg = strtrim(msg):lower()
     if msg == "reset" then
         E:ResetDB()
-        print("|cFFFF2222Everything Delves|r: Settings reset to defaults.")
+        print("|cFFFF2222Everything Delves|r: " .. L["Settings reset to defaults."])
     elseif msg == "curios" or msg:sub(1, 7) == "curios " then
         local arg = msg:sub(8)
         if E.ToggleCurioPopup then
@@ -425,10 +432,10 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             if E.UpdateDelveObjectivesWindow then
                 E:UpdateDelveObjectivesWindow()
             end
-            print("|cFFFF2222Everything Delves|r: Bonus Spoils tracker "
-                .. (E.db.showDelveObjectives and "|cFF22FF22ON|r" or "|cFFFF2222OFF|r")
+            print("|cFFFF2222Everything Delves|r: "
                 .. (E.db.showDelveObjectives
-                    and " - it appears while you're inside a delve." or ""))
+                    and L["Bonus Spoils tracker |cFF22FF22ON|r - it appears while you're inside a delve."]
+                    or L["Bonus Spoils tracker |cFFFF2222OFF|r"]))
         end
     elseif msg == "objdump" then
         if E.DumpDelveObjectiveData then
@@ -546,8 +553,8 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         end
     end)
 
-    print("|cFFFF2222Everything Delves|r v" .. self.version
-        .. " loaded. Type |cFFFFD700/ed|r to open.")
+    print("|cFFFF2222Everything Delves|r "
+        .. string.format(L["v%s loaded. Type |cFFFFD700/ed|r to open."], self.version))
 end)
 
 -- Fires on login, reload, and every zone change; seeds session counters.
@@ -1208,12 +1215,12 @@ function E:MaybeWarnCompanionRoleUnset()
     if role then return end
 
     RaidNotice_AddMessage(RaidWarningFrame,
-        "Your Delve companion has no role assigned!", ChatTypeInfo["RAID_WARNING"])
+        L["Your Delve companion has no role assigned!"], ChatTypeInfo["RAID_WARNING"])
     if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then
         PlaySound(SOUNDKIT.RAID_WARNING)
     end
-    print("|cFFFF2222Everything Delves|r: Your Delve companion has no role assigned"
-        .. " - open the companion panel to set one.")
+    print("|cFFFF2222Everything Delves|r: "
+        .. L["Your Delve companion has no role assigned - open the companion panel to set one."])
 end
 
 function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story, boss)
@@ -1472,9 +1479,9 @@ function E:RepairAbsurdDurations()
         end
     end
     if fixed > 0 then
-        print(self.CC.header .. "Everything Delves|r: Cleaned up "
-            .. fixed .. " run" .. (fixed == 1 and "" or "s")
-            .. " with an invalid timer.")
+        print(self.CC.header .. "Everything Delves|r: " .. string.format(
+            fixed == 1 and L["Cleaned up %d run with an invalid timer."]
+                or L["Cleaned up %d runs with an invalid timer."], fixed))
     end
     if (fixed > 0 or recordsFixed) and self.RefreshDelveHistoryTab then
         self:RefreshDelveHistoryTab()
@@ -1529,9 +1536,9 @@ function E:AutoRepairBountifulHistory()
     self._autoRepairPending = false
 
     if repaired > 0 then
-        print(self.CC.header .. "Everything Delves|r: Repaired "
-            .. repaired .. " mis-flagged bountiful run"
-            .. (repaired == 1 and "" or "s") .. " from today.")
+        print(self.CC.header .. "Everything Delves|r: " .. string.format(
+            repaired == 1 and L["Repaired %d mis-flagged bountiful run from today."]
+                or L["Repaired %d mis-flagged bountiful runs from today."], repaired))
         if self.RefreshDelveHistoryTab then
             self:RefreshDelveHistoryTab()
         end

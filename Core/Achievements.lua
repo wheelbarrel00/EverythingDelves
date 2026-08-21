@@ -1,6 +1,7 @@
 -- Achievement IDs verified against the live achievement DB (build 12.1.0).
 -- Criteria names and completion are read live each hover so they self-correct.
 local E = EverythingDelves
+local L = E.L
 
 E.DelveAchievements = {
     ["Parhelion Plaza"]     = { stories = 61725, discoveries = 61893 },
@@ -20,10 +21,10 @@ E.DelveAchievements = {
 -- Each series entry lists every delve as criteria. Ordered easiest-to-hardest
 -- so the tooltip surfaces the next step first.
 E.DelveDepthsSeries = {
-    { id = 61707, label = "any tier" },
-    { id = 61708, label = "Tier 4+"  },
-    { id = 61709, label = "Tier 8+"  },
-    { id = 61710, label = "Tier 11"  },
+    { id = 61707, label = L["any tier"] },
+    { id = 61708, label = L["Tier 4+"]  },
+    { id = 61709, label = L["Tier 8+"]  },
+    { id = 61710, label = L["Tier 11"]  },
 }
 
 -- The achievement DB and POI widgets disagree on some spellings (e.g.

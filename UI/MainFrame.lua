@@ -1,5 +1,6 @@
 ﻿-- Main window: tab buttons, tab switching, broker, and minimap button.
 local E = EverythingDelves
+local L = E.L
 
 local pairs, ipairs = pairs, ipairs
 local math_floor, math_max = math.floor, math.max
@@ -124,7 +125,7 @@ function E:CreateTitleBar(parent)
     discord.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
     discord.text = discord:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     discord.text:SetPoint("LEFT", discord.icon, "RIGHT", 5, 0)
-    discord.text:SetText("Join our Discord!")
+    discord.text:SetText(L["Join our Discord!"])
     discord:SetSize(16 + 5 + discord.text:GetStringWidth() + 4, 18)
     discord:SetPoint("TOPLEFT", parent, "TOPLEFT", 14, -12)
     discord:SetScript("OnClick", function() E:ShowDiscord() end)
@@ -132,8 +133,8 @@ function E:CreateTitleBar(parent)
         self.text:SetTextColor(1, 1, 1)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         local ac = E:GetAccentPreset().header
-        GameTooltip:SetText("Join our Discord", ac.r, ac.g, ac.b)
-        GameTooltip:AddLine("Click to copy the invite link.", 0.8, 0.8, 0.8)
+        GameTooltip:SetText(L["Join our Discord"], ac.r, ac.g, ac.b)
+        GameTooltip:AddLine(L["Click to copy the invite link."], 0.8, 0.8, 0.8)
         GameTooltip:Show()
     end)
     discord:SetScript("OnLeave", function(self)
@@ -340,18 +341,18 @@ local function AddLiveStats(tip)
             shardNote = true
         end
     end
-    tip:AddDoubleLine(E.CC.white .. "Coffer Key Shards:" .. E.CC.close, shardVal)
+    tip:AddDoubleLine(E.CC.white .. L["Coffer Key Shards:"] .. E.CC.close, shardVal)
     if shardNote then
-        tip:AddLine(E.CC.muted .. "owned / earnable this week" .. E.CC.close)
+        tip:AddLine(E.CC.muted .. L["owned / earnable this week"] .. E.CC.close)
     end
-    tip:AddDoubleLine(E.CC.white .. "Bountiful Keys:" .. E.CC.close,
+    tip:AddDoubleLine(E.CC.white .. L["Bountiful Keys:"] .. E.CC.close,
                       E.CC.white .. keys .. E.CC.close)
-    tip:AddDoubleLine(E.CC.white .. "Undercoins:" .. E.CC.close,
+    tip:AddDoubleLine(E.CC.white .. L["Undercoins:"] .. E.CC.close,
                       E.CC.white .. uc .. E.CC.close)
 
     if E.currentBountifulCount and E.currentBountifulCount > 0 then
         tip:AddLine(" ")
-        tip:AddDoubleLine(E.CC.white .. "Active Bountiful:" .. E.CC.close,
+        tip:AddDoubleLine(E.CC.white .. L["Active Bountiful:"] .. E.CC.close,
                           E.CC.white .. E.currentBountifulCount .. E.CC.close)
     end
 
@@ -362,8 +363,9 @@ local function AddLiveStats(tip)
             local h = math_floor((secs % 86400) / 3600)
             local m = math_floor((secs % 3600) / 60)
             tip:AddLine(" ")
-            tip:AddDoubleLine(E.CC.white .. "Weekly Reset:" .. E.CC.close,
-                              E.CC.white .. d .. "d " .. h .. "h " .. m .. "m" .. E.CC.close)
+            tip:AddDoubleLine(E.CC.white .. L["Weekly Reset:"] .. E.CC.close,
+                              E.CC.white .. string_format(L["%dd %dh %dm"], d, h, m)
+                              .. E.CC.close)
         end
     end
 end
@@ -389,13 +391,13 @@ function E:UpdateBrokerText()
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
         local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
         if secs and secs > 0 then
-            resetStr = math_floor(secs / 86400) .. "d "
-                .. math_floor((secs % 86400) / 3600) .. "h"
+            resetStr = string_format(L["%dd %dh"],
+                math_floor(secs / 86400), math_floor((secs % 86400) / 3600))
         end
     end
 
     self.brokerObj.text = string_format(
-        "Keys: %s%d|r  Shards: %s%s|r  Reset: %s%s|r",
+        L["Keys: %s%d|r  Shards: %s%s|r  Reset: %s%s|r"],
         E.CC.gold, keys, E.CC.gold, shardStr, E.CC.gold, resetStr)
 end
 
@@ -421,9 +423,9 @@ function E:CreateBrokerObject()
         end,
         OnTooltipShow = function(tip)
             tip:AddLine(E.CC.header .. "Everything Delves" .. E.CC.close)
-            tip:AddLine(E.CC.muted .. "Left-click: Toggle window"  .. E.CC.close)
-            tip:AddLine(E.CC.muted .. "Right-click: Options"       .. E.CC.close)
-            tip:AddLine(E.CC.muted .. "Drag: Reposition"           .. E.CC.close)
+            tip:AddLine(E.CC.muted .. L["Left-click: Toggle window"] .. E.CC.close)
+            tip:AddLine(E.CC.muted .. L["Right-click: Options"]      .. E.CC.close)
+            tip:AddLine(E.CC.muted .. L["Drag: Reposition"]          .. E.CC.close)
             AddLiveStats(tip)
         end,
     })
@@ -463,13 +465,14 @@ function E:HardenMinimapIcon()
 
     local reassert = iconGuards[tex]
     if not reassert then
-        local L, R, T, B = iconCoords[1], iconCoords[2], iconCoords[3], iconCoords[4]
+        local left, right, top, bottom =
+            iconCoords[1], iconCoords[2], iconCoords[3], iconCoords[4]
         local fixing = false
         reassert = function()
             if fixing then return end
             fixing = true
             tex:SetTexture(iconTex)
-            tex:SetTexCoord(L, R, T, B)
+            tex:SetTexCoord(left, right, top, bottom)
             fixing = false
         end
         iconGuards[tex] = reassert
@@ -477,7 +480,8 @@ function E:HardenMinimapIcon()
             if fixing then return end
             -- LibDBIcon's own 5% mouseover inset stays inside our crop; only a
             -- collector reset wider than it (the full sheet) needs correcting.
-            if not (l and r and t and b) or l < L or r > R or t < T or b > B then
+            if not (l and r and t and b)
+                    or l < left or r > right or t < top or b > bottom then
                 reassert()
             end
         end)
@@ -592,9 +596,9 @@ function E:CreateMinimapButton()
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine(E.CC.header .. "Everything Delves" .. E.CC.close)
-        GameTooltip:AddLine(E.CC.muted .. "Left-click: Toggle window"  .. E.CC.close)
-        GameTooltip:AddLine(E.CC.muted .. "Right-click: Options"       .. E.CC.close)
-        GameTooltip:AddLine(E.CC.muted .. "Drag: Reposition"           .. E.CC.close)
+        GameTooltip:AddLine(E.CC.muted .. L["Left-click: Toggle window"] .. E.CC.close)
+        GameTooltip:AddLine(E.CC.muted .. L["Right-click: Options"]      .. E.CC.close)
+        GameTooltip:AddLine(E.CC.muted .. L["Drag: Reposition"]          .. E.CC.close)
         AddLiveStats(GameTooltip)
         GameTooltip:Show()
     end)

@@ -202,6 +202,35 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 
 ---
 
+## Translations
+
+Every file in `Locales/` is generated, including the `enUS.lua` phrase list. The translations live in
+[EverythingLocales](https://github.com/wheelbarrel00/EverythingLocales), shared across all of
+this author's addons so that a phrase more than one of them uses is only ever translated once,
+and so that a phrase moving between addons keeps its translation.
+
+**To add or correct a translation, edit `store/<language>.lua` there and open a pull request
+against that repository.** A change made in this repo is overwritten the next time the files
+are built. GitHub will not accept a `.lua` file as a comment attachment, so put it in a `.zip`
+first or paste it into a code block. If you cannot use GitHub at all, the Discord and the
+CurseForge comments both work.
+
+A phrase that has not been translated yet falls back to English on its own, so a partial
+translation is never a broken one, and there is no need to finish a language.
+
+Delve, boss, zone, story and achievement names are deliberately left in English in the source.
+They are matched against the game's own localized strings, so translating them would break
+every lookup - the client already shows them in your language.
+
+A new language needs adding to that repo's language list, and its `Locales/<code>.lua` listed
+in `EverythingDelves.toc`.
+
+Every non-English string in this addon is somebody else's work. Thanks to **Zox** for the
+French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
+Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** for the German.
+
+---
+
 ## Technical Details
 
 | Metric | Value |
@@ -278,7 +307,7 @@ Please use the [GitHub Issues](https://github.com/wheelbarrel00/EverythingDelves
 - [x] Account-wide character tracking (Roster tab)
 - [ ] Per-spec curio recommendations
 - [ ] Run History grouped by weekly reset
-- [ ] Localization support (enUS, deDE, frFR, etc.)
+- [x] Localization (German, French, Russian, Korean, Simplified and Traditional Chinese)
 
 ---
 

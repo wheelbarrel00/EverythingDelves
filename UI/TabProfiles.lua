@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_max, math_min = math.max, math.min
 
@@ -53,7 +54,7 @@ E:RegisterModule(function()
     local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", content, "TOPLEFT", SECT_X, -6)
     header:SetFont(header:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(header, "Profiles")
+    E:StyleAccentHeader(header, L["Profiles"])
 
     local charFS = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     charFS:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -8)
@@ -83,10 +84,10 @@ E:RegisterModule(function()
         row.nameFS:SetFont(row.nameFS:GetFont(), 12)
         row.nameFS:SetJustifyH("LEFT")
 
-        row.useBtn = E:CreateButton(row, 70, 20, "Switch")
+        row.useBtn = E:CreateButton(row, 70, 20, L["Switch"])
         row.useBtn:SetPoint("RIGHT", row, "RIGHT", -4, 0)
 
-        row.delBtn = E:CreateButton(row, 70, 20, "Delete")
+        row.delBtn = E:CreateButton(row, 70, 20, L["Delete"])
         row.delBtn:SetPoint("RIGHT", row.useBtn, "LEFT", -6, 0)
 
         rowPool[i] = row
@@ -110,9 +111,9 @@ E:RegisterModule(function()
     end
 
     StaticPopupDialogs["EVERYTHINGDELVES_NEWPROFILE"] = {
-        text = "Name for the new (empty) profile:",
-        button1 = "Create",
-        button2 = "Cancel",
+        text = L["Name for the new (empty) profile:"],
+        button1 = L["Create"],
+        button2 = L["Cancel"],
         hasEditBox = true,
         maxLetters = 32,
         OnShow = function(self)
@@ -123,9 +124,11 @@ E:RegisterModule(function()
             local name = ReadName(self)
             local ok, err = E:CreateProfile(name)
             if not ok then
-                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not create profile."))
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. (err or L["Could not create profile."]))
             else
-                print(E.CC.header .. "Everything Delves|r: Now using profile '" .. name .. "'.")
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. L["Now using profile '%s'."]:format(name))
             end
             if Rebuild then Rebuild() end
         end,
@@ -134,7 +137,8 @@ E:RegisterModule(function()
             local name = strtrim(editBox:GetText() or "")
             local ok, err = E:CreateProfile(name)
             if not ok then
-                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not create profile."))
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. (err or L["Could not create profile."]))
             end
             if Rebuild then Rebuild() end
             if dialog and dialog.Hide then dialog:Hide() end
@@ -147,9 +151,9 @@ E:RegisterModule(function()
     }
 
     StaticPopupDialogs["EVERYTHINGDELVES_COPYPROFILE"] = {
-        text = "Name for the copy of the current profile:",
-        button1 = "Duplicate",
-        button2 = "Cancel",
+        text = L["Name for the copy of the current profile:"],
+        button1 = L["Duplicate"],
+        button2 = L["Cancel"],
         hasEditBox = true,
         maxLetters = 32,
         OnShow = function(self)
@@ -160,9 +164,11 @@ E:RegisterModule(function()
             local name = ReadName(self)
             local ok, err = E:CopyProfile(E.activeProfileName, name)
             if not ok then
-                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not duplicate profile."))
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. (err or L["Could not duplicate profile."]))
             else
-                print(E.CC.header .. "Everything Delves|r: Duplicated into '" .. name .. "' and switched to it.")
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. L["Duplicated into '%s' and switched to it."]:format(name))
             end
             if Rebuild then Rebuild() end
         end,
@@ -171,9 +177,11 @@ E:RegisterModule(function()
             local name = strtrim(editBox:GetText() or "")
             local ok, err = E:CopyProfile(E.activeProfileName, name)
             if not ok then
-                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not duplicate profile."))
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. (err or L["Could not duplicate profile."]))
             else
-                print(E.CC.header .. "Everything Delves|r: Duplicated into '" .. name .. "' and switched to it.")
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. L["Duplicated into '%s' and switched to it."]:format(name))
             end
             if Rebuild then Rebuild() end
             if dialog and dialog.Hide then dialog:Hide() end
@@ -186,29 +194,29 @@ E:RegisterModule(function()
     }
 
     StaticPopupDialogs["EVERYTHINGDELVES_DELETEPROFILE"] = {
-        text = "Permanently delete profile '%s'?\n\n"
-            .. "This erases that profile's delve history. This cannot "
-            .. "be undone.",
-        button1 = "Delete",
-        button2 = "Cancel",
+        text = L["Permanently delete profile '%s'?\n\nThis erases that profile's delve history. This cannot be undone."],
+        button1 = L["Delete"],
+        button2 = L["Cancel"],
         OnAccept = function(_, data)
             local ok, err = E:DeleteProfile(data)
             if not ok then
-                print(E.CC.header .. "Everything Delves|r: " .. (err or "Could not delete profile."))
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. (err or L["Could not delete profile."]))
             else
-                print(E.CC.header .. "Everything Delves|r: Deleted profile '" .. tostring(data) .. "'.")
+                print(E.CC.header .. "Everything Delves|r: "
+                    .. L["Deleted profile '%s'."]:format(tostring(data)))
             end
             if Rebuild then Rebuild() end
         end,
         timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
     }
 
-    local newBtn = E:CreateButton(content, 130, 24, "New Profile")
+    local newBtn = E:CreateButton(content, 130, 24, L["New Profile"])
     newBtn:SetScript("OnClick", function()
         StaticPopup_Show("EVERYTHINGDELVES_NEWPROFILE")
     end)
 
-    local copyBtn = E:CreateButton(content, 160, 24, "Duplicate Current")
+    local copyBtn = E:CreateButton(content, 160, 24, L["Duplicate Current"])
     copyBtn:SetScript("OnClick", function()
         StaticPopup_Show("EVERYTHINGDELVES_COPYPROFILE")
     end)
@@ -218,21 +226,17 @@ E:RegisterModule(function()
     noteFS:SetJustifyH("LEFT")
     noteFS:SetText(
         E.CC.muted
-        .. "Profiles are per-character. Your delve history lives in the "
-        .. "active profile; UI settings (colors, scale, alerts) stay "
-        .. "account-wide.\n"
-        .. "Switching profiles never deletes data — it only changes "
-        .. "which profile this character uses."
+        .. L["Profiles are per-character. Your delve history lives in the active profile; UI settings (colors, scale, alerts) stay account-wide.\nSwitching profiles never deletes data — it only changes which profile this character uses."]
         .. E.CC.close
     )
 
     function Rebuild()
         charFS:SetText(
-            E.CC.muted .. "This character: " .. E.CC.close
+            E.CC.muted .. L["This character:"] .. " " .. E.CC.close
             .. E.CC.body .. (E.CharKey and E:CharKey() or "?") .. E.CC.close
         )
         activeFS:SetText(
-            E.CC.muted .. "Active profile: " .. E.CC.close
+            E.CC.muted .. L["Active profile:"] .. " " .. E.CC.close
             .. E.CC.gold .. (E.activeProfileName or "?") .. E.CC.close
         )
 
@@ -262,8 +266,9 @@ E:RegisterModule(function()
                 or E.CC.body
             local label = marker
                 .. name .. E.CC.close
-                .. E.CC.muted .. "  (" .. count .. " char"
-                .. (count == 1 and "" or "s") .. ")" .. E.CC.close
+                .. E.CC.muted .. "  "
+                .. (count == 1 and L["(%d char)"] or L["(%d chars)"]):format(count)
+                .. E.CC.close
             row.nameFS:SetText(label)
 
             if isActive then

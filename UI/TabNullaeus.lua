@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 
@@ -97,7 +98,7 @@ E:RegisterModule(function()
     local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, "The Nemesis Delve")
+    E:StyleAccentHeader(mainHeader, L["The Nemesis Delve"])
 
     local nemIcon = sc:CreateTexture(nil, "ARTWORK")
     nemIcon:SetPoint("TOPLEFT", mainHeader, "BOTTOMLEFT", 0, -6)
@@ -121,11 +122,11 @@ E:RegisterModule(function()
     nemSubFS:SetFont(nemSubFS:GetFont(), 10)
     nemSubFS:SetText(
         E.CC.muted
-        .. "Season 2 Nemesis  \226\128\148  two difficulties, Tier \"?\" and Tier \"??\""
+        .. L["Season 2 Nemesis  \226\128\148  two difficulties, Tier \"?\" and Tier \"??\""]
         .. E.CC.close
     )
 
-    local nemWpBtn = E:CreateButton(sc, 32, 20, "Pin")
+    local nemWpBtn = E:CreateButton(sc, 32, 20, L["Pin"])
     nemWpBtn.label:SetFont(nemWpBtn.label:GetFont(), 10)
     nemWpBtn:SetPoint("TOPLEFT", nemIcon, "TOPRIGHT", 380, -10)
     nemWpBtn:SetScript("OnClick", function()
@@ -135,7 +136,7 @@ E:RegisterModule(function()
     nemWpBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Set Waypoint", "Pin Venomfall Deeps on your map.")
+        E:ShowTooltip(self, L["Set Waypoint"], L["Pin Venomfall Deeps on your map."])
     end)
     nemWpBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -154,10 +155,11 @@ E:RegisterModule(function()
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, "TomTom Waypoint", "Add a TomTom arrow to Venomfall Deeps.")
+            E:ShowTooltip(self, L["TomTom Waypoint"],
+                          L["Add a TomTom arrow to Venomfall Deeps."])
         else
-            E:ShowTooltip(self, "TomTom Not Installed",
-                          "Install the TomTom addon to use arrow waypoints.")
+            E:ShowTooltip(self, L["TomTom Not Installed"],
+                          L["Install the TomTom addon to use arrow waypoints."])
         end
     end)
     nemTTBtn:SetScript("OnLeave", function(self)
@@ -179,46 +181,50 @@ E:RegisterModule(function()
     local overviewHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     overviewHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -24)
     overviewHeader:SetFont(overviewHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(overviewHeader, "Overview")
+    E:StyleAccentHeader(overviewHeader, L["Overview"])
 
     local ovAnchor = overviewHeader
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.yellow .. "Venomfall Deeps only opens once Midnight Season 2 begins."
+        E.CC.yellow .. L["Venomfall Deeps is open, but his lair has to be unlocked first."]
         .. E.CC.close
-        .. E.CC.body .. " Until then the delve is not enterable, though Azta'rec himself "
-        .. "can already be met the other way listed below." .. E.CC.close)
+        .. E.CC.body .. " "
+        .. L["Clear a Tier 7 delve with at least one life left to unlock the lower difficulty, or a Tier 10 clear for the harder one. The clear does not have to be in Venomfall Deeps. Azta'rec can also be met the other way listed below."]
+        .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.body .. "Azta'rec is the Midnight Season 2 Nemesis, and you can meet him "
-        .. "two separate ways:" .. E.CC.close)
+        E.CC.body
+        .. L["Azta'rec is the Midnight Season 2 Nemesis, and you can meet him two separate ways:"]
+        .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Inside any delve" .. E.CC.close
-        .. E.CC.body .. "  he can appear at random in any Tier 8 or higher delve, and can "
-        .. "also be summoned on the spot with a Scalebound Herald's Flute." .. E.CC.close)
-    ovAnchor = AddBodyLine(ovAnchor, -3, 10,
-        E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Venomfall Deeps" .. E.CC.close
-        .. E.CC.body .. "  the dedicated Nemesis delve on The Coiled Isle. This is the "
-        .. "full fight \226\128\148 the mechanics and intermissions below cover it, and it is "
-        .. "what awards the achievements, mount, and titles." .. E.CC.close)
-    ovAnchor = AddBodyLine(ovAnchor, -8, 10,
-        E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. "|cFFFF8800" .. "Tier \"?\"" .. E.CC.close
-        .. E.CC.body .. "  the easier of the two. Recommended item level 290."
+        .. E.CC.gold .. L["Inside any delve"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["he can appear at random in any Tier 8 or higher delve, and can also be summoned on the spot with a Scalebound Herald's Flute."]
         .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.red .. "Tier \"??\"" .. E.CC.close
-        .. E.CC.body .. "  everything hits far harder, and he summons an Echo of himself "
-        .. "during every intermission. This is the one the title and the Fabled title "
-        .. "require." .. E.CC.close)
+        .. E.CC.gold .. "Venomfall Deeps" .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["the dedicated Nemesis delve on The Coiled Isle. This is the full fight \226\128\148 the mechanics and intermissions below cover it, and it is what awards the achievements, mount, and titles."]
+        .. E.CC.close)
+    ovAnchor = AddBodyLine(ovAnchor, -8, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. "|cFFFF8800" .. L["Tier \"?\""] .. E.CC.close
+        .. E.CC.body .. "  " .. L["the easier of the two. Recommended item level 290."]
+        .. E.CC.close)
+    ovAnchor = AddBodyLine(ovAnchor, -3, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.red .. L["Tier \"??\""] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["everything hits far harder, and he summons an Echo of himself during every intermission. This is the one the title and the Fabled title require."]
+        .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.muted .. "The entrance is on the north side of The Coiled Isle, inside one of "
-        .. "the snake buildings (use Pin or TomTom above). Your first kill awards a bonus "
-        .. "30 Hero Mistcrests, which do not count toward the season maximum." .. E.CC.close)
+        E.CC.muted
+        .. L["The entrance is on the north side of The Coiled Isle, inside one of the snake buildings (use Pin or TomTom above). Your first kill awards a bonus 30 Hero Mistcrests, which do not count toward the season maximum."]
+        .. E.CC.close)
     ovAnchor = AddBodyLine(ovAnchor, -6, 10,
-        E.CC.muted .. "The encounter is deliberately punishing and expects deaths while "
-        .. "you learn it, especially at lower item levels." .. E.CC.close)
+        E.CC.muted
+        .. L["The encounter is deliberately punishing and expects deaths while you learn it, especially at lower item levels."]
+        .. E.CC.close)
 
     local divO = sc:CreateTexture(nil, "ARTWORK")
     divO:SetHeight(1)
@@ -233,7 +239,7 @@ E:RegisterModule(function()
     local beaconHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     beaconHeader:SetPoint("TOPLEFT", divO, "BOTTOMLEFT", 0, -24)
     beaconHeader:SetFont(beaconHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(beaconHeader, "Beacon of Hope")
+    E:StyleAccentHeader(beaconHeader, L["Beacon of Hope"])
 
     local beaconStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     beaconStatusFS:SetPoint("TOPLEFT", beaconHeader, "BOTTOMLEFT", 0, -4)
@@ -252,10 +258,8 @@ E:RegisterModule(function()
     beaconHintFS:SetFont(beaconHintFS:GetFont(), 10)
     beaconHintFS:SetText(
         E.CC.muted
-        .. "Use a Beacon of Hope inside a delve to call the Nemesis rather than waiting on "
-        .. "his random spawn. Season 2 also introduces the Scalebound Herald's Flute, which "
-        .. "summons Azta'rec inside the delve \226\128\148 its cost and vendor are not tracked "
-        .. "here yet. The Undercoin bar tracks the Beacon, not the Flute." .. E.CC.close
+        .. L["Use a Beacon of Hope inside a delve to call the Nemesis rather than waiting on his random spawn. Season 2 also introduces the Scalebound Herald's Flute, which summons Azta'rec inside the delve \226\128\148 its cost and vendor are not tracked here yet. The Undercoin bar tracks the Beacon, not the Flute."]
+        .. E.CC.close
     )
 
     local div2 = sc:CreateTexture(nil, "ARTWORK")
@@ -267,7 +271,7 @@ E:RegisterModule(function()
     local mechHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mechHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -24)
     mechHeader:SetFont(mechHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mechHeader, "Boss Mechanics")
+    E:StyleAccentHeader(mechHeader, L["Boss Mechanics"])
 
     local mechIntroFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mechIntroFS:SetPoint("TOPLEFT", mechHeader, "BOTTOMLEFT", 0, -6)
@@ -276,13 +280,12 @@ E:RegisterModule(function()
     mechIntroFS:SetJustifyH("LEFT")
     mechIntroFS:SetText(
         E.CC.muted
-        .. "The fight splits into a main phase and an intermission at 90%, 60% and 30% "
-        .. "health. Two casts decide whether you live: " .. E.CC.close
-        .. E.CC.gold .. "Soul Extinction" .. E.CC.close
-        .. E.CC.muted .. " (interrupt) and " .. E.CC.close
-        .. E.CC.gold .. "Void Toxin" .. E.CC.close
-        .. E.CC.muted .. " (dispel). Pull him to the edge of the room so the Noxious Bile "
-        .. "puddles land away from the middle." .. E.CC.close
+        .. L["The fight splits into a main phase and an intermission at 90%, 60% and 30% health. Two casts decide whether you live:"]
+        .. " " .. E.CC.close
+        .. E.CC.muted .. L["%s (interrupt) and %s (dispel). Pull him to the edge of the room so the Noxious Bile puddles land away from the middle."]
+            :format(E.CC.gold .. "Soul Extinction" .. E.CC.close .. E.CC.muted,
+                    E.CC.gold .. "Void Toxin" .. E.CC.close .. E.CC.muted)
+        .. E.CC.close
     )
 
     local mechTipFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -292,42 +295,40 @@ E:RegisterModule(function()
     mechTipFS:SetJustifyH("LEFT")
     mechTipFS:SetText(
         E.CC.muted
-        .. "Companion: as DPS or tank, set Valeera to Healer and she dispels Void Toxin "
-        .. "while you cover the interrupt; as a healer, set her to DPS so she interrupts "
-        .. "Soul Extinction and you dispel instead."
+        .. L["Companion: as DPS or tank, set Valeera to Healer and she dispels Void Toxin while you cover the interrupt; as a healer, set her to DPS so she interrupts Soul Extinction and you dispel instead."]
         .. E.CC.close
     )
 
     local MECHANICS = {
         {
             name     = "Soul Extinction",
-            tag      = "Interrupt - Top Priority",
+            tag      = L["Interrupt - Top Priority"],
             tagColor = E.CC.red,
-            desc     = "An interruptible cast that deals lethal damage if it completes. Kick it every single time. Valeera interrupts it for you when her role is set to DPS, which is the reason a healer should run her that way.",
+            desc     = L["An interruptible cast that deals lethal damage if it completes. Kick it every single time. Valeera interrupts it for you when her role is set to DPS, which is the reason a healer should run her that way."],
         },
         {
             name     = "Void Toxin",
-            tag      = "Dispel",
+            tag      = L["Dispel"],
             tagColor = E.CC.yellow,
-            desc     = "A dispellable magic debuff that ticks for heavy damage and cuts the damage you deal by 40%. Remove it as soon as it lands. Valeera dispels it for you when her role is set to Healer.",
+            desc     = L["A dispellable magic debuff that ticks for heavy damage and cuts the damage you deal by 40%. Remove it as soon as it lands. Valeera dispels it for you when her role is set to Healer."],
         },
         {
             name     = "Noxious Bile",
-            tag      = "Frontal",
+            tag      = L["Frontal"],
             tagColor = "|cFFFF8800",
-            desc     = "A frontal cone that hits hard if you stay in it, and it leaves venom puddles behind on the floor. Aim it toward the outside of the room and step out once he has aimed it, so the middle of the arena stays clean for the intermission.",
+            desc     = L["A frontal cone that hits hard if you stay in it, and it leaves venom puddles behind on the floor. Aim it toward the outside of the room and step out once he has aimed it, so the middle of the arena stays clean for the intermission."],
         },
         {
             name     = "Venom Storm",
-            tag      = "Keep Moving",
+            tag      = L["Keep Moving"],
             tagColor = "|cFFFF8800",
-            desc     = "Summons venom waves that crawl slowly across the arena and deal heavy damage to anyone they catch. They are slow enough to walk away from, so keep moving rather than reacting late.",
+            desc     = L["Summons venom waves that crawl slowly across the arena and deal heavy damage to anyone they catch. They are slow enough to walk away from, so keep moving rather than reacting late."],
         },
         {
             name     = "Serpent's Strike",
-            tag      = "Tank Hit",
+            tag      = L["Tank Hit"],
             tagColor = E.CC.muted,
-            desc     = "Only used while you are in a tank specialization, and only a small amount of physical damage. Nothing to plan around.",
+            desc     = L["Only used while you are in a tank specialization, and only a small amount of physical damage. Nothing to plan around."],
         },
     }
 
@@ -360,7 +361,7 @@ E:RegisterModule(function()
     local phaseHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     phaseHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -24)
     phaseHeader:SetFont(phaseHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(phaseHeader, "Intermissions")
+    E:StyleAccentHeader(phaseHeader, L["Intermissions"])
 
     local phaseIntroFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     phaseIntroFS:SetPoint("TOPLEFT", phaseHeader, "BOTTOMLEFT", 0, -6)
@@ -369,34 +370,30 @@ E:RegisterModule(function()
     phaseIntroFS:SetJustifyH("LEFT")
     phaseIntroFS:SetText(
         E.CC.muted
-        .. "At 90%, 60% and 30% health Azta'rec walks to the centre and channels "
-        .. "Sermon of Ula'tek, taking 99% reduced damage for the whole intermission. The "
-        .. "room splits into quarters: three flood with venom and one is safe. It is a "
-        .. "memory test, not a damage test \226\128\148 place four world markers on the "
-        .. "quadrants before you pull and call the safe spot by marker."
+        .. L["At 90%, 60% and 30% health Azta'rec walks to the centre and channels Sermon of Ula'tek, taking 99% reduced damage for the whole intermission. The room splits into quarters: three flood with venom and one is safe. It is a memory test, not a damage test \226\128\148 place four world markers on the quadrants before you pull and call the safe spot by marker."]
         .. E.CC.close
     )
 
     local PHASES = {
         {
-            pct   = "90 / 60 / 30% HP",
+            pct   = L["90 / 60 / 30% HP"],
             name  = "Sermon of Ula'tek",
-            intro = "The same intermission runs at all three health thresholds, one step longer each time.",
+            intro = L["The same intermission runs at all three health thresholds, one step longer each time."],
             adds  = {
-                { n = "Shown pattern", d = "He marks one safe quarter and covers the other three, with an animation showing which is which. You get a few seconds to run to the safe quarter. Stand close to him so every quarter is within reach." },
-                { n = "Repeated pattern", d = "He then replays the same sequence with no animation at all. You have to remember the order the safe zones came in - this is what kills people, not the damage." },
-                { n = "Length", d = "On Tier \"?\" the sequence runs 3 times, then 4, then 5 across the three intermissions. On Tier \"??\" it runs 5, then 6, then 7." },
-                { n = "Lingering venom", d = "Keep the middle of the room clear of Noxious Bile puddles during the main phase, or you will be dodging your own leftovers while running the pattern." },
+                { n = L["Shown pattern"], d = L["He marks one safe quarter and covers the other three, with an animation showing which is which. You get a few seconds to run to the safe quarter. Stand close to him so every quarter is within reach."] },
+                { n = L["Repeated pattern"], d = L["He then replays the same sequence with no animation at all. You have to remember the order the safe zones came in - this is what kills people, not the damage."] },
+                { n = L["Length"], d = L["On Tier \"?\" the sequence runs 3 times, then 4, then 5 across the three intermissions. On Tier \"??\" it runs 5, then 6, then 7."] },
+                { n = L["Lingering venom"], d = L["Keep the middle of the room clear of Noxious Bile puddles during the main phase, or you will be dodging your own leftovers while running the pattern."] },
             },
         },
         {
-            pct   = "Tier \"??\" only",
+            pct   = L["Tier \"??\" only"],
             name  = "Echo of Azta'rec",
-            intro = "On the harder difficulty he also summons an Echo of himself during the intermission.",
+            intro = L["On the harder difficulty he also summons an Echo of himself during the intermission."],
             adds  = {
-                { n = "Echo of Azta'rec", d = "It does not have much health, but it uses every ability from his main phase - including Soul Extinction, which will one-shot you if it lands. Crowd control it and kill it fast; leaving it up makes the whole intermission far harder." },
-                { n = "Cover the Echo's casts", d = "If Valeera is set to Healer, you must interrupt the Echo yourself. If she is set to DPS she covers the interrupt, but then you have to dispel Void Toxin." },
-                { n = "Extra venom sets", d = "Two additional venom coverings are added, so the pattern you must memorise reaches five safe zones." },
+                { n = "Echo of Azta'rec", d = L["It does not have much health, but it uses every ability from his main phase - including Soul Extinction, which will one-shot you if it lands. Crowd control it and kill it fast; leaving it up makes the whole intermission far harder."] },
+                { n = L["Cover the Echo's casts"], d = L["If Valeera is set to Healer, you must interrupt the Echo yourself. If she is set to DPS she covers the interrupt, but then you have to dispel Void Toxin."] },
+                { n = L["Extra venom sets"], d = L["Two additional venom coverings are added, so the pattern you must memorise reaches five safe zones."] },
             },
         },
     }
@@ -447,12 +444,11 @@ E:RegisterModule(function()
     finalLine:SetFont(finalLine:GetFont(), 10)
     finalLine:SetJustifyH("LEFT")
     finalLine:SetText(
-        E.CC.gold .. "Final push" .. E.CC.close
+        E.CC.gold .. L["Final push"] .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-        .. E.CC.body .. "After the 30% intermission there are no more, and the main phase "
-        .. "runs until he dies. Save Bloodlust or Heroism for after the last intermission "
-        .. "on Tier \"?\", or during the last intermission on Tier \"??\" to kill the Echo "
-        .. "faster." .. E.CC.close
+        .. E.CC.body
+        .. L["After the 30% intermission there are no more, and the main phase runs until he dies. Save Bloodlust or Heroism for after the last intermission on Tier \"?\", or during the last intermission on Tier \"??\" to kill the Echo faster."]
+        .. E.CC.close
     )
 
     local tierLine = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -461,11 +457,10 @@ E:RegisterModule(function()
     tierLine:SetFont(tierLine:GetFont(), 10)
     tierLine:SetJustifyH("LEFT")
     tierLine:SetText(
-        "|cFFFF8800" .. "Before you pull" .. E.CC.close
+        "|cFFFF8800" .. L["Before you pull"] .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-        .. E.CC.body .. "Drop a world marker on each of the four quadrants, then call the "
-        .. "safe zones by marker during the Sermon. Remembering \"blue, yellow, purple\" "
-        .. "is far easier than remembering positions on a venom-covered floor."
+        .. E.CC.body
+        .. L["Drop a world marker on each of the four quadrants, then call the safe zones by marker during the Sermon. Remembering \"blue, yellow, purple\" is far easier than remembering positions on a venom-covered floor."]
         .. E.CC.close
     )
 
@@ -480,50 +475,53 @@ E:RegisterModule(function()
     local compHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     compHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -24)
     compHeader:SetFont(compHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(compHeader, "Companion & Loadout")
+    E:StyleAccentHeader(compHeader, L["Companion & Loadout"])
 
     local compAnchor = compHeader
     compAnchor = AddBodyLine(compAnchor, -6, 10,
-        E.CC.muted .. "Only two mechanics need covering, and Valeera can take exactly one "
-        .. "of them. Give her whichever you cannot cover yourself:" .. E.CC.close)
+        E.CC.muted
+        .. L["Only two mechanics need covering, and Valeera can take exactly one of them. Give her whichever you cannot cover yourself:"]
+        .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -6, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "DPS / Tank" .. E.CC.close
-        .. E.CC.body .. "  run Valeera as Healer \226\128\148 she dispels Void Toxin, and "
-        .. "you interrupt Soul Extinction yourself." .. E.CC.close)
-    compAnchor = AddBodyLine(compAnchor, -3, 10,
-        E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Healer" .. E.CC.close
-        .. E.CC.body .. "  run Valeera as DPS \226\128\148 she interrupts Soul Extinction, "
-        .. "and you dispel Void Toxin yourself." .. E.CC.close)
-    compAnchor = AddBodyLine(compAnchor, -8, 10,
-        E.CC.gold .. "Curios" .. E.CC.close
-        .. E.CC.body .. "  Valeera has a third slot this season: Combat, Utility and a new "
-        .. "Poisons slot. The picks do not change with your own role." .. E.CC.close)
-    compAnchor = AddBodyLine(compAnchor, -6, 10,
-        E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Poison" .. E.CC.close
-        .. E.CC.body .. "  Frosthearth Venom \226\128\148 cuts enemy attack and cast speed "
-        .. "by 20%, which buys time on both Soul Extinction and the Void Toxin dispel."
+        .. E.CC.gold .. L["DPS / Tank"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["run Valeera as Healer \226\128\148 she dispels Void Toxin, and you interrupt Soul Extinction yourself."]
         .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Combat" .. E.CC.close
-        .. E.CC.body .. "  Corrosive Bilespear for straight damage. Ouroboric Curse is the "
-        .. "alternative, but much of this delve one-shots, so its effect is hard to keep "
-        .. "procced." .. E.CC.close)
+        .. E.CC.gold .. L["Healer"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["run Valeera as DPS \226\128\148 she interrupts Soul Extinction, and you dispel Void Toxin yourself."]
+        .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -8, 10,
+        E.CC.gold .. L["Curios"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["Valeera has a third slot this season: Combat, Utility and a new Poisons slot. The picks do not change with your own role."]
+        .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -6, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.gold .. L["Poison"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["Frosthearth Venom \226\128\148 cuts enemy attack and cast speed by 20%, which buys time on both Soul Extinction and the Void Toxin dispel."]
+        .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
-        .. E.CC.gold .. "Utility" .. E.CC.close
-        .. E.CC.body .. "  Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so "
-        .. "often it is close to permanent uptime, and the debuff sits on the boss, so "
-        .. "Valeera's own interrupts keep it up even while you play healer. 30% damage at "
-        .. "Rank 3 or higher." .. E.CC.close)
+        .. E.CC.gold .. L["Combat"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["Corrosive Bilespear for straight damage. Ouroboric Curse is the alternative, but much of this delve one-shots, so its effect is hard to keep procced."]
+        .. E.CC.close)
+    compAnchor = AddBodyLine(compAnchor, -3, 10,
+        E.CC.muted .. "\226\128\162  " .. E.CC.close
+        .. E.CC.gold .. L["Utility"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so often it is close to permanent uptime, and the debuff sits on the boss, so Valeera's own interrupts keep it up even while you play healer. 30% damage at Rank 3 or higher."]
+        .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -6, 10,
-        E.CC.gold .. "Consumables" .. E.CC.close
-        .. E.CC.body .. "  carry health and DPS potions, and hold Bloodlust or Heroism for "
-        .. "after the final intermission on Tier \"?\", or for killing the Echo during the final "
-        .. "intermission on Tier \"??\"." .. E.CC.close)
+        E.CC.gold .. L["Consumables"] .. E.CC.close
+        .. E.CC.body .. "  "
+        .. L["carry health and DPS potions, and hold Bloodlust or Heroism for after the final intermission on Tier \"?\", or for killing the Echo during the final intermission on Tier \"??\"."]
+        .. E.CC.close)
 
     local divC = sc:CreateTexture(nil, "ARTWORK")
     divC:SetHeight(1)
@@ -534,28 +532,29 @@ E:RegisterModule(function()
     local rewardHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rewardHeader:SetPoint("TOPLEFT", divC, "BOTTOMLEFT", 0, -24)
     rewardHeader:SetFont(rewardHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(rewardHeader, "Rewards")
+    E:StyleAccentHeader(rewardHeader, L["Rewards"])
 
     local rewardNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rewardNoteFS:SetPoint("TOPLEFT", rewardHeader, "BOTTOMLEFT", 0, -4)
     rewardNoteFS:SetFont(rewardNoteFS:GetFont(), 10)
     rewardNoteFS:SetText(
-        E.CC.muted .. "Collectibles for defeating Azta'rec this season "
-        .. "(item icons appear once their IDs are confirmed):" .. E.CC.close
+        E.CC.muted
+        .. L["Collectibles for defeating Azta'rec this season (item icons appear once their IDs are confirmed):"]
+        .. E.CC.close
     )
 
     local REWARDS = {
-        { name = "Apophic Patagia",              kind = "Cloak Transmog", color = E.CC.purple,
-          cond = "Defeat Azta'rec on either difficulty during Season 2 (My Venomous Nemesis, a Feat of Strength).",
-          extra = "Your first kill also grants 30 Hero Mistcrests, which do not count toward the season maximum." },
-        { name = "Corrosive Victory",            kind = "Toy",            color = E.CC.green,
-          cond = "Reward from the Fangs for the Memories quest." },
-        { name = "Apophic Soul Crusher",         kind = "Mount",          color = E.CC.purple,
-          cond = "Solo Azta'rec (Let Me Solo Him: Azta'rec)." },
-        { name = "the Poisonous",                kind = "Title",          color = E.CC.gold,
-          cond = "Defeat Azta'rec on Tier \"??\" (Purging the Poison)." },
-        { name = "Fabled Vanquisher of Azta'rec", kind = "Title",         color = E.CC.yellow,
-          cond = "Defeat him in his lair on Tier \"??\" with no other players in your party, within the first week of Season 2 (Fabled Let Me Solo Him: Azta'rec)." },
+        { name = "Apophic Patagia",              kind = L["Cloak Transmog"], color = E.CC.purple,
+          cond = L["Defeat Azta'rec on either difficulty during Season 2 (My Venomous Nemesis, a Feat of Strength)."],
+          extra = L["Your first kill also grants 30 Hero Mistcrests, which do not count toward the season maximum."] },
+        { name = "Corrosive Victory",            kind = L["Toy"],            color = E.CC.green,
+          cond = L["Reward from the Fangs for the Memories quest."] },
+        { name = "Apophic Soul Crusher",         kind = L["Mount"],          color = E.CC.purple,
+          cond = L["Solo Azta'rec (Let Me Solo Him: Azta'rec)."] },
+        { name = "the Poisonous",                kind = L["Title"],          color = E.CC.gold,
+          cond = L["Defeat Azta'rec on Tier \"??\" (Purging the Poison)."] },
+        { name = "Fabled Vanquisher of Azta'rec", kind = L["Title"],         color = E.CC.yellow,
+          cond = L["Defeat him in his lair on Tier \"??\" with no other players in your party, within the first week of Season 2 (Fabled Let Me Solo Him: Azta'rec)."] },
     }
 
     local rewardAnchor = rewardNoteFS
@@ -618,9 +617,9 @@ E:RegisterModule(function()
     local function RefreshNemesis()
         if not NEMESIS_QUEST then
             nemStatusFS:SetText(
-                E.CC.muted .. "Fangs for the Memories \226\128\148 the one-time seasonal "
-                .. "quest that awards the Corrosive Victory toy. Live tracking starts once "
-                .. "Season 2 opens and its quest ID is confirmed." .. E.CC.close
+                E.CC.muted
+                .. L["Fangs for the Memories \226\128\148 the one-time seasonal quest that awards the Corrosive Victory toy. Live tracking starts once its quest ID is confirmed."]
+                .. E.CC.close
             )
             return
         end
@@ -637,19 +636,21 @@ E:RegisterModule(function()
 
         if completed then
             nemStatusFS:SetText(
-                E.CC.green .. "[Done] Fangs for the Memories complete \226\128\148 "
-                .. "Corrosive Victory earned." .. E.CC.close
+                E.CC.green
+                .. L["[Done] Fangs for the Memories complete \226\128\148 Corrosive Victory earned."]
+                .. E.CC.close
             )
         elseif inProgress then
             nemStatusFS:SetText(
-                E.CC.yellow .. "Fangs for the Memories in progress \226\128\148 "
-                .. "check your quest log." .. E.CC.close
+                E.CC.yellow
+                .. L["Fangs for the Memories in progress \226\128\148 check your quest log."]
+                .. E.CC.close
             )
         else
             nemStatusFS:SetText(
-                E.CC.btnText .. "Fangs for the Memories available" .. E.CC.close
-                .. E.CC.muted
-                .. " \226\128\148 the one-time seasonal quest; defeat Azta'rec to earn it."
+                E.CC.btnText .. L["Fangs for the Memories available"] .. E.CC.close
+                .. E.CC.muted .. " \226\128\148 "
+                .. L["the one-time seasonal quest; defeat Azta'rec to earn it."]
                 .. E.CC.close
             )
         end
@@ -663,13 +664,14 @@ E:RegisterModule(function()
 
         if inBags > 0 then
             beaconStatusFS:SetText(
-                E.CC.green .. "[Ready] Beacon of Hope in inventory (" .. inBags .. ")"
+                E.CC.green
+                .. L["[Ready] Beacon of Hope in inventory (%d)"]:format(inBags)
                 .. E.CC.close
-                .. E.CC.muted .. " \226\128\148 go get that Nemesis!" .. E.CC.close
+                .. E.CC.muted .. " \226\128\148 " .. L["go get that Nemesis!"] .. E.CC.close
             )
         else
             beaconStatusFS:SetText(
-                E.CC.btnText .. "No Beacon of Hope in bags or bank." .. E.CC.close
+                E.CC.btnText .. L["No Beacon of Hope in bags or bank."] .. E.CC.close
             )
         end
 
@@ -683,7 +685,7 @@ E:RegisterModule(function()
 
         if undercoins < BEACON_PRICE then
             beaconNoteFS:SetText(
-                E.CC.btnText .. "Insufficient Undercoins. " .. E.CC.close
+                E.CC.btnText .. L["Insufficient Undercoins."] .. " " .. E.CC.close
                 .. E.CC.muted .. "(" .. E.CC.close
                 .. E.CC.btnText .. undercoins .. E.CC.close
                 .. E.CC.muted .. " of " .. E.CC.close
@@ -692,7 +694,7 @@ E:RegisterModule(function()
             )
         else
             beaconNoteFS:SetText(
-                E.CC.green .. "You have enough Undercoins to purchase a Beacon!"
+                E.CC.green .. L["You have enough Undercoins to purchase a Beacon!"]
                 .. E.CC.close
                 .. E.CC.muted .. " (" .. undercoins .. " / " .. BEACON_PRICE .. ")"
                 .. E.CC.close

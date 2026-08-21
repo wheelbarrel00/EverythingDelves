@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 E.Colors = {
     background  = { r = 0.05, g = 0.05, b = 0.05, a = 0.95 },
@@ -36,17 +37,17 @@ E.CC = {
 
 -- Order matters: matches the tab button layout.
 E.TAB_NAMES = {
-    "Delve Locations",
-    "Current Bountiful Delves",
-    "Tier Guide",
+    L["Delve Locations"],
+    L["Current Bountiful Delves"],
+    L["Tier Guide"],
     "Azta'rec",
-    "Shard Tracker",
-    "Delve History",
-    "Delver's Call",
-    "Roster",
-    "Options",
-    "Profiles",
-    "About",
+    L["Shard Tracker"],
+    L["Delve History"],
+    L["Delver's Call"],
+    L["Roster"],
+    L["Options"],
+    L["Profiles"],
+    L["About"],
 }
 E.NUM_TABS = #E.TAB_NAMES
 
@@ -265,33 +266,33 @@ E.ShardSources = {
     },
     {
         -- Repeatable with no per-source cap; bounded only by 600/wk.
-        name         = "Prey Quests",
+        name         = L["Prey Quests"],
         shardsEach   = 75,
         weeklyMax    = nil,
         trackable    = true,
         questLineID  = 5945,
     },
     {
-        name        = "World Map Rares",
+        name        = L["World Map Rares"],
         shardsEach  = 50,
         weeklyMax   = nil,
         trackable   = false,
     },
     {
-        name        = "World Quests",
+        name        = L["World Quests"],
         shardsEach  = 50,
         weeklyMax   = nil,
         trackable   = false,
     },
     {
-        name        = "World Map Treasures",
+        name        = L["World Map Treasures"],
         shardsEach  = "11-14",
         weeklyMax   = nil,
         unconfirmed = true,
         trackable   = false,
     },
     {
-        name        = "Abundance Events",
+        name        = L["Abundance Events"],
         shardsEach  = 13,
         weeklyMax   = nil,
         unconfirmed = true,

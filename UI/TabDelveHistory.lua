@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 ---@diagnostic disable: need-check-nil
 
 local pairs, ipairs              = pairs, ipairs
@@ -52,7 +53,7 @@ E:RegisterModule(function()
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", HDR_X, HDR_Y)
     title:SetFont(title:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(title, "Delve History")
+    E:StyleAccentHeader(title, L["Delve History"])
 
     local summaryFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     summaryFS:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
@@ -71,7 +72,7 @@ E:RegisterModule(function()
     noteFS:SetJustifyH("CENTER")
     noteFS:SetText(
         E.CC.muted
-        .. "Note: Closing the WoW client during a delve will reset that run's timer. /reload is fine."
+        .. L["Note: Closing the WoW client during a delve will reset that run's timer. /reload is fine."]
         .. E.CC.close
     )
 
@@ -82,7 +83,7 @@ E:RegisterModule(function()
     headerDiv:SetPoint("RIGHT",    frame, "RIGHT", -8, 0)
     E:StyleAccentDivider(headerDiv)
 
-    local clearBtn = E:CreateButton(frame, 100, 20, "Clear History")
+    local clearBtn = E:CreateButton(frame, 100, 20, L["Clear History"])
     clearBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -6)
     if clearBtn.Text then
         clearBtn.Text:SetFont(clearBtn.Text:GetFont(), 10)
@@ -93,9 +94,9 @@ E:RegisterModule(function()
     clearBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Clear Delve History",
-            "Erase all recorded delve runs and lifetime stats",
-            E.CC.red .. "This cannot be undone." .. E.CC.close)
+        E:ShowTooltip(self, L["Clear Delve History"],
+            L["Erase all recorded delve runs and lifetime stats"],
+            E.CC.red .. L["This cannot be undone."] .. E.CC.close)
     end)
     clearBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -131,7 +132,7 @@ E:RegisterModule(function()
     local capLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     capLabel:SetPoint("RIGHT", capSlider, "LEFT", -8, 0)
     capLabel:SetFont(capLabel:GetFont(), 11)
-    capLabel:SetText(E.CC.body .. "Runs kept per delve:" .. E.CC.close)
+    capLabel:SetText(E.CC.body .. L["Runs kept per delve:"] .. E.CC.close)
 
     capSlider:SetScript("OnValueChanged", function(_, val)
         val = ClampCap(val)
@@ -140,12 +141,11 @@ E:RegisterModule(function()
     end)
 
     local function CapTooltip(self)
-        E:ShowTooltip(self, "History kept per delve",
-            "How many recent runs to store for each delve (newest first).",
-            E.CC.muted .. "Default 20, up to " .. CAP_MAX
-            .. ". Raising it keeps more history from now on; runs already "
-            .. "trimmed can't be recovered. Lowering it trims a delve's "
-            .. "oldest runs the next time you run it." .. E.CC.close)
+        E:ShowTooltip(self, L["History kept per delve"],
+            L["How many recent runs to store for each delve (newest first)."],
+            E.CC.muted
+            .. L["Default 20, up to %d. Raising it keeps more history from now on; runs already trimmed can't be recovered. Lowering it trims a delve's oldest runs the next time you run it."]:format(CAP_MAX)
+            .. E.CC.close)
     end
     capSlider:SetScript("OnEnter", CapTooltip)
     capSlider:SetScript("OnLeave", function() E:HideTooltip() end)
@@ -215,22 +215,22 @@ E:RegisterModule(function()
 
     local nemesisHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemesisHeader:SetFont(nemesisHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(nemesisHeader, "Seasonal Nemesis")
+    E:StyleAccentHeader(nemesisHeader, L["Seasonal Nemesis"])
 
     local nemesisEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     nemesisEmptyFS:SetFont(nemesisEmptyFS:GetFont(), 10)
     nemesisEmptyFS:SetText(E.CC.muted
-        .. "No nemesis delve runs recorded yet." .. E.CC.close)
+        .. L["No nemesis delve runs recorded yet."] .. E.CC.close)
 
     local midnightHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     midnightHeader:SetFont(midnightHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(midnightHeader, "Midnight Delves")
+    E:StyleAccentHeader(midnightHeader, L["Midnight Delves"])
 
     local midnightEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     midnightEmptyFS:SetFont(midnightEmptyFS:GetFont(), 10)
     midnightEmptyFS:SetText(E.CC.muted
-        .. "No Midnight delve runs recorded yet. Complete a delve to "
-        .. "start tracking!" .. E.CC.close)
+        .. L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"]
+        .. E.CC.close)
 
     -- Parented to sc (not frame) so they scroll with the content; children of
     -- frame stay pinned to the viewport and float over rows as you scroll.
@@ -288,7 +288,7 @@ E:RegisterModule(function()
     local neTitle = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     neTitle:SetPoint("TOPLEFT", noteEditor, "TOPLEFT", 14, -12)
     neTitle:SetFont(neTitle:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(neTitle, "Run Note")
+    E:StyleAccentHeader(neTitle, L["Run Note"])
 
     local neContext = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     neContext:SetPoint("TOPLEFT", neTitle, "BOTTOMLEFT", 0, -4)
@@ -342,7 +342,7 @@ E:RegisterModule(function()
         if Refresh then Refresh() end
     end
 
-    local neSave = E:CreateButton(noteEditor, 90, 24, "Save")
+    local neSave = E:CreateButton(noteEditor, 90, 24, L["Save"])
     neSave:SetPoint("BOTTOMRIGHT", noteEditor, "BOTTOMRIGHT", -14, 14)
     neSave:SetScript("OnClick", SaveNoteEditor)
     neSave:SetScript("OnEnter", function(self)
@@ -354,7 +354,7 @@ E:RegisterModule(function()
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
     end)
 
-    local neCancel = E:CreateButton(noteEditor, 90, 24, "Cancel")
+    local neCancel = E:CreateButton(noteEditor, 90, 24, L["Cancel"])
     neCancel:SetPoint("RIGHT", neSave, "LEFT", -10, 0)
     neCancel:SetScript("OnClick", CloseNoteEditor)
     neCancel:SetScript("OnEnter", function(self)
@@ -366,7 +366,7 @@ E:RegisterModule(function()
         self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
     end)
 
-    local neDelete = E:CreateButton(noteEditor, 90, 24, "Delete")
+    local neDelete = E:CreateButton(noteEditor, 90, 24, L["Delete"])
     neDelete:SetPoint("BOTTOMLEFT", noteEditor, "BOTTOMLEFT", 14, 14)
     neDelete:SetScript("OnClick", function()
         if noteEditor.delveKey and noteEditor.timestamp then
@@ -377,8 +377,8 @@ E:RegisterModule(function()
     end)
     neDelete:SetScript("OnEnter", function(self)
         self:SetBackdropColor(0.45, 0.12, 0.12, 0.90)
-        E:ShowTooltip(self, "Delete Note",
-            E.CC.red .. "Removes this run's note." .. E.CC.close)
+        E:ShowTooltip(self, L["Delete Note"],
+            E.CC.red .. L["Removes this run's note."] .. E.CC.close)
     end)
     neDelete:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -431,10 +431,10 @@ E:RegisterModule(function()
         local row = self.row
         local note = row and row.run and row.run.note
         if note and note ~= "" then
-            E:ShowTooltip(self, "Run Note", note)
+            E:ShowTooltip(self, L["Run Note"], note)
         else
-            E:ShowTooltip(self, "Add a Note",
-                "Click to attach a free-form note to this run.")
+            E:ShowTooltip(self, L["Add a Note"],
+                L["Click to attach a free-form note to this run."])
         end
     end
 
@@ -446,11 +446,9 @@ E:RegisterModule(function()
 
     -- E:DeleteRun also subtracts the run's contribution from lifetime stats.
     StaticPopupDialogs["EVERYTHINGDELVES_DELETE_RUN"] = {
-        text = "Delete this %s run?\n\n%s\n\nIts time, deaths, and key"
-            .. " usage are removed from the delve's lifetime stats."
-            .. " This cannot be undone.",
-        button1 = "Delete",
-        button2 = "Cancel",
+        text = L["Delete this %s run?\n\n%s\n\nIts time, deaths, and key usage are removed from the delve's lifetime stats. This cannot be undone."],
+        button1 = L["Delete"],
+        button2 = L["Cancel"],
         OnAccept = function(_, data)
             if data and E:DeleteRun(data.key, data.timestamp) then
                 Refresh()
@@ -475,8 +473,8 @@ E:RegisterModule(function()
 
     local function DelBtn_OnEnter(self)
         self:SetAlpha(1)
-        E:ShowTooltip(self, "Delete Run",
-            "Permanently remove this run and its\ncontribution to lifetime stats.")
+        E:ShowTooltip(self, L["Delete Run"],
+            L["Permanently remove this run and its\ncontribution to lifetime stats."])
     end
 
     local function DelBtn_OnLeave(self)
@@ -488,8 +486,8 @@ E:RegisterModule(function()
     local function BountBadge_OnEnter(self)
         local row = self.row
         if row and row.run and row.run.wasBountiful then
-            E:ShowTooltip(self, E.CC.gold .. "B" .. E.CC.close .. " = Bountiful",
-                "This run was in a Bountiful Delve.")
+            E:ShowTooltip(self, E.CC.gold .. "B" .. E.CC.close .. " = " .. L["Bountiful"],
+                L["This run was in a Bountiful Delve."])
         end
     end
 
@@ -575,33 +573,33 @@ E:RegisterModule(function()
         local timed = life.timedRuns or life.totalRuns or 0
         local avg = timed > 0 and math_floor((life.totalDuration or 0) / timed) or 0
         row.runsFS:SetText(
-            E.CC.muted .. "Runs: " .. E.CC.close
+            E.CC.muted .. L["Runs:"] .. " " .. E.CC.close
             .. E.CC.body .. (life.totalRuns or 0) .. E.CC.close)
         row.btierFS:SetText(
-            E.CC.muted .. "Best Tier: " .. E.CC.close
+            E.CC.muted .. L["Best Tier:"] .. " " .. E.CC.close
             .. E.CC.body .. "T" .. (life.highestTier or 0) .. E.CC.close)
         row.avgFS:SetText(
-            E.CC.muted .. "Avg: " .. E.CC.close
+            E.CC.muted .. L["Avg:"] .. " " .. E.CC.close
             .. E.CC.body .. FormatDuration(avg) .. E.CC.close)
         row.fastFS:SetText(
-            E.CC.muted .. "Fastest: " .. E.CC.close
+            E.CC.muted .. L["Fastest:"] .. " " .. E.CC.close
             .. E.CC.body .. FormatDuration(life.fastestTime) .. E.CC.close)
         if latest then
             row.latestFS:SetText(
-                E.CC.muted .. "Latest: " .. E.CC.close
-                .. E.CC.body .. FormatDuration(latest.duration) .. E.CC.close
-                .. E.CC.muted .. " on " .. FormatDateTime(latest.timestamp)
+                E.CC.muted .. L["Latest: %s on %s"]:format(
+                    E.CC.body .. FormatDuration(latest.duration) .. E.CC.close .. E.CC.muted,
+                    FormatDateTime(latest.timestamp))
                 .. E.CC.close)
         else
             row.latestFS:SetText("")
         end
         local keysUsed = life.totalKeysUsed or 0
         row.keysFS:SetText(keysUsed > 0
-            and (E.CC.muted .. "Keys used: " .. E.CC.close
+            and (E.CC.muted .. L["Keys used:"] .. " " .. E.CC.close
                  .. E.CC.gold .. string_format("%d", keysUsed) .. E.CC.close)
             or "")
         row.hdeathsFS:SetText(
-            E.CC.muted .. "Total Deaths: " .. E.CC.close
+            E.CC.muted .. L["Total Deaths:"] .. " " .. E.CC.close
             .. E.CC.body .. string_format("%d", life.totalDeaths or 0) .. E.CC.close)
     end
 
@@ -729,7 +727,7 @@ E:RegisterModule(function()
             end
         end
         summaryFS:SetFormattedText(
-            "%sTotal Runs:%s %s%d%s   %s||%s   %sTotal Deaths:%s %s%d%s   %s||%s   %sTotal Time:%s %s%s%s",
+            L["%sTotal Runs:%s %s%d%s   %s||%s   %sTotal Deaths:%s %s%d%s   %s||%s   %sTotal Time:%s %s%s%s"],
             E.CC.muted, E.CC.close, E.CC.gold, totalRuns, E.CC.close,
             E.CC.muted, E.CC.close,
             E.CC.muted, E.CC.close, E.CC.gold, totalDeaths, E.CC.close,
@@ -786,10 +784,10 @@ E:RegisterModule(function()
                 .. "T" .. (run.tier or 0) .. E.CC.close)
             rrow.durFS:SetText(E.CC.body .. FormatDuration(run.duration) .. E.CC.close)
             rrow.deathsFS:SetText(
-                E.CC.muted .. "Deaths: " .. E.CC.close
+                E.CC.muted .. L["Deaths:"] .. " " .. E.CC.close
                 .. E.CC.body .. string_format("%d", run.deaths or 0) .. E.CC.close)
             rrow.keyFS:SetText(run.keyUsed
-                and (E.CC.gold .. "Key" .. E.CC.close) or "")
+                and (E.CC.gold .. L["Key"] .. E.CC.close) or "")
 
             local storyTxt = ResolveRunStory(run, key)
             rrow.storyFS:SetText(storyTxt

@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_max, math_min, math_floor = math.max, math.min, math.floor
 
@@ -7,17 +8,17 @@ local ARROW_UP   = " |TInterface\\Buttons\\Arrow-Up-Up:12:12|t"
 local ARROW_DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:12:12|t"
 
 local COLUMNS = {
-    { key = "name",     label = "Character", x = 12,  numeric = false },
-    { key = "ilvl",     label = "iLvl",      x = 206, numeric = true  },
-    { key = "keys",     label = "Keys",      x = 250, numeric = true  },
-    { key = "shards",   label = "Shards",    x = 296, numeric = true  },
-    { key = "wkshards", label = "Wk Shards", x = 344, numeric = true  },
-    { key = "bounty",   label = "Bounty",    x = 414, numeric = true  },
-    { key = "vault",    label = "Vault",     x = 470, numeric = true  },
-    { key = "gilded",   label = "Gilded",    x = 524, numeric = true  },
-    { key = "weekly",   label = "Weekly",    x = 578, numeric = true  },
-    { key = "trove",    label = "Trove",     x = 636, numeric = true  },
-    { key = "updated",  label = "Updated",   x = 692, numeric = true  },
+    { key = "name",     label = L["Character"], x = 12,  numeric = false },
+    { key = "ilvl",     label = L["iLvl"],      x = 206, numeric = true  },
+    { key = "keys",     label = L["Keys"],      x = 250, numeric = true  },
+    { key = "shards",   label = L["Shards"],    x = 296, numeric = true  },
+    { key = "wkshards", label = L["Wk Shards"], x = 344, numeric = true  },
+    { key = "bounty",   label = L["Bounty"],    x = 414, numeric = true  },
+    { key = "vault",    label = L["Vault"],     x = 470, numeric = true  },
+    { key = "gilded",   label = L["Gilded"],    x = 524, numeric = true  },
+    { key = "weekly",   label = L["Weekly"],    x = 578, numeric = true  },
+    { key = "trove",    label = L["Trove"],     x = 636, numeric = true  },
+    { key = "updated",  label = L["Updated"],   x = 692, numeric = true  },
 }
 local DELETE_X  = 780
 local ROW_W     = 802
@@ -30,10 +31,10 @@ end
 
 local function FormatAgo(secs)
     if not secs or secs < 0 then return "?" end
-    if secs < 60    then return "just now" end
-    if secs < 3600  then return math_floor(secs / 60)    .. "m ago" end
-    if secs < 86400 then return math_floor(secs / 3600)  .. "h ago" end
-    return math_floor(secs / 86400) .. "d ago"
+    if secs < 60    then return L["just now"] end
+    if secs < 3600  then return L["%dm ago"]:format(math_floor(secs / 60)) end
+    if secs < 86400 then return L["%dh ago"]:format(math_floor(secs / 3600)) end
+    return L["%dd ago"]:format(math_floor(secs / 86400))
 end
 
 E:RegisterModule(function()
@@ -91,12 +92,12 @@ E:RegisterModule(function()
     local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -4)
     mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, "Roster")
+    E:StyleAccentHeader(mainHeader, L["Roster"])
 
     local subFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     subFS:SetPoint("LEFT", mainHeader, "RIGHT", 10, -1)
     subFS:SetFont(subFS:GetFont(), 11)
-    subFS:SetText(E.CC.muted .. "Account-wide alt overview" .. E.CC.close)
+    subFS:SetText(E.CC.muted .. L["Account-wide alt overview"] .. E.CC.close)
 
     local summaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     summaryFS:SetPoint("TOPLEFT", mainHeader, "BOTTOMLEFT", 0, -8)
@@ -108,7 +109,7 @@ E:RegisterModule(function()
     hintFS:SetPoint("TOPLEFT", summaryFS, "BOTTOMLEFT", 0, -4)
     hintFS:SetFont(hintFS:GetFont(), 10)
     hintFS:SetText(E.CC.muted
-        .. "Log into a character to record it. Click a column to sort; hover a row for detail."
+        .. L["Log into a character to record it. Click a column to sort; hover a row for detail."]
         .. E.CC.close)
 
     local div1 = sc:CreateTexture(nil, "ARTWORK")
@@ -205,11 +206,9 @@ E:RegisterModule(function()
     end
 
     StaticPopupDialogs["EVERYTHINGDELVES_DELETEROSTER"] = {
-        text = "Remove %s from the roster?\n\n"
-            .. "This only clears the saved snapshot; logging into that "
-            .. "character records it again.",
-        button1 = "Remove",
-        button2 = "Cancel",
+        text = L["Remove %s from the roster?\n\nThis only clears the saved snapshot; logging into that character records it again."],
+        button1 = L["Remove"],
+        button2 = L["Cancel"],
         OnAccept = function(_, data)
             local sv = EverythingDelvesDB
             if sv and sv.roster then sv.roster[data] = nil end
@@ -263,7 +262,7 @@ E:RegisterModule(function()
             if e.valid and e.rec.weeklyQuestDone then weeklyDone = weeklyDone + 1 end
         end
         summaryFS:SetText(string.format(
-            "%s%d|r %scharacters|r   %s\194\183|r   %s%d|r %skeys|r   %s\194\183|r   %s%d|r %sbounty maps|r   %s\194\183|r   %s%d|r %sweekly delve quest done|r",
+            L["%s%d|r %scharacters|r   %s\194\183|r   %s%d|r %skeys|r   %s\194\183|r   %s%d|r %sbounty maps|r   %s\194\183|r   %s%d|r %sweekly delve quest done|r"],
             E.CC.white, #list, E.CC.body,
             E.CC.muted,
             E.CC.gold, totalKeys, E.CC.body,
@@ -295,7 +294,7 @@ E:RegisterModule(function()
             row.cells.name:SetText(
                 ClassColorOpen(rec.class) .. (rec.name or e.key) .. "|r"
                 .. (rec.level and ("  " .. E.CC.muted .. rec.level .. E.CC.close) or "")
-                .. (isCur and ("  " .. E.CC.muted .. "(you)" .. E.CC.close) or ""))
+                .. (isCur and ("  " .. E.CC.muted .. L["(you)"] .. E.CC.close) or ""))
 
             row.cells.ilvl:SetText(rec.ilvl
                 and (E.CC.body .. rec.ilvl .. E.CC.close)
@@ -336,13 +335,13 @@ E:RegisterModule(function()
             end
 
             if valid and rec.weeklyQuestDone then
-                row.cells.weekly:SetText(E.CC.green .. "Done" .. E.CC.close)
+                row.cells.weekly:SetText(E.CC.green .. L["Done"] .. E.CC.close)
             else
                 row.cells.weekly:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
             end
 
             if valid and rec.bountyLooted then
-                row.cells.trove:SetText(E.CC.green .. "Done" .. E.CC.close)
+                row.cells.trove:SetText(E.CC.green .. L["Done"] .. E.CC.close)
             else
                 row.cells.trove:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
             end
@@ -352,28 +351,27 @@ E:RegisterModule(function()
             -- Built sequentially (no nil holes) so unpack() reaches every line.
             local tip = {
                 (rec.name or e.key) .. " - " .. (rec.realm or "?"),
-                "Item level: " .. (rec.ilvl or "?"),
-                "Coffer Keys: " .. (rec.keys or 0) .. "   Shards: " .. (rec.shards or 0),
-                "Bounty maps: " .. (rec.bountyMaps or 0),
+                L["Item level: %s"]:format(rec.ilvl or "?"),
+                L["Coffer Keys: %d   Shards: %d"]:format(rec.keys or 0, rec.shards or 0),
+                L["Bounty maps: %d"]:format(rec.bountyMaps or 0),
             }
             if valid then
                 if (rec.shardsMaxWeek or 0) > 0 then
-                    tip[#tip + 1] = "Weekly shards earned: " .. (rec.shardsEarnedWeek or 0)
-                        .. "/" .. rec.shardsMaxWeek
+                    tip[#tip + 1] = L["Weekly shards earned: %d/%d"]
+                        :format(rec.shardsEarnedWeek or 0, rec.shardsMaxWeek)
                 end
-                tip[#tip + 1] = "Great Vault delves: " .. (rec.vaultProgress or 0)
-                    .. "/" .. (rec.vaultTotal or 0)
-                    .. "  (" .. (rec.vaultSlots or 0) .. "/3 slots)"
+                tip[#tip + 1] = L["Great Vault delves: %d/%d  (%d/3 slots)"]
+                    :format(rec.vaultProgress or 0, rec.vaultTotal or 0, rec.vaultSlots or 0)
                 if rec.gildedTotal then
-                    tip[#tip + 1] = "Gilded Stash: " .. (rec.gildedCollected or 0)
-                        .. "/" .. rec.gildedTotal
+                    tip[#tip + 1] = L["Gilded Stash: %d/%d"]
+                        :format(rec.gildedCollected or 0, rec.gildedTotal)
                 end
-                tip[#tip + 1] = "Trovehunter's Bounty: "
-                    .. (rec.bountyLooted and "looted this week" or "not looted")
+                tip[#tip + 1] = L["Trovehunter's Bounty: %s"]:format(
+                    rec.bountyLooted and L["looted this week"] or L["not looted"])
             else
-                tip[#tip + 1] = "Weekly data resets at the next reset"
+                tip[#tip + 1] = L["Weekly data resets at the next reset"]
             end
-            tip[#tip + 1] = "Updated: " .. FormatAgo(now - (rec.updated or now))
+            tip[#tip + 1] = L["Updated: %s"]:format(FormatAgo(now - (rec.updated or now)))
             row.tip = tip
 
             if isCur then
@@ -396,7 +394,7 @@ E:RegisterModule(function()
         end
 
         if #list == 0 then
-            summaryFS:SetText(E.CC.muted .. "No characters tracked yet." .. E.CC.close)
+            summaryFS:SetText(E.CC.muted .. L["No characters tracked yet."] .. E.CC.close)
         end
 
         C_Timer.After(0, function()

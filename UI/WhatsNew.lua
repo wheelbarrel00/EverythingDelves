@@ -1,23 +1,28 @@
 local E = EverythingDelves
+local L = E.L
 
-local WHATS_NEW_VERSION = "1.27.0"
+local WHATS_NEW_VERSION = "1.28.0"
 
 local ENTRIES = {
     {
-        title = "The new story for eight of the older Delves",
-        desc  = "Patch 12.1 gave every Season 1 Delve except The Gulf of Memory and Sunkiller Sanctum a Children of Ula'tek story, and the addon knew about none of them. All eight are in now, with their objectives and their bosses.",
+        title = "Everything Delves now speaks six more languages",
+        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese. Around 750 phrases are translatable. Most of the addon is still English today because the translations are only just starting, and anything untranslated simply shows in English.",
     },
     {
-        title = "Tactics for the three new bosses",
-        desc  = "Replicating Venomborne, Disciple of Vash'nik and Abominable Blunder each expand into a full breakdown like every other Delve boss - what to interrupt, what to dodge, and which adds heal the boss if you leave them alive.",
+        title = "Delve and boss names stay in your own language",
+        desc  = "They are matched against the game's own text, so they are deliberately left exactly as your client shows them. Translations are shared with the author's other addons, and contributions are very welcome - the README explains how.",
     },
     {
-        title = "No more ratings borrowed from a different story",
-        desc  = "When today's story had no rating of its own, the Tier column fell back to the Delve's usual grade. That showed Collegiate Calamity as S and Parhelion Plaza as A for stories nobody has rated, and it was driving the Best value pick. An unrated story now simply shows no grade.",
+        title = "Curios are updated for Season 2",
+        desc  = "The reminder still recommended Porcelain Blade Tip and Mandate of Sacred Death, which are Season 1 items. It now recommends Corrosive Bilespear and Soul-Cracking Dreamcatcher.",
     },
     {
-        title = "The window no longer works while it is closed",
-        desc  = "Whichever tab you last had open kept rebuilding itself on every currency, quest and map update for the rest of the session. Every tab now waits until it is actually on screen.",
+        title = "Curios are not finished - another update is coming soon",
+        desc  = "Season 2 also gave your companion a Poisons slot, and the reminder does not cover it yet. Poison recommendations and the rest of the Season 2 curio list are what is being worked on now. The Nemesis tab already recommends a poison for Azta'rec.",
+    },
+    {
+        title = "Venomfall Deeps is open, and the tab said otherwise",
+        desc  = "The Nemesis tab still claimed the delve opens once Season 2 begins. It now explains what actually gates it: a Tier 7 clear with at least one life left, or a Tier 10 clear for the harder difficulty.",
     },
 }
 
@@ -50,7 +55,7 @@ E:RegisterModule(function()
     titleFS:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, -8)
     titleFS:SetFont(titleFS:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
     titleFS:SetText(
-        E.CC.header .. "What's New" .. E.CC.close
+        E.CC.header .. L["What's New"] .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  v" .. WHATS_NEW_VERSION .. E.CC.close
     )
 
@@ -80,7 +85,7 @@ E:RegisterModule(function()
         Y = Y - ENTRY_H
     end
 
-    local btn = E:CreateButton(popup, 100, 24, "Got it")
+    local btn = E:CreateButton(popup, 100, 24, L["Got it"])
     btn:SetPoint("BOTTOM", popup, "BOTTOM", 60, 16)
     btn:SetScript("OnClick", function()
         E.db.seenWhatsNewVersion = WHATS_NEW_VERSION
@@ -99,7 +104,7 @@ E:RegisterModule(function()
     discordBtn.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
     discordBtn.text = discordBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     discordBtn.text:SetPoint("LEFT", discordBtn.icon, "RIGHT", 6, 0)
-    discordBtn.text:SetText("Join our Discord!")
+    discordBtn.text:SetText(L["Join our Discord!"])
     discordBtn:SetWidth(10 + 16 + 6 + discordBtn.text:GetStringWidth() + 12)
     discordBtn:SetPoint("RIGHT", btn, "LEFT", -10, 0)
     discordBtn:SetScript("OnClick", function() E:ShowDiscord() end)

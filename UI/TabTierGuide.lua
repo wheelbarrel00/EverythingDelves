@@ -1,4 +1,5 @@
 local E = EverythingDelves
+local L = E.L
 
 local math_floor, math_max, math_min = math.floor, math.max, math.min
 local table_insert = table.insert
@@ -112,10 +113,10 @@ E:RegisterModule(function()
     local LABEL_WIDTH  = 110
 
     local rowLabels = {
-        { text = "Tier",           cc = E.CC.header },
-        { text = "Rec. Gear iLvl", cc = E.CC.muted  },
-        { text = "Bountiful Loot", cc = E.CC.gold   },
-        { text = "Great Vault",    cc = E.CC.purple  },
+        { text = L["Tier"],           cc = E.CC.header },
+        { text = L["Rec. Gear iLvl"], cc = E.CC.muted  },
+        { text = L["Bountiful Loot"], cc = E.CC.gold   },
+        { text = L["Great Vault"],    cc = E.CC.purple  },
     }
 
     for rowIdx, info in ipairs(rowLabels) do
@@ -166,22 +167,23 @@ E:RegisterModule(function()
         hitBox:SetScript("OnEnter", function(self)
             local tipLines = {}
             if td.tier <= 4 then
-                table_insert(tipLines, "Entry-level delves. Good for gearing up alts.")
+                table_insert(tipLines, L["Entry-level delves. Good for gearing up alts."])
             elseif td.tier <= 8 then
-                table_insert(tipLines, "Mid-tier delves. Solid upgrades for mains early in the season.")
+                table_insert(tipLines,
+                    L["Mid-tier delves. Solid upgrades for mains early in the season."])
             else
-                table_insert(tipLines, "Endgame delves. Best loot, toughest challenge.")
+                table_insert(tipLines, L["Endgame delves. Best loot, toughest challenge."])
             end
             table_insert(tipLines, "")
-            table_insert(tipLines, E.CC.muted .. "Recommended iLvl: " .. E.CC.close
+            table_insert(tipLines, E.CC.muted .. L["Recommended iLvl:"] .. " " .. E.CC.close
                 .. E.CC.gold .. td.recGear .. "+" .. E.CC.close)
             local bN, bC = E:GetLootTrack(td.bountifulLoot, td.bountifulTrack)
             local vN, vC = E:GetLootTrack(td.greatVault, td.vaultTrack)
-            table_insert(tipLines, E.CC.muted .. "Bountiful Loot: " .. E.CC.close
+            table_insert(tipLines, E.CC.muted .. L["Bountiful Loot:"] .. " " .. E.CC.close
                 .. bC .. td.bountifulLoot .. " (" .. bN .. ")" .. E.CC.close)
-            table_insert(tipLines, E.CC.muted .. "Great Vault: " .. E.CC.close
+            table_insert(tipLines, E.CC.muted .. L["Great Vault:"] .. " " .. E.CC.close
                 .. vC .. td.greatVault .. " (" .. vN .. ")" .. E.CC.close)
-            E:ShowTooltip(self, "Tier " .. td.tier, unpack(tipLines))
+            E:ShowTooltip(self, L["Tier %d"]:format(td.tier), unpack(tipLines))
         end)
         hitBox:SetScript("OnLeave", function() E:HideTooltip() end)
 
@@ -244,13 +246,13 @@ E:RegisterModule(function()
         local recTier = GetRecommendedTier(ilvl)
 
         ilvlLabel:SetText(
-            E.CC.muted .. "Your Equipped iLvl: " .. E.CC.close
+            E.CC.muted .. L["Your Equipped iLvl:"] .. " " .. E.CC.close
             .. E.CC.gold .. ilvl .. E.CC.close
         )
         recLabel:SetText(
-            E.CC.muted .. "Recommended Tier: " .. E.CC.close
-            .. E:GetTierCC(recTier) .. "T" .. recTier .. E.CC.close
-            .. E.CC.body .. " - running this tier gives you the best gear upgrade chance" .. E.CC.close
+            E.CC.muted .. L["Recommended Tier: %s - running this tier gives you the best gear upgrade chance"]
+                :format(E:GetTierCC(recTier) .. "T" .. recTier .. E.CC.close .. E.CC.body)
+            .. E.CC.close
         )
 
         for tier, cell in pairs(tierCells) do
@@ -323,7 +325,7 @@ E:RegisterModule(function()
     local gvHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
     gvHeader:SetFont(gvHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(gvHeader, "Great Vault Progress")
+    E:StyleAccentHeader(gvHeader, L["Great Vault Progress"])
 
     local gvFallbackFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gvFallbackFS:SetPoint("TOPLEFT", gvHeader, "BOTTOMLEFT", 0, -4)
@@ -333,8 +335,8 @@ E:RegisterModule(function()
     -- No PvP row: World Content replaced the Great Vault PvP slot in TWW,
     -- so C_WeeklyRewards.GetActivities never returns a RankedPvP row.
     local GV_ROWS = {
-        { type = Enum.WeeklyRewardChestThresholdType.Activities, label = "Mythic+ Dungeons",       max = 8 },
-        { type = Enum.WeeklyRewardChestThresholdType.World,      label = "Delves / World Content", max = 8 },
+        { type = Enum.WeeklyRewardChestThresholdType.Activities, label = L["Mythic+ Dungeons"],       max = 8 },
+        { type = Enum.WeeklyRewardChestThresholdType.World,      label = L["Delves / World Content"], max = 8 },
     }
 
     local GV_SLOT_W, GV_SLOT_H, GV_SLOT_GAP = 92, 40, 8
@@ -399,7 +401,7 @@ E:RegisterModule(function()
     gvNoteFS:SetFont(gvNoteFS:GetFont(), 9)
     local function RefreshGVNote()
         local left = WeeklyResetIn()
-        gvNoteFS:SetText(E.CC.muted .. "Rewards are claimable after the weekly reset"
+        gvNoteFS:SetText(E.CC.muted .. L["Rewards are claimable after the weekly reset"]
             .. (left and (" (" .. left .. ")") or "") .. E.CC.close)
     end
     RefreshGVNote()
@@ -432,7 +434,9 @@ E:RegisterModule(function()
 
         if not ok or not activities or #activities == 0 then
             gvFallbackFS:SetText(
-                E.CC.muted .. "Great Vault data not available yet - enter a dungeon, raid or delve first" .. E.CC.close)
+                E.CC.muted
+                .. L["Great Vault data not available yet - enter a dungeon, raid or delve first"]
+                .. E.CC.close)
             gvFallbackFS:Show()
             gvNoteFS:Hide()
             for _, cells in pairs(gvSlots) do
@@ -492,15 +496,17 @@ E:RegisterModule(function()
                         nextRemaining = threshold - prog
                     end
 
-                    cell.tipTitle = "Reward Slot " .. s
-                    cell.tipLine1 = ilvl and ("Item level " .. ilvl) or "No reward unlocked yet"
+                    cell.tipTitle = L["Reward Slot %d"]:format(s)
+                    cell.tipLine1 = ilvl and L["Item level %d"]:format(ilvl)
+                        or L["No reward unlocked yet"]
                     if unlocked then
                         local left = WeeklyResetIn()
-                        cell.tipLine2 = E.CC.muted .. "Unlocked - claim after the weekly reset"
+                        cell.tipLine2 = E.CC.muted .. L["Unlocked - claim after the weekly reset"]
                             .. (left and (" (" .. left .. ")") or "") .. "." .. E.CC.close
                     else
-                        cell.tipLine2 = E.CC.muted .. prog .. " / " .. threshold
-                            .. "  (" .. (threshold - prog) .. " more)" .. E.CC.close
+                        cell.tipLine2 = E.CC.muted
+                            .. L["%d / %d  (%d more)"]:format(prog, threshold, threshold - prog)
+                            .. E.CC.close
                     end
                     cell:Show()
                 else
@@ -513,9 +519,10 @@ E:RegisterModule(function()
             if not list or #list == 0 then
                 summary:SetText("")
             elseif nextRemaining then
-                summary:SetText(E.CC.muted .. "Next slot in " .. nextRemaining .. " more" .. E.CC.close)
+                summary:SetText(E.CC.muted
+                    .. L["Next slot in %d more"]:format(nextRemaining) .. E.CC.close)
             else
-                summary:SetText(E.CC.gold .. "All slots unlocked" .. E.CC.close)
+                summary:SetText(E.CC.gold .. L["All slots unlocked"] .. E.CC.close)
             end
             summary:Show()
         end
@@ -527,12 +534,12 @@ E:RegisterModule(function()
     local djHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     djHeader:SetPoint("TOPLEFT", gvDiv, "BOTTOMLEFT", 0, -32)
     djHeader:SetFont(djHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(djHeader, "Delver's Journey")
+    E:StyleAccentHeader(djHeader, L["Delver's Journey"])
 
     djHeader:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, "Delver's Journey",
-            "Your progress through this season's Delves track.",
-            "Each level unlocks a milestone reward - hover an icon to see it.")
+        E:ShowTooltip(self, L["Delver's Journey"],
+            L["Your progress through this season's Delves track."],
+            L["Each level unlocks a milestone reward - hover an icon to see it."])
     end)
     djHeader:SetScript("OnLeave", function() E:HideTooltip() end)
 
@@ -591,8 +598,9 @@ E:RegisterModule(function()
 
         if not ok then
             djLevelFS:SetText(
-                E.CC.muted .. "Delver's Journey data not available yet "
-                .. "- open the Journeys panel once to sync." .. E.CC.close)
+                E.CC.muted
+                .. L["Delver's Journey data not available yet - open the Journeys panel once to sync."]
+                .. E.CC.close)
             djBar:Hide()
             djIconRow:Hide()
             return
@@ -601,11 +609,11 @@ E:RegisterModule(function()
         local maxed = IsJourneyMaxed(factionID)
         if maxed then
             djLevelFS:SetText(
-                E.CC.gold .. "Level " .. level .. E.CC.close
-                .. E.CC.green .. "   Complete - all milestones earned!" .. E.CC.close)
+                E.CC.gold .. L["Level %d"]:format(level) .. E.CC.close
+                .. E.CC.green .. "   " .. L["Complete - all milestones earned!"] .. E.CC.close)
         else
             djLevelFS:SetText(
-                E.CC.gold .. "Level " .. level .. E.CC.close
+                E.CC.gold .. L["Level %d"]:format(level) .. E.CC.close
                 .. E.CC.muted .. "   " .. cur .. " / " .. threshold .. E.CC.close)
         end
         -- At max renown renownReputationEarned = 0, so force the bar full.
@@ -650,8 +658,8 @@ E:RegisterModule(function()
                 node.lvlFS:Show()
                 node.card:SetScript("OnEnter", function(self)
                     E:ShowTooltip(self,
-                        "Level " .. nodeLevel
-                        .. (earned and "  (earned)" or "  (locked)"),
+                        L["Level %d"]:format(nodeLevel)
+                        .. "  " .. (earned and L["(earned)"] or L["(locked)"]),
                         rewardName and (E.CC.body .. rewardName .. E.CC.close) or nil)
                 end)
                 node.card:SetScript("OnLeave", function() E:HideTooltip() end)
@@ -681,7 +689,8 @@ E:RegisterModule(function()
     end
     valeeraIcon:SetPoint("LEFT", valeeraRow, "LEFT", 0, 0)
 
-    local valeeraBtn = E:CreateButton(valeeraRow, 280, 40, "Valeera \226\128\148 Companion")
+    local valeeraBtn = E:CreateButton(valeeraRow, 280, 40,
+        "Valeera \226\128\148 " .. L["Companion"])
     valeeraBtn.label:SetFont(valeeraBtn.label:GetFont(), 14)
     valeeraBtn:SetPoint("LEFT", valeeraIcon, "RIGHT", 8, 0)
 
@@ -693,15 +702,14 @@ E:RegisterModule(function()
             ToggleFrame(DelvesCompanionConfigurationFrame)
         else
             print(E.CC.header .. "Everything Delves|r: "
-                .. "Companion UI not available - visit Valeera at Delvers HQ.")
+                .. L["Companion UI not available - visit Valeera at Delvers HQ."])
         end
     end)
     valeeraBtn:SetScript("OnEnter", function(self)
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, "Valeera - Companion",
-                      "Open Valeera's companion menu to manage",
-                      "her role and curios.")
+        E:ShowTooltip(self, "Valeera - " .. L["Companion"],
+                      L["Open Valeera's companion menu to manage her role and curios."])
     end)
     valeeraBtn:SetScript("OnLeave", function(self)
         local bc = E.Colors.buttonBg
@@ -722,20 +730,20 @@ E:RegisterModule(function()
         local comp = E.GetCompanionData and E:GetCompanionData()
         if not comp then
             compLevelFS:SetText(
-                E.CC.muted .. "Companion level unavailable." .. E.CC.close)
+                E.CC.muted .. L["Companion level unavailable."] .. E.CC.close)
             compBar:Hide()
             return
         end
         if comp.isMaxLevel then
             compLevelFS:SetText(
                 E.CC.body .. comp.name .. E.CC.close .. "   "
-                .. E.CC.gold .. "Level " .. comp.level .. " - Max"
+                .. E.CC.gold .. L["Level %d - Max"]:format(comp.level)
                 .. E.CC.close)
             compBar:Hide()
         else
             compLevelFS:SetText(
                 E.CC.body .. comp.name .. E.CC.close .. "   "
-                .. E.CC.gold .. "Level " .. comp.level .. E.CC.close)
+                .. E.CC.gold .. L["Level %d"]:format(comp.level) .. E.CC.close)
             compBar:SetProgress(comp.xpCurrent, comp.xpMax)
             compBar:Show()
         end
@@ -750,7 +758,7 @@ E:RegisterModule(function()
     local troveHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     troveHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
     troveHeader:SetFont(troveHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(troveHeader, "Trovehunter's Bounty")
+    E:StyleAccentHeader(troveHeader, L["Trovehunter's Bounty"])
 
     local TROVE_QUEST_ID = 86371   -- weekly loot-check quest
     local TROVE_USED_ID  = 92887   -- bounty-consumed quest
@@ -790,31 +798,32 @@ E:RegisterModule(function()
             -- in the bag), so bag presence wins: only "[Done]" when inBag <= 0.
             if bountyUsed and inBag <= 0 then
                 troveStatusFS:SetText(
-                    E.CC.muted .. "Bounty looted and used this week. [Done]"
+                    E.CC.muted .. L["Bounty looted and used this week. [Done]"]
                     .. E.CC.close
                 )
             else
                 troveStatusFS:SetText(
-                    E.CC.yellow .. "Bounty looted - not yet used this week."
+                    E.CC.yellow .. L["Bounty looted - not yet used this week."]
                     .. E.CC.close
                 )
             end
         else
             troveStatusFS:SetText(
-                E.CC.green .. "You can still get a Trovehunter's Bounty this week!"
+                E.CC.green .. L["You can still get a Trovehunter's Bounty this week!"]
                 .. E.CC.close
             )
         end
 
         if inBag > 0 and not auraActive then
             troveDetailFS:SetText(
-                E.CC.yellow .. "You have a Trovehunter's Bounty in your bag - "
-                .. "don't forget to use it!" .. E.CC.close
+                E.CC.yellow
+                .. L["You have a Trovehunter's Bounty in your bag - don't forget to use it!"]
+                .. E.CC.close
             )
             troveDetailFS:Show()
         elseif auraActive then
             troveDetailFS:SetText(
-                E.CC.green .. "Your Trovehunter's Bounty is active. Happy looting!"
+                E.CC.green .. L["Your Trovehunter's Bounty is active. Happy looting!"]
                 .. E.CC.close
             )
             troveDetailFS:Show()
@@ -834,7 +843,7 @@ E:RegisterModule(function()
     local gildedHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
     gildedHeader:SetFont(gildedHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(gildedHeader, "Gilded Stash Progress")
+    E:StyleAccentHeader(gildedHeader, L["Gilded Stash Progress"])
 
     local gildedStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     gildedStatusFS:SetPoint("TOPLEFT", gildedHeader, "BOTTOMLEFT", 0, -4)
@@ -850,10 +859,9 @@ E:RegisterModule(function()
 
     gildedHeader:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
-        GameTooltip:AddLine("Gilded Stash", 1, 0.84, 0)
+        GameTooltip:AddLine(L["Gilded Stash"], 1, 0.84, 0)
         GameTooltip:AddLine(
-            "Complete 4 Tier 11 Bountiful Delves this week\n"
-            .. "to earn a Gilded Stash reward.",
+            L["Complete 4 Tier 11 Bountiful Delves this week\nto earn a Gilded Stash reward."],
             1, 1, 1, true
         )
         GameTooltip:Show()
@@ -912,38 +920,41 @@ E:RegisterModule(function()
 
         if progress >= maxCount then
             gildedStatusFS:SetText(
-                E.CC.gold .. "[Done] Gilded Stash earned! ("
-                .. progress .. " / " .. maxCount .. ")" .. E.CC.close
+                E.CC.gold
+                .. L["[Done] Gilded Stash earned! (%d / %d)"]:format(progress, maxCount)
+                .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.muted .. (fromLive
-                    and "All Gilded Stashes looted this week."
-                    or  "All T11 Bountiful Delve runs complete this week.")
+                    and L["All Gilded Stashes looted this week."]
+                    or  L["All T11 Bountiful Delve runs complete this week."])
                 .. E.CC.close
             )
         elseif progress > 0 then
             gildedStatusFS:SetText(
-                E.CC.yellow .. progress .. " / " .. maxCount
-                .. (fromLive and " Gilded Stashes looted this week"
-                            or  " T11 runs this week") .. E.CC.close
+                E.CC.yellow .. (fromLive
+                    and L["%d / %d Gilded Stashes looted this week"]
+                    or  L["%d / %d T11 runs this week"]):format(progress, maxCount)
+                .. E.CC.close
             )
             gildedNoteFS:SetText(
-                E.CC.body .. (maxCount - progress) .. " more to go."
+                E.CC.body .. L["%d more to go."]:format(maxCount - progress)
                 .. E.CC.close .. "  " .. E.CC.muted
                 .. (fromLive
-                    and "Exact count, synced in-delve."
-                    or  "Estimate - enter a delve to sync the exact count.")
+                    and L["Exact count, synced in-delve."]
+                    or  L["Estimate - enter a delve to sync the exact count."])
                 .. E.CC.close
             )
         else
             gildedStatusFS:SetText(
-                E.CC.btnText .. "0 / " .. maxCount
-                .. (fromLive and " - no Gilded Stashes looted yet this week"
-                            or  " - no T11 runs yet this week") .. E.CC.close
+                E.CC.btnText .. (fromLive
+                    and L["0 / %d - no Gilded Stashes looted yet this week"]
+                    or  L["0 / %d - no T11 runs yet this week"]):format(maxCount)
+                .. E.CC.close
             )
             gildedNoteFS:SetText(
                 E.CC.muted
-                .. "Run 4 Tier 11 Bountiful Delves for the Gilded Stash."
+                .. L["Run 4 Tier 11 Bountiful Delves for the Gilded Stash."]
                 .. E.CC.close
             )
         end
@@ -966,7 +977,7 @@ E:RegisterModule(function()
     local renownHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     renownHeader:SetPoint("TOPLEFT", div5, "BOTTOMLEFT", 0, -32)
     renownHeader:SetFont(renownHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(renownHeader, "Midnight Faction Renown")
+    E:StyleAccentHeader(renownHeader, L["Midnight Faction Renown"])
 
     local factionRows = {}
     for i, fac in ipairs(MIDNIGHT_FACTIONS) do
@@ -1010,8 +1021,9 @@ E:RegisterModule(function()
 
             if renown >= FACTION_RENOWN_MAX then
                 row.statusFS:SetText(
-                    E.CC.gold .. "Max (" .. renown .. " / "
-                    .. FACTION_RENOWN_MAX .. ")" .. E.CC.close
+                    E.CC.gold
+                    .. L["Max (%d / %d)"]:format(renown, FACTION_RENOWN_MAX)
+                    .. E.CC.close
                 )
             elseif renown > 0 then
                 row.statusFS:SetText(

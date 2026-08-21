@@ -19,3 +19,10 @@ ignore = {
     "113", -- accessing undefined global
     "143", -- accessing undefined field of a global
 }
+
+-- Locales/ is generated from the EverythingLocales store. A language with no
+-- translations yet declares `local L` and uses it nowhere, which is correct, so
+-- only the unused family is silenced here - syntax errors still fail.
+files["Locales/*.lua"] = {
+    ignore = { "21" },
+}
