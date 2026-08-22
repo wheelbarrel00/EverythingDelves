@@ -225,9 +225,13 @@ every lookup - the client already shows them in your language.
 A new language needs adding to that repo's language list, and its `Locales/<code>.lua` listed
 in `EverythingDelves.toc`.
 
-Every non-English string in this addon is somebody else's work. Thanks to **Zox** for the
-French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
+Each of the six languages was started by a translator who volunteered their time: **Zox** for
+the French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
 Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** for the German.
+
+Coverage has since been filled out to all 749 phrases in every language, which means a
+correction from a native speaker is now worth more than new coverage. If something reads
+wrong in your language, please say so - see above for where to send it.
 
 ---
 
@@ -236,7 +240,7 @@ Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** f
 | Metric | Value |
 |---|---|
 | Memory footprint | ~600 KB |
-| Lua files | 26 |
+| Lua files | 33 (26 authored, 7 generated locale files) |
 | Interface version | 120100 (Midnight 12.1) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
