@@ -263,7 +263,7 @@ E.DelveBosses = {
             name  = "Gladius Slaurna",
             brief = L["Kill the Sacrificial Voidcallers before Devouring Nova, keep him off the platform edges, and dodge Voidscar Raze."],
             notes = {
-                { role = "dps",       text = L["Kill the Sacrificial Voidcallers before Devouring Nova fires — each one he consumes grants a permanent 10% damage buff."] },
+                { role = "dps",       text = L["Kill the Sacrificial Voidcallers before Devouring Nova fires — each one he consumes grants a permanent 10 percent damage buff."] },
                 { role = "general",   text = L["Keep the boss away from the platform edges — Devouring Nova's knockback is lethal near an edge."] },
                 { role = "interrupt", text = L["Void Bolt on the Sacrificial Voidcallers."] },
                 { role = "general",   text = L["Dodge the Voidscar Raze directional line attack."] },
@@ -278,7 +278,7 @@ E.DelveBosses = {
             notes = {
                 { role = "general", text = L["Stay in close melee range — proximity prevents Dark Pursuit."] },
                 { role = "general", text = L["Sidestep the Shade Cleave cone."] },
-                { role = "general", text = L["Move Darza out of the Bask in the Twilight void zones — she gains 30% increased damage while standing in them."] },
+                { role = "general", text = L["Move Darza out of the Bask in the Twilight void zones — she gains 30 percent increased damage while standing in them."] },
             },
         },
         VENOMBORNE,
@@ -288,7 +288,7 @@ E.DelveBosses = {
             name  = "Spiritflayer Jin'Ma",
             brief = L["Gather the spirits dropped by Flaying Knife for a damage buff, and collect them all before Claim Spirits resolves."],
             notes = {
-                { role = "general", text = L["Collect the spirits spawned by Flaying Knife — each grants a 10% damage buff. Grab the ones inside Raging Spirits zones first, before they are destroyed."] },
+                { role = "general", text = L["Collect the spirits spawned by Flaying Knife — each grants a 10 percent damage buff. Grab the ones inside Raging Spirits zones first, before they are destroyed."] },
                 { role = "general", text = L["Collect every spirit before Claim Spirits completes — each one left behind gives Jin'Ma a stacking damage buff."] },
             },
         },
@@ -321,7 +321,7 @@ E.DelveBosses = {
             brief = L["Kite the boss along the edges during Fungistorm, then burst it while it's dizzy afterward."],
             notes = {
                 { role = "general", text = L["Fungistorm: the boss chases a player while whirlwinding — kite it near the arena edges to conserve space."] },
-                { role = "dps",     text = L["Once Fungistorm ends the boss is dizzy (25% increased damage taken) — save your cooldowns for this window."] },
+                { role = "dps",     text = L["Once Fungistorm ends the boss is dizzy (25 percent increased damage taken) — save your cooldowns for this window."] },
                 { role = "general", text = L["Sidestep Fungal Charge."] },
             },
         },
@@ -383,7 +383,7 @@ E.DelveBosses = {
             name  = "Gralka Snake-Eater",
             brief = L["Drag her out of her own venom, sidestep the Purging Breath waves, and do not spend a kick on the channel."],
             notes = {
-                { role = "dps",     text = L["Snake Eater grants her two stacks per cast. Game data has each stack raising the damage she TAKES by 15%, so a stacked Gralka is your burn window - hold cooldowns for it."] },
+                { role = "dps",     text = L["Snake Eater grants her two stacks per cast. Game data has each stack raising the damage she TAKES by 15 percent, so a stacked Gralka is your burn window - hold cooldowns for it."] },
                 { role = "general", text = L["Every Snake Eater cast leaves a venom puddle where she fed. Pull her off it instead of fighting inside it."] },
                 { role = "general", text = L["Purging Breath is a 6 second channel that spends one stack every 2 seconds and throws a toxic wave at whoever she is targeting. The waves one-shot, but she stands completely still while channeling, so they are easy to walk out of."] },
                 { role = "general", text = L["Do not interrupt Purging Breath. It can be kicked, but she is stationary and the waves are dodgeable, so the kick is worth more elsewhere."] },
@@ -407,7 +407,7 @@ E.DelveBosses = {
             notes = {
                 { role = "general", text = L["Soul Cleave drops a large circle around him and leaves a voidzone behind. Move around the pillar rather than straight out, so Death Grip cannot drag you back into it."] },
                 { role = "general", text = L["Death Grip pulls his furthest target to him. Fighting next to a pillar is the whole answer - line of sight beats the pull."] },
-                { role = "general", text = L["Roar of the Champion slows him but raises his damage by 80%. Break line of sight and wait it out instead of trading with him."] },
+                { role = "general", text = L["Roar of the Champion slows him but raises his damage by 80 percent. Break line of sight and wait it out instead of trading with him."] },
             },
         },
         {
@@ -428,7 +428,7 @@ E.DelveBosses = {
                 { role = "general",   text = L["Clear the arena floor first. On higher tiers some of those enemies are replaced by Nemesis mobs, so look before you pull."] },
                 { role = "general",   text = L["Crushfoot, a rhino, opens. Savage Gore bleeds his target, and Stampeding Charge hits hard unless you put a wall between you and him to break the cast."] },
                 { role = "interrupt", text = L["The Bluegill Brothers, three murlocs, come next - focus and interrupt the two smaller casters."] },
-                { role = "interrupt", text = L["Brinebeater, a sea giant, follows. Tidal Rage raises his damage by 60% and should be interrupted every time."] },
+                { role = "interrupt", text = L["Brinebeater, a sea giant, follows. Tidal Rage raises his damage by 60 percent and should be interrupted every time."] },
                 { role = "general",   text = L["Brinebeater's Tidal Smash drops a large circle around him, and Break Water puts a circle on you and Valeera that launches you if you stay in it."] },
                 { role = "interrupt", text = L["Guth'kar the Bound, a voidwalker, is straightforward as long as Curse of Dread is kicked. Valeera on DPS covers his Void Bolts."] },
                 { role = "interrupt", text = L["Three ghostly trolls close it out - focus Hexspitter Zit'ka and keep her interrupted."] },
@@ -441,7 +441,7 @@ E.DelveBosses = {
             brief = L["Interrupt Submit to the Void, kill the Dark Harbinger before Dark Prayer finishes, and dodge Discordant Hymn."],
             notes = {
                 { role = "interrupt", text = L["Submit to the Void — a stacking magic DoT."] },
-                { role = "dps",       text = L["Kill the Dark Harbinger before Dark Prayer finishes (15s) — success grants you 20% Versatility + 30% cooldown reduction; failure gives Patram a damage buff."] },
+                { role = "dps",       text = L["Kill the Dark Harbinger before Dark Prayer finishes (15s) — success grants you 20 percent Versatility + 30 percent cooldown reduction; failure gives Patram a damage buff."] },
                 { role = "general",   text = L["Dodge the Discordant Hymn void zones — heavy damage if they catch you."] },
             },
         },

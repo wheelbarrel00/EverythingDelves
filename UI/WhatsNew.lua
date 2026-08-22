@@ -1,28 +1,28 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.28.0"
+local WHATS_NEW_VERSION = "1.29.0"
 
 local ENTRIES = {
     {
-        title = "Everything Delves now speaks six more languages",
-        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese. Around 750 phrases are translatable. Most of the addon is still English today because the translations are only just starting, and anything untranslated simply shows in English.",
+        title = "Every language is now complete",
+        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese have gone from a handful of translated phrases to all 749. Every tab, the HUD, the reminders and the slash commands are covered.",
     },
     {
-        title = "Delve and boss names stay in your own language",
-        desc  = "They are matched against the game's own text, so they are deliberately left exactly as your client shows them. Translations are shared with the author's other addons, and contributions are very welcome - the README explains how.",
+        title = "Two labels were wrong in four languages",
+        desc  = "The Azta'rec title rewards used the word for the heading of a document instead of a player title, and the gold accent color in Options read as gold coins in a list of colors. Both are fixed in Russian, Korean, Simplified Chinese and Traditional Chinese.",
     },
     {
-        title = "Curios are updated for Season 2",
-        desc  = "The reminder still recommended Porcelain Blade Tip and Mandate of Sacred Death, which are Season 1 items. It now recommends Corrosive Bilespear and Soul-Cracking Dreamcatcher.",
+        title = "Boss tips spell out \"percent\"",
+        desc  = "A bare percent sign in the addon's own text stops that phrase from being translated at all, so fifteen tips were reworded. You will see \"10 percent damage\" where it used to read \"10% damage\", and those tips now reach every language.",
+    },
+    {
+        title = "Corrections are more welcome than anything",
+        desc  = "No native speaker has reviewed the new translations yet. If something reads wrong in your language, the README explains how to send a correction.",
     },
     {
         title = "Curios are not finished - another update is coming soon",
-        desc  = "Season 2 also gave your companion a Poisons slot, and the reminder does not cover it yet. Poison recommendations and the rest of the Season 2 curio list are what is being worked on now. The Nemesis tab already recommends a poison for Azta'rec.",
-    },
-    {
-        title = "Venomfall Deeps is open, and the tab said otherwise",
-        desc  = "The Nemesis tab still claimed the delve opens once Season 2 begins. It now explains what actually gates it: a Tier 7 clear with at least one life left, or a Tier 10 clear for the harder difficulty.",
+        desc  = "Season 2's Poisons slot is still not covered by the curio reminder, and it remains the next thing being worked on. The Nemesis tab already recommends a poison for Azta'rec.",
     },
 }
 

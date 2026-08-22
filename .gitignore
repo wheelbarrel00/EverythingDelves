@@ -18,6 +18,11 @@ Desktop.ini
 # to be able to gate its own locale files, the same way EQOT and CDM do.
 docs/list_comments.py
 docs/verify_comments_only.py
+docs/_translation_worklist.py
+docs/_translation_worklist.json
+docs/_translation_worklist.txt
+docs/_ingest_translations.py
+docs/_review_locale_values.py
 __pycache__/
 session_qr.png
 

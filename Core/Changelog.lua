@@ -3,11 +3,30 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.29.0", date = "2026-08-21",
+        sections = {
+            { head = "New", items = {
+                "Every language is now complete - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese have gone from a handful of translated phrases to all 749. Every tab, the HUD, the reminders and the slash commands are covered. Delve, boss, zone and story names still stay exactly as your own client shows them, because the addon matches them against the game's own text.",
+            }},
+            { head = "Fixed", items = {
+                "The Azta'rec title rewards were labeled \"document heading\" - in Russian, Korean, Simplified Chinese and Traditional Chinese the two title rewards on the Nemesis tab used the word for the heading of a document rather than the word for a player title. Both now use the right one.",
+                "The gold accent color was labeled as money - the color picker in Options offered \"gold coins\" in Russian, Korean, Simplified Chinese and Traditional Chinese, in a list where every other entry was a color. It now reads as the color it sets.",
+            }},
+            { head = "Improved", items = {
+                "Boss tips spell out \"percent\" - a bare percent sign in the addon's own English text stops that phrase from being translated at all, so fifteen tips were reworded. English readers will see \"10 percent damage\" where it used to read \"10% damage\", and in exchange those tips now reach all six languages.",
+            }},
+            { head = "Coming next", items = {
+                "The new translations have not been reviewed by a native speaker yet. Corrections are worth more than anything else right now and are very welcome.",
+                "Curios are still not finished. Season 2's Poisons slot is not covered by the curio reminder yet, and it remains the next thing being worked on. The Nemesis tab already recommends a poison for Azta'rec in the meantime.",
+            }},
+        },
+    },
+    {
         version = "1.28.0", date = "2026-08-20",
         sections = {
             { head = "New", items = {
                 "Everything Delves now speaks six more languages - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese. Around 750 phrases across every tab, the HUD, the reminders and the slash commands are now translatable. Anything not yet translated simply shows in English, so a partial translation is never a broken one. Most of the addon is still English today, because the translations are only just starting, but will be coming very soon! Delve, boss, zone and story names deliberately stay exactly as your own client shows them, because the addon matches them against the game's own text.",
-                "Translations are shared with the author's other addons - they live in one place, so a phrase used by more than one addon only ever gets translated once. Contributions are very welcome; the README explains how to send one.",
+                "Translations are shared with the author's other addons - they live in one place, so a phrase used by more than one addon only ever gets translated once. Contributions are very welcome. The README explains how to send one.",
                 "Translator credits on the About tab - Zox, Malevi4, labrie75, Keriaovo, BNS333 and Stonetwist, whose work every non-English string in this addon comes from.",
             }},
             { head = "Fixed", items = {

@@ -5,6 +5,26 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.0] - 2026-08-21
+
+### New Features
+
+- **Every language is now complete** - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese have gone from a handful of translated phrases to all 749. Every tab, the HUD, the reminders and the slash commands are covered. Delve, boss, zone and story names still deliberately stay exactly as your own client shows them, because the addon matches them against the game's own text.
+
+### Bug Fixes
+
+- **The Azta'rec title rewards were labeled "document heading"** - in Russian, Korean, Simplified Chinese and Traditional Chinese, the two title rewards on the Nemesis tab used the word for the heading of a document rather than the word for a player title. Both now use the right one.
+- **The gold accent color was labeled as money** - the color picker in Options offered "gold coins" in Russian, Korean, Simplified Chinese and Traditional Chinese, in a list where every other entry was a color. It now reads as the color it sets.
+
+### Improvements
+
+- **Boss tips spell out "percent"** - a bare percent sign in the addon's own English text stops that phrase from being translated at all, so fifteen tips were reworded. English readers will see "10 percent damage" where it used to read "10% damage", and in exchange those tips now reach all six languages.
+
+### Notes
+
+- **The new translations have not been reviewed by a native speaker yet** - corrections are worth more than anything else right now and are very welcome. The README explains how to send one.
+- **Curios are still not finished** - Season 2's Poisons slot is not covered by the curio reminder yet, and it remains the next thing being worked on. The Nemesis tab already recommends a poison for Azta'rec in the meantime.
+
 ## [1.28.0] - 2026-08-20
 
 ### New Features

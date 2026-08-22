@@ -280,7 +280,7 @@ E:RegisterModule(function()
     mechIntroFS:SetJustifyH("LEFT")
     mechIntroFS:SetText(
         E.CC.muted
-        .. L["The fight splits into a main phase and an intermission at 90%, 60% and 30% health. Two casts decide whether you live:"]
+        .. L["The fight splits into a main phase and an intermission at 90, 60 and 30 percent health. Two casts decide whether you live:"]
         .. " " .. E.CC.close
         .. E.CC.muted .. L["%s (interrupt) and %s (dispel). Pull him to the edge of the room so the Noxious Bile puddles land away from the middle."]
             :format(E.CC.gold .. "Soul Extinction" .. E.CC.close .. E.CC.muted,
@@ -310,7 +310,7 @@ E:RegisterModule(function()
             name     = "Void Toxin",
             tag      = L["Dispel"],
             tagColor = E.CC.yellow,
-            desc     = L["A dispellable magic debuff that ticks for heavy damage and cuts the damage you deal by 40%. Remove it as soon as it lands. Valeera dispels it for you when her role is set to Healer."],
+            desc     = L["A dispellable magic debuff that ticks for heavy damage and cuts the damage you deal by 40 percent. Remove it as soon as it lands. Valeera dispels it for you when her role is set to Healer."],
         },
         {
             name     = "Noxious Bile",
@@ -370,13 +370,13 @@ E:RegisterModule(function()
     phaseIntroFS:SetJustifyH("LEFT")
     phaseIntroFS:SetText(
         E.CC.muted
-        .. L["At 90%, 60% and 30% health Azta'rec walks to the centre and channels Sermon of Ula'tek, taking 99% reduced damage for the whole intermission. The room splits into quarters: three flood with venom and one is safe. It is a memory test, not a damage test \226\128\148 place four world markers on the quadrants before you pull and call the safe spot by marker."]
+        .. L["At 90, 60 and 30 percent health Azta'rec walks to the centre and channels Sermon of Ula'tek, taking 99 percent reduced damage for the whole intermission. The room splits into quarters: three flood with venom and one is safe. It is a memory test, not a damage test \226\128\148 place four world markers on the quadrants before you pull and call the safe spot by marker."]
         .. E.CC.close
     )
 
     local PHASES = {
         {
-            pct   = L["90 / 60 / 30% HP"],
+            pct   = L["90 / 60 / 30 percent HP"],
             name  = "Sermon of Ula'tek",
             intro = L["The same intermission runs at all three health thresholds, one step longer each time."],
             adds  = {
@@ -447,7 +447,7 @@ E:RegisterModule(function()
         E.CC.gold .. L["Final push"] .. E.CC.close
         .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
         .. E.CC.body
-        .. L["After the 30% intermission there are no more, and the main phase runs until he dies. Save Bloodlust or Heroism for after the last intermission on Tier \"?\", or during the last intermission on Tier \"??\" to kill the Echo faster."]
+        .. L["After the 30 percent intermission there are no more, and the main phase runs until he dies. Save Bloodlust or Heroism for after the last intermission on Tier \"?\", or during the last intermission on Tier \"??\" to kill the Echo faster."]
         .. E.CC.close
     )
 
@@ -503,7 +503,7 @@ E:RegisterModule(function()
         E.CC.muted .. "\226\128\162  " .. E.CC.close
         .. E.CC.gold .. L["Poison"] .. E.CC.close
         .. E.CC.body .. "  "
-        .. L["Frosthearth Venom \226\128\148 cuts enemy attack and cast speed by 20%, which buys time on both Soul Extinction and the Void Toxin dispel."]
+        .. L["Frosthearth Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."]
         .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close
@@ -515,7 +515,7 @@ E:RegisterModule(function()
         E.CC.muted .. "\226\128\162  " .. E.CC.close
         .. E.CC.gold .. L["Utility"] .. E.CC.close
         .. E.CC.body .. "  "
-        .. L["Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so often it is close to permanent uptime, and the debuff sits on the boss, so Valeera's own interrupts keep it up even while you play healer. 30% damage at Rank 3 or higher."]
+        .. L["Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so often it is close to permanent uptime, and the debuff sits on the boss, so Valeera's own interrupts keep it up even while you play healer. 30 percent damage at Rank 3 or higher."]
         .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -6, 10,
         E.CC.gold .. L["Consumables"] .. E.CC.close
