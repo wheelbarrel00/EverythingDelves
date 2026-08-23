@@ -491,6 +491,9 @@ L["Show Minimap / Broker Button"] = true
 L["Show weekly earnable shards in button tooltip"] = true
 L["Weekly Shards in Tooltip"] = true
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = true
+L["Show What's New after an update"] = true
+L["What's New Popup"] = true
+L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = true
 L["Show Trovehunter's Bounty reminder on Delve entry"] = true
 L["Display"] = true
 L["%s (default)"] = true
@@ -834,6 +837,7 @@ L["Bounty active this week - happy looting!"] = true
 L["Not used yet - use it inside a Bountiful Delve."] = true
 
 -- UI/WhatsNew.lua
+L["Don't show this again"] = true
 L["Got it"] = true
 
 -- Convert the `true` sentinels to their key (the self-keyed English default).

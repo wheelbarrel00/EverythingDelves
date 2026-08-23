@@ -468,6 +468,9 @@ L["Show Minimap / Broker Button"] = "Показывать кнопку на ми
 L["Show weekly earnable shards in button tooltip"] = "Показывать осколки, доступные за неделю, в подсказке кнопки"
 L["Weekly Shards in Tooltip"] = "Недельные осколки в подсказке"
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = "В подсказке кнопки на миникарте / в брокере показывает ваши осколки ключа от сундука как в наличии / еще доступно на этой неделе, а не только количество в наличии."
+L["Show What's New after an update"] = "Показывать «Что нового» после обновления"
+L["What's New Popup"] = "Окно «Что нового»"
+L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = "Показывает окно «Что нового» один раз после каждого обновления. Вы всегда можете открыть его на вкладке «Об аддоне» или командой /ed whatsnew."
 L["Show Trovehunter's Bounty reminder on Delve entry"] = "Показывать напоминание о Trovehunter's Bounty при входе в вылазку"
 L["Display"] = "Отображение"
 L["%s (default)"] = "%s (по умолчанию)"
@@ -811,4 +814,5 @@ L["Bounty active this week - happy looting!"] = "На этой неделе до
 L["Not used yet - use it inside a Bountiful Delve."] = "Еще не использована - используйте ее внутри многообещающей вылазки."
 
 -- UI/WhatsNew.lua
+L["Don't show this again"] = "Больше не показывать"
 L["Got it"] = "Понятно"

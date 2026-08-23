@@ -468,6 +468,9 @@ L["Show Minimap / Broker Button"] = "顯示小地圖 / Broker 按鈕"
 L["Show weekly earnable shards in button tooltip"] = "在按鈕提示中顯示本週可獲得的碎片"
 L["Weekly Shards in Tooltip"] = "提示中的週碎片"
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = "在小地圖 / Broker 按鈕提示中，把寶匣鑰匙碎片顯示為已擁有 / 本週仍可獲得，而不只是已擁有的數量。"
+L["Show What's New after an update"] = "更新後顯示更新內容"
+L["What's New Popup"] = "更新內容視窗"
+L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = "每次更新後顯示一次更新內容視窗。你可以隨時透過「關於」頁面或 /ed whatsnew 重新開啟。"
 L["Show Trovehunter's Bounty reminder on Delve entry"] = "進入探究時顯示 Trovehunter's Bounty 提醒"
 L["Display"] = "顯示"
 L["%s (default)"] = "%s（預設）"
@@ -811,4 +814,5 @@ L["Bounty active this week - happy looting!"] = "本週已生效 - 祝你滿載�
 L["Not used yet - use it inside a Bountiful Delve."] = "尚未使用 - 請在豐饒探究中使用。"
 
 -- UI/WhatsNew.lua
+L["Don't show this again"] = "不再顯示"
 L["Got it"] = "了解"

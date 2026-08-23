@@ -468,6 +468,9 @@ L["Show Minimap / Broker Button"] = "Minimap-/Broker-Button anzeigen"
 L["Show weekly earnable shards in button tooltip"] = "Diese Woche erhältliche Splitter im Button-Tooltip anzeigen"
 L["Weekly Shards in Tooltip"] = "Wochensplitter im Tooltip"
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = "Zeigt im Tooltip des Minimap-/Broker-Buttons deine Truhenschlüsselsplitter als Besitz / diese Woche noch erhältlich statt nur als Besitzstand."
+L["Show What's New after an update"] = "Neuerungen nach einem Update anzeigen"
+L["What's New Popup"] = "Neuerungen-Fenster"
+L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = "Zeigt das Neuerungen-Fenster einmal nach jedem Update. Du kannst es jederzeit im Reiter „Über“ oder mit /ed whatsnew erneut öffnen."
 L["Show Trovehunter's Bounty reminder on Delve entry"] = "Erinnerung an die Trovehunter's Bounty beim Betreten einer Tiefe anzeigen"
 L["Display"] = "Anzeige"
 L["%s (default)"] = "%s (Standard)"
@@ -811,4 +814,5 @@ L["Bounty active this week - happy looting!"] = "Bounty diese Woche aktiv - viel
 L["Not used yet - use it inside a Bountiful Delve."] = "Noch nicht benutzt - benutze sie in einer üppigen Tiefe."
 
 -- UI/WhatsNew.lua
+L["Don't show this again"] = "Nicht mehr anzeigen"
 L["Got it"] = "Verstanden"

@@ -119,6 +119,8 @@ local DEFAULTS = {
     showDelversCallDone    = false,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
+    showWhatsNew           = true,
+    whatsNewPos            = nil,
 }
 
 -- Account-wide DATA, kept OUT of DEFAULTS so E:ResetDB (settings-only) can't

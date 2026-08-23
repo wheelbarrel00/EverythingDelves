@@ -16,7 +16,7 @@ local GILDED_WIDGET_ID = 7591
 
 -- Nemesis Strongbox affix (Tier 4+): no in-delve progress widget (the Nemesis
 -- spell-display widgets live ONLY on the entrance picker), so in-delve progress
--- is read by counting "Nullaeus' Minions" map vignettes (NEMESIS_PACK_VIGNETTE).
+-- is read by counting the seasonal pack vignettes (NEMESIS_PACK_VIGNETTES).
 
 -- Midnight lockdown (both confirmed live 2026-06-10): COMBAT_LOG_EVENT_UNFILTERED
 -- registration is forbidden, and UnitName() on delve enemies returns a SECRET
@@ -30,10 +30,21 @@ local RAGER_SPELL       = 1271189  -- "Voidfused Rager" (aura sweep only)
 -- Rager spotted via vignette name (EN clients); its vignetteID isn't known yet.
 local RAGER_NAME_MATCH = "Voidfused"
 
--- Nemesis pack vignette ("Nullaeus' Minions"): one per REMAINING pack, gone when
--- the pack dies — vignette counting IS the only data source. The Nullaeus delve
--- reuses the same vignette for its own minions; the counter is suppressed there.
-local NEMESIS_PACK_VIGNETTE = 7531
+-- Nemesis pack vignettes: one per REMAINING pack, gone when the pack dies. Each
+-- season adds a NEW ID and the older delves still spawn theirs, so append, never
+-- replace. The nemesis delve's own minions match too. Only its objective line is
+-- suppressed there, by delveKind, not by ID.
+local NEMESIS_PACK_VIGNETTES = {
+    7531,  -- S1 "Nullaeus' Minions"
+    7869,  -- S2 "Ula'tek's Chosen" (confirmed live 2026-08-21)
+}
+-- Compared, never used as a table key: a Midnight secret value throws on index.
+local function IsNemesisPack(vignetteID)
+    for _, id in ipairs(NEMESIS_PACK_VIGNETTES) do
+        if vignetteID == id then return true end
+    end
+    return false
+end
 local BANNER_BUFFS = {             -- any of these on the player = banner used
     1271918, 1271945,                      -- Sanctified Touch
     1272609, 1272666,                      -- Holy Fervor
@@ -268,7 +279,8 @@ E:RegisterModule(function()
     -- persisted sighting would trip the absence check before re-discovery.
     local bannerVigGUID   = nil
     local bannerGoneAt    = nil  -- when observed absence started
-    local bannerHoldUntil = 0    -- absence inference paused after a loading screen
+    local ragerGoneAt     = nil
+    local vigHoldUntil    = 0    -- absence inferences paused after a loading screen
     local secretNameCount = 0    -- vignette names that threw (objdump diag)
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
@@ -400,7 +412,7 @@ E:RegisterModule(function()
         local runKey = (rs.delveName or "?") .. "#" .. tostring(rs.startTime or 0)
         if runKey == lastRunKey then return end
         lastRunKey = runKey
-        bannerState, ragerGUID = nil, nil
+        bannerState, ragerGUID, ragerGoneAt = nil, nil, nil
         bannerVigGUID, bannerGoneAt, secretNameCount = nil, nil, 0
         nemesisRemaining, nemesisSeenCount = nil, 0
         nemesisKilledBase = 0
@@ -706,8 +718,9 @@ E:RegisterModule(function()
     end
 
     -- Vignette-driven (nameplates unusable: UnitName on delve enemies is secret).
-    -- Vignettes in a delve are zone-wide, so a Rager vignette that vanishes after
-    -- being seen = killed, not out of range. Name matching is EN-only for now.
+    -- Vignettes in a delve are zone-wide, so a Rager that vanishes was killed
+    -- rather than out of range, once the guards below rule out a loading screen
+    -- and run completion. Name matching is EN-only for now.
     ScanVignettes = function()
         if not PlayerInDelve() then return end
         SyncRunTracking()
@@ -720,7 +733,7 @@ E:RegisterModule(function()
         local packCount = 0
         for _, vguid in ipairs(vigs) do
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
-            if ok2 and v and v.vignetteID == NEMESIS_PACK_VIGNETTE then
+            if ok2 and v and IsNemesisPack(v.vignetteID) then
                 packCount = packCount + 1
                 -- Key on the creature GUID; the vignette GUID regenerates and double-counts.
                 local key = v.objectGUID
@@ -765,20 +778,27 @@ E:RegisterModule(function()
         end
         -- A scan that hit a secret name is inconclusive for absence: skip
         -- both despawn inferences rather than promote on partial data.
-        if ragerGUID and not ragerSeen and not secretThisScan
-                and bannerState == "eliteUp" then
-            SetBannerState("grand", true)
+        local rs = E.delveRunState
+        if ragerGUID and bannerState == "eliteUp" and rs and rs.inDelve then
+            if ragerSeen then
+                ragerGoneAt = nil
+            elseif not secretThisScan and GetTime() >= vigHoldUntil then
+                if not ragerGoneAt then
+                    ragerGoneAt = GetTime()
+                elseif GetTime() - ragerGoneAt >= 3 then
+                    SetBannerState("grand", true)
+                end
+            end
         end
         -- A teammate's click despawns the banner zone-wide, the only signal
         -- some clients get. Require sustained absence: loading screens flush
-        -- the whole list (bannerHoldUntil), and everything despawns at run
+        -- the whole list (vigHoldUntil), and everything despawns at run
         -- completion (rs.inDelve). Inferred, so it never re-broadcasts.
-        local rs = E.delveRunState
         if bannerVigGUID and bannerState == "announced"
                 and rs and rs.inDelve then
             if bannerSeen then
                 bannerGoneAt = nil
-            elseif not secretThisScan and GetTime() >= bannerHoldUntil then
+            elseif not secretThisScan and GetTime() >= vigHoldUntil then
                 if not bannerGoneAt then
                     bannerGoneAt = GetTime()
                 elseif GetTime() - bannerGoneAt >= 3 then
@@ -791,7 +811,7 @@ E:RegisterModule(function()
         -- rebuilds from live packs only and would drop already-killed ones. max()
         -- guards against a scan that runs before the resume restores the base.
         local ar = E.db and E.db.activeRun
-        if ar then
+        if ar and GetTime() >= vigHoldUntil then
             local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - packCount)
             ar.nemesisKilled = math.max(ar.nemesisKilled or 0, killed)
         end
@@ -877,10 +897,10 @@ E:RegisterModule(function()
             return
         end
         if event == "PLAYER_ENTERING_WORLD" then
-            -- Loading screens flush the vignette list; hold the banner
-            -- absence inference until it has had time to repopulate.
-            bannerGoneAt = nil
-            bannerHoldUntil = GetTime() + 10
+            -- Loading screens flush the vignette list. Everything that infers
+            -- from absence waits for it to repopulate.
+            bannerGoneAt, ragerGoneAt = nil, nil
+            vigHoldUntil = GetTime() + 10
         end
         if MSG_EVENTS[event] then
             -- pcall: chat/system text could be a Midnight secret string.
@@ -1163,6 +1183,7 @@ E:RegisterModule(function()
             .. " ragerNpcID=" .. tostring(ragerNpcID))
         out("  bannerVigGUID=" .. tostring(bannerVigGUID)
             .. " bannerGoneAt=" .. tostring(bannerGoneAt)
+            .. " ragerGoneAt=" .. tostring(ragerGoneAt)
             .. " secretNames=" .. tostring(secretNameCount))
         out("  nemesisPacksRemaining=" .. tostring(nemesisRemaining)
             .. " seenCount=" .. tostring(nemesisSeenCount))

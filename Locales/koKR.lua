@@ -468,6 +468,9 @@ L["Show Minimap / Broker Button"] = "미니맵 / 브로커 버튼 표시"
 L["Show weekly earnable shards in button tooltip"] = "버튼 툴팁에 이번 주 획득 가능한 조각 표시"
 L["Weekly Shards in Tooltip"] = "툴팁의 주간 조각"
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = "미니맵 / 브로커 버튼 툴팁에서 금고 열쇠 조각을 보유량만이 아니라 보유 / 이번 주 추가 획득 가능 형태로 표시합니다."
+L["Show What's New after an update"] = "업데이트 후 새 소식 표시"
+L["What's New Popup"] = "새 소식 창"
+L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = "업데이트할 때마다 새 소식 창을 한 번 표시합니다. 정보 탭이나 /ed whatsnew 명령으로 언제든지 다시 열 수 있습니다."
 L["Show Trovehunter's Bounty reminder on Delve entry"] = "구렁 입장 시 Trovehunter's Bounty 알림 표시"
 L["Display"] = "표시"
 L["%s (default)"] = "%s (기본값)"
@@ -811,4 +814,5 @@ L["Bounty active this week - happy looting!"] = "이번 주 활성화되어 있�
 L["Not used yet - use it inside a Bountiful Delve."] = "아직 사용하지 않았습니다 - 풍요로운 구렁 안에서 사용하세요."
 
 -- UI/WhatsNew.lua
+L["Don't show this again"] = "다시 표시하지 않기"
 L["Got it"] = "확인"

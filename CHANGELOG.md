@@ -5,6 +5,23 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.0] - 2026-08-23
+
+### New Features
+
+- **The What's New window can be moved, and told not to come back** - drag it anywhere and it remembers the spot. A new "Don't show this again" box stops it returning after future updates, with a matching setting in Options if you change your mind. You can always reopen it from the About tab or with /ed whatsnew.
+- **Cooldown Master is listed on the About tab** - the other addons list was missing it, so it now sits alongside Everything Quests and Loot Pro with links to CurseForge and GitHub.
+
+### Bug Fixes
+
+- **The Nemesis Strongbox tracker has shown nothing since the start of Season 2** - the in-delve HUD counts the enemy packs by watching their marker on the map, and Season 2 renamed that marker. The addon was still looking for Season 1's, so the pack line simply never appeared, on any character, in any Tier 4 or higher delve. It now recognizes both seasons.
+- **"Grand Spoils earned!" could appear while the Voidfused Rager was still alive** - clicking the Sanctified Banner, spawning the Rager and then dying to it made the HUD announce the Grand Spoils as earned the moment you loaded back in, and it stayed wrong for the rest of the run. The Rager now has to be genuinely gone for three seconds, and loading screens no longer count as it leaving.
+- **A death could bank the wrong pack kill count for the rest of the run** - the loading screen after a death counted every pack seen so far as killed. The display looked right until you reloaded, at which point the objective could read something like "3/5 packs" with two packs still alive.
+
+### Notes
+
+- **Curios are still not finished** - Season 2's Poisons slot is not covered by the curio reminder yet, and it remains the next thing being worked on. The Nemesis tab already recommends a poison for Azta'rec in the meantime.
+
 ## [1.29.0] - 2026-08-21
 
 ### New Features

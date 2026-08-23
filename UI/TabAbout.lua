@@ -18,6 +18,9 @@ local GITHUB_URL     = "https://github.com/wheelbarrel00/EverythingDelves"
 local BUG_URL        = "https://github.com/wheelbarrel00/EverythingDelves/issues"
 
 local OTHER_ADDONS = {
+    { name = "Cooldown Master",
+      cf   = "https://www.curseforge.com/wow/addons/cooldown-master",
+      gh   = "https://github.com/wheelbarrel00/CooldownMaster" },
     { name = "Everything Quests",
       cf   = "https://www.curseforge.com/wow/addons/everything-quests",
       gh   = "https://github.com/wheelbarrel00/EverythingQuests" },

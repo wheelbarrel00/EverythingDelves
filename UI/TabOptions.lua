@@ -282,6 +282,18 @@ E:RegisterModule(function()
     shardWeeklyCB:SetScript("OnLeave", function() E:HideTooltip() end)
     Y = Y - 28
 
+    local whatsNewCB = CreateCheckbox(
+        content, SECT_X, Y,
+        L["Show What's New after an update"],
+        "showWhatsNew"
+    )
+    whatsNewCB:SetScript("OnEnter", function(self)
+        E:ShowTooltip(self, L["What's New Popup"],
+            L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."])
+    end)
+    whatsNewCB:SetScript("OnLeave", function() E:HideTooltip() end)
+    Y = Y - 28
+
     -- Anchored beside the Default Tab slider so it doesn't consume a Y row
     local troveCB = CreateCheckbox(
         content, SECT_X, Y,
@@ -626,6 +638,7 @@ E:RegisterModule(function()
         minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
         troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
         shardWeeklyCB:SetChecked(E.db.showShardWeekly == true)
+        whatsNewCB:SetChecked(E.db.showWhatsNew ~= false)
         resultCB:SetChecked(E.db.showRunResult ~= false)
         objCB:SetChecked(E.db.showDelveObjectives == true)
         timerCB:SetChecked(E.db.showRunTimer ~= false)
