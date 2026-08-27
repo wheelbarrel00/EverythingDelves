@@ -410,7 +410,7 @@ E:RegisterModule(function()
     )
     hudCB:SetScript("OnEnter", function(self)
         E:ShowTooltip(self, L["Delve HUD"],
-            L["An on-screen panel while inside a delve showing the story variant and its grade, the recommended curios for your role, your run timer, and your death count."],
+            L["An on-screen panel while inside a delve showing the story variant and its grade, the recommended curios and poison for your companion, your run timer, and your death count."],
             " ",
             L["Shares the on-screen frame with the Run Timer and Bonus Spoils tracker - drag any of them to move it."])
     end)

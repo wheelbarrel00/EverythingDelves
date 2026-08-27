@@ -1,24 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.30.0"
+local WHATS_NEW_VERSION = "1.31.0"
 
 local ENTRIES = {
     {
-        title = "The Nemesis Strongbox tracker has been blank since Season 2 began",
-        desc  = "The HUD counts the enemy packs by watching their marker on the map, and Season 2 renamed that marker. The addon was still looking for Season 1's, so the pack line never appeared once, on any character, in any Tier 4 or higher delve. It now knows both seasons.",
+        title = "Valeera's Poison slot is covered",
+        desc  = "Season 2 gave her a third slot beside Combat and Utility, and the curio popup now includes it. Hover the Poison section to see all six, what each one does, and which three come from the Slithering Spoils quest. It does not change with her role, so one pick serves every setup.",
     },
     {
-        title = "\"Grand Spoils earned!\" could appear with the Rager still alive",
-        desc  = "Clicking the Sanctified Banner, spawning the Voidfused Rager and then dying to it made the HUD call the Grand Spoils earned the moment you loaded back in, and it stayed wrong for the rest of the run. The Rager now has to be genuinely gone, and loading screens no longer count.",
+        title = "Great Vault item levels were too low from Tier 6 up",
+        desc  = "A Tier 8 Great Vault reward was listed as item level 298 when it is really 305, and Tiers 6, 7 and 9 through 11 were off too. They now read correctly, and the gear track beside them moves with the numbers - Tier 8 and above are Hero track.",
     },
     {
-        title = "A death could bank the wrong pack count for the rest of the run",
-        desc  = "The loading screen after a death counted every pack seen so far as killed. It looked right until you reloaded, when the objective could read something like 3/5 packs with two packs still alive.",
+        title = "Champion, Hero and Myth crests could show as capped when they were not",
+        desc  = "Those three turned red on the Shard Tracker once you had earned and then spent past the cap. Unlike Adventurer and Veteran they cap what you can hold, not what you can earn, so spending frees the room again.",
     },
     {
-        title = "This window can be moved, and told not to come back",
-        desc  = "Drag it anywhere and it remembers the spot. The new \"Don't show this again\" box stops it returning after future updates, and Options has a matching setting if you change your mind. You can always reopen it from the About tab or with /ed whatsnew.",
+        title = "The six languages cover the new Poison slot",
+        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again. The same pass corrected the in-game names for the Leech, Avoidance and Speed stats in several of them.",
     },
 }
 

@@ -503,7 +503,7 @@ E:RegisterModule(function()
         E.CC.muted .. "\226\128\162  " .. E.CC.close
         .. E.CC.gold .. L["Poison"] .. E.CC.close
         .. E.CC.body .. "  "
-        .. L["Frosthearth Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."]
+        .. L["Frostheart Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."]
         .. E.CC.close)
     compAnchor = AddBodyLine(compAnchor, -3, 10,
         E.CC.muted .. "\226\128\162  " .. E.CC.close

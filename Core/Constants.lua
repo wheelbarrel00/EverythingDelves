@@ -61,12 +61,12 @@ E.TierData = {
     { tier =  3, recGear = 200, bountifulLoot = 272, greatVault = 285 },
     { tier =  4, recGear = 259, bountifulLoot = 276, greatVault = 289 },
     { tier =  5, recGear = 268, bountifulLoot = 279, greatVault = 292 },
-    { tier =  6, recGear = 275, bountifulLoot = 282, greatVault = 295 },
-    { tier =  7, recGear = 281, bountifulLoot = 292, greatVault = 298 },
-    { tier =  8, recGear = 290, bountifulLoot = 295, greatVault = 298 },
-    { tier =  9, recGear = 296, bountifulLoot = 295, greatVault = 298 },
-    { tier = 10, recGear = 303, bountifulLoot = 295, greatVault = 298 },
-    { tier = 11, recGear = 309, bountifulLoot = 295, greatVault = 298 },
+    { tier =  6, recGear = 275, bountifulLoot = 282, greatVault = 298 },
+    { tier =  7, recGear = 281, bountifulLoot = 292, greatVault = 302 },
+    { tier =  8, recGear = 290, bountifulLoot = 295, greatVault = 305 },
+    { tier =  9, recGear = 296, bountifulLoot = 295, greatVault = 305 },
+    { tier = 10, recGear = 303, bountifulLoot = 295, greatVault = 305 },
+    { tier = 11, recGear = 309, bountifulLoot = 295, greatVault = 305 },
 }
 
 -- Gear track per reward column. Season 2 track bands OVERLAP (each track starts
@@ -78,7 +78,7 @@ local BOUNTIFUL_TRACK = {
 }
 local VAULT_TRACK = {
     "Veteran", "Veteran", "Veteran", "Veteran", "Champion", "Champion",
-    "Champion", "Champion", "Champion", "Champion", "Champion",
+    "Champion", "Hero", "Hero", "Hero", "Hero",
 }
 for i, td in ipairs(E.TierData) do
     td.bountifulTrack = BOUNTIFUL_TRACK[i]

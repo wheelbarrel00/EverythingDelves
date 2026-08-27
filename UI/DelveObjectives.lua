@@ -469,15 +469,20 @@ E:RegisterModule(function()
             end
             local role = (E.GetCompanionAssignedRole and E:GetCompanionAssignedRole())
                 or (E.GetPlayerCurioRole and E:GetPlayerCurioRole()) or "Damage"
+            local companion = E.lastKnownCompanion or "Valeera"
             local combat, utility
             if E.GetRecommendedCurios then
-                combat, utility = E:GetRecommendedCurios(
-                    E.lastKnownCompanion or "Valeera", role)
+                combat, utility = E:GetRecommendedCurios(companion, role)
             end
             local cl = CurioLine(L["Combat:"], combat)
             local ul = CurioLine(L["Utility:"], utility)
             if cl then AddLine(cl) end
             if ul then AddLine(ul) end
+            local poison = E.GetRecommendedPoison and E:GetRecommendedPoison(companion)
+            if poison then
+                AddLine(E.CC.muted .. L["Poison:"] .. E.CC.close .. " "
+                    .. E.CC.body .. poison.name .. E.CC.close)
+            end
             local knownTier = liveTier or (rs.tier or 0)
             local lives = ReadDelveLives(knownTier > 0 and knownTier or nil)
             local statLine = ""

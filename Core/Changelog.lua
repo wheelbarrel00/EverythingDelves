@@ -3,6 +3,22 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.31.0", date = "2026-08-26",
+        sections = {
+            { head = "New", items = {
+                "Valeera's Poison slot is covered - Season 2 gave her a third slot beside Combat and Utility, and the curio popup now includes it. It shows the recommended poison, and hovering the section lists all six with what each one does and when it is the right pick, including which three you have to unlock from the Slithering Spoils quest. The poison does not change with the role you give her, so one pick serves every setup. The delve HUD shows it alongside your Combat and Utility curios.",
+            }},
+            { head = "Fixed", items = {
+                "Great Vault item levels were too low from Tier 6 up - the Tier Guide and the panel beside the difficulty picker listed a Tier 8 Great Vault reward as item level 298 when it is really 305. Tier 6 and Tier 7 were short by the same margin, and Tiers 9 through 11 followed Tier 8. All of them now read correctly, and the gear track beside them moves with the numbers - Tier 8 and above are Hero track, not Champion. Thanks to fastenough69 for the report.",
+                "Champion, Hero and Myth crests could show as capped when they were not - those three turned red on the Shard Tracker as though you had hit the seasonal cap, once you had earned and then spent past it. Unlike Adventurer and Veteran they cap what you can hold rather than what you can earn, so spending frees the room again. The warning now follows the number the cap actually applies to, and shows on the column it applies to.",
+                "Frostheart Venom was spelled \"Frosthearth\" on the Nemesis tab.",
+            }},
+            { head = "Improved", items = {
+                "The six languages cover the new Poison slot - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again at 764 phrases each. The same pass corrected the in-game names for the Leech, Avoidance and Speed stats, which several languages had rendered with an everyday word rather than the one the game itself uses.",
+            }},
+        },
+    },
+    {
         version = "1.30.0", date = "2026-08-23",
         sections = {
             { head = "New", items = {

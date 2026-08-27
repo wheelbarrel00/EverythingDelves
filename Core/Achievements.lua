@@ -30,6 +30,7 @@ E.DelveDepthsSeries = {
 -- The achievement DB and POI widgets disagree on some spellings (e.g.
 -- "Twilight Crypts" vs "Twilight Crypt", "Sporasaurus Surprise" vs
 -- "Sporasaur Special"), so all name comparisons normalize + alias-map.
+--  Why Blizzard, why??
 local function Normalize(s)
     if type(s) ~= "string" then return "" end
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")

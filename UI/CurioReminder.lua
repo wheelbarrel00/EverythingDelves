@@ -15,6 +15,26 @@ local CURIO_DATA = {
     },
 }
 
+-- Season 2 poisons are a companion choice node, not items, so they carry no bag
+-- count and no item icon.
+local POISON_DATA = {
+    { name = "Frostheart Venom", fromQuest = true,
+      note = L["Slows enemies by 30 percent and cuts their attack and cast speed by 20 percent for 10 seconds. The safest all-round pick, and the strongest one against caster packs and on Nemesis fights."] },
+    { name = "Bloodcrypt Toxin",
+      note = L["Cuts enemy damage and Haste by 10 percent for 20 seconds. The pick for a blind first run, or for a boss that keeps killing you."] },
+    { name = "Poison of the Forgotten Master",
+      note = L["Builds 5 percent damage every 3 seconds in combat, up to 25 percent. The highest ceiling of the six, but the stacks fall off when you take damage, so it wants a fight you already know."] },
+    { name = "Soulthirst Venom",
+      note = L["Grants 10 percent Leech, Avoidance and Speed. Steady survivability that does not rely on a proc going off."] },
+    { name = "Bursting Toad Toxin", fromQuest = true,
+      note = L["Struck enemies burst for Nature damage every second for 8 seconds. Best on packed trash around one tanky target."] },
+    { name = "Phantasmal Spore Toxin", fromQuest = true,
+      note = L["Interrupts and fears struck enemies for 1 second."] },
+}
+
+local RECOMMENDED_POISON = "Frostheart Venom"
+local POISON_QUEST       = "Slithering Spoils"
+
 local DEFAULT_COMPANION = "Valeera"
 
 local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE = "" }
@@ -60,6 +80,16 @@ function E:GetRecommendedCurios(companion, role)
     return nil
 end
 
+-- Brann predates the poison slot, so nil hides the line for him.
+function E:GetRecommendedPoison(companion)
+    companion = companion or self.lastKnownCompanion or DEFAULT_COMPANION
+    if companion ~= "Valeera" then return nil end
+    for _, p in ipairs(POISON_DATA) do
+        if p.name == RECOMMENDED_POISON then return p end
+    end
+    return POISON_DATA[1]
+end
+
 function E:GetPlayerCurioRole()
     local r = ROLE_NORM[(UnitGroupRolesAssigned
         and UnitGroupRolesAssigned("player")) or "NONE"]
@@ -92,7 +122,13 @@ E:RegisterModule(function()
     local ROLE_STEP = 50    -- pixels per role section
 
     local numRoles  = #CURIO_DATA.Brann
-    local popupH    = math.abs(ROLE_Y) + (numRoles - 1) * ROLE_STEP + 50
+    local popupHShort = math.abs(ROLE_Y) + (numRoles - 1) * ROLE_STEP + 50
+
+    local lastRoleY    = ROLE_Y - (numRoles - 1) * ROLE_STEP
+    local POISON_DIV_Y = lastRoleY - 42
+    local POISON_LBL_Y = POISON_DIV_Y - 9
+    local POISON_VAL_Y = POISON_LBL_Y - 15
+    local popupH       = math.abs(POISON_VAL_Y) + 26
 
     local popup = CreateFrame("Frame", "EverythingDelvesCurioPopup", UIParent, "BackdropTemplate")
     popup:SetSize(POPUP_W, popupH)
@@ -120,18 +156,24 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
+    local shownCompanion
+
     local titleHit = CreateFrame("Frame", nil, popup)
     titleHit:SetPoint("TOPLEFT",     popup,    "TOPLEFT",  1, -1)
     titleHit:SetPoint("BOTTOMRIGHT", titleDiv, "TOPRIGHT", 0,  0)
     titleHit:EnableMouse(true)
     titleHit:SetScript("OnEnter", function(self)
-        E:ShowTooltip(self, L["Companion Curios"],
+        local lines = {
             L["The Combat and Utility curios your delve companion needs, listed for each role (Tank / Healer / Damage)."],
             L["Your current role is highlighted in %s with a \"%s\"."]
                 :format(E.CC.gold .. L["gold"] .. E.CC.close,
                         E.CC.gold .. ">" .. E.CC.close),
             L["Slot these curios on your companion to boost her in delves."],
-            L["Season 2 also gives her a Poison slot. This popup does not cover it yet - the Nemesis tab already recommends one for Azta'rec."])
+        }
+        if E:GetRecommendedPoison(shownCompanion) then
+            lines[#lines + 1] = L["Her Season 2 Poison slot is listed below the roles."]
+        end
+        E:ShowTooltip(self, L["Companion Curios"], unpack(lines))
     end)
     titleHit:SetScript("OnLeave", function() E:HideTooltip() end)
 
@@ -198,9 +240,49 @@ E:RegisterModule(function()
         roleRows[i] = rf
     end
 
+    local poisonDiv = popup:CreateTexture(nil, "ARTWORK")
+    poisonDiv:SetHeight(1)
+    poisonDiv:SetPoint("TOPLEFT",  popup, "TOPLEFT",   4, POISON_DIV_Y)
+    poisonDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -4, POISON_DIV_Y)
+    E:StyleGreyLine(poisonDiv)
+
+    local poisonLblFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    poisonLblFS:SetPoint("TOPLEFT", popup, "TOPLEFT", 8, POISON_LBL_Y)
+    poisonLblFS:SetFont(poisonLblFS:GetFont(), 10, "OUTLINE")
+    poisonLblFS:SetText(E.CC.body .. L["Poison"] .. E.CC.close)
+
+    local poisonFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    poisonFS:SetPoint("TOPLEFT", popup, "TOPLEFT", 14, POISON_VAL_Y)
+    poisonFS:SetFont(poisonFS:GetFont(), 9)
+
+    local poisonHit = CreateFrame("Frame", nil, popup)
+    poisonHit:SetPoint("TOPLEFT",     popup, "TOPLEFT",   4, POISON_LBL_Y + 2)
+    poisonHit:SetPoint("BOTTOMRIGHT", popup, "TOPRIGHT", -4, POISON_VAL_Y - 14)
+    poisonHit:EnableMouse(true)
+    poisonHit:SetScript("OnEnter", function(self)
+        local lines = {
+            L["Valeera's third Season 2 slot. It does not change with the role you give her, so one pick serves every setup."],
+            " ",
+        }
+        for _, pd in ipairs(POISON_DATA) do
+            local isPick = (pd.name == RECOMMENDED_POISON)
+            lines[#lines + 1] = (isPick and E.CC.gold or E.CC.body)
+                .. pd.name .. E.CC.close
+                .. (pd.fromQuest and (" " .. E.CC.muted .. "*" .. E.CC.close) or "")
+            lines[#lines + 1] = E.CC.muted .. pd.note .. E.CC.close
+            lines[#lines + 1] = " "
+        end
+        lines[#lines + 1] = E.CC.muted
+            .. L["The three marked * unlock from the quest \"%s\"."]:format(POISON_QUEST)
+            .. E.CC.close
+        E:ShowTooltip(self, L["Poisons"], unpack(lines))
+    end)
+    poisonHit:SetScript("OnLeave", function() E:HideTooltip() end)
+
     local function Populate(companionName, dontPin)
         local rows = CURIO_DATA[companionName]
         if not rows then popup:Hide(); return end
+        shownCompanion = companionName
         if not dontPin then E.lastKnownCompanion = companionName end
 
         local role, resolved = E:GetCompanionAssignedRole()
@@ -247,6 +329,18 @@ E:RegisterModule(function()
                 rf.combatIcon:SetTexture(C_Item.GetItemIconByID(row.combat.id))
                 rf.utilIcon:SetTexture(C_Item.GetItemIconByID(row.utility.id))
             end
+        end
+
+        local poison = E:GetRecommendedPoison(companionName)
+        poisonDiv:SetShown(poison ~= nil)
+        poisonLblFS:SetShown(poison ~= nil)
+        poisonFS:SetShown(poison ~= nil)
+        poisonHit:SetShown(poison ~= nil)
+        popup:SetHeight(poison and popupH or popupHShort)
+        if poison then
+            poisonFS:SetText(
+                E.CC.muted .. L["Recommended:"] .. " " .. E.CC.close
+                .. E.CC.body .. poison.name .. E.CC.close)
         end
     end
 

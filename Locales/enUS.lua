@@ -299,7 +299,7 @@ L["run Valeera as DPS \226\128\148 she interrupts Soul Extinction, and you dispe
 L["Curios"] = true
 L["Valeera has a third slot this season: Combat, Utility and a new Poisons slot. The picks do not change with your own role."] = true
 L["Poison"] = true
-L["Frosthearth Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."] = true
+L["Frostheart Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."] = true
 L["Combat"] = true
 L["Corrosive Bilespear for straight damage. Ouroboric Curse is the alternative, but much of this delve one-shots, so its effect is hard to keep procced."] = true
 L["Utility"] = true
@@ -517,7 +517,7 @@ L["Shows your elapsed run time on a small on-screen display while you're inside 
 L["Drag the display to move it."] = true
 L["Show Delve HUD"] = true
 L["Delve HUD"] = true
-L["An on-screen panel while inside a delve showing the story variant and its grade, the recommended curios for your role, your run timer, and your death count."] = true
+L["An on-screen panel while inside a delve showing the story variant and its grade, the recommended curios and poison for your companion, your run timer, and your death count."] = true
 L["Shares the on-screen frame with the Run Timer and Bonus Spoils tracker - drag any of them to move it."] = true
 L["Show Best Time & keep timer after boss"] = true
 L["Best Time & Run Result"] = true
@@ -770,21 +770,31 @@ L["Repaired %d mis-flagged bountiful run from today."] = true
 L["Repaired %d mis-flagged bountiful runs from today."] = true
 
 -- UI/CurioReminder.lua
+L["Slows enemies by 30 percent and cuts their attack and cast speed by 20 percent for 10 seconds. The safest all-round pick, and the strongest one against caster packs and on Nemesis fights."] = true
+L["Cuts enemy damage and Haste by 10 percent for 20 seconds. The pick for a blind first run, or for a boss that keeps killing you."] = true
+L["Builds 5 percent damage every 3 seconds in combat, up to 25 percent. The highest ceiling of the six, but the stacks fall off when you take damage, so it wants a fight you already know."] = true
+L["Grants 10 percent Leech, Avoidance and Speed. Steady survivability that does not rely on a proc going off."] = true
+L["Struck enemies burst for Nature damage every second for 8 seconds. Best on packed trash around one tanky target."] = true
+L["Interrupts and fears struck enemies for 1 second."] = true
 L["Damage"] = true
-L["Companion Curios"] = true
 L["The Combat and Utility curios your delve companion needs, listed for each role (Tank / Healer / Damage)."] = true
 L["Your current role is highlighted in %s with a \"%s\"."] = true
 L["gold"] = true
 L["Slot these curios on your companion to boost her in delves."] = true
-L["Season 2 also gives her a Poison slot. This popup does not cover it yet - the Nemesis tab already recommends one for Azta'rec."] = true
+L["Her Season 2 Poison slot is listed below the roles."] = true
+L["Companion Curios"] = true
 L["Currently in your bags"] = true
 L["How many of this curio you have on you right now."] = true
 L["%s = you have at least one."] = true
 L["Green"] = true
 L["%s = you have none yet \226\128\148 pick one up before your next delve."] = true
+L["Valeera's third Season 2 slot. It does not change with the role you give her, so one pick serves every setup."] = true
+L["The three marked * unlock from the quest \"%s\"."] = true
+L["Poisons"] = true
 L["(no role set)"] = true
 L["Combat:"] = true
 L["Utility:"] = true
+L["Recommended:"] = true
 L["unknown companion \"%s\". Use |cFFFFFFFFbrann|r or |cFFFFFFFFvaleera|r."] = true
 
 -- UI/DelveObjectives.lua
@@ -793,6 +803,7 @@ L["Delve HUD: variant, grade, recommended curios and deaths for this run."] = tr
 L["The clock shows your elapsed run time."] = true
 L["Drag to move; toggle in Options."] = true
 L["Variant:"] = true
+L["Poison:"] = true
 L["Lives:"] = true
 L["Best:"] = true
 L["Nemesis Strongbox: %d/%d packs"] = true

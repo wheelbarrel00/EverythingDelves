@@ -185,8 +185,8 @@ E:RegisterModule(function()
     E:StyleAccentDivider(div1)
 
     -- SECTION 1b: crests
-    -- "Season Max" is the per-tier seasonal cap (info.maxQuantity): Blizzard
-    -- raises it weekly via hotfix, so it must be read live, never hardcoded.
+    -- "Season Max" is info.maxQuantity, which caps earned or held depending
+    -- on useTotalEarnedForMaxQty. A hotfix can move it, so read it live.
     local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
     crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
@@ -984,18 +984,20 @@ E:RegisterModule(function()
                 -- Zero = uncapped (S1 caps removed by hotfix); read live so a
                 -- reintroduced cap shows up without an addon update.
                 local seasonMax = info.maxQuantity or 0
+                -- maxQuantity caps totalEarned only when the currency says so,
+                -- else it caps what you hold and spending frees room again.
+                local capOnTotal = info.useTotalEarnedForMaxQty
+                local atCap = seasonMax > 0
+                    and ((capOnTotal and season or qty) >= seasonMax)
                 row.nameFS:SetText(E.CC.body .. crestName .. E.CC.close)
-                row.handFS:SetText(E.CC.gold .. FormatNumber(qty) .. E.CC.close)
+                row.handFS:SetText(((atCap and not capOnTotal) and E.CC.red or E.CC.gold)
+                    .. FormatNumber(qty) .. E.CC.close)
                 row.maxFS:SetText(seasonMax > 0
                     and (E.CC.body .. FormatNumber(seasonMax) .. E.CC.close)
                     or  (E.CC.muted .. L["Uncapped"] .. E.CC.close))
-                -- Red once at cap: further crests from capped sources are lost.
-                local seasonColor = E.CC.body
-                if seasonMax > 0 and season >= seasonMax then
-                    seasonColor = E.CC.red
-                end
                 row.seasonFS:SetText(season > 0
-                    and (seasonColor .. FormatNumber(season) .. E.CC.close)
+                    and (((atCap and capOnTotal) and E.CC.red or E.CC.body)
+                        .. FormatNumber(season) .. E.CC.close)
                     or  (E.CC.muted .. "-" .. E.CC.close))
             else
                 row.nameFS:SetText(E.CC.muted .. row.label .. E.CC.close)
