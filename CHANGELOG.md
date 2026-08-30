@@ -5,6 +5,29 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.32.0] - 2026-08-29
+
+### New Features
+
+- **Class color is now one of the accent colors** - Options, under Display, gains a sixth choice beside Gold, Red, Purple, Dark Green and Dark Blue. Pick it and the window border, the tabs, the section headings, the delve HUD and the reminder popups all take your own class color, so the addon sits alongside the rest of an interface that is already skinned that way. It follows whoever you are logged in as, so one setting gives your Priest and your Death Knight each their own look, and if another interface addon has replaced the default class colors it uses those instead. Thanks to ttocsic for the request.
+
+### Bug Fixes
+
+- **The Trovehunter's Bounty reminder has not appeared since Season 2 started** - the bounty is issued as a brand new item every season, and the addon was still watching for Season 1's. The popup simply never fired, on any character, in any Bountiful Delve. It now recognizes the Midnight Season 2 bounty, and the Use button on the popup targets whichever bounty you are actually carrying instead of one fixed item, so a future season cannot break it the same way.
+- **The "your bounty is active" confirmation never appeared** - the buff a bounty puts on you is re-issued each season just like the item itself, and the addon was still watching Season 1's. After using a bounty the Tier Guide showed nothing at all where it should have confirmed the bounty was running. Both seasons' buffs are recognized now.
+- **The Trovehunter's Bounty reminder ignored the accent color** - its border, divider and title stayed red whichever color you had picked, and so did the Tier row label on the Tier Guide. Both are built before the theme is applied and neither repainted afterward, so both had been stuck on the default ever since they were added. They now follow the setting like every other window, and change the moment you change it.
+
+### Improvements
+
+- **The six languages cover the new option** - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again at 765 phrases each.
+
+### Notes
+
+- The curio and poison popup does not open by itself on Russian, Korean and Chinese clients - it works out which companion you have by reading her name, and that only matches in English, so bringing up the companion panel does not bring the popup with it. Nothing it shows is wrong, and the /ed curios command and the Curios keybind still open it on those clients. This is the next thing being worked on.
+- The Season Max column on the Shard Tracker explains the wrong rule for three crests - Champion, Hero and Myth cap what you can hold rather than what you can earn, and the tooltip still describes the earning cap. The numbers and the warning are correct, only the explanation is out of date.
+- A few buttons are still in English on translated clients - the Pin buttons on the Delve Locations, Current Bountiful and Shard Tracker tabs, and the Dismiss button on the Trovehunter reminder, under headers that are translated.
+- The Poison row has no icon yet, unlike the Combat and Utility rows beside it. The spell art has not been confirmed, and a wrong icon is worse than none.
+
 ## [1.31.0] - 2026-08-26
 
 ### New Features

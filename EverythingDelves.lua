@@ -99,7 +99,7 @@ local DEFAULTS = {
     defaultTab       = 1,
     historyCap       = 20,
     uiScale          = 1.0,
-    accentColor      = "gold",    -- "red" | "gold" | "purple" | "green" | "darkblue"
+    accentColor      = "gold",    -- "red" | "gold" | "purple" | "green" | "darkblue" | "class"
     lowShardWarning        = true,
     lowShardThreshold      = 100,
     alertNewBountiful      = false,
@@ -257,6 +257,9 @@ function E:ResetDB()
         end
     end
     E:InitDB()
+    if E.ApplyAccentColor then
+        E:ApplyAccentColor(E.db.accentColor)
+    end
 end
 
 function E:GetProfileNames()
@@ -438,6 +441,13 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
                 .. (E.db.showDelveObjectives
                     and L["Bonus Spoils tracker |cFF22FF22ON|r - it appears while you're inside a delve."]
                     or L["Bonus Spoils tracker |cFFFF2222OFF|r"]))
+        end
+    elseif msg == "trove" then
+        if E.DumpTrovehunterState then
+            E:DumpTrovehunterState()
+        else
+            print("|cFFFF2222Everything Delves|r: trovehunter module"
+                .. " not loaded.")
         end
     elseif msg == "objdump" then
         if E.DumpDelveObjectiveData then

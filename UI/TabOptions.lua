@@ -325,12 +325,14 @@ E:RegisterModule(function()
     E:StyleAccentHeader(dispHeader, L["Display"])
     Y = Y - 20
 
+    local classHex = "|cFF" .. E:GetClassAccentColor().hex
     local accentOptions = {
         { value = "gold",     label = L["%s (default)"]:format("|cFFFFD100" .. L["Gold"] .. "|r") },
         { value = "red",      label = "|cFFFF2222" .. L["Red"] .. "|r" },
         { value = "purple",   label = "|cFFB280FF" .. L["Purple"] .. "|r" },
         { value = "green",    label = "|cFF4CD94C" .. L["Dark Green"] .. "|r" },
         { value = "darkblue", label = "|cFF3388FF" .. L["Dark Blue"] .. "|r" },
+        { value = "class",    label = classHex .. L["Class Color"] .. "|r" },
     }
     local accentRadios = CreateRadioGroup(
         content, SECT_X, Y,

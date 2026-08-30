@@ -113,10 +113,10 @@ E:RegisterModule(function()
     local LABEL_WIDTH  = 110
 
     local rowLabels = {
-        { text = L["Tier"],           cc = E.CC.header },
-        { text = L["Rec. Gear iLvl"], cc = E.CC.muted  },
-        { text = L["Bountiful Loot"], cc = E.CC.gold   },
-        { text = L["Great Vault"],    cc = E.CC.purple  },
+        { text = L["Tier"],           accent = true   },
+        { text = L["Rec. Gear iLvl"], cc = E.CC.muted },
+        { text = L["Bountiful Loot"], cc = E.CC.gold  },
+        { text = L["Great Vault"],    cc = E.CC.purple },
     }
 
     for rowIdx, info in ipairs(rowLabels) do
@@ -124,7 +124,13 @@ E:RegisterModule(function()
         fs:SetPoint("TOPLEFT", frame, "TOPLEFT",
                     GRID_X, GRID_Y - ((rowIdx - 1) * ROW_HEIGHT))
         fs:SetFont(fs:GetFont(), 10, "OUTLINE")
-        fs:SetText(info.cc .. info.text .. E.CC.close)
+        if info.accent then
+            E:RegisterThemed(function(p)
+                fs:SetText(p.headerCC .. info.text .. E.CC.close)
+            end)
+        else
+            fs:SetText(info.cc .. info.text .. E.CC.close)
+        end
     end
 
     local tierCells = {}
@@ -763,7 +769,6 @@ E:RegisterModule(function()
     local TROVE_QUEST_ID = 86371   -- weekly loot-check quest
     local TROVE_USED_ID  = 92887   -- bounty-consumed quest
     local TROVE_ICON     = 1064187 -- texture ID
-    local TROVE_AURA     = 1254631 -- buff spell ID
 
     local troveIcon = sc:CreateTexture(nil, "ARTWORK")
     troveIcon:SetPoint("TOPLEFT", troveHeader, "BOTTOMLEFT", 0, -4)
@@ -788,10 +793,7 @@ E:RegisterModule(function()
 
         local inBag = E:GetTrovehunterMapCount()
 
-        local auraActive = false
-        if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
-            auraActive = C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA) ~= nil
-        end
+        local auraActive = E:GetTrovehunterAura() ~= nil
 
         if weeklyDone then
             -- The "used" flag (92887) is unreliable (reads used with a map still

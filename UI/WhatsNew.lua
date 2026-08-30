@@ -1,24 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.31.0"
+local WHATS_NEW_VERSION = "1.32.0"
 
 local ENTRIES = {
     {
-        title = "Valeera's Poison slot is covered",
-        desc  = "Season 2 gave her a third slot beside Combat and Utility, and the curio popup now includes it. Hover the Poison section to see all six, what each one does, and which three come from the Slithering Spoils quest. It does not change with her role, so one pick serves every setup.",
+        title = "Class color is now one of the accent colors",
+        desc  = "Options, under Display, gains a sixth choice beside Gold, Red, Purple, Dark Green and Dark Blue. The window, tabs, headings, delve HUD and reminders all take your own class color. It follows whoever you are logged in as, and picks up a custom class color if your interface already sets one. Requested by ttocsic.",
     },
     {
-        title = "Great Vault item levels were too low from Tier 6 up",
-        desc  = "A Tier 8 Great Vault reward was listed as item level 298 when it is really 305, and Tiers 6, 7 and 9 through 11 were off too. They now read correctly, and the gear track beside them moves with the numbers - Tier 8 and above are Hero track.",
+        title = "The Trovehunter's Bounty reminder is working again",
+        desc  = "It has not appeared since Season 2 started. The bounty is issued as a brand new item each season and the addon was still watching for Season 1's, so the popup never fired for anyone, in any Bountiful Delve. It now knows the Season 2 bounty, and follows whichever one you are carrying.",
     },
     {
-        title = "Champion, Hero and Myth crests could show as capped when they were not",
-        desc  = "Those three turned red on the Shard Tracker once you had earned and then spent past the cap. Unlike Adventurer and Veteran they cap what you can hold, not what you can earn, so spending frees the room again.",
+        title = "The six languages cover the new option",
+        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again at 765 phrases each.",
     },
     {
-        title = "The six languages cover the new Poison slot",
-        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again. The same pass corrected the in-game names for the Leech, Avoidance and Speed stats in several of them.",
+        title = "Coming next",
+        desc  = "On Russian, Korean and Chinese clients the curio and poison popup does not open by itself - it reads your companion's name, which only matches in English. /ed curios and the Curios keybind still work. Also queued: the Season Max tooltip, a few buttons still English when translated, and a Poison icon.",
     },
 }
 

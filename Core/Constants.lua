@@ -420,6 +420,59 @@ E.AccentPresets = {
     },
 }
 
+local function ShadeClass(c, f, a)
+    return { r = c.r * f, g = c.g * f, b = c.b * f, a = a or 1.00 }
+end
+
+local function PlayerClassColor()
+    local _, classFile = UnitClass("player")
+    if not classFile then return nil end
+    -- Both overriding conventions before the C API, which only ever returns
+    -- Blizzard's own values and so would mask either one.
+    local c = (CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[classFile])
+        or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile])
+        or (C_ClassColor and C_ClassColor.GetClassColor
+            and C_ClassColor.GetClassColor(classFile))
+    if type(c) ~= "table" or type(c.r) ~= "number" then return nil end
+    return c
+end
+
+-- Built on first use, not at load: first use is PLAYER_LOGIN, by which point a
+-- UI that replaces the class colors is already up.
+function E:EnsureClassAccent()
+    if self.AccentPresets.class then return true end
+    local c = PlayerClassColor()
+    if not c then return false end
+
+    local hex = string.format("%02X%02X%02X",
+        math.floor(c.r * 255 + 0.5),
+        math.floor(c.g * 255 + 0.5),
+        math.floor(c.b * 255 + 0.5))
+
+    self.AccentColors.class = { r = c.r, g = c.g, b = c.b, hex = hex }
+    self.AccentPresets.class = {
+        border      = ShadeClass(c, 0.80),
+        divider     = ShadeClass(c, 0.80, 0.80),
+        tabActive   = ShadeClass(c, 0.45),
+        tabBorder   = ShadeClass(c, 0.85),
+        tabHover    = ShadeClass(c, 0.28, 0.80),
+        header      = ShadeClass(c, 1.00),
+        headerCC    = "|cFF" .. hex,
+        buttonBg    = ShadeClass(c, 0.35),
+        buttonHover = ShadeClass(c, 0.55),
+        progressFill= ShadeClass(c, 0.60, 0.90),
+        scrollThumb = ShadeClass(c, 0.60, 0.80),
+        closeBg     = ShadeClass(c, 0.28, 0.80),
+        closeHover  = ShadeClass(c, 0.55),
+    }
+    return true
+end
+
+function E:GetClassAccentColor()
+    if self:EnsureClassAccent() then return self.AccentColors.class end
+    return self.AccentColors.gold
+end
+
 E.ThemedWidgets = {}
 
 -- Invoked immediately so the widget picks up the current theme.
@@ -431,25 +484,28 @@ end
 
 function E:GetAccentPreset()
     local key = (self.db and self.db.accentColor) or "gold"
+    if key == "class" then self:EnsureClassAccent() end
     return self.AccentPresets[key] or self.AccentPresets.gold
 end
 
 function E:GetAccentColor()
     local key = (self.db and self.db.accentColor) or "gold"
+    if key == "class" then self:EnsureClassAccent() end
     return self.AccentColors[key] or self.AccentColors.gold
 end
 
 -- Mutates E.Colors/E.CC in place so existing reads stay valid.
 function E:ApplyAccentColor(name)
+    if name == "class" then self:EnsureClassAccent() end
     if name and self.AccentPresets[name] then
         if self.db then self.db.accentColor = name end
     end
-    -- Skip the full repaint if the accent is already active.
-    local applied = name or (self.db and self.db.accentColor) or "gold"
-    if self._lastAppliedAccent == applied then return end
-    self._lastAppliedAccent = applied
 
+    -- Compared as the resolved preset, not the name, so a class accent that fell
+    -- back to gold still repaints once the class preset can be built.
     local p = self:GetAccentPreset()
+    if self._lastAppliedPreset == p then return end
+    self._lastAppliedPreset = p
 
     local function copy(dst, src)
         dst.r, dst.g, dst.b, dst.a = src.r, src.g, src.b, src.a

@@ -502,6 +502,7 @@ L["Red"] = true
 L["Purple"] = true
 L["Dark Green"] = true
 L["Dark Blue"] = true
+L["Class Color"] = true
 L["Accent Color"] = true
 L["Summary line — hold Shift for details (default)"] = true
 L["Always show full details"] = true

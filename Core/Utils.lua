@@ -266,9 +266,32 @@ function E:CreateProgressBar(parent, width, height, caption)
     return bar
 end
 
--- Only 252415 is a confirmed bounty-map item; a suspected alternate (265714)
--- was ruled out by /dump. Kept as a list so a second ID can be added later.
-E.TROVE_MAP_ITEM_IDS = { 252415 }
+-- A new item id is issued each season, so watching only Season 1's meant the
+-- reminder never fired in Season 2. Append, never replace, and keep it newest
+-- first: [1] is the fallback when nothing is being carried.
+E.TROVE_MAP_ITEM_IDS = { 274374, 252415 }
+
+-- Rotates each season exactly like the item id. 1293799 is Midnight Season 2,
+-- confirmed live off the buff; 1254631 was Season 1.
+E.TROVE_AURA_IDS = { 1293799, 1254631 }
+
+function E:GetTrovehunterAura()
+    if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then return nil end
+    for _, id in ipairs(self.TROVE_AURA_IDS) do
+        local aura = C_UnitAuras.GetPlayerAuraBySpellID(id)
+        if aura then return aura, id end
+    end
+    return nil
+end
+
+function E:GetHeldTrovehunterItemID()
+    if not (C_Item and C_Item.GetItemCount) then return nil end
+    for _, id in ipairs(self.TROVE_MAP_ITEM_IDS) do
+        ---@diagnostic disable-next-line: deprecated
+        if (C_Item.GetItemCount(id) or 0) > 0 then return id end
+    end
+    return nil
+end
 
 -- Bags only (not bank): the map is only usable from bags inside a delve, so a
 -- banked copy must not trip the reminder.

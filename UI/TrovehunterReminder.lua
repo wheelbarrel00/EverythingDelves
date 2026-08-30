@@ -2,7 +2,6 @@ local E = EverythingDelves
 local L = E.L
 
 local TROVE_ICON     = 1064187
-local TROVE_AURA     = 1254631 -- buff spell id, active once the bounty is consumed
 
 local frame
 
@@ -52,9 +51,9 @@ local function CreateReminderFrame()
                 self:Hide()
             elseif wantShow then
                 local rs = E.delveRunState
-                local auraUp = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-                    and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
+                local auraUp = E:GetTrovehunterAura()
                 if rs and rs.inDelve and not rs.trovehunterPopupShown and not auraUp then
+                    E:PointUseButtonAtHeldBounty()
                     self:Show()
                     LatchShown()
                 end
@@ -69,24 +68,23 @@ local function CreateReminderFrame()
     })
     local bg = E.Colors.background
     f:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
-    local bd = E.Colors.border
-    f:SetBackdropBorderColor(bd.r, bd.g, bd.b, bd.a)
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", f, "TOP", 0, -10)
     title:SetFont(title:GetFont(), 14, "OUTLINE")
-    title:SetText(
-        E.CC.header
-        .. L["Trovehunter's Bounty Reminder"]
-        .. E.CC.close
-    )
 
     local div = f:CreateTexture(nil, "ARTWORK")
     div:SetHeight(1)
     div:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -32)
     div:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -32)
-    local dc = E.Colors.divider
-    div:SetColorTexture(dc.r, dc.g, dc.b, dc.a)
+
+    E:RegisterThemed(function(p)
+        f:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
+        div:SetColorTexture(p.divider.r, p.divider.g, p.divider.b, p.divider.a)
+        title:SetText(p.headerCC
+            .. L["Trovehunter's Bounty Reminder"]
+            .. E.CC.close)
+    end)
 
     local icon = f:CreateTexture(nil, "ARTWORK")
     icon:SetSize(48, 48)
@@ -158,7 +156,7 @@ local function CreateReminderFrame()
         -- Register both edges: SecureActionButton_OnClick only acts on the one matching the ActionButtonUseKeyDown CVar.
         useBtn:RegisterForClicks("AnyUp", "AnyDown")
         useBtn:SetAttribute("type", "macro")
-        useBtn:SetAttribute("macrotext", "/use item:" .. E.TROVE_MAP_ITEM_IDS[1])
+        E:PointUseButtonAtHeldBounty(useBtn)
     end
     if InCombatLockdown() then
         local waiter = CreateFrame("Frame")
@@ -183,9 +181,19 @@ function E:InitTrovehunterReminder()
     if not frame then frame = CreateReminderFrame() end
 end
 
+-- macrotext is a secure attribute, so this no-ops in combat. The deferred
+-- show re-points it on PLAYER_REGEN_ENABLED, before the frame is shown.
+function E:PointUseButtonAtHeldBounty(btn)
+    btn = btn or (frame and frame.useBtn)
+    if not btn or InCombatLockdown() then return end
+    local id = self:GetHeldTrovehunterItemID() or self.TROVE_MAP_ITEM_IDS[1]
+    btn:SetAttribute("macrotext", "/use item:" .. id)
+end
+
 function E:ShowTrovehunterReminder()
     if not frame then frame = CreateReminderFrame() end
     frame.dontShowCB:SetChecked(false)
+    E:PointUseButtonAtHeldBounty()
     if InCombatLockdown() then
         frame._pendingShow = true
         frame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -214,9 +222,7 @@ function E:MaybeShowTrovehunterReminder()
     local count = E:GetTrovehunterMapCount()
     if not count or count <= 0 then return end
 
-    local aura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-        and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
-    if aura then return end
+    if E:GetTrovehunterAura() then return end
 
     -- Latch only when the frame actually shows, so an in-combat defer keeps retrying.
     if E._trovehunterDeferPending then return end
@@ -231,11 +237,95 @@ function E:MaybeShowTrovehunterReminder()
         local _, instanceType = IsInInstance()
         local _, _, diffID = GetInstanceInfo()
         if instanceType ~= "scenario" and diffID ~= 208 then return end
-        local nowAura = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-            and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA)
-        if nowAura then return end
+        if E:GetTrovehunterAura() then return end
         E:ShowTrovehunterReminder()
     end)
+end
+
+local function DiagLine(fmt, ...)
+    print("  " .. string.format(fmt, ...))
+end
+
+-- Deliberately English: this is a bug-report dump, not UI.
+function E:DumpTrovehunterState()
+    print("|cFFFF2222Everything Delves|r: Trovehunter reminder state")
+
+    local setting = not (self.db and self.db.showTrovehunterReminder == false)
+    DiagLine("setting enabled: %s", tostring(setting))
+
+    for _, id in ipairs(self.TROVE_MAP_ITEM_IDS) do
+        local name = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)
+        local n = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(id)
+        DiagLine("known item %d: name=%s count=%s",
+            id, tostring(name), tostring(n))
+    end
+
+    local found, scanned = 0, 0
+    if C_Container and C_Container.GetContainerNumSlots then
+        for bag = 0, 5 do
+            for slot = 1, (C_Container.GetContainerNumSlots(bag) or 0) do
+                scanned = scanned + 1
+                local id = C_Container.GetContainerItemID(bag, slot)
+                local name = id and C_Item and C_Item.GetItemInfo
+                    and C_Item.GetItemInfo(id)
+                if name and name:lower():find("trovehunter") then
+                    found = found + 1
+                    DiagLine("bag match: %s (id %d) in bag %d slot %d",
+                        name, id, bag, slot)
+                end
+            end
+        end
+    end
+    if found == 0 then
+        DiagLine("bag match: none of %d bag slots named Trovehunter"
+            .. " (English name match - a miss proves nothing on a"
+            .. " translated client)", scanned)
+    end
+
+    local _, auraID = self:GetTrovehunterAura()
+    DiagLine("known aura active: %s (blocks the popup)", tostring(auraID or false))
+
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        local auraFound = 0
+        for i = 1, 40 do
+            local a = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+            if not a then break end
+            if a.name and a.name:lower():find("trove") then
+                auraFound = auraFound + 1
+                DiagLine("aura match: %s (spellId %s)",
+                    a.name, tostring(a.spellId))
+            end
+        end
+        if auraFound == 0 then
+            DiagLine("aura match: no buff named Trove"
+                .. " (English name match, same caveat)")
+        end
+    end
+
+    if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
+        DiagLine("quest 86371 looted=%s  quest 92887 used=%s",
+            tostring(C_QuestLog.IsQuestFlaggedCompleted(86371)),
+            tostring(C_QuestLog.IsQuestFlaggedCompleted(92887)))
+    end
+
+    local rs = self.delveRunState
+    if not rs then
+        DiagLine("run state: nil")
+    else
+        local ws = rs.popupWindowStart or rs.startTime or 0
+        DiagLine("inDelve=%s name=%s bountiful=%s alreadyShown=%s",
+            tostring(rs.inDelve), tostring(rs.delveName),
+            tostring(rs.wasBountiful), tostring(rs.trovehunterPopupShown))
+        DiagLine("window elapsed: %.0fs of 60 allowed",
+            ws > 0 and (GetTime() - ws) or -1)
+    end
+
+    local _, instanceType = IsInInstance()
+    local _, _, diffID = GetInstanceInfo()
+    DiagLine("instanceType=%s difficultyID=%s (needs scenario or 208)",
+        tostring(instanceType), tostring(diffID))
+
+    print("  screenshot or paste the lines above.")
 end
 
 local function AddBountyTooltipLine(tooltip, data)
@@ -246,8 +336,7 @@ local function AddBountyTooltipLine(tooltip, data)
     end
     if not match then return end
 
-    local auraActive = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-        and C_UnitAuras.GetPlayerAuraBySpellID(TROVE_AURA) ~= nil
+    local auraActive = E:GetTrovehunterAura() ~= nil
 
     tooltip:AddLine(" ")
     if auraActive then
