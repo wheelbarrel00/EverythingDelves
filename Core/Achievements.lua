@@ -34,7 +34,9 @@ E.DelveDepthsSeries = {
 local function Normalize(s)
     if type(s) ~= "string" then return "" end
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-    s = s:lower():gsub("[^%a%d]", "")
+    -- %a is ASCII-only under the client's C locale, so an "[^%a%d]" allowlist
+    -- erased every byte of a Cyrillic, Hangul or Han name. Strip by denylist.
+    s = s:lower():gsub("[%s%p]", "")
     s = s:gsub("^the", "")
     return s
 end
@@ -62,13 +64,72 @@ local function NamesMatch(a, b)
 end
 E.DelveNamesMatch = NamesMatch
 
+-- Delve tables are keyed by the ENGLISH name while the game hands back localized
+-- strings (POI names, picker headers, achievement criteria). This bridges the
+-- two by learning each delve's live POI name. The remote-map POI cache is cold
+-- until a zone has been visited, so the index is rebuilt while any delve is
+-- still unknown.
+local localizedIndex = {}
+local localizedCovered = {}
+local localizedKnown = 0
+local localizedNextScan = 0
+
+local function LearnPOIName(mapID, poiID, delveName)
+    if not (mapID and poiID) then return false end
+    local ok, info = pcall(C_AreaPoiInfo.GetAreaPOIInfo, mapID, poiID)
+    if not (ok and type(info) == "table") then return false end
+    local name = info.name
+    if type(name) ~= "string" or name == "" then return false end
+    localizedIndex[Canon(name)] = delveName
+    return true
+end
+
+local function IndexLocalizedNames()
+    if not (C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then return end
+    for _, d in ipairs(E.DelveData or {}) do
+        if not localizedCovered[d.name] then
+            -- Only whichever entrance is live today resolves, so try both.
+            local got = LearnPOIName(d.mapID, d.poiID, d.name)
+            if LearnPOIName(d.mapID, d.normalPoiID, d.name) then got = true end
+            if got then
+                localizedCovered[d.name] = true
+                localizedKnown = localizedKnown + 1
+            end
+        end
+    end
+end
+
+function E:ResolveDelveByDisplayName(text)
+    if type(text) ~= "string" or text == "" then return nil end
+    local key = Canon(text)
+    if key == "" then return nil end
+    if localizedIndex[key] then return localizedIndex[key] end
+    -- Throttled: this runs once per achievement criterion on a tooltip hover and
+    -- a full pass is 24 API calls.
+    local now = GetTime()
+    if localizedKnown < #(self.DelveData or {}) and now >= localizedNextScan then
+        localizedNextScan = now + 10
+        IndexLocalizedNames()
+        if localizedIndex[key] then return localizedIndex[key] end
+    end
+    -- An exact key miss still needs the prefix match, because the criterion and
+    -- the POI disagree on some spellings in every language, not just English.
+    for indexed, name in pairs(localizedIndex) do
+        if NamesMatch(key, indexed) then return name end
+    end
+    for name in pairs(self.DelveAchievements) do
+        if NamesMatch(text, name) then return name end
+    end
+    return nil
+end
+
 local function ResolveDelve(delveName)
     if not delveName then return nil, nil end
     local entry = E.DelveAchievements[delveName]
     if entry then return delveName, entry end
-    for name, e in pairs(E.DelveAchievements) do
-        if NamesMatch(name, delveName) then return name, e end
-    end
+    local name = E:ResolveDelveByDisplayName(delveName)
+    local e = name and E.DelveAchievements[name]
+    if e then return name, e end
     return nil, nil
 end
 
@@ -152,6 +213,7 @@ function E:GetDelveAchievementStatus(delveName)
 
     status.depthsMissing = {}
     status.depths = {}
+    local depthsUnknown = false
     for _, series in ipairs(E.DelveDepthsSeries) do
         local seriesDone = AchievementCompleted(series.id)
         local critDone
@@ -160,11 +222,23 @@ function E:GetDelveAchievementStatus(delveName)
         elseif seriesDone == false then
             local crit = ReadCriteria(series.id)
             if crit then
+                local named, resolved = 0, 0
                 for _, c in ipairs(crit) do
-                    if NamesMatch(c.name, canonical) then
-                        critDone = c.completed and true or false
-                        break
+                    if c.name ~= "" then
+                        named = named + 1
+                        local cd = E:ResolveDelveByDisplayName(c.name)
+                        if cd then resolved = resolved + 1 end
+                        if cd == canonical then
+                            critDone = c.completed and true or false
+                            break
+                        end
                     end
+                end
+                -- Only conclude this delve is absent from the series when every
+                -- criterion in it was identifiable. One unreadable name and the
+                -- answer is unknown, which must never render as done.
+                if critDone == nil and resolved < named then
+                    depthsUnknown = true
                 end
             end
         end
@@ -176,11 +250,14 @@ function E:GetDelveAchievementStatus(delveName)
             end
         end
     end
+    status.depthsUnknown = depthsUnknown
     if #status.depthsMissing > 0 then
         status.summaryCount = status.summaryCount + 1
     end
 
-    status.allDone = status.summaryCount == 0
+    -- Unknown depths deliberately do not raise summaryCount: there would be
+    -- nothing behind the count. They only forbid the claim that all is done.
+    status.allDone = status.summaryCount == 0 and not status.depthsUnknown
     return status
 end
 

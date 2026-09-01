@@ -11,7 +11,7 @@ E:RegisterModule(function()
 
     local panel = CreateFrame("Frame", "EverythingDelvesPickerInfo", UIParent, "BackdropTemplate")
     panel:SetSize(PANEL_W, 280)
-    panel:SetFrameStrata("HIGH")
+    panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
     panel:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8x8",
@@ -139,14 +139,24 @@ E:RegisterModule(function()
         for _, d in ipairs(E.DelveData or {}) do
             if d.name == header
                     or (E.DelveNamesMatch and E.DelveNamesMatch(header, d.name)) then
-                return d
+                return d, header
             end
         end
+        -- The header is localized and d.name is English, so on a translated
+        -- client the loop above only hits an untranslated proper noun.
+        local bridged = E.ResolveDelveByDisplayName
+            and E:ResolveDelveByDisplayName(header)
+        local delve = bridged and E.DelveDataByName and E.DelveDataByName[bridged]
+        if delve then return delve, header end
         return nil
     end
 
-    local function Refresh(delve)
-        titleFS:SetText(E.CC.gold .. delve.name .. E.CC.close)
+    local function Refresh(delve, displayName)
+        -- Strip escapes: displayName is a raw game string and an embedded |r
+        -- would end the title's coloring early.
+        local title = (displayName or delve.name)
+            :gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+        titleFS:SetText(E.CC.gold .. title .. E.CC.close)
 
         local st = E:GetDelveAchievementStatus(delve.name)
         if not st then
@@ -228,9 +238,9 @@ E:RegisterModule(function()
 
     local function Show()
         if E.db and E.db.showPickerInfo == false then panel:Hide(); return end
-        local delve = ResolveEntranceDelve()
+        local delve, displayName = ResolveEntranceDelve()
         if not delve then panel:Hide(); return end
-        Refresh(delve)
+        Refresh(delve, displayName)
         AnchorPanel(_G.DelvesDifficultyPickerFrame)
         panel:Show()
         C_Timer.After(0, FitHeight)

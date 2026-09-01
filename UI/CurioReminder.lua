@@ -99,7 +99,17 @@ function E:GetPlayerCurioRole()
     return ROLE_NORM[specRole or "NONE"] or "Damage"
 end
 
-local function GetActiveCompanionName()
+local function GetCompanionTreeID()
+    local D = C_DelvesUI
+    if not (D and D.GetTraitTreeForCompanion) then return nil end
+    local ok, treeID = pcall(D.GetTraitTreeForCompanion, nil)
+    if ok and treeID and treeID ~= 0 then return treeID end
+    return nil
+end
+
+-- Needs the companion panel open, and misses on any client that transliterates
+-- the name. A learning source for the tree-ID map, never the sole route.
+local function ScanCompanionNameText()
     if not DelvesCompanionConfigurationFrame then return nil end
     local infoFrame = DelvesCompanionConfigurationFrame.CompanionInfoFrame
     if not infoFrame then return nil end
@@ -113,6 +123,70 @@ local function GetActiveCompanionName()
         end
     end
     return nil
+end
+
+-- Caches a tree ID the table does not carry, so a rotated season stays on the
+-- fast path for the session.
+local learnedByTreeID = {}
+
+-- Read live, per character. E:GetCompanionFactionID caches account-wide, so a
+-- Brann-only alt would answer for a Midnight character.
+local function ResolveByFaction()
+    local G = C_GossipInfo
+    if not (G and G.GetFriendshipReputation) then return nil end
+    for _, c in ipairs(E.CompanionFactions) do
+        local ok, d = pcall(G.GetFriendshipReputation, c.id)
+        if ok and d and (d.friendshipFactionID or 0) > 0 then
+            return c.companion
+        end
+    end
+    return nil
+end
+
+-- Ordered most authoritative first. The panel text outranks the faction because
+-- it reads the live panel, while a reputation only proves the player HAS that
+-- companion. Only the panel answer is worth learning.
+local function GetActiveCompanionName()
+    local treeID = GetCompanionTreeID()
+    if treeID then
+        local byTree = E.CompanionByTraitTree[treeID] or learnedByTreeID[treeID]
+        if byTree then return byTree end
+    end
+
+    local byText = ScanCompanionNameText()
+    if byText then
+        if treeID then learnedByTreeID[treeID] = byText end
+        return byText
+    end
+    return ResolveByFaction()
+end
+
+-- /ed companion - an unrecognized tree ID after a season flip names itself
+-- instead of failing silently.
+function E:DumpCompanionState()
+    local function line(s) print("|cFFFFD700[ED companion]|r " .. s) end
+    print(self.CC.header .. "Everything Delves" .. self.CC.close .. ": companion state")
+    line("locale: " .. tostring(GetLocale and GetLocale()))
+    local treeID = GetCompanionTreeID()
+    line("treeID: " .. tostring(treeID)
+        .. " -> " .. tostring(treeID and (self.CompanionByTraitTree[treeID]
+            or learnedByTreeID[treeID])))
+    line("by faction: " .. tostring(ResolveByFaction()))
+    line("name by panel text: " .. tostring(ScanCompanionNameText()))
+    line("name resolved: " .. tostring(GetActiveCompanionName()))
+    line("lastKnownCompanion: " .. tostring(self.lastKnownCompanion))
+    local frame = DelvesCompanionConfigurationFrame
+    local infoFrame = frame and frame.CompanionInfoFrame
+    if not infoFrame then
+        line("companion panel not loaded - open it and run this again")
+        return
+    end
+    for _, region in ipairs({ infoFrame:GetRegions() }) do
+        if region:IsObjectType("FontString") then
+            local txt = region:GetText()
+            if txt and txt ~= "" then line("  panel text: " .. txt) end
+        end
+    end
 end
 
 E:RegisterModule(function()
@@ -132,7 +206,7 @@ E:RegisterModule(function()
 
     local popup = CreateFrame("Frame", "EverythingDelvesCurioPopup", UIParent, "BackdropTemplate")
     popup:SetSize(POPUP_W, popupH)
-    popup:SetFrameStrata("HIGH")
+    popup:SetFrameStrata("DIALOG")
     popup:SetClampedToScreen(true)
     popup:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8x8",
@@ -362,9 +436,13 @@ E:RegisterModule(function()
     end
 
     local function ShowForCurrentCompanion()
+        -- The auto-open path: a nil name must fall back, not bail, or the panel
+        -- opens with no popup. dontPin keeps a guess out of lastKnownCompanion.
         local name = GetActiveCompanionName()
-        if not name then return end
-        Populate(name)
+        local fromRead = name ~= nil
+        name = name or E.lastKnownCompanion or DEFAULT_COMPANION
+        if not CURIO_DATA[name] then name = DEFAULT_COMPANION end
+        Populate(name, not fromRead)
         AnchorPopup()
         popup:Show()
     end
@@ -384,7 +462,13 @@ E:RegisterModule(function()
         if event == "ADDON_LOADED" and arg1 == "Blizzard_DelvesCompanionConfiguration" then
             HookCompanionFrame()
         elseif event == "BAG_UPDATE_DELAYED" and popup:IsShown() then
-            ShowForCurrentCompanion()
+            -- Keep the companion the popup was opened with. Re-resolving would
+            -- swap an explicit /ed curios brann for the live one.
+            if shownCompanion then
+                Populate(shownCompanion, true)
+            else
+                ShowForCurrentCompanion()
+            end
         end
     end)
 
@@ -405,7 +489,8 @@ E:RegisterModule(function()
                         :format(arg))
                 return
             end
-            fromRead = true
+            -- An explicit argument is a lookup, so it must not pin lastKnownCompanion.
+            fromRead = false
         else
             name = GetActiveCompanionName()
             fromRead = name ~= nil

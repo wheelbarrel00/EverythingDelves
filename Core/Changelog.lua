@@ -3,6 +3,31 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "1.32.1", date = "2026-08-31",
+        sections = {
+            { head = "Fixed", items = {
+                "Reset All Settings could destroy your saved runs - resetting also reset \"Runs kept per delve\" back to 20. Nothing appeared to happen at the time, but the next run you finished in a delve quietly trimmed that delve's history down to twenty rows, taking your hand-typed run notes with it, and there was no way to get them back. Anyone who had raised the setting could lose up to eighty runs per delve without ever being told. The reset now leaves that setting alone, which is what the addon has always promised it does.",
+                "The curio and poison popup now opens by itself on every language - it worked out which companion you had by reading her name off the panel, which only matched in English. It now identifies her the way the game does, so Russian, Korean and Chinese clients get the popup when they bring up the companion panel. The same change fixes something wider that was never noticed: on every client, including English, the popup could only tell who your companion was while that panel was open, so the Curios keybind and /ed curios were falling back to a default instead of reading her.",
+                "The panel beside the delve difficulty picker never appeared on translated clients - it matched the entrance name against an English list, so on German, French, Russian, Korean and Chinese it never recognized the delve and stayed hidden, even though the option is on by default. It also now shows the delve's name in your own language.",
+                "Map pins claimed your delve achievements were complete when they were not - the same English-name matching meant the achievement section of a delve's map tooltip decided everything was finished and printed nothing at all, hiding outstanding Tier 4, Tier 8 and Tier 11 goals. It now reads them correctly, and where it genuinely cannot tell it stays quiet instead of claiming you are done.",
+                "The curio popup and the difficulty-picker panel opened behind the main window - both sat underneath it, so pressing the Curios keybind with the window open looked like nothing had happened. They now open in front, like the other popups.",
+                "Resetting settings did not apply them until a reload - the UI scale, the minimap button and the delve HUD kept their old behavior while the Options tab already showed the new values. They now take effect immediately.",
+                "The minimap button forgot where you had dragged it after a reset - its position was stored in a place the reset replaced wholesale, so it was silently lost at logout. It now survives.",
+                "Options checkboxes went stale when a setting was changed from somewhere else - the HUD keybind, /ed obj, the Trovehunter reminder's \"don't show again\" and the What's New \"don't show again\" all wrote a setting without updating the matching box on the Options tab, so your next click on it appeared to do nothing and you had to click twice.",
+                "Curio bag counts froze while the popup was open - looting a curio did not update the count unless the companion panel was what had opened the popup.",
+                "/ed curios brann changed your delve HUD for the rest of the session - a command meant to look something up was treated as a change of companion, so the HUD then recommended the wrong curios and dropped the Poison line entirely until you reloaded.",
+                "The Current Bountiful list could error when entering a delve - refreshing the list from inside a delve left rows pointing at data that had already been cleared, which could throw an error when one was clicked. The same refresh no longer does needless work while the tab is closed.",
+                "A stored run could be wrongly marked bountiful - the automatic history repair that runs shortly after login could not always tell when the daily reset had been, and when it could not it marked everything it looked at as bountiful anyway, permanently. It now waits for a reliable answer instead.",
+                "The word \"Done\" in the map achievement tooltip was English on translated clients, although the word was already translated everywhere else.",
+            }},
+            { head = "Coming next", items = {
+                "The Season Max column on the Shard Tracker explains the wrong rule for three crests - Champion, Hero and Myth cap what you can hold rather than what you can earn, and the tooltip still describes the earning cap. The numbers and the warning are correct, only the explanation is out of date.",
+                "A few buttons are still in English on translated clients - the Pin buttons on the Delve Locations, Current Bountiful and Shard Tracker tabs, and the Dismiss button on the Trovehunter reminder, under headers that are translated.",
+                "The Poison row has no icon yet, unlike the Combat and Utility rows beside it. That is on the list, and will be corrected soon.",
+            }},
+        },
+    },
+    {
         version = "1.32.0", date = "2026-08-29",
         sections = {
             { head = "New", items = {

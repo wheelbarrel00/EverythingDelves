@@ -121,6 +121,29 @@ E.NemesisBossByDelve = {
     ["Torment's Rise"]  = "Nullaeus",
 }
 
+-- Companion identity, by ID. The companion panel's name is a localized string,
+-- so matching it as text resolves nothing on a client that transliterates.
+-- Both come from the client's PlayerCompanionInfo, which carries one row per
+-- delve season.
+--
+-- The trait tree ROTATES every season, so a new one has to be appended here or
+-- resolution falls through to the faction. The faction does NOT rotate: it is
+-- the companion's own "Trusty Delve Companion" reputation, one per companion
+-- for the life of the character.
+E.CompanionByTraitTree = {
+    [874]  = "Brann",     -- The War Within season 1
+    [1060] = "Brann",     -- The War Within season 2
+    [1151] = "Brann",     -- The War Within season 3
+    [1168] = "Valeera",   -- Midnight season 1
+    [1223] = "Valeera",   -- Midnight season 2
+}
+
+-- Newest first: a character who has both reputations is on the newer companion.
+E.CompanionFactions = {
+    { id = 2744, companion = "Valeera" },
+    { id = 2640, companion = "Brann"   },
+}
+
 -- SCENARIO_COMPLETED filters on this so only Midnight delves are logged.
 E.LoggableDelveNames = {}
 for _, d in ipairs(E.DelveData) do

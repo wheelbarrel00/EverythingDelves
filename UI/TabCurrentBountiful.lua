@@ -165,6 +165,9 @@ local function ReleaseBountifulList(list)
         wipe(e)
         bountifulEntryPool[#bountifulEntryPool + 1] = e
     end
+    -- Pooled rows still hold a pointer into the entries just wiped and stay
+    -- Shown until the next UpdateRows.
+    for _, r in ipairs(delveRowPool) do r.delve = nil end
 end
 
 -- A delve POI with atlasName "delves-bountiful" is bountiful today;
@@ -1267,6 +1270,13 @@ end)
 -- Debounced (2 s) internally, so cheap to call repeatedly.
 function E:RefreshBountifulData(force)
     RefreshBountifulData(force)
+    -- Public callers get no view refresh otherwise, and rows left Shown still
+    -- point at entry tables the rebuild recycled. Only when it is on screen: the
+    -- delve heartbeat calls this once a second with the tab closed.
+    if sc and sc:IsVisible() then
+        UpdateRows()
+        UpdateBestPick()
+    end
     -- Fire a PLAYER_LOGIN-flagged repair once the live names exist;
     -- AutoRepair clears the flag and no-ops on later calls.
     if E._autoRepairPending and E.AutoRepairBountifulHistory then

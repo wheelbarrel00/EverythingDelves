@@ -629,40 +629,45 @@ E:RegisterModule(function()
     scrollChild:SetHeight(math.abs(Y) + 10)
     UpdateScrollRange()
 
-    -- Re-sync widgets with E.db on show, in case /ed reset was used externally
+    -- For a setting written while this tab is already open. CreateCheckbox's
+    -- handler writes self:GetChecked(), so a stale box's next click writes the
+    -- value the DB already holds and reads as a no-op.
+    function E:RefreshOptionsWidgets()
+        defaultTabSlider:SetValue(self.db.defaultTab or 1)
+        scaleSlider:SetValue((self.db.uiScale or 1.0) * 100)
+        minimapCB:SetChecked(self.db.minimapButton and self.db.minimapButton.show)
+        troveCB:SetChecked(self.db.showTrovehunterReminder ~= false)
+        shardWeeklyCB:SetChecked(self.db.showShardWeekly == true)
+        whatsNewCB:SetChecked(self.db.showWhatsNew ~= false)
+        resultCB:SetChecked(self.db.showRunResult ~= false)
+        objCB:SetChecked(self.db.showDelveObjectives == true)
+        timerCB:SetChecked(self.db.showRunTimer ~= false)
+        hudCB:SetChecked(self.db.showDelveHUD ~= false)
+        pickerCB:SetChecked(self.db.showPickerInfo ~= false)
+
+        for _, cb in ipairs(accentRadios) do
+            cb:SetChecked(self.db.accentColor == cb.optValue)
+        end
+        for _, cb in ipairs(achTipRadios) do
+            cb:SetChecked(self.db.achievementTooltip == cb.optValue)
+        end
+
+        lowWarnCB:SetChecked(self.db.lowShardWarning)
+        threshSlider:SetValue(self.db.lowShardThreshold or 100)
+        bountAlertCB:SetChecked(self.db.alertNewBountiful)
+        specAlertCB:SetChecked(self.db.alertSpecialAssignment)
+        roleAlertCB:SetChecked(self.db.alertCompanionRole ~= false)
+
+        muteValeeraCB:SetChecked(self.db.muteValeera == true)
+        muteBubblesCB:SetChecked(self.db.muteValeeraBubbles == true)
+        muteDundunCB:SetChecked(self.db.muteDundun == true)
+    end
+
     frame:SetScript("OnShow", function()
         scrollFrame:SetVerticalScroll(0)
         tabScrollBar:SetValue(0)
         UpdateScrollRange()
-
-        defaultTabSlider:SetValue(E.db.defaultTab or 1)
-        scaleSlider:SetValue((E.db.uiScale or 1.0) * 100)
-        minimapCB:SetChecked(E.db.minimapButton and E.db.minimapButton.show)
-        troveCB:SetChecked(E.db.showTrovehunterReminder ~= false)
-        shardWeeklyCB:SetChecked(E.db.showShardWeekly == true)
-        whatsNewCB:SetChecked(E.db.showWhatsNew ~= false)
-        resultCB:SetChecked(E.db.showRunResult ~= false)
-        objCB:SetChecked(E.db.showDelveObjectives == true)
-        timerCB:SetChecked(E.db.showRunTimer ~= false)
-        hudCB:SetChecked(E.db.showDelveHUD ~= false)
-        pickerCB:SetChecked(E.db.showPickerInfo ~= false)
-
-        for _, cb in ipairs(accentRadios) do
-            cb:SetChecked(E.db.accentColor == cb.optValue)
-        end
-        for _, cb in ipairs(achTipRadios) do
-            cb:SetChecked(E.db.achievementTooltip == cb.optValue)
-        end
-
-        lowWarnCB:SetChecked(E.db.lowShardWarning)
-        threshSlider:SetValue(E.db.lowShardThreshold or 100)
-        bountAlertCB:SetChecked(E.db.alertNewBountiful)
-        specAlertCB:SetChecked(E.db.alertSpecialAssignment)
-        roleAlertCB:SetChecked(E.db.alertCompanionRole ~= false)
-
-        muteValeeraCB:SetChecked(E.db.muteValeera == true)
-        muteBubblesCB:SetChecked(E.db.muteValeeraBubbles == true)
-        muteDundunCB:SetChecked(E.db.muteDundun == true)
+        E:RefreshOptionsWidgets()
     end)
 
     E:RegisterTab(9, frame)

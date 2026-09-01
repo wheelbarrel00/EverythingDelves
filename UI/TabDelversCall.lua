@@ -314,7 +314,6 @@ E:RegisterModule(function()
 
     local doneCheck = CreateFrame("CheckButton", nil, sc, "UICheckButtonTemplate")
     doneCheck:SetSize(24, 24)
-    doneCheck:SetChecked(E.db and E.db.showDelversCallDone == true)
 
     local doneLabel = doneCheck:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     doneLabel:SetPoint("LEFT", doneCheck, "RIGHT", 4, 0)
@@ -354,6 +353,8 @@ E:RegisterModule(function()
 
     local function RefreshAll()
         local states, counts = ComputeStates()
+
+        doneCheck:SetChecked(E.db and E.db.showDelversCallDone == true)
 
         for i, entry in ipairs(E.DelversCall) do
             local st  = states[entry.delve] or "fresh"

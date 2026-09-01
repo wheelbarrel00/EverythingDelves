@@ -81,7 +81,7 @@ local ICON_TODO = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:12:12:0:0|t"
 
 local function AddAchHeader(label, done, total)
     local right = (done >= total)
-        and (E.CC.green .. "Done" .. E.CC.close)
+        and (E.CC.green .. L["Done"] .. E.CC.close)
         or  (E.CC.red .. done .. "/" .. total .. E.CC.close)
     GameTooltip:AddDoubleLine(E.CC.gold .. label .. E.CC.close, right)
 end
@@ -148,9 +148,10 @@ local function BuildSection(delveName, mode)
     end
 
     local status = E:GetDelveAchievementStatus(delveName)
-    if not status or status.allDone then
-        DebugTip(status and "skip: all achievements complete"
-            or "skip: no achievement data")
+    -- Gate on summaryCount, not allDone: unknown depths clear allDone without
+    -- adding anything to render, and an empty section is worse than none.
+    if not status or status.summaryCount == 0 then
+        DebugTip(status and "skip: nothing outstanding" or "skip: no achievement data")
         return
     end
     local credit = E:GetTodaysStoryCredit(delveName, status)
@@ -188,13 +189,8 @@ local function OnTooltipShow()
         -- Map-canvas-owned tooltips: identify the delve by title.
         if not IsWorldMapDescendant(owner) then return end
         local title = TooltipTitle()
-        if title and E.DelveNamesMatch then
-            for name in pairs(E.DelveAchievements or {}) do
-                if E.DelveNamesMatch(title, name) then
-                    delveName = name
-                    break
-                end
-            end
+        if title and E.ResolveDelveByDisplayName then
+            delveName = E:ResolveDelveByDisplayName(title)
         end
         if not delveName then
             DebugTip("map tooltip ignored: title "
@@ -226,7 +222,11 @@ local function TryReappend()
 
     -- The rebuild may have repurposed the tooltip (mousing pin -> bag item never hides it).
     local title = TooltipTitle()
-    if not (title and E.DelveNamesMatch and E.DelveNamesMatch(title, cur.delve)) then
+    local stillOurs = title and (
+        (E.DelveNamesMatch and E.DelveNamesMatch(title, cur.delve))
+        or (E.ResolveDelveByDisplayName
+            and E:ResolveDelveByDisplayName(title) == cur.delve))
+    if not stillOurs then
         current, wiped = nil, false
         return
     end

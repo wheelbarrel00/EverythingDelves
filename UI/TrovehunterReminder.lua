@@ -123,6 +123,7 @@ local function CreateReminderFrame()
         else
             E.db.showTrovehunterReminder = true
         end
+        if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
     end)
     f.dontShowCB = cb
 

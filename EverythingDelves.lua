@@ -181,6 +181,7 @@ function E:InitDB()
     local sv = EverythingDelvesDB
 
     -- Merge defaults without overwriting existing values (settings survive updates).
+    -- Also fills a key added to an existing sub-table, one level deep.
     local function seed(tbl)
         for k, v in pairs(tbl) do
             if sv[k] == nil then
@@ -188,6 +189,16 @@ function E:InitDB()
                     sv[k] = CopyTable(v)
                 else
                     sv[k] = v
+                end
+            elseif type(v) == "table" and type(sv[k]) == "table" then
+                for sk, svalue in pairs(v) do
+                    if sv[k][sk] == nil then
+                        if type(svalue) == "table" then
+                            sv[k][sk] = CopyTable(svalue)
+                        else
+                            sv[k][sk] = svalue
+                        end
+                    end
                 end
             end
         end
@@ -244,21 +255,57 @@ function E:InitDB()
     BuildDBProxy(sv)
 end
 
--- Settings only: DATA_DEFAULTS and profiles are deliberately not iterated,
--- so a reset never wipes history/roster/etc.
+-- Settings only: DATA_DEFAULTS and profiles are deliberately not iterated, so a
+-- reset never wipes history/roster/etc. historyCap is carried over because
+-- restoring the default 20 arms a trim that deletes stored runs and their notes
+-- at the next logged run.
 function E:ResetDB()
     local sv = EverythingDelvesDB
     if not sv then return end
+    local keptHistoryCap = sv.historyCap
     for k, v in pairs(DEFAULTS) do
         if type(v) == "table" then
-            sv[k] = CopyTable(v)
+            -- Reset sub-tables key-by-key: LibDBIcon holds a live reference to
+            -- sv.minimapButton.LibDBIcon and replacing the table orphans it.
+            if type(sv[k]) ~= "table" then sv[k] = {} end
+            for dk, dv in pairs(v) do
+                if type(dv) == "table" then
+                    sv[k][dk] = CopyTable(dv)
+                else
+                    sv[k][dk] = dv
+                end
+            end
         else
             sv[k] = v
         end
     end
+    if type(keptHistoryCap) == "number" then
+        sv.historyCap = keptHistoryCap
+    end
     E:InitDB()
-    if E.ApplyAccentColor then
-        E:ApplyAccentColor(E.db.accentColor)
+    E:ApplySettingsToUI()
+end
+
+-- A reset writes the DB but nothing re-reads it, so the accent, scale, minimap
+-- button, HUD and the Options widgets all keep the old value until a /reload.
+function E:ApplySettingsToUI()
+    if self.ApplyAccentColor then
+        self:ApplyAccentColor(self.db.accentColor)
+    end
+    if self.MainFrame then
+        self.MainFrame:SetScale(self.db.uiScale or 1.0)
+    end
+    if self.SetMinimapButtonVisible and self.db.minimapButton then
+        self:SetMinimapButtonVisible(self.db.minimapButton.show)
+    end
+    if self.UpdateDelveObjectivesWindow then
+        self:UpdateDelveObjectivesWindow()
+    end
+    if self.RefreshDelveLocations then
+        self:RefreshDelveLocations()
+    end
+    if self.RefreshOptionsWidgets then
+        self:RefreshOptionsWidgets()
     end
 end
 
@@ -365,6 +412,7 @@ function EverythingDelves_ToggleHUD()
     if not E.db then return end
     E.db.showDelveHUD = (E.db.showDelveHUD == false)
     if E.UpdateDelveObjectivesWindow then E:UpdateDelveObjectivesWindow() end
+    if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
     print("|cFFFF2222Everything Delves|r: "
         .. (E.db.showDelveHUD and L["Delve HUD enabled."] or L["Delve HUD disabled."]))
 end
@@ -423,6 +471,12 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.DebugPrintAchievements then
             E:DebugPrintAchievements()
         end
+    elseif msg == "companion" then
+        if E.DumpCompanionState then
+            E:DumpCompanionState()
+        else
+            print("|cFFFF2222Everything Delves|r: curio module not loaded.")
+        end
     elseif msg == "debug" then
         if E.db then
             E.db.debugTier = not E.db.debugTier
@@ -437,6 +491,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             if E.UpdateDelveObjectivesWindow then
                 E:UpdateDelveObjectivesWindow()
             end
+            if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
             print("|cFFFF2222Everything Delves|r: "
                 .. (E.db.showDelveObjectives
                     and L["Bonus Spoils tracker |cFF22FF22ON|r - it appears while you're inside a delve."]
@@ -1531,6 +1586,10 @@ function E:AutoRepairBountifulHistory()
             lastReset = time() + secs - 86400
         end
     end
+    -- A zero boundary (API missing, or 0 at the reset moment) passes every
+    -- retained run, so today's bountiful delves would have their whole stored
+    -- history stamped with no way back. Leave the pending flag set to retry.
+    if lastReset <= 0 then return end
 
     local repaired = 0
     for delveName, entry in pairs(self.db.delveHistory) do

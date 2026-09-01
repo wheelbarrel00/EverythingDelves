@@ -1,24 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.32.0"
+local WHATS_NEW_VERSION = "1.32.1"
 
 local ENTRIES = {
     {
-        title = "Class color is now one of the accent colors",
-        desc  = "Options, under Display, gains a sixth choice beside Gold, Red, Purple, Dark Green and Dark Blue. The window, tabs, headings, delve HUD and reminders all take your own class color. It follows whoever you are logged in as, and picks up a custom class color if your interface already sets one. Requested by ttocsic.",
+        title = "Reset All Settings could destroy your saved runs",
+        desc  = "Resetting also reset \"Runs kept per delve\" back to 20. Nothing appeared to happen at the time, but the next run you finished quietly trimmed that delve's history to twenty rows and took your typed run notes with it, with no way back. The reset now leaves that setting alone.",
     },
     {
-        title = "The Trovehunter's Bounty reminder is working again",
-        desc  = "It has not appeared since Season 2 started. The bounty is issued as a brand new item each season and the addon was still watching for Season 1's, so the popup never fired for anyone, in any Bountiful Delve. It now knows the Season 2 bounty, and follows whichever one you are carrying.",
+        title = "The curio and poison popup opens by itself on every language",
+        desc  = "It used to work out which companion you had by reading her name, which only matched in English. It now identifies her the way the game does. The same change fixes something wider: on every client it could only tell who she was while the companion panel was open, so the Curios keybind and /ed curios were falling back to a default.",
     },
     {
-        title = "The six languages cover the new option",
-        desc  = "German, French, Russian, Korean, Simplified Chinese and Traditional Chinese are complete again at 765 phrases each.",
+        title = "Two features that never worked on translated clients",
+        desc  = "The panel beside the delve difficulty picker matched the entrance name against an English list, so it stayed hidden on German, French, Russian, Korean and Chinese. Map pins had the same fault and decided your delve achievements were complete, hiding outstanding Tier 4, Tier 8 and Tier 11 goals. Both read correctly now.",
     },
     {
         title = "Coming next",
-        desc  = "On Russian, Korean and Chinese clients the curio and poison popup does not open by itself - it reads your companion's name, which only matches in English. /ed curios and the Curios keybind still work. Also queued: the Season Max tooltip, a few buttons still English when translated, and a Poison icon.",
+        desc  = "The Season Max tooltip on the Shard Tracker explains the wrong rule for three crests. A few buttons are still English when translated - the Pin buttons and the Trovehunter Dismiss button. The Poison row still has no icon; that is on the list and will be corrected soon.",
     },
 }
 
@@ -110,6 +110,7 @@ E:RegisterModule(function()
     neverFS:SetText(E.CC.body .. L["Don't show this again"] .. E.CC.close)
     neverCB:SetScript("OnClick", function(self)
         if E.db then E.db.showWhatsNew = not self:GetChecked() end
+        if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
     end)
 
     local btn = E:CreateButton(popup, 100, 24, L["Got it"])
