@@ -5,6 +5,31 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.33.0] - 2026-09-03
+
+### Bug Fixes
+
+- **The Bonus Spoils tracker still asked you to find the Sanctified Banner** - Blizzard retired the Sanctified Banner and its Sanctified Spoils when Midnight Season 1 ended, but the in-delve tracker went on listing "find it for bonus loot" on every bountiful run. It was asking for something no one could find, and there was no way to complete the line. All of the banner tracking has been removed, and the tracker now follows the Nemesis Strongbox packs alone. Thanks to LightsBeacon for the report.
+- **The Nemesis Strongbox count doubled if you left a delve and went straight back in** - the tracker did not always notice you had left, so it treated the second visit as the same run, kept the packs already counted, and then counted the respawned ones on top. A Tier 7 delve with two packs read four, and a reload did not clear it because the inflated figure had been saved with the run. Re-entry is now recognized as a fresh visit. Reloading mid-run still resumes correctly, and dying and releasing still does not reset anything, because neither leaves the delve.
+- **The tracker could claim your bonus loot was secured before it had seen anything** - entering a Tier 4 or higher delve printed a green "All bonus loot accounted for." until the first Pactsworn pack came into view, which is exactly when you are most likely to glance at it. It now stays quiet until it knows. This was already happening in non-bountiful delves before this release, where there was no banner line to mask it.
+- **The tracker could report every pack cleared after a loading screen** - dying and releasing, or any other loading screen taken mid-run, empties the game's vignette list for a moment. The tracker read that empty list as every remaining pack having been killed, so it announced "Bonus loot secured - go get the boss!" with packs still up. It now waits for the list to come back before believing it. The count itself could already go wrong this way, but the false all-clear was previously hidden whenever you had not yet picked up the banner.
+- **The "Season Max" tooltip on the Shard Tracker explained the wrong rule** - it described the number as the most of that crest you are allowed to earn for the season. That is true for some crests, but for others the number caps how many you can hold at once, and spending frees room again. The tooltip now covers both cases, and deliberately does not claim to know which crests are which, because a hotfix can move that.
+- **The Reset Settings tooltip promised more than the reset does** - it said every option returns to its default value. Since v1.32.1 "Runs kept per delve" is deliberately left alone, so that a reset cannot destroy your saved history, and the tooltip now says so.
+
+### New Features
+
+- **The Poison row finally has an icon** - the Combat and Utility rows have always shown the item's art, but Valeera's poisons are a companion choice node rather than items, so the row beneath them sat bare. All six poisons now show their own spell art, in the delve HUD, in the curio popup, and against every entry in that popup's tooltip. The IDs behind them were read out of the game's own companion trait data rather than matched by spell name, which mattered more than it sounds: two different spells are both named "Frostheart Venom" and they carry different icons, so anything that matched on the name picked the wrong poison's art.
+- **`/ed poison`** - a diagnostic that prints each poison's ID next to the name and icon the game actually returns for it, so a future season swapping the IDs can be spotted in one run rather than guessed at.
+
+### Improvements
+
+- **The last four English buttons are translated** - the Pin buttons on the Delve Locations, Current Bountiful and Shard Tracker tabs, and the Dismiss button on the Trovehunter reminder, were hardcoded English and stayed English on translated clients, sitting directly beneath column headers that were already translated.
+- **The in-delve tracker no longer sends or receives addon messages** - the party sync existed only so that one member picking up the Sanctified Banner registered for everyone, and it went with the banner.
+
+### Notes
+
+- On a French client the Pin buttons render their label slightly wider than the button itself, because the button was sized for the English word. Nothing overlaps, and every other language fits. It will be tidied in a later pass.
+
 ## [1.32.1] - 2026-08-31
 
 ### Bug Fixes

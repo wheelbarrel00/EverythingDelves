@@ -606,7 +606,7 @@ local function CreateDelveRow()
     tierText:SetJustifyH("CENTER")
     row.tierText = tierText
 
-    local wpBtn = E:CreateButton(row, 32, 20, "Pin")
+    local wpBtn = E:CreateButton(row, 32, 20, L["Pin"])
     wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
     wpBtn:SetPoint("LEFT", row, "LEFT", 370, 0)
     E:WireDelvePinButton(wpBtn, function() return row.delve end)

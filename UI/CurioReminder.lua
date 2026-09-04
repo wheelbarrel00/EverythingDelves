@@ -16,21 +16,37 @@ local CURIO_DATA = {
 }
 
 -- Season 2 poisons are a companion choice node, not items, so they carry no bag
--- count and no item icon.
+-- count and their icon comes from the spell rather than an item.
+-- The spellIDs are seasonal. Re-derive at a season flip from the Poisons choice
+-- node, whose id C_DelvesUI.GetFlavorNodeForCompanion returns live (110784 in
+-- Midnight season 2), through TraitNodeXTraitNodeEntry, TraitNodeEntry and
+-- TraitDefinition. Never by spell name: 1305912 and 1305914 are both named
+-- "Frostheart Venom" and 1305914 carries Soulthirst Venom's icon.
 local POISON_DATA = {
-    { name = "Frostheart Venom", fromQuest = true,
+    { name = "Frostheart Venom", fromQuest = true, spellID = 1305912,
       note = L["Slows enemies by 30 percent and cuts their attack and cast speed by 20 percent for 10 seconds. The safest all-round pick, and the strongest one against caster packs and on Nemesis fights."] },
-    { name = "Bloodcrypt Toxin",
+    { name = "Bloodcrypt Toxin", spellID = 1251120,
       note = L["Cuts enemy damage and Haste by 10 percent for 20 seconds. The pick for a blind first run, or for a boss that keeps killing you."] },
-    { name = "Poison of the Forgotten Master",
+    { name = "Poison of the Forgotten Master", spellID = 1249934,
       note = L["Builds 5 percent damage every 3 seconds in combat, up to 25 percent. The highest ceiling of the six, but the stacks fall off when you take damage, so it wants a fight you already know."] },
-    { name = "Soulthirst Venom",
+    { name = "Soulthirst Venom", spellID = 1250826,
       note = L["Grants 10 percent Leech, Avoidance and Speed. Steady survivability that does not rely on a proc going off."] },
-    { name = "Bursting Toad Toxin", fromQuest = true,
+    { name = "Bursting Toad Toxin", fromQuest = true, spellID = 1305904,
       note = L["Struck enemies burst for Nature damage every second for 8 seconds. Best on packed trash around one tanky target."] },
-    { name = "Phantasmal Spore Toxin", fromQuest = true,
+    { name = "Phantasmal Spore Toxin", fromQuest = true, spellID = 1305924,
       note = L["Interrupts and fears struck enemies for 1 second."] },
 }
+
+-- Falls back to "" so an unknown or rotated id renders the line exactly as it
+-- did before the icons existed.
+function E.GetPoisonIconMarkup(poison, size)
+    local sid = type(poison) == "table" and poison.spellID
+    if not (sid and C_Spell and C_Spell.GetSpellTexture) then return "" end
+    local ok, tex = pcall(C_Spell.GetSpellTexture, sid)
+    if not ok or not tex then return "" end
+    size = size or 12
+    return "|T" .. tex .. ":" .. size .. ":" .. size .. ":0:0|t "
+end
 
 local RECOMMENDED_POISON = "Frostheart Venom"
 local POISON_QUEST       = "Slithering Spoils"
@@ -159,6 +175,40 @@ local function GetActiveCompanionName()
         return byText
     end
     return ResolveByFaction()
+end
+
+-- Confirms each stored spellID still resolves to the poison it is filed under.
+function E:DumpPoisonState()
+    local function line(s) print("|cFFFFD700[ED poison]|r " .. s) end
+    print(self.CC.header .. "Everything Delves" .. self.CC.close .. ": poison slot")
+    local enUS = (GetLocale and GetLocale()) == "enUS"
+    line("locale: " .. tostring(GetLocale and GetLocale()))
+    line("recommended: " .. tostring(RECOMMENDED_POISON))
+    for _, pd in ipairs(POISON_DATA) do
+        local liveName, tex
+        if C_Spell then
+            if C_Spell.GetSpellName then
+                local ok, n = pcall(C_Spell.GetSpellName, pd.spellID)
+                liveName = ok and n or nil
+            end
+            if C_Spell.GetSpellTexture then
+                local ok, t = pcall(C_Spell.GetSpellTexture, pd.spellID)
+                tex = ok and t or nil
+            end
+        end
+        local verdict = ""
+        if enUS then
+            verdict = (liveName == pd.name) and "  |cFF22FF22ok|r"
+                or "  |cFFFF2222MISMATCH|r"
+        end
+        line(("  %d  %s"):format(pd.spellID, pd.name))
+        line(("      live name: %s%s   icon: %s")
+            :format(tostring(liveName), verdict, tostring(tex)))
+    end
+    if not enUS then
+        line("names are localized off enUS, so compare the icons, not the names.")
+    end
+    line("a nil icon means the id is unknown here, and renders no icon.")
 end
 
 -- /ed companion - an unrecognized tree ID after a season flip names itself
@@ -340,7 +390,8 @@ E:RegisterModule(function()
         }
         for _, pd in ipairs(POISON_DATA) do
             local isPick = (pd.name == RECOMMENDED_POISON)
-            lines[#lines + 1] = (isPick and E.CC.gold or E.CC.body)
+            lines[#lines + 1] = E.GetPoisonIconMarkup(pd)
+                .. (isPick and E.CC.gold or E.CC.body)
                 .. pd.name .. E.CC.close
                 .. (pd.fromQuest and (" " .. E.CC.muted .. "*" .. E.CC.close) or "")
             lines[#lines + 1] = E.CC.muted .. pd.note .. E.CC.close
@@ -414,6 +465,7 @@ E:RegisterModule(function()
         if poison then
             poisonFS:SetText(
                 E.CC.muted .. L["Recommended:"] .. " " .. E.CC.close
+                .. E.GetPoisonIconMarkup(poison, 11)
                 .. E.CC.body .. poison.name .. E.CC.close)
         end
     end

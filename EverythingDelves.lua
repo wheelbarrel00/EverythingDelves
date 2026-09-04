@@ -477,6 +477,12 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         else
             print("|cFFFF2222Everything Delves|r: curio module not loaded.")
         end
+    elseif msg == "poison" then
+        if E.DumpPoisonState then
+            E:DumpPoisonState()
+        else
+            print("|cFFFF2222Everything Delves|r: curio module not loaded.")
+        end
     elseif msg == "debug" then
         if E.db then
             E.db.debugTier = not E.db.debugTier

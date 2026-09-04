@@ -213,7 +213,7 @@ E:RegisterModule(function()
         ["Season Max"] = {
             title = L["Season Max"],
             lines = {
-                L["The most of this crest you're allowed to earn this season - the seasonal earning cap."],
+                L["The seasonal cap on this crest. For some crests it limits how many you can earn all season. For others it limits how many you can hold at once, and spending frees room again."],
                 " ",
                 L["Shows \"Uncapped\" when Blizzard has lifted the cap for the rest of the season."],
             },
@@ -625,7 +625,7 @@ E:RegisterModule(function()
         amountFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 380, rowY)
         amountFS:SetFont(amountFS:GetFont(), 10)
 
-        local wpBtn = E:CreateButton(sc, 30, 16, "Pin")
+        local wpBtn = E:CreateButton(sc, 30, 16, L["Pin"])
         wpBtn.label:SetFont(wpBtn.label:GetFont(), 9)
         wpBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 430, rowY + 2)
         wpBtn:SetScript("OnEnter", function(self)

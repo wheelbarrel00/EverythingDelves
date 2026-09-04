@@ -127,7 +127,7 @@ local function CreateReminderFrame()
     end)
     f.dontShowCB = cb
 
-    local dismissBtn = E:CreateButton(f, 80, 22, "Dismiss")
+    local dismissBtn = E:CreateButton(f, 80, 22, L["Dismiss"])
     dismissBtn:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
     dismissBtn:SetScript("OnClick", RequestHide)
 

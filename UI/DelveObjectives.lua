@@ -1,7 +1,6 @@
--- "Bonus Spoils" tracker: optional, off-by-default window that tracks only
--- the two bonus-chest mechanics (Nemesis Strongbox packs, Sanctified Banner)
--- a player collects after the delve boss. Detection is lockdown-safe (no
--- combat log / no enemy nameplates — see banner/nemesis notes) and pcall-guarded.
+-- "Bonus Spoils" tracker: optional, off-by-default window that tracks the
+-- Nemesis Strongbox packs a player clears before the delve boss. Detection is
+-- lockdown-safe (no combat log / no enemy nameplates) and pcall-guarded.
 local E = EverythingDelves
 local L = E.L
 
@@ -20,15 +19,7 @@ local GILDED_WIDGET_ID = 7591
 
 -- Midnight lockdown (both confirmed live 2026-06-10): COMBAT_LOG_EVENT_UNFILTERED
 -- registration is forbidden, and UnitName() on delve enemies returns a SECRET
--- string that errors on any string method. So banner detection runs only on
--- unrestricted APIs: player auras and vignettes (names print clean in delves).
-local BANNER_INTERACT_SPELLS = {
-    [1269411] = true, [1269412] = true, [1269416] = true,  -- Sanctified Banner
-}
-local RAGER_SPAWN_SPELL = 1271184  -- "Voidfused Rager Spawn" (aura sweep only)
-local RAGER_SPELL       = 1271189  -- "Voidfused Rager" (aura sweep only)
--- Rager spotted via vignette name (EN clients); its vignetteID isn't known yet.
-local RAGER_NAME_MATCH = "Voidfused"
+-- string that errors on any string method. Neither can be used here.
 
 -- Nemesis pack vignettes: one per REMAINING pack, gone when the pack dies. Each
 -- season adds a NEW ID and the older delves still spawn theirs, so append, never
@@ -45,26 +36,11 @@ local function IsNemesisPack(vignetteID)
     end
     return false
 end
-local BANNER_BUFFS = {             -- any of these on the player = banner used
-    1271918, 1271945,                      -- Sanctified Touch
-    1272609, 1272666,                      -- Holy Fervor
-    1272756, 1272769,                      -- Ward of Light
-    1272809, 1272810, 1272813, 1272814,    -- Light's Judgement
-    1273058, 1273066,                      -- Holy Reinforcements
-}
-local BANNER_BUFF_SET = {}
-for _, sid in ipairs(BANNER_BUFFS) do BANNER_BUFF_SET[sid] = true end
-
--- Cast/aura click signals exist only on the clicker's client, so banner
--- transitions are also shared with the party over addon comms.
-local ADDON_MSG_PREFIX = "EDLV"
-
 -- Entrance-only header widgets (gone once inside a delve); kept solely for
 -- the /ed objdump probe section.
 local DELVE_TRACKER_WIDGETS = { 7526, 7592, 7624, 7761, 7764, 7861 }
 
--- Events that can carry the banner-manifest broadcast; exact carrier captured
--- live via /ed objdump.
+-- Delve broadcast carriers, logged for the /ed objdump probe section only.
 local MSG_EVENTS = {
     CHAT_MSG_RAID_BOSS_EMOTE = true,
     CHAT_MSG_MONSTER_YELL    = true,
@@ -193,7 +169,7 @@ E:RegisterModule(function()
         GameTooltip:AddLine("Everything Delves", 1, 1, 1)
         if E.db and E.db.showDelveObjectives then
             GameTooltip:AddLine(
-                L["Bonus Spoils: Nemesis Strongbox packs + the Sanctified Banner — the bonus loot to grab before the boss."],
+                L["Bonus Spoils: the Nemesis Strongbox packs to clear before the boss."],
                 0.7, 0.7, 0.7, true)
         end
         if E.db and E.db.showDelveHUD then
@@ -270,23 +246,14 @@ E:RegisterModule(function()
         UpdateRunTimer()
     end)
 
-    -- Sanctified Banner state machine, mirrored into E.db.activeRun so a mid-run
-    -- /reload doesn't lose it. Forward-only: announced -> clicked -> buffed ->
-    -- eliteUp -> grand (Grand Sanctified Spoils earned).
-    local bannerState = nil
-    local ragerGUID   = nil  -- the Rager's VIGNETTE guid once spotted
-    -- Session-local on purpose: vignette GUIDs regenerate on /reload, so a
-    -- persisted sighting would trip the absence check before re-discovery.
-    local bannerVigGUID   = nil
-    local bannerGoneAt    = nil  -- when observed absence started
-    local ragerGoneAt     = nil
-    local vigHoldUntil    = 0    -- absence inferences paused after a loading screen
-    local secretNameCount = 0    -- vignette names that threw (objdump diag)
+    local vigHoldUntil = 0   -- vignette reads distrusted for 10s after a loading screen
+    local vigScanTrusted = false  -- a vignette scan has completed outside that window
+    local lastInstanceID = nil    -- last instance seen, to arm the hold on a zone change
+    local sawExit = false         -- player observed outside a delve since the last reset
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
     local stickyMsgs  = {}   -- keyword-matched messages, never rotated out
-    local ScanVignettes      -- forward local; defined after SetBannerState
-    local PollPartyAuras     -- forward local; defined after SetBannerState
+    local ScanVignettes      -- forward local, RefreshContent closes over it
     -- Packs can appear ONE AT A TIME, so the peak-seen-at-once count undercounts
     -- kills. Instead accumulate distinct pack creature/object GUIDs ever seen this
     -- run; killed = seenCount - remaining. Rendering waits for a pack to be seen to
@@ -391,43 +358,33 @@ E:RegisterModule(function()
         return nil
     end
 
-    local function SendBannerComm(payload)
-        if not IsInGroup()
-                or not (C_ChatInfo and C_ChatInfo.SendAddonMessage) then
-            return
-        end
-        local channel = IsInGroup(LE_PARTY_CATEGORY_INSTANCE)
-            and "INSTANCE_CHAT" or "PARTY"
-        pcall(C_ChatInfo.SendAddonMessage, ADDON_MSG_PREFIX, payload, channel)
-    end
-
     -- Shared with the vignette scan, which runs on its own events even while the
     -- window is hidden. A reset that lived only in RefreshContent let a re-entry
-    -- pile new packs onto the previous run's tally -- a doubled, reload-persistent
-    -- count. After SCENARIO_COMPLETED inDelve is false, so this no-ops and the
-    -- looting-window banner state survives until the next real run.
+    -- pile new packs onto the previous run's tally, a doubled and reload-persistent
+    -- count.
     local function SyncRunTracking()
         local rs = E.delveRunState
         if not (rs and rs.inDelve) then return end
         local runKey = (rs.delveName or "?") .. "#" .. tostring(rs.startTime or 0)
         if runKey == lastRunKey then return end
         lastRunKey = runKey
-        bannerState, ragerGUID, ragerGoneAt = nil, nil, nil
-        bannerVigGUID, bannerGoneAt, secretNameCount = nil, nil, 0
         nemesisRemaining, nemesisSeenCount = nil, 0
         nemesisKilledBase = 0
+        vigScanTrusted = false
         wipe(nemesisSeen)
         wipe(msgLog)
         wipe(stickyMsgs)
         wipe(castLog)
         local ar = E.db and E.db.activeRun
-        if ar and ar.startTime == rs.startTime then
-            bannerState = ar.bannerState
-            ragerGUID   = ar.bannerRagerGUID
+        if sawExit then
+            -- Leaving resets the delve and respawns the packs, so kills recorded
+            -- before it no longer describe this instance. Zeroed whatever the
+            -- stored run looks like, or the persist's max() locks the old value.
+            if ar then ar.nemesisKilled = 0 end
+        elseif ar and ar.startTime == rs.startTime then
             nemesisKilledBase = ar.nemesisKilled or 0
         end
-        -- Recover transitions missed during a reload or a late zone-in.
-        SendBannerComm("BANNERQ")
+        sawExit = false
     end
 
     local function RefreshContent()
@@ -440,9 +397,7 @@ E:RegisterModule(function()
 
         SyncRunTracking()
 
-        -- Fresh vignette pass before rendering: feeds nemesis counter + banner.
         if ScanVignettes then pcall(ScanVignettes) end
-        if PollPartyAuras then pcall(PollPartyAuras) end
 
         local name = (rs and rs.delveName) or GetRealZoneText() or L["Delve"]
         local stepInfo
@@ -481,6 +436,8 @@ E:RegisterModule(function()
             local poison = E.GetRecommendedPoison and E:GetRecommendedPoison(companion)
             if poison then
                 AddLine(E.CC.muted .. L["Poison:"] .. E.CC.close .. " "
+                    .. (E.GetPoisonIconMarkup
+                        and E.GetPoisonIconMarkup(poison) or "")
                     .. E.CC.body .. poison.name .. E.CC.close)
             end
             local knownTier = liveTier or (rs.tier or 0)
@@ -517,9 +474,19 @@ E:RegisterModule(function()
         -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
         if E.db and E.db.showDelveObjectives then
+            local tierNow = liveTier or (rs and rs.tier) or 0
+            -- The counters and rs.inDelve all read stale during the hold, so
+            -- the all-clear waits it out. Tier 0 means not yet detected.
+            -- vigScanTrusted is the escape hatch: without it a pack ID rotated
+            -- at a season flip would blank this section for the whole run.
+            local kind = rs and rs.delveKind
+            local packsPending = GetTime() < vigHoldUntil
+                or (kind ~= "nemesis"
+                    and (tierNow == 0 or tierNow >= 4)
+                    and nemesisSeenCount == 0 and nemesisKilledBase == 0
+                    and not vigScanTrusted)
             if rs and rs.inDelve and rs.delveKind ~= "nemesis"
                     and (nemesisSeenCount > 0 or nemesisKilledBase > 0) then
-                local tierNow = liveTier or (rs.tier or 0)
                 local expected = 0
                 if     tierNow >= 10 then expected = 4
                 elseif tierNow >= 8  then expected = 3
@@ -533,25 +500,10 @@ E:RegisterModule(function()
                     killed >= total, false, nil)
             end
 
-            if bannerState == "grand" then
-                EmitObjective(L["Sanctified Banner - Grand Spoils earned!"],
-                    true, false, nil)
-            elseif bannerState == "buffed" or bannerState == "clicked" then
-                EmitObjective(L["Sanctified Banner found - bonus Spoils secured"],
-                    true, false, nil)
-            elseif bannerState == "eliteUp" then
-                EmitObjective(L["Sanctified Banner - kill the Voidfused Rager!"],
-                    false, false, nil)
-            elseif rs and rs.inDelve
-                    and (rs.wasBountiful or bannerState == "announced") then
-                EmitObjective(L["Sanctified Banner - find it for bonus loot"],
-                    false, false, nil)
-            end
-
             if objTotal > 0 and objDone >= objTotal then
                 AddLine(ICON_DONE .. E.CC.green
                     .. L["Bonus loot secured - go get the boss!"] .. E.CC.close, true)
-            elseif objTotal == 0 then
+            elseif objTotal == 0 and not packsPending then
                 -- Phrased to fit both "no bonus mechanics" and "run already ended".
                 AddLine(ICON_DONE .. E.CC.green
                     .. L["All bonus loot accounted for."] .. E.CC.close)
@@ -585,18 +537,35 @@ E:RegisterModule(function()
 
     local function DoRefresh()
         refreshPending = false
+        -- Armed here as well as on PLAYER_ENTERING_WORLD: an entry can be a
+        -- seamless transition that fires no fresh PEW, and QueueRefresh latches
+        -- on the first event to arrive, so a render can beat it either way.
+        local instanceID = select(8, GetInstanceInfo())
+        if instanceID ~= lastInstanceID then
+            lastInstanceID = instanceID
+            vigHoldUntil = GetTime() + 10
+            vigScanTrusted = false
+        end
+        -- The only place the exit is observable: SyncRunTracking is reached
+        -- only from inside a delve. If the core misses an exit the run keeps
+        -- its startTime, so the runKey matches and its reset never fires.
+        -- Uses the core's wider test rather than PlayerInDelve, which reads the
+        -- difficulty alone: a transient non-208 happens inside a delve, and
+        -- latching on one would zero the run's kill count for good.
+        local _, instanceType = IsInInstance()
+        if select(3, GetInstanceInfo()) ~= 208 and instanceType ~= "scenario" then
+            lastRunKey = nil
+            sawExit    = true
+        end
         -- Gate on the LIVE in-delve test, not rs.inDelve: the run-state is false
         -- in the post-boss loot room and on a not-yet-begun login entry, yet the
         -- HUD/timer (which self-gate on the run state) should still be available.
         local shouldShow = E.db and PlayerInDelve()
             and (E.db.showDelveObjectives or E.db.showRunTimer or E.db.showDelveHUD)
         if shouldShow then
-            -- Banner/cast watchers only while the Bonus Spoils tracker is on.
             if E.db.showDelveObjectives then
-                ef:RegisterUnitEvent("UNIT_AURA", "player")
                 ef:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
             else
-                ef:UnregisterEvent("UNIT_AURA")
                 ef:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
             end
             -- pcall so one bad API read can't kill the window for the session.
@@ -606,7 +575,6 @@ E:RegisterModule(function()
             end
             win:Show()
         else
-            ef:UnregisterEvent("UNIT_AURA")
             ef:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
             win:Hide()
         end
@@ -618,123 +586,28 @@ E:RegisterModule(function()
         C_Timer.After(0.25, DoRefresh)
     end
 
-    local BANNER_RANK = {
-        announced = 1, clicked = 2, buffed = 3, eliteUp = 4, grand = 5,
-    }
-
-    -- quiet: comm-received and inference-derived transitions must not
-    -- broadcast - only directly observed signals are authoritative.
-    local function SetBannerState(s, quiet)
-        if not BANNER_RANK[s] then return end
-        if bannerState and BANNER_RANK[s] <= BANNER_RANK[bannerState] then
-            return
-        end
-        bannerState = s
-        local ar = E.db and E.db.activeRun
-        if ar then
-            ar.bannerState     = bannerState
-            ar.bannerRagerGUID = ragerGUID
-        end
-        if not quiet then
-            SendBannerComm("BANNER:" .. s)
-        end
-        QueueRefresh()
-    end
-
-    -- Only trust group channels; a whispered or guild EDLV payload from a
-    -- stranger must not drive state.
-    local COMM_CHANNELS = { PARTY = true, INSTANCE_CHAT = true }
-    local function HandleAddonMessage(msg, channel)
-        if not PlayerInDelve() or not IsInGroup() then return end
-        if not COMM_CHANNELS[channel] then return end
-        if type(msg) ~= "string" then return end
-        if msg == "BANNERQ" then
-            if bannerState then
-                SendBannerComm("BANNER:" .. bannerState)
-            end
-            return
-        end
-        local s = msg:match("^BANNER:(%a+)$")
-        if s and BANNER_RANK[s] then
-            SetBannerState(s, true)
-        end
-    end
-
-    -- The blessing can land on a teammate while no click signal ever reaches
-    -- this client (the clicker may not run the addon). Party units are
-    -- friendly players, so their aura reads are not secret-string exposed.
-    PollPartyAuras = function()
-        if not PlayerInDelve() or not IsInGroup() then return end
-        if bannerState and BANNER_RANK[bannerState] >= BANNER_RANK.buffed then
-            return
-        end
-        if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return end
-        for p = 1, 4 do
-            local unit = "party" .. p
-            if UnitExists(unit) then
-                for i = 1, 40 do
-                    local ok, aura = pcall(
-                        C_UnitAuras.GetAuraDataByIndex, unit, i, "HELPFUL")
-                    if not ok or not aura then break end
-                    if aura.spellId and BANNER_BUFF_SET[aura.spellId] then
-                        SetBannerState("buffed")
-                        return
-                    end
-                end
-            end
-        end
-    end
-
-    local function HandleUnitAura()
-        if not PlayerInDelve() then return end
-        if bannerState and BANNER_RANK[bannerState] >= BANNER_RANK.buffed then
-            return
-        end
-        if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then
-            return
-        end
-        for _, sid in ipairs(BANNER_BUFFS) do
-            local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, sid)
-            if ok and aura then
-                SetBannerState("buffed")
-                return
-            end
-        end
-        for sid in pairs(BANNER_INTERACT_SPELLS) do
-            local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, sid)
-            if ok and aura then
-                SetBannerState("clicked")
-                return
-            end
-        end
-    end
-
-    -- The banner interact fires one of the Sanctified Banner spells as a player
-    -- cast — the only signal covering the no-buff/no-elite outcome.
+    -- Diagnostic only. /ed objdump prints this so the interact spell for a new
+    -- bonus mechanic can be identified from a real run rather than guessed.
+    -- 60 deep so a cast survives a long fight before the dump is taken.
     local function HandlePlayerCast(spellID)
         if not spellID or not PlayerInDelve() then return end
-        -- 60 deep: a post-click elite fight can burn 25+ GCDs and the interact
-        -- cast must survive until a post-fight /ed objdump.
         if #castLog >= 60 then table.remove(castLog, 1) end
         castLog[#castLog + 1] = spellID
-        if BANNER_INTERACT_SPELLS[spellID] then
-            SetBannerState("clicked")
-        end
     end
 
-    -- Vignette-driven (nameplates unusable: UnitName on delve enemies is secret).
-    -- Vignettes in a delve are zone-wide, so a Rager that vanishes was killed
-    -- rather than out of range, once the guards below rule out a loading screen
-    -- and run completion. Name matching is EN-only for now.
+    -- Vignettes in a delve are zone-wide, so a pack that vanishes was killed
+    -- rather than gone out of range.
     ScanVignettes = function()
         if not PlayerInDelve() then return end
         SyncRunTracking()
+        -- Ahead of the API guards below: if the vignette API is unavailable the
+        -- section has to fall back to the all-clear rather than stay blank.
+        if GetTime() >= vigHoldUntil then
+            vigScanTrusted = true
+        end
         if not (C_VignetteInfo and C_VignetteInfo.GetVignettes) then return end
         local ok, vigs = pcall(C_VignetteInfo.GetVignettes)
         if not ok or type(vigs) ~= "table" then return end
-        local ragerSeen  = false
-        local bannerSeen = false
-        local secretThisScan = false
         local packCount = 0
         for _, vguid in ipairs(vigs) do
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
@@ -747,71 +620,12 @@ E:RegisterModule(function()
                     nemesisSeenCount = nemesisSeenCount + 1
                 end
             end
-            local nm = ok2 and v and v.name
-            if type(nm) == "string" then
-                -- Group vignette names can be Midnight secret strings that pass
-                -- type() but throw on any string op. Guard per vignette so one
-                -- bad name can't abort the whole scan inside the outer pcall.
-                local okL, ln = pcall(string.lower, nm)
-                if not okL then
-                    secretNameCount = secretNameCount + 1
-                    secretThisScan = true
-                    -- GUID fallback: a known vignette whose name went
-                    -- unreadable is still present, not despawned.
-                    if vguid == bannerVigGUID then bannerSeen = true end
-                    if vguid == ragerGUID then ragerSeen = true end
-                elseif ln then
-                    if ln:find(RAGER_NAME_MATCH:lower(), 1, true) then
-                        ragerSeen = true
-                        if ragerGUID ~= vguid then
-                            ragerGUID = vguid
-                            local ar = E.db and E.db.activeRun
-                            if ar then ar.bannerRagerGUID = ragerGUID end
-                        end
-                        SetBannerState("eliteUp")
-                    elseif ln:find("grand sanctified", 1, true) then
-                        SetBannerState("grand")
-                    elseif ln:find("sanctified spoils", 1, true) then
-                        SetBannerState("clicked")  -- bonus chest confirmed
-                    elseif ln:find("sanctified banner", 1, true) then
-                        bannerSeen = true
-                        bannerVigGUID = vguid
-                        SetBannerState("announced")
-                    end
-                end
-            end
         end
-        -- A scan that hit a secret name is inconclusive for absence: skip
-        -- both despawn inferences rather than promote on partial data.
-        local rs = E.delveRunState
-        if ragerGUID and bannerState == "eliteUp" and rs and rs.inDelve then
-            if ragerSeen then
-                ragerGoneAt = nil
-            elseif not secretThisScan and GetTime() >= vigHoldUntil then
-                if not ragerGoneAt then
-                    ragerGoneAt = GetTime()
-                elseif GetTime() - ragerGoneAt >= 3 then
-                    SetBannerState("grand", true)
-                end
-            end
+        -- Inside the hold the list is still filling, so let the count rise but
+        -- never fall: a part-loaded list otherwise reads as packs killed.
+        if GetTime() >= vigHoldUntil or packCount > (nemesisRemaining or 0) then
+            nemesisRemaining = packCount
         end
-        -- A teammate's click despawns the banner zone-wide, the only signal
-        -- some clients get. Require sustained absence: loading screens flush
-        -- the whole list (vigHoldUntil), and everything despawns at run
-        -- completion (rs.inDelve). Inferred, so it never re-broadcasts.
-        if bannerVigGUID and bannerState == "announced"
-                and rs and rs.inDelve then
-            if bannerSeen then
-                bannerGoneAt = nil
-            elseif not secretThisScan and GetTime() >= vigHoldUntil then
-                if not bannerGoneAt then
-                    bannerGoneAt = GetTime()
-                elseif GetTime() - bannerGoneAt >= 3 then
-                    SetBannerState("clicked", true)
-                end
-            end
-        end
-        nemesisRemaining = packCount
         -- Persist the kill count: a /reload resets the vignette GUIDs, so seenCount
         -- rebuilds from live packs only and would drop already-killed ones. max()
         -- guards against a scan that runs before the resume restores the base.
@@ -829,15 +643,11 @@ E:RegisterModule(function()
         if #msgLog >= 10 then table.remove(msgLog, 1) end
         msgLog[#msgLog + 1] = event .. ": " .. text
         local lt = text:lower()
-        if lt:find("sanctified", 1, true) or lt:find("banner", 1, true)
-                or lt:find("strongbox", 1, true)
+        if lt:find("strongbox", 1, true)
                 or lt:find("nemesis", 1, true)
                 or lt:find("spoils", 1, true) then
             if #stickyMsgs < 10 then
                 stickyMsgs[#stickyMsgs + 1] = event .. ": " .. text
-            end
-            if lt:find("sanctified banner", 1, true) then
-                SetBannerState("announced")
             end
         end
     end
@@ -859,8 +669,8 @@ E:RegisterModule(function()
     end)
 
     -- Frames receive events in registration order, so the core handlers have
-    -- already updated E.delveRunState by the time these fire. UNIT_AURA and the
-    -- cast event are registered dynamically in DoRefresh, only while shown.
+    -- already updated E.delveRunState by the time these fire. The cast event is
+    -- registered dynamically in DoRefresh, only while shown.
     for _, ev in ipairs({
         "PLAYER_ENTERING_WORLD",
         "ZONE_CHANGED_NEW_AREA",
@@ -877,35 +687,20 @@ E:RegisterModule(function()
         "CHAT_MSG_SYSTEM",
         "VIGNETTE_MINIMAP_UPDATED",
         "VIGNETTES_UPDATED",
-        "CHAT_MSG_ADDON",
     }) do
         pcall(ef.RegisterEvent, ef, ev)
     end
-    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
-        pcall(C_ChatInfo.RegisterAddonMessagePrefix, ADDON_MSG_PREFIX)
-    end
     ef:SetScript("OnEvent", function(_, event, ...)
-        if event == "UNIT_AURA" then
-            HandleUnitAura()
-            return
-        end
         if event == "UNIT_SPELLCAST_SUCCEEDED" then
             local _, _, spellID = ...
             HandlePlayerCast(spellID)
             return
         end
-        if event == "CHAT_MSG_ADDON" then
-            local prefix, msg, channel = ...
-            if prefix == ADDON_MSG_PREFIX then
-                pcall(HandleAddonMessage, msg, channel)
-            end
-            return
-        end
         if event == "PLAYER_ENTERING_WORLD" then
-            -- Loading screens flush the vignette list. Everything that infers
-            -- from absence waits for it to repopulate.
-            bannerGoneAt, ragerGoneAt = nil, nil
+            -- Still armed here as well as on an instance change: a death and
+            -- release returns to the SAME instance, so only this catches it.
             vigHoldUntil = GetTime() + 10
+            vigScanTrusted = false
         end
         if MSG_EVENTS[event] then
             -- pcall: chat/system text could be a Midnight secret string.
@@ -1131,18 +926,9 @@ E:RegisterModule(function()
             out("  sweep done - " .. hits .. " widget(s) with data")
         end
 
-        out("=== nemesis/banner player auras ===")
+        out("=== nemesis player auras ===")
         if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
-            local auraIDs = {
-                1239535, 1270179, 472952,           -- Nemesis Strongbox
-                RAGER_SPAWN_SPELL, RAGER_SPELL,     -- Voidfused Rager pair
-            }
-            for sid in pairs(BANNER_INTERACT_SPELLS) do
-                auraIDs[#auraIDs + 1] = sid
-            end
-            for _, id in ipairs(BANNER_BUFFS) do
-                auraIDs[#auraIDs + 1] = id
-            end
+            local auraIDs = { 1239535, 1270179, 472952 }
             local found = 0
             for _, sid in ipairs(auraIDs) do
                 local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, sid)
@@ -1180,16 +966,7 @@ E:RegisterModule(function()
             out("  " .. tostring(sid) .. " " .. esc(nm))
         end
 
-        out("=== banner state machine ===")
-        local ragerNpcID = ragerGUID
-            and select(6, strsplit("-", ragerGUID)) or nil
-        out("  state=" .. tostring(bannerState)
-            .. " ragerGUID=" .. tostring(ragerGUID)
-            .. " ragerNpcID=" .. tostring(ragerNpcID))
-        out("  bannerVigGUID=" .. tostring(bannerVigGUID)
-            .. " bannerGoneAt=" .. tostring(bannerGoneAt)
-            .. " ragerGoneAt=" .. tostring(ragerGoneAt)
-            .. " secretNames=" .. tostring(secretNameCount))
+        out("=== nemesis pack tracking ===")
         out("  nemesisPacksRemaining=" .. tostring(nemesisRemaining)
             .. " seenCount=" .. tostring(nemesisSeenCount))
         out("=== keyword-matched delve messages ===")

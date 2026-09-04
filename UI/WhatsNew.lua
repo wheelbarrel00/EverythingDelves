@@ -1,24 +1,28 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.32.1"
+local WHATS_NEW_VERSION = "1.33.0"
 
 local ENTRIES = {
     {
-        title = "Reset All Settings could destroy your saved runs",
-        desc  = "Resetting also reset \"Runs kept per delve\" back to 20. Nothing appeared to happen at the time, but the next run you finished quietly trimmed that delve's history to twenty rows and took your typed run notes with it, with no way back. The reset now leaves that setting alone.",
+        title = "The tracker no longer asks you to find the Sanctified Banner",
+        desc  = "Blizzard retired the Sanctified Banner when Midnight Season 1 ended, but the Bonus Spoils tracker still listed it on every bountiful run as loot you had not collected yet. It was asking for something nobody could find. The tracker now follows the Nemesis Strongbox packs alone. Thanks to LightsBeacon for the report.",
     },
     {
-        title = "The curio and poison popup opens by itself on every language",
-        desc  = "It used to work out which companion you had by reading her name, which only matched in English. It now identifies her the way the game does. The same change fixes something wider: on every client it could only tell who she was while the companion panel was open, so the Curios keybind and /ed curios were falling back to a default.",
+        title = "The tracker could tell you the bonus loot was done when it was not",
+        desc  = "Two ways. Entering a Tier 4 or higher delve showed a green \"All bonus loot accounted for.\" before the first pack appeared. And any loading screen mid-run, a death and release included, briefly empties the vignette list, which read as every remaining pack being killed. Both now wait until they know.",
     },
     {
-        title = "Two features that never worked on translated clients",
-        desc  = "The panel beside the delve difficulty picker matched the entrance name against an English list, so it stayed hidden on German, French, Russian, Korean and Chinese. Map pins had the same fault and decided your delve achievements were complete, hiding outstanding Tier 4, Tier 8 and Tier 11 goals. Both read correctly now.",
+        title = "The Season Max tooltip explained the wrong rule",
+        desc  = "It said Season Max is the most of a crest you can earn all season. For some crests the number caps how many you can hold at once instead, and spending frees room again. The tooltip now covers both.",
     },
     {
-        title = "Coming next",
-        desc  = "The Season Max tooltip on the Shard Tracker explains the wrong rule for three crests. A few buttons are still English when translated - the Pin buttons and the Trovehunter Dismiss button. The Poison row still has no icon; that is on the list and will be corrected soon.",
+        title = "The last English buttons are translated",
+        desc  = "The Pin buttons on Delve Locations, Current Bountiful and the Shard Tracker, and the Dismiss button on the Trovehunter reminder, stayed English on translated clients even though the headers beside them were translated.",
+    },
+    {
+        title = "The Poison row finally has an icon",
+        desc  = "Combat and Utility have always shown their item art, but the poisons are a choice node rather than items, so the row beneath sat bare. All six now show their own spell art, in the delve HUD and the curio popup. The IDs came from the trait data, not a name lookup: two spells are both named \"Frostheart Venom\" with different icons.",
     },
 }
 

@@ -374,7 +374,7 @@ E:RegisterModule(function()
     )
     objCB:SetScript("OnEnter", function(self)
         E:ShowTooltip(self, L["Bonus Spoils Tracker"],
-            L["While inside a delve, tracks the two bonus-chest objectives - Nemesis Strongbox packs and the Sanctified Banner - so you know you've grabbed the extra loot before pulling the boss."],
+            L["While inside a delve, tracks the Nemesis Strongbox packs so you know you've cleared them all before pulling the boss."],
             " ",
             L["Drag the tracker to move it."])
     end)
@@ -597,7 +597,7 @@ E:RegisterModule(function()
         local hc = E.Colors.buttonHover
         self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
         E:ShowTooltip(self, L["Reset Settings"],
-            L["Restore every option to its default value."],
+            L["Restore the options to their default values. Your saved runs and the number of runs kept per delve are left alone."],
             E.CC.red .. L["This cannot be undone."] .. E.CC.close)
     end)
     resetBtn:SetScript("OnLeave", function(self)
