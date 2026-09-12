@@ -610,6 +610,7 @@ L["Delve Locations"] = true
 L["Current Bountiful Delves"] = true
 L["Tier Guide"] = true
 L["Shard Tracker"] = true
+L["Achievements"] = true
 L["Options"] = true
 L["About"] = true
 L["Prey Quests"] = true
@@ -812,7 +813,6 @@ L["Bonus loot secured - go get the boss!"] = true
 L["All bonus loot accounted for."] = true
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = true
 L["Loot"] = true
 L["Highlighted = your gear tier"] = true
 L["Achievement data unavailable"] = true
@@ -835,6 +835,26 @@ L["Delver of the Depths"] = true
 L["%d to earn here"] = true
 L["(press Shift for details)"] = true
 L["Today's story (%s) still counts — run it today!"] = true
+
+-- UI/TabAchievements.lua
+L["Click to hide what's left here."] = true
+L["Click to see what's left here."] = true
+L["Story variants, Sturdy Chests and tier goals for every delve"] = true
+L["Hide finished delves"] = true
+L["Achievements are account-wide and cover all of Midnight, not only this season."] = true
+L["Your Best is the highest tier Everything Delves has logged you clearing, so it only counts runs since you installed it."] = true
+L["%d of %d still to earn"] = true
+L["%d left"] = true
+L["%d of today's story variants are ones you still need"] = true
+L["None of today's story variants are new to you."] = true
+L["Still to earn: %s%d|r story variants, %s%d|r Sturdy Chests, %s%d|r tier goals"] = true
+L["Chests"] = true
+L["Depths"] = true
+L["Your Best"] = true
+L["achievement earned %s"] = true
+L["earned account-wide"] = true
+L["Tier progress for this delve could not be read."] = true
+L["Every delve is finished. Nothing left to earn."] = true
 
 -- UI/TrovehunterReminder.lua
 L["Trovehunter's Bounty Reminder"] = true

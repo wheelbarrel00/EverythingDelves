@@ -6,6 +6,16 @@ local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
 local tostring = tostring
 
+-- Blizzard also emits a named escape, |cnWHITE_FONT_COLOR:, which is not 8 hex
+-- digits and survives a |c%x{8} strip as an invisible prefix that breaks every
+-- string comparison.
+function E.StripColorEscapes(s)
+    if type(s) ~= "string" then return s end
+    return (s:gsub("|cn[%w_]+:", "")
+             :gsub("|c%x%x%x%x%x%x%x%x", "")
+             :gsub("|r", ""))
+end
+
 function E:CreateButton(parent, width, height, label, extraTemplate)
     local template = extraTemplate and ("BackdropTemplate, " .. extraTemplate) or "BackdropTemplate"
     local btn = CreateFrame("Button", nil, parent, template)

@@ -44,6 +44,7 @@ E.TAB_NAMES = {
     L["Shard Tracker"],
     L["Delve History"],
     L["Delver's Call"],
+    L["Achievements"],
     L["Roster"],
     L["Options"],
     L["Profiles"],

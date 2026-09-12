@@ -587,6 +587,7 @@ L["Delve Locations"] = "地下堡位置"
 L["Current Bountiful Delves"] = "当前丰裕地下堡"
 L["Tier Guide"] = "层级指南"
 L["Shard Tracker"] = "碎片统计"
+L["Achievements"] = "成就"
 L["Options"] = "设置"
 L["About"] = "关于"
 L["Prey Quests"] = "猎物任务"
@@ -789,7 +790,6 @@ L["Bonus loot secured - go get the boss!"] = "额外战利品已到手 - 去打�
 L["All bonus loot accounted for."] = "所有额外战利品都已到手。"
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = "成就"
 L["Loot"] = "战利品"
 L["Highlighted = your gear tier"] = "高亮 = 你的装备层级"
 L["Achievement data unavailable"] = "成就数据不可用"

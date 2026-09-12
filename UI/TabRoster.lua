@@ -424,5 +424,5 @@ E:RegisterModule(function()
 
     C_Timer.After(2, function() E:CaptureRosterSnapshot() end)
 
-    E:RegisterTab(8, frame)
+    E:RegisterTab(9, frame)
 end)

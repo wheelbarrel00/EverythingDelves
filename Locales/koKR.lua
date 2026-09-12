@@ -587,6 +587,7 @@ L["Delve Locations"] = "구렁 위치"
 L["Current Bountiful Delves"] = "현재 풍요로운 구렁"
 L["Tier Guide"] = "단계 안내"
 L["Shard Tracker"] = "조각 추적"
+L["Achievements"] = "업적"
 L["Options"] = "설정"
 L["About"] = "정보"
 L["Prey Quests"] = "사냥감 퀘스트"
@@ -789,7 +790,6 @@ L["Bonus loot secured - go get the boss!"] = "추가 전리품 확보 - 이제 �
 L["All bonus loot accounted for."] = "추가 전리품을 모두 확보했습니다."
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = "업적"
 L["Loot"] = "전리품"
 L["Highlighted = your gear tier"] = "강조 표시 = 내 장비 단계"
 L["Achievement data unavailable"] = "업적 정보를 사용할 수 없습니다"

@@ -95,14 +95,14 @@ local STORY_TIERS = {
 
 local function StripStoryPrefix(s)
     if not s or s == "" then return "" end
-    local plain = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local plain = E.StripColorEscapes(s)
     return plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$") or plain
 end
 
 local function GetStoryTier(storyVariant)
     if not storyVariant or storyVariant == "" then return nil end
     if STORY_TIERS[storyVariant] then return STORY_TIERS[storyVariant] end
-    local plain = storyVariant:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local plain = E.StripColorEscapes(storyVariant)
     if STORY_TIERS[plain] then return STORY_TIERS[plain] end
     local name = plain:match("[Vv]ariant:%s*(.-)%s*$")
     if name and STORY_TIERS[name] then return STORY_TIERS[name] end
@@ -226,7 +226,7 @@ local function PopulateBountifulDelvesLive(out)
                                     .GetTextWithStateWidgetVisualizationInfo(
                                         info.widgetID)
                                 if viz and viz.orderIndex == 0 then
-                                    storyVariant = viz.text or ""
+                                    storyVariant = E.StripColorEscapes(viz.text or "")
                                     break
                                 end
                             end
@@ -468,7 +468,7 @@ local function RefreshBountifulData(force)
                         entry.mapID        = meta.mapID
                         entry.poiID        = meta.poiID
                         entry.normalPoiID  = meta.normalPoiID
-                        entry.storyVariant = runStory
+                        entry.storyVariant = E.StripColorEscapes(runStory)
                         entry.overcharged  = false
                         entry.completed    = true
                         table_insert(bountifulList, entry)

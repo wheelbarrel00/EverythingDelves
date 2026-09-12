@@ -670,5 +670,5 @@ E:RegisterModule(function()
         E:RefreshOptionsWidgets()
     end)
 
-    E:RegisterTab(9, frame)
+    E:RegisterTab(10, frame)
 end)

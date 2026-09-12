@@ -587,6 +587,7 @@ L["Delve Locations"] = "Emplacements des gouffres"
 L["Current Bountiful Delves"] = "Gouffres abondants actuels"
 L["Tier Guide"] = "Guide des paliers"
 L["Shard Tracker"] = "Suivi des fragments"
+L["Achievements"] = "Hauts-Faits"
 L["Options"] = "Options"
 L["About"] = "À propos"
 L["Prey Quests"] = "Quêtes de proie"
@@ -789,7 +790,6 @@ L["Bonus loot secured - go get the boss!"] = "Butin bonus sécurisé - à l'atta
 L["All bonus loot accounted for."] = "Tout le butin bonus a été récupéré."
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = "Hauts-Faits"
 L["Loot"] = "Butin"
 L["Highlighted = your gear tier"] = "Surligné = votre palier d'équipement"
 L["Achievement data unavailable"] = "Données de hauts faits indisponibles"

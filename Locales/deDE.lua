@@ -587,6 +587,7 @@ L["Delve Locations"] = "Tiefenorte"
 L["Current Bountiful Delves"] = "Aktuelle üppige Tiefen"
 L["Tier Guide"] = "Stufenübersicht"
 L["Shard Tracker"] = "Splitter-Tracker"
+L["Achievements"] = "Erfolge"
 L["Options"] = "Optionen"
 L["About"] = "Über"
 L["Prey Quests"] = "Beutequests"
@@ -789,7 +790,6 @@ L["Bonus loot secured - go get the boss!"] = "Bonusbeute gesichert - jetzt auf z
 L["All bonus loot accounted for."] = "Die gesamte Bonusbeute ist eingesammelt."
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = "Erfolge"
 L["Loot"] = "Beute"
 L["Highlighted = your gear tier"] = "Hervorgehoben = deine Ausrüstungsstufe"
 L["Achievement data unavailable"] = "Erfolgsdaten nicht verfügbar"

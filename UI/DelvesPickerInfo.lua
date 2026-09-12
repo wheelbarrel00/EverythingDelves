@@ -154,8 +154,7 @@ E:RegisterModule(function()
     local function Refresh(delve, displayName)
         -- Strip escapes: displayName is a raw game string and an embedded |r
         -- would end the title's coloring early.
-        local title = (displayName or delve.name)
-            :gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+        local title = E.StripColorEscapes(displayName or delve.name)
         titleFS:SetText(E.CC.gold .. title .. E.CC.close)
 
         local st = E:GetDelveAchievementStatus(delve.name)

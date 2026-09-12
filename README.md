@@ -49,13 +49,14 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 - **Delve Locations** — all 12 Midnight delves across 7 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss — including 12.1's Children of Ula'tek stories and their three new bosses
 - **Quickest Delve & Best Value** — every delve shows an expected clear time (your own average once you've run it, or a pace-calibrated estimate), a sortable Speed column to line up your fastest runs first, and a summary line calling out today's Quickest delve and the Best value pick
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
-- **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat/Utility curios, a live run timer, and your remaining lives and deaths
+- **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat and Utility curios and Valeera's poison, each with its own icon, a live run timer, and your remaining lives and deaths
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status and a tier-by-tier reward table, your own gear tier highlighted
 - **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
 - **Azta'rec (Seasonal Nemesis)** — the Season 2 Nemesis delve, Venomfall Deeps on The Coiled Isle: boss mechanics, the Sermon of Ula'tek intermission, the Tier "?" and Tier "??" differences, companion and curio setup, and the full reward track
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Mistcrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
+- **Achievements** — every delve's story variants, Sturdy Chest discoveries and Delver of the Depths tier goals in one list, headed by the Glory of the Midnight Delver rollup, plus which of today's story variants you still need and your own best tier per delve
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
 - **Bonus Spoils tracker** — an optional in-delve overlay that tracks the Nemesis Strongbox packs so you know you've cleared them all before pulling the boss; off by default
 - **Options, Profiles & About** — color themes, alerts, a curio reminder, Valeera and Dun-dun audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
@@ -229,7 +230,7 @@ Each of the six languages was started by a translator who volunteered their time
 the French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
 Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** for the German.
 
-Coverage has since been filled out to all 749 phrases in every language, which means a
+Coverage has since been filled out to every phrase in every language, which means a
 correction from a native speaker is now worth more than new coverage. If something reads
 wrong in your language, please say so - see above for where to send it.
 
@@ -267,10 +268,11 @@ EverythingDelves/
 │   ├── TabShardTracker.lua       # Tab 5: shard economy, session tracker, WQ scanner
 │   ├── TabDelveHistory.lua       # Tab 6: lifetime stats + run history, notes, bosses
 │   ├── TabDelversCall.lua        # Tab 7: weekly World Tour quest tracker
-│   ├── TabRoster.lua             # Tab 8: account-wide character dashboard
-│   ├── TabOptions.lua            # Tab 9: all user settings
-│   ├── TabProfiles.lua           # Tab 10: per-character profile management
-│   ├── TabAbout.lua              # Tab 11: info, commands, links, changelog
+│   ├── TabAchievements.lua      # Tab 8: per-delve achievement tracking
+│   ├── TabRoster.lua             # Tab 9: account-wide character dashboard
+│   ├── TabOptions.lua            # Tab 10: all user settings
+│   ├── TabProfiles.lua           # Tab 11: per-character profile management
+│   ├── TabAbout.lua              # Tab 12: info, commands, links, changelog
 │   ├── CurioReminder.lua         # Curio reminder popup
 │   ├── CompanionAudio.lua        # Optional Valeera / Dun-dun mute
 │   ├── TrovehunterReminder.lua   # Trovehunter's Bounty reminder

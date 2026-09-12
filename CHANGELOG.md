@@ -5,6 +5,25 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.34.0] - 2026-09-12
+
+### New Features
+
+- **A new Achievements tab** - every delve's story variants, Sturdy Chest discoveries and Delver of the Depths tier goals in one browsable list, with what is still outstanding on each. Until now all of that was only readable by hovering a delve's map pin one at a time, and only while you were on the right continent map. The tab opens on the Glory of the Midnight Delver rollup, reading its four parts live so you can see which still stand between you and the Giganto Manis, and each delve expands to list every story variant with a tick or a cross. Thanks to LightsBeacon for the request. This is a big feature and it touches a lot of the addon, so please let me know if anything looks off or needs fixing - I may well have missed something.
+- **Which of today's stories still count toward an achievement** - the tab reads the live story in every delve and lists the ones you have not completed yet, so a rotation worth running today is obvious without checking twelve map pins.
+- **A "Your Best" column** - the highest tier Everything Delves has recorded you clearing in each delve, from your own run history. The achievements beside it are account-wide and cover all of Midnight rather than the current season, so this is the one column that answers what you have done lately.
+- **`/ed glory`, `/ed depths` and `/ed storymatch`** - diagnostics that print the resolved achievement IDs, each tier goal's own description and earned date, and the exact comparison behind "today's story counts", so a future season changing any of it can be seen in one run instead of guessed at.
+
+### Bug Fixes
+
+- **Today's story was never reported as counting toward its achievement** - delve story names come back from the game wrapped in a formatting code the addon did not recognize, and it survived every attempt to strip it. Because the game renders that code rather than showing it, the names looked identical everywhere while never actually matching, so the reminder on a delve's map pin that today's story still counts, and the same note on the difficulty picker, could not appear at all. Every place that compares a story name has been corrected.
+- **A completed bountiful delve showed its story in full white** - the same formatting code overrode the dimmed color the row was drawn in, so a delve you had already finished did not look finished.
+
+### Improvements
+
+- **Delve achievement progress refreshes as you earn it** - the data was previously read only at the moment something asked for it, such as hovering a map pin, so anything already on screen stayed as it was. It now updates as criteria complete.
+- **Tier goals show when they were earned** - a Delver of the Depths tier you have already earned credits every delve, including delves added to the game after you earned it, so a tick against one of those was not evidence you had cleared it at that tier. Those rows now show the date the achievement was earned instead.
+
 ## [1.33.0] - 2026-09-03
 
 ### Bug Fixes

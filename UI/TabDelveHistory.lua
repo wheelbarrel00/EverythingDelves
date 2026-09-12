@@ -39,7 +39,7 @@ end
 -- signature story. nil when neither is known (e.g. Nemesis has no signature).
 local function ResolveRunStory(run, delveKey)
     if run and run.story and run.story ~= "" then
-        return run.story
+        return E.StripColorEscapes(run.story)
     end
     return E.DelveStories and E.DelveStories[delveKey] or nil
 end

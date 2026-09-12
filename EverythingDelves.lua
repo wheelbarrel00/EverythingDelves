@@ -117,6 +117,7 @@ local DEFAULTS = {
     showPickerInfo         = true,
     showShardWeekly        = false,
     showDelversCallDone    = false,
+    achHideCompleted       = false,
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     showWhatsNew           = true,
@@ -215,6 +216,42 @@ function E:InitDB()
             sv.defaultTab = sv.defaultTab + 1
         end
         sv._rosterTabMigrated = true
+    end
+
+    -- Achievements inserted at tab 8 shifted Roster and everything after it.
+    if not sv._achievementsTabMigrated then
+        if type(sv.defaultTab) == "number" and sv.defaultTab >= 8 then
+            sv.defaultTab = sv.defaultTab + 1
+        end
+        sv._achievementsTabMigrated = true
+    end
+
+    -- Learned boss names were keyed by the raw widget string, which carries a
+    -- |cn escape. GetRecordedBoss indexes exactly, so a now-clean variant misses.
+    if not sv._bossMapEscapeMigrated then
+        for _, byVariant in pairs(sv.delveBossMap or {}) do
+            -- Collected before rewriting: adding a key during pairs() is
+            -- undefined and raises "invalid key to 'next'".
+            local renames
+            for k in pairs(byVariant) do
+                local clean = E.StripColorEscapes(k)
+                if clean ~= k then
+                    renames = renames or {}
+                    renames[k] = clean
+                end
+            end
+            if renames then
+                for old, clean in pairs(renames) do
+                    -- A partly-migrated table can hold both spellings. The
+                    -- clean one is already right, so only fill a gap.
+                    if byVariant[clean] == nil then
+                        byVariant[clean] = byVariant[old]
+                    end
+                    byVariant[old] = nil
+                end
+            end
+        end
+        sv._bossMapEscapeMigrated = true
     end
 
     local charKey = CharKey()
@@ -471,6 +508,18 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.DebugPrintAchievements then
             E:DebugPrintAchievements()
         end
+    elseif msg == "glory" then
+        if E.DebugPrintGlory then
+            E:DebugPrintGlory()
+        end
+    elseif msg == "depths" then
+        if E.DebugPrintDepths then
+            E:DebugPrintDepths()
+        end
+    elseif msg == "storymatch" then
+        if E.DebugPrintStoryMatch then
+            E:DebugPrintStoryMatch()
+        end
     elseif msg == "companion" then
         if E.DumpCompanionState then
             E:DumpCompanionState()
@@ -684,8 +733,15 @@ local fireAreaPois       = Debounce(0.25, "AreaPoisUpdated")
 local fireBagUpdate      = Debounce(0.25, "BagUpdate")
 local fireInventory      = Debounce(0.25, "InventoryChanged")
 local fireWorldQuestDone = Debounce(0.25, "WorldQuestCompleted")
+-- CRITERIA_UPDATE fires on unrelated achievements too, so this coalesces harder
+-- than the rest: a full achievement pass is 12 delves of criteria reads.
+local fireAchievement    = Debounce(1.0, "AchievementUpdate")
 
 E:RegisterEvent("CURRENCY_DISPLAY_UPDATE", fireCurrency)
+pcall(function()
+    E:RegisterEvent("CRITERIA_UPDATE",    fireAchievement)
+    E:RegisterEvent("ACHIEVEMENT_EARNED", fireAchievement)
+end)
 E:RegisterEvent("QUEST_LOG_UPDATE",        fireQuestLog)
 E:RegisterEvent("AREA_POIS_UPDATED",       fireAreaPois)
 E:RegisterEvent("BAG_UPDATE_DELAYED",      fireBagUpdate)
@@ -823,8 +879,7 @@ local function AutoDetectDelveTier()
                 if r and r:GetObjectType() == "FontString" and r:IsShown() then
                     local txt = r:GetText()
                     if txt and txt ~= "" then
-                        local clean = txt:gsub("|c%x%x%x%x%x%x%x%x", "")
-                                         :gsub("|r", "")
+                        local clean = E.StripColorEscapes(txt)
                         local m = clean:match("Tier%s*:?%s*(%d+)")
                             or clean:match("Difficulty%s*:?%s*(%d+)")
                         if m then
@@ -1018,7 +1073,7 @@ end
 
 local function CleanStoryName(s)
     if not s or s == "" then return nil end
-    local plain = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local plain = E.StripColorEscapes(s)
     local name = plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$")
     if not name or name == "" then return nil end
     return name

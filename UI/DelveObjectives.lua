@@ -57,8 +57,7 @@ local ICON_TODO = "|TInterface\\Buttons\\UI-CheckBox-Up:13:13:-1:-1|t "
 -- Strip color/texture/atlas escapes so embedded codes don't break line coloring.
 local function StripEscapes(s)
     if not s then return nil end
-    return (s:gsub("|c%x%x%x%x%x%x%x%x", "")
-             :gsub("|r", "")
+    return (E.StripColorEscapes(s)
              :gsub("|T.-|t", "")
              :gsub("|A.-|a", ""))
 end
@@ -89,7 +88,7 @@ local function ReadDelveLives(knownTier)
                         and r:IsShown() then
                     local t = r:GetText()
                     if t and t ~= "" then
-                        local clean = t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                        local clean = E.StripColorEscapes(t)
                         if clean:find("Challenge", 1, true)
                                 or clean:find("Wave", 1, true) then
                             stop = true
@@ -420,7 +419,8 @@ E:RegisterModule(function()
                         .. "(" .. si.tier .. ")" .. E.CC.close
                 end
                 AddLine(E.CC.muted .. L["Variant:"] .. E.CC.close .. " "
-                    .. E.CC.body .. variant .. E.CC.close .. grade)
+                    .. E.CC.body .. E.StripColorEscapes(variant)
+                    .. E.CC.close .. grade)
             end
             local role = (E.GetCompanionAssignedRole and E:GetCompanionAssignedRole())
                 or (E.GetPlayerCurioRole and E:GetPlayerCurioRole()) or "Damage"

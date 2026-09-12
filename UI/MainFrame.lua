@@ -74,7 +74,7 @@ function E:InitMainFrame()
     end)
 
     -- Window is built once and reused; re-apply default tab on every Show so it
-    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(9)
+    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(10)
     -- runs after Show returns, so it still wins.)
     frame:SetScript("OnShow", function()
         E:SelectTab(E.db.defaultTab or 1)
@@ -288,6 +288,11 @@ end
 
 function E:SelectTab(index)
     if not self.tabButtons then return end
+    -- A downgrade can leave a migrated defaultTab past the end of the list,
+    -- which would hide every frame and highlight no tab.
+    if type(index) ~= "number" or index < 1 or index > E.NUM_TABS then
+        index = 1
+    end
     self.activeTab = index
 
     local p = E:GetAccentPreset()
@@ -417,7 +422,7 @@ function E:CreateBrokerObject()
             elseif btn == "RightButton" then
                 E:ToggleMainFrame()
                 if E.MainFrame:IsShown() then
-                    E:SelectTab(9) -- Options
+                    E:SelectTab(10) -- Options
                 end
             end
         end,
@@ -588,7 +593,7 @@ function E:CreateMinimapButton()
         elseif btn == "RightButton" then
             E:ToggleMainFrame()
             if E.MainFrame:IsShown() then
-                E:SelectTab(9) -- Options
+                E:SelectTab(10) -- Options
             end
         end
     end)

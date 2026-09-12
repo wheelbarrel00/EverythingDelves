@@ -587,6 +587,7 @@ L["Delve Locations"] = "Расположение вылазок"
 L["Current Bountiful Delves"] = "Текущие многообещающие вылазки"
 L["Tier Guide"] = "Гид по уровням"
 L["Shard Tracker"] = "Счетчик осколков"
+L["Achievements"] = "Достижения"
 L["Options"] = "Опции"
 L["About"] = "Об аддоне"
 L["Prey Quests"] = "Задания на добычу"
@@ -789,7 +790,6 @@ L["Bonus loot secured - go get the boss!"] = "Бонусная добыча об
 L["All bonus loot accounted for."] = "Вся бонусная добыча собрана."
 
 -- UI/DelvesPickerInfo.lua
-L["Achievements"] = "Достижения"
 L["Loot"] = "Добыча"
 L["Highlighted = your gear tier"] = "Выделено = ваш уровень снаряжения"
 L["Achievement data unavailable"] = "Данные достижений недоступны"

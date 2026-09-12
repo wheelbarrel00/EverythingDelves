@@ -1,28 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.33.0"
+local WHATS_NEW_VERSION = "1.34.0"
 
 local ENTRIES = {
     {
-        title = "The tracker no longer asks you to find the Sanctified Banner",
-        desc  = "Blizzard retired the Sanctified Banner when Midnight Season 1 ended, but the Bonus Spoils tracker still listed it on every bountiful run as loot you had not collected yet. It was asking for something nobody could find. The tracker now follows the Nemesis Strongbox packs alone. Thanks to LightsBeacon for the report.",
+        title = "A new Achievements tab",
+        desc  = "Every delve's story variants, Sturdy Chests and tier goals in one place, with what is left to earn on each. It opens on the Glory of the Midnight Delver rollup so you can see which of its four parts still stand between you and the mount. Thanks to LightsBeacon for the request. This is a big feature and it touches a lot of the addon, so please let me know if anything looks off or needs fixing - I may well have missed something.",
     },
     {
-        title = "The tracker could tell you the bonus loot was done when it was not",
-        desc  = "Two ways. Entering a Tier 4 or higher delve showed a green \"All bonus loot accounted for.\" before the first pack appeared. And any loading screen mid-run, a death and release included, briefly empties the vignette list, which read as every remaining pack being killed. Both now wait until they know.",
+        title = "Which of today's stories still count",
+        desc  = "The tab reads today's story in every delve and tells you which ones you have not completed for the achievement yet, so a rotation worth running is obvious without checking twelve map pins.",
     },
     {
-        title = "The Season Max tooltip explained the wrong rule",
-        desc  = "It said Season Max is the most of a crest you can earn all season. For some crests the number caps how many you can hold at once instead, and spending frees room again. The tooltip now covers both.",
+        title = "Today's story counting toward an achievement was never reported",
+        desc  = "Delve story names arrive wrapped in a formatting code the addon did not recognize, and because that code is invisible the names looked identical while never matching. The map pin reminder that today's story still counts, and the same note on the difficulty picker, could not appear at all. Both work now.",
     },
     {
-        title = "The last English buttons are translated",
-        desc  = "The Pin buttons on Delve Locations, Current Bountiful and the Shard Tracker, and the Dismiss button on the Trovehunter reminder, stayed English on translated clients even though the headers beside them were translated.",
-    },
-    {
-        title = "The Poison row finally has an icon",
-        desc  = "Combat and Utility have always shown their item art, but the poisons are a choice node rather than items, so the row beneath sat bare. All six now show their own spell art, in the delve HUD and the curio popup. The IDs came from the trait data, not a name lookup: two spells are both named \"Frostheart Venom\" with different icons.",
+        title = "Achievement progress updates as you earn it",
+        desc  = "Delve achievement data used to be read only when you hovered a map pin. It now refreshes as criteria complete.",
     },
 }
 
