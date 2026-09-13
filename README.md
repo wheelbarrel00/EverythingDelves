@@ -230,8 +230,9 @@ Each of the six languages was started by a translator who volunteered their time
 the French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
 Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** for the German.
 
-Coverage has since been filled out to every phrase in every language, which means a
-correction from a native speaker is now worth more than new coverage. If something reads
+Coverage stood at every phrase in every language until v1.34.0, whose 18 new Achievements
+tab strings are still awaiting translation and render in English for now. Corrections from
+native speakers are just as welcome as that new coverage. If something reads
 wrong in your language, please say so - see above for where to send it.
 
 ---

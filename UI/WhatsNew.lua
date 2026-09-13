@@ -1,26 +1,27 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.34.0"
+local WHATS_NEW_VERSION = "1.35.0"
 
 local ENTRIES = {
     {
-        title = "A new Achievements tab",
-        desc  = "Every delve's story variants, Sturdy Chests and tier goals in one place, with what is left to earn on each. It opens on the Glory of the Midnight Delver rollup so you can see which of its four parts still stand between you and the mount. Thanks to LightsBeacon for the request. This is a big feature and it touches a lot of the addon, so please let me know if anything looks off or needs fixing - I may well have missed something.",
+        title = "Know you need a second coffer key before you go in",
+        desc  = "Dundun hides in every Bountiful Delve and can turn your run Abundantly Bountiful, which spawns a second chest at the end - and that chest wants a second Restored Coffer Key. The delve information panel now tells you where you stand on keys while you are still stood at the entrance. Thanks to LootFever for the request, and to Nickyjean01 for the coffer key idea.",
     },
     {
-        title = "Which of today's stories still count",
-        desc  = "The tab reads today's story in every delve and tells you which ones you have not completed for the achievement yet, so a rotation worth running is obvious without checking twelve map pins.",
+        title = "A reminder that Dundun is in there",
+        desc  = "He is disguised as a deliberately fake-looking tree and the announcement on entry clears after a few seconds, so the delve HUD now keeps a standing reminder up, with the /tar dundun trick for finding him.",
     },
     {
-        title = "Today's story counting toward an achievement was never reported",
-        desc  = "Delve story names arrive wrapped in a formatting code the addon did not recognize, and because that code is invisible the names looked identical while never matching. The map pin reminder that today's story still counts, and the same note on the difficulty picker, could not appear at all. Both work now.",
+        title = "It knows when you have already had this week's extra chest",
+        desc  = "The Abundantly Bountiful chest comes around once a week. Once you have taken it, the panel stops telling you to hold a second key back. Thanks to drahgunfyre for his help with this.",
     },
     {
-        title = "Achievement progress updates as you earn it",
-        desc  = "Delve achievement data used to be read only when you hovered a map pin. It now refreshes as criteria complete.",
+        title = "Ready for the next patch",
+        desc  = "The addon is flagged compatible with 12.1.5, so it will not show as out of date when that build arrives.",
     },
 }
+
 
 local POPUP_W  = 460
 local PAD      = 12

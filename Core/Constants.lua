@@ -324,6 +324,14 @@ E.Crests = {
 
 E.SHARDS_PER_KEY      = 100
 
+-- Seasonal. npcID and favorAura were read live 2026-09-13.
+E.Dundun = {
+    npcID       = 266751,
+    favorAura   = 1248935,  -- applied on entering ANY bountiful delve
+    journeyRank = 3,
+    keysForBoth = 2,
+}
+
 E.ItemIcons = {
     cofferKey   = 224172,
     cofferShard = 236096,

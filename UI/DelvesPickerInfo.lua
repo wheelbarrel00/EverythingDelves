@@ -38,6 +38,13 @@ E:RegisterModule(function()
     titleDiv:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -1, -26)
     E:StyleAccentDivider(titleDiv)
 
+    local keyFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    keyFS:SetPoint("TOPLEFT", titleDiv, "BOTTOMLEFT", 7, -5)
+    keyFS:SetPoint("RIGHT",   panel, "RIGHT", -8, 0)
+    keyFS:SetJustifyH("LEFT")
+    keyFS:SetFont(keyFS:GetFont(), 10)
+    keyFS:Hide()
+
     local achHeader = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     achHeader:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -32)
     achHeader:SetFont(achHeader:GetFont(), 10, "OUTLINE")
@@ -151,11 +158,65 @@ E:RegisterModule(function()
         return nil
     end
 
+    local function PlaceAchHeader(hasKeyLine)
+        achHeader:ClearAllPoints()
+        if hasKeyLine then
+            achHeader:SetPoint("TOPLEFT", keyFS, "BOTTOMLEFT", 0, -6)
+        else
+            achHeader:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -32)
+        end
+    end
+
+    -- Silent whenever an input is unreadable: a wrong key count is worse than none.
+    local function RefreshKeyLine(delve)
+        local text
+        local keys = E:GetCofferKeyCount()
+        if keys and E:IsDelveBountifulByName(delve.name, delve.canonicalName) then
+            local rank = E.GetDelverJourneyRank()
+            local dd   = E.Dundun
+            -- Delve entry auto-converts shards into keys, so count what will be
+            -- available inside rather than what is held at the picker.
+            local shards = E.GetCurrencyQuantity(E.CurrencyIDs.cofferKeyShards) or 0
+            keys = keys + math_floor(shards / E.SHARDS_PER_KEY)
+            if keys <= 0 then
+                text = E.CC.red
+                    .. L["Coffer keys: none. The bountiful chest will stay locked."]
+                    .. E.CC.close
+            elseif rank and rank >= dd.journeyRank then
+                if E:HasTakenAbundantThisWeek() then
+                    text = E.CC.muted
+                        .. L["Dundun's extra chest is already claimed this week."]
+                        .. E.CC.close
+                elseif keys < dd.keysForBoth then
+                    text = E.CC.yellow
+                        .. L["Coffer keys: %d. Dundun's second chest needs another."]
+                            :format(keys)
+                        .. E.CC.close
+                else
+                    text = E.CC.green
+                        .. L["Coffer keys: %d. Enough for Dundun's second chest."]
+                            :format(keys)
+                        .. E.CC.close
+                end
+            end
+        end
+        if text then
+            keyFS:SetText(text)
+            keyFS:Show()
+        else
+            keyFS:SetText("")
+            keyFS:Hide()
+        end
+        PlaceAchHeader(text ~= nil)
+    end
+
     local function Refresh(delve, displayName)
         -- Strip escapes: displayName is a raw game string and an embedded |r
         -- would end the title's coloring early.
         local title = E.StripColorEscapes(displayName or delve.name)
         titleFS:SetText(E.CC.gold .. title .. E.CC.close)
+
+        RefreshKeyLine(delve)
 
         local st = E:GetDelveAchievementStatus(delve.name)
         if not st then

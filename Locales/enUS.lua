@@ -808,6 +808,7 @@ L["Variant:"] = true
 L["Poison:"] = true
 L["Lives:"] = true
 L["Best:"] = true
+L["Dundun is hidden in this delve"] = true
 L["Nemesis Strongbox: %d/%d packs"] = true
 L["Bonus loot secured - go get the boss!"] = true
 L["All bonus loot accounted for."] = true
@@ -815,6 +816,10 @@ L["All bonus loot accounted for."] = true
 -- UI/DelvesPickerInfo.lua
 L["Loot"] = true
 L["Highlighted = your gear tier"] = true
+L["Coffer keys: none. The bountiful chest will stay locked."] = true
+L["Dundun's extra chest is already claimed this week."] = true
+L["Coffer keys: %d. Dundun's second chest needs another."] = true
+L["Coffer keys: %d. Enough for Dundun's second chest."] = true
 L["Achievement data unavailable"] = true
 L["All achievements complete"] = true
 L["Complete"] = true

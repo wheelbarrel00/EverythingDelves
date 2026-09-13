@@ -5,6 +5,20 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.35.0] - 2026-09-13
+
+### New Features
+
+- **A coffer key warning before you enter a Bountiful Delve** - Dundun, the Loa of Abundance, hides in every Bountiful Delve and can turn your run Abundantly Bountiful, which spawns a second chest at the end. That second chest costs a second Restored Coffer Key, and nothing warns you before you commit to the run. The delve information panel now tells you where you stand on keys while you are still stood at the entrance, so you can go and buy one instead of finding out at the chest. Thanks to LootFever for the request, and to Nickyjean01 for the coffer key idea.
+- **A Dundun reminder in the delve HUD** - he is disguised as a deliberately fake-looking tree, and the announcement on entry clears after a few seconds. The HUD now carries a standing reminder that he is in there somewhere, with the /tar dundun trick for finding him.
+- **The warning knows when you have already claimed this week's extra chest** - the Abundantly Bountiful chest comes around once a week, so once you have taken it the panel stops telling you to hold a second key back and says so plainly instead. Thanks to drahgunfyre for his help with this.
+- **`/ed dundun`** - a diagnostic that prints your Delver's Journey rank, your coffer keys, whether this week's extra chest has been claimed, and a before-and-after comparison of your buffs, delve widgets and objectives, so a future season changing any of it can be seen in one run rather than guessed at.
+
+### Improvements
+
+- **The key warning counts shards you are about to convert** - entering a delve turns 100 Coffer Key Shards into a key on its own, so the warning counts what you will actually have once you are inside rather than what is in your bags at the picker.
+- **Ready for the next patch** - the addon is now flagged compatible with 12.1.5, so it will not show as out of date when that build arrives.
+
 ## [1.34.0] - 2026-09-12
 
 ### New Features

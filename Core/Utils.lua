@@ -431,3 +431,44 @@ function E:GetDelveHistory(delveName)
     if not self.db or not self.db.delveHistory then return nil end
     return self.db.delveHistory[delveName]
 end
+
+-- nil means "not readable yet", which callers must not treat as rank 0.
+function E.GetDelverJourneyRank()
+    if not (C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
+            and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo) then
+        return nil
+    end
+    local ok, factionID = pcall(C_DelvesUI.GetDelvesFactionForSeason)
+    if not ok or not factionID or factionID <= 0 then return nil end
+    local ok2, info = pcall(C_MajorFactions.GetMajorFactionRenownInfo, factionID)
+    if not ok2 or not info then return nil end
+    return info.renownLevel or 0
+end
+
+-- nil, not 0, when the read fails: 0 drives a red "chest stays locked" line.
+function E.GetCurrencyQuantity(id)
+    if not (id and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then
+        return nil
+    end
+    local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, id)
+    if not ok or not info then return nil end
+    return info.quantity or 0
+end
+
+function E:GetCofferKeyCount()
+    return E.GetCurrencyQuantity(
+        self.CurrencyIDs and self.CurrencyIDs.bountifulKeys)
+end
+
+-- Four key shapes because the POI label and our own name disagree for
+-- several delves.
+function E:IsDelveBountifulByName(name, canonicalName)
+    local cbn = self.currentBountifulNames
+    if not (cbn and name) then return false end
+    if cbn[name] or cbn[strtrim(name):lower()] then return true end
+    if canonicalName and (cbn[canonicalName]
+            or cbn[strtrim(canonicalName):lower()]) then
+        return true
+    end
+    return false
+end

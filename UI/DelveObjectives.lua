@@ -54,6 +54,12 @@ local ICON_DONE = "|TInterface\\RaidFrame\\ReadyCheck-Ready:11:11:0:-1|t "
 local ICON_FAIL = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:11:11:0:-1|t "
 local ICON_TODO = "|TInterface\\Buttons\\UI-CheckBox-Up:13:13:-1:-1|t "
 
+local function HasDundunFavor()
+    if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then return false end
+    local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, E.Dundun.favorAura)
+    return (ok and aura) and true or false
+end
+
 -- Strip color/texture/atlas escapes so embedded codes don't break line coloring.
 local function StripEscapes(s)
     if not s then return nil end
@@ -470,6 +476,16 @@ E:RegisterModule(function()
             end
         end
 
+        -- A plain line, not EmitObjective: found/not-found is undetectable, so
+        -- counting it would stop objDone ever reaching objTotal.
+        if E.db and E.db.showDelveHUD and PlayerInDelve() and HasDundunFavor() then
+            local jr = E.GetDelverJourneyRank()
+            if jr and jr >= E.Dundun.journeyRank then
+                AddLine(E.CC.muted .. L["Dundun is hidden in this delve"] .. E.CC.close
+                    .. E.CC.gold .. "   /tar dundun" .. E.CC.close)
+            end
+        end
+
         -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
         -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
@@ -645,7 +661,10 @@ E:RegisterModule(function()
         local lt = text:lower()
         if lt:find("strongbox", 1, true)
                 or lt:find("nemesis", 1, true)
-                or lt:find("spoils", 1, true) then
+                or lt:find("spoils", 1, true)
+                or lt:find("abundan", 1, true)
+                or lt:find("shrine", 1, true)
+                or lt:find("dundun", 1, true) then
             if #stickyMsgs < 10 then
                 stickyMsgs[#stickyMsgs + 1] = event .. ": " .. text
             end
@@ -1096,6 +1115,199 @@ E:RegisterModule(function()
         end
 
         out("=== end — screenshot/paste me everything above ===")
+    end
+
+    -- /ed dundun - snapshot/diff probe. Bracket an interaction to expose a state
+    -- flip that has no visible tell.
+    local DUNDUN_NPC_ID = E.Dundun.npcID
+    local dundunSnap
+
+    function E:DumpDundunData(reset)
+        local function out(s) print("|cFFFFD700[ED dundun]|r " .. s) end
+        local function esc(v)
+            local ok, r = pcall(function()
+                local s = tostring(v)
+                if #s > 90 then s = s:sub(1, 90) .. "..." end
+                return (s:gsub("|", "||"))
+            end)
+            return ok and r or "<secret>"
+        end
+        local function NpcIDFromGUID(guid)
+            if type(guid) ~= "string" then return nil end
+            local ok, id = pcall(function()
+                return select(6, strsplit("-", guid))
+            end)
+            return ok and tonumber(id) or nil
+        end
+        local function Count(t)
+            local n = 0
+            for _ in pairs(t) do n = n + 1 end
+            return n
+        end
+
+        out("=== context ===")
+        local iname, instType, diffID = GetInstanceInfo()
+        out("  instance=" .. esc(iname) .. " type=" .. tostring(instType)
+            .. " diffID=" .. tostring(diffID)
+            .. " inDelve=" .. tostring(PlayerInDelve()))
+
+        local rank, cur, thresh, factionID = 0, 0, 0, nil
+        if C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
+                and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo then
+            local okF, fid = pcall(C_DelvesUI.GetDelvesFactionForSeason)
+            if okF and fid and fid > 0 then
+                factionID = fid
+                local okR, info = pcall(C_MajorFactions.GetMajorFactionRenownInfo, fid)
+                if okR and info then
+                    rank   = info.renownLevel or 0
+                    cur    = info.renownReputationEarned or 0
+                    thresh = info.renownLevelThreshold or 0
+                end
+            end
+        end
+        out("  Journey rank=" .. rank .. " (" .. cur .. "/" .. thresh
+            .. ") factionID=" .. tostring(factionID)
+            .. (rank >= E.Dundun.journeyRank and "  [shrine unlocked]"
+                or "  [rank " .. E.Dundun.journeyRank .. " REQUIRED]"))
+
+        local function Qty(id)
+            if not (id and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then
+                return -1
+            end
+            local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, id)
+            return (ok and info and info.quantity) or 0
+        end
+        local ids = self.CurrencyIDs or {}
+        out("  Restored Coffer Keys=" .. Qty(ids.bountifulKeys)
+            .. "  key shards=" .. Qty(ids.cofferKeyShards))
+        out("  abundant chest claimed this week="
+            .. tostring(E:HasTakenAbundantThisWeek())
+            .. "  favor aura=" .. tostring(HasDundunFavor()))
+
+        out("=== Dundun probe (npcID " .. DUNDUN_NPC_ID .. ") ===")
+        local units = { "target", "mouseover", "softinteract", "npc" }
+        for i = 1, 40 do units[#units + 1] = "nameplate" .. i end
+        local found = 0
+        for _, u in ipairs(units) do
+            if UnitExists and UnitExists(u) then
+                local guid = UnitGUID and UnitGUID(u)
+                if NpcIDFromGUID(guid) == DUNDUN_NPC_ID then
+                    found = found + 1
+                    local okN, nm = pcall(UnitName, u)
+                    out("  FOUND on " .. u .. " name=" .. esc(okN and nm or "?")
+                        .. " guid=" .. esc(guid))
+                end
+            end
+        end
+        if found == 0 then
+            out("  not on target/mouseover/softinteract/nameplates"
+                .. " - try /tar dundun first")
+        end
+
+        local function Snapshot()
+            local s = { auras = {}, widgets = {}, crit = {}, vig = {} }
+            if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+                for i = 1, 60 do
+                    local ok, a = pcall(C_UnitAuras.GetAuraDataByIndex,
+                        "player", i, "HELPFUL")
+                    if not ok or not a then break end
+                    s.auras["spell" .. esc(a.spellId)] = esc(a.name)
+                end
+            end
+            if C_UIWidgetManager
+                    and C_UIWidgetManager.GetSpellDisplayVisualizationInfo then
+                for wid = 7000, 8200 do
+                    local ok, viz = pcall(
+                        C_UIWidgetManager.GetSpellDisplayVisualizationInfo, wid)
+                    if ok and viz and viz.spellInfo
+                            and (viz.spellInfo.tooltip or viz.spellInfo.spellID) then
+                        s.widgets["w" .. wid] = esc(viz.spellInfo.tooltip)
+                            .. " spellID=" .. tostring(viz.spellInfo.spellID)
+                    end
+                end
+            end
+            if C_ScenarioInfo and C_ScenarioInfo.GetScenarioStepInfo
+                    and C_ScenarioInfo.GetCriteriaInfo then
+                local okS, si = pcall(C_ScenarioInfo.GetScenarioStepInfo)
+                if okS and si then
+                    for i = 1, math.min(si.numCriteria or 0, MAX_CRIT) do
+                        local okC, c = pcall(C_ScenarioInfo.GetCriteriaInfo, i)
+                        if okC and c then
+                            s.crit["c" .. i] = esc(c.description)
+                                .. " done=" .. tostring(c.completed)
+                                .. " " .. tostring(c.quantity)
+                                .. "/" .. tostring(c.totalQuantity)
+                        end
+                    end
+                end
+            end
+            if C_VignetteInfo and C_VignetteInfo.GetVignettes then
+                local okV, vigs = pcall(C_VignetteInfo.GetVignettes)
+                if okV and type(vigs) == "table" then
+                    for _, g in ipairs(vigs) do
+                        local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, g)
+                        if ok2 and v then
+                            local key = "v" .. esc(v.vignetteID)
+                                .. "-" .. esc(v.name)
+                            s.vig[key] = "npcID="
+                                .. tostring(NpcIDFromGUID(v.objectGUID))
+                        end
+                    end
+                end
+            end
+            return s
+        end
+
+        local function Diff(label, oldT, newT)
+            local n = 0
+            for k, v in pairs(newT) do
+                if oldT[k] == nil then
+                    n = n + 1
+                    out("  + " .. label .. " " .. k .. " = " .. tostring(v))
+                elseif oldT[k] ~= v then
+                    n = n + 1
+                    out("  ~ " .. label .. " " .. k .. " = " .. tostring(v)
+                        .. "  (was " .. tostring(oldT[k]) .. ")")
+                end
+            end
+            for k, v in pairs(oldT) do
+                if newT[k] == nil then
+                    n = n + 1
+                    out("  - " .. label .. " " .. k .. " = " .. tostring(v))
+                end
+            end
+            return n
+        end
+
+        local okSnap, snap = pcall(Snapshot)
+        if not okSnap or not snap then
+            out("  snapshot failed - a field threw, nothing recorded")
+            return
+        end
+        if reset or not dundunSnap then
+            out("=== baseline taken ===")
+            out("  auras=" .. Count(snap.auras)
+                .. " widgets=" .. Count(snap.widgets)
+                .. " criteria=" .. Count(snap.crit)
+                .. " vignettes=" .. Count(snap.vig))
+            out("  Run /ed dundun again after the next step to see the delta.")
+        else
+            out("=== changes since the last /ed dundun ===")
+            local n = Diff("aura",     dundunSnap.auras,   snap.auras)
+                    + Diff("widget",   dundunSnap.widgets, snap.widgets)
+                    + Diff("criteria", dundunSnap.crit,    snap.crit)
+                    + Diff("vignette", dundunSnap.vig,     snap.vig)
+            if n == 0 then out("  nothing changed") end
+        end
+        dundunSnap = snap
+
+        out("=== keyword-matched delve messages (never rotated out) ===")
+        if #stickyMsgs == 0 then out("  none captured") end
+        for _, m in ipairs(stickyMsgs) do out("  " .. esc(m)) end
+        out("=== last delve broadcasts ===")
+        if #msgLog == 0 then out("  none captured") end
+        for _, m in ipairs(msgLog) do out("  " .. esc(m)) end
+        out("=== end - screenshot/paste me everything above ===")
     end
 
     -- Covers enabling the option, then /reload inside a delve.

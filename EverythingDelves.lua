@@ -133,6 +133,7 @@ local DATA_DEFAULTS = {
     delversCallRoster      = {},
     delveBossMap           = {},
     gildedStashByChar      = {},
+    abundantByChar         = {},  -- [charKey] = { weekEnd = epoch }
     roster                 = {},
     tierCache              = {},  -- { season, build, recGear = { [tier] = ilvl } }
 }
@@ -566,6 +567,13 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             print("|cFFFF2222Everything Delves|r: objectives module"
                 .. " not loaded.")
         end
+    elseif msg == "dundun" or msg == "dundun reset" then
+        if E.DumpDundunData then
+            E:DumpDundunData(msg == "dundun reset")
+        else
+            print("|cFFFF2222Everything Delves|r: objectives module"
+                .. " not loaded.")
+        end
     elseif msg == "gilded" then
         if not (C_UIWidgetManager
                 and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
@@ -793,6 +801,12 @@ E.delveRunState = {
 }
 
 local runState = E.delveRunState
+
+-- Coffer keys spent this delve VISIT. Not on runState: the coffers are
+-- looted after SCENARIO_COMPLETED has already torn the run down. Not
+-- persisted either, so a reload between the two chests loses the count and
+-- the week reads unclaimed, which is the safe direction.
+local visitKeysSpent = 0
 
 -- The bountiful coffer is looted (key spent) AFTER SCENARIO_COMPLETED, so this
 -- watcher keeps flagging the just-logged run when the key drops. See CheckKeySpend.
@@ -1242,6 +1256,7 @@ local function BeginDelveRun(name, kind)
     runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
     runState.startKeyItems = GetKeyItemCount()
     runState.keyUsed       = false
+    visitKeysSpent         = 0
     keyWatch               = nil  -- a new run supersedes any pending key watch
     runState.tier          = 0
     runState.wasBountiful  = false
@@ -1718,8 +1733,9 @@ local function TryBeginFromCurrentZone(source)
         if runState.inDelve then
             EndDelveRun()
         end
-        runCompleted = false
-        keyWatch     = nil
+        runCompleted   = false
+        keyWatch       = nil
+        visitKeysSpent = 0
         -- Consume the login/reload flags now that we're in the open world. A delve
         -- entry can be a seamless transition that fires no fresh PEW, so a flag left
         -- latched from the session's first PEW would otherwise bleed onto that entry
@@ -1882,6 +1898,26 @@ local function TryBeginFromCurrentZone(source)
     end
 end
 
+-- Dundun's extra chest is once per WEEK (confirmed 2026-09-13), so the flag
+-- expires with the weekly reset instead of being cleared by anything.
+function E:MarkAbundantRunTaken()
+    local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
+        and C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if not secs or secs <= 0 then return end
+    local store = self.db and self.db.abundantByChar
+    if not store then return end
+    store[CharKey()] = { weekEnd = time() + secs }
+end
+
+-- Unreadable state answers false on purpose: a missed warning costs the week's
+-- extra chest, a false one only costs holding a key back.
+function E:HasTakenAbundantThisWeek()
+    local store = self.db and self.db.abundantByChar
+    local entry = store and store[CharKey()]
+    if not (entry and entry.weekEnd) then return false end
+    return time() < entry.weekEnd
+end
+
 -- Detect the Restored Coffer Key (currency 3028) being spent. The only reliable
 -- signal is the SIGNED quantityChange in CURRENCY_DISPLAY_UPDATE (11.0.2+): a
 -- negative delta = spent. A snapshot compare was removed because delve entry
@@ -1899,6 +1935,17 @@ local function CheckKeySpend(currencyType, quantityChange, destroyReason)
         tostring(keyWatch ~= nil))
 
     if quantityChange >= 0 then return end   -- a gain (e.g. the entry conversion)
+
+    -- Two keys in one visit marks the week claimed. keyWatch alone is not enough
+    -- to see them - it is cleared by the first spend, so runCompleted carries the
+    -- rest of the loot window.
+    if runState.inDelve or runCompleted or keyWatch then
+        visitKeysSpent = visitKeysSpent - quantityChange
+        local need = (E.Dundun and E.Dundun.keysForBoth) or 2
+        if visitKeysSpent >= need then
+            E:MarkAbundantRunTaken()
+        end
+    end
 
     -- A key was spent. Attribute to the live run, else the just-completed one.
     if runState.inDelve then
