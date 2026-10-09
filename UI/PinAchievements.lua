@@ -237,7 +237,7 @@ local function TryReappend()
 
     if not cur.loggedRebuild then
         cur.loggedRebuild = true
-        DebugTip("tooltip rebuilds itself (timed POI) — re-appending"
+        DebugTip("tooltip rebuilds itself (timed POI) - re-appending"
             .. " each refresh")
     end
     rendering = true

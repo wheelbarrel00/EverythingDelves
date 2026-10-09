@@ -3,6 +3,48 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.0.0", date = "2026-10-08",
+        sections = {
+            { head = "A new look", items = {
+                "Everything Delves has a whole new look, in the same style as Everything Quests and EQ Objective Tracker. It is the biggest change the addon has had, so first: only the windows changed. Delve logging, the delve HUD, the curio and Trovehunter's Bounty reminders, the panel beside the difficulty picker and the map tooltips all work exactly as before, and every setting keeps its saved value. If anything looks wrong, or you miss something from the old layout, please tell me in the CurseForge comments, on Discord, or in a GitHub issue.",
+            }},
+            { head = "New", items = {
+                "A new main window - the nine pages sit in a sidebar with an icon each, and every page is laid out in cards. The window resizes from its corner, maximizes from its header and remembers its size, and the foot of the sidebar keeps your Bountiful Keys, Coffer Key Shards and the time to the weekly reset in view on every page.",
+                "Settings have their own window - Options, Profiles and About open from the cog in the header, a right-click on the minimap button, or /ed about. Options is split into General, Display, and Alerts & Tracking. Default Tab is now a list of page names instead of a numbered slider, and the history cap and Clear Delve History moved to General.",
+                "Prompts in the same style - the five that erase or reset something confirm in red: Clear Delve History, Reset All Settings, deleting a profile, deleting a run and removing a character.",
+                "A new Run Note window - with a counter for its 280 letters.",
+            }},
+            { head = "Improved", items = {
+                "Delve Locations and Current Bountiful Delves share one table - click a heading to sort by it (Delve Locations opens sorted by story grade), click a delve to see its bosses with today's boss already open, and Pin and TomTom flash a check when they work. Bountiful delves carry the game's own bountiful icon, and the F grade is now easy to read.",
+                "Current Bountiful Delves - Best Pick sits beside Refresh, Great Vault and Start LFG, and the numbers moved to a card under the list. Start LFG dims while you are in a raid or not the group leader, says why in its tooltip, and keeps up as your group changes.",
+                "The Tier Guide scrolls as one page - your recommended tier's column is highlighted, Great Vault slots and Delver's Journey milestones show as cards and icons, and a used Trovehunter's Bounty and an earned Gilded Stash show a check.",
+                "More of the addon speaks your language - renown faction names, Special Assignment titles and the weekly delve quest now come from the game in your language instead of English, and the Shard Tracker's labels and columns widen to fit longer translations.",
+                "The low shard warning moved to the top of the Shard Tracker - where you will see it.",
+                "Delver's Call's Alt Rollup is a table - each character in their class color.",
+                "Delve History is a table per section - dates read the same in every language (2026-10-05 21:14), where the old format printed English month names.",
+                "The Roster sorts by any column - it highlights your own character and moves the last-updated time into each row's tooltip.",
+                "Azta'rec is laid out in cards - the five mechanic tags keep their colors.",
+            }},
+            { head = "Fixed", items = {
+                "Two Tier Guide tooltips never appeared - the Delver's Journey and Gilded Stash explanations now open from each card's title.",
+                "Pin confirmed a waypoint that was never set - it now confirms only when the waypoint is actually placed.",
+                "Deleting a run while its note was open lost what you had typed - the note window now closes with the run.",
+            }},
+            { head = "Notes", items = {
+                "Some sections fill in a moment after you log in - Everything Delves reads them from the game, and a few need a game panel opened once: the Delver's Journey needs the Journeys panel opened once, and the Shard Tracker's world quests need each Midnight zone's map opened. Quest titles show in English until the game sends your language's version. Where a page is waiting on the game, it tells you.",
+                "Opening the settings closes the main window - so the two never sit on top of each other. Reopen it with /ed or the minimap button.",
+                "The main window opens centered after each login or reload, and still remembers its size.",
+                "Escape closes the windows outside of combat - in combat, use the close button.",
+                "If your Default Tab was Options, Profiles or About, the addon now opens on Delve Locations, since those moved to the settings window.",
+            }},
+            { head = "Coming next, and not forgotten", items = {
+                "The delve information panel at The Ring of Glory - it does not open at that delve's entrance. Thanks to NoNe10 for the report.",
+                "The Dundun reminder in the delve HUD - it can show in a delve that is not bountiful, and disappear during combat in one that is.",
+                "Delve leaderboards - your best time in each delve, and how your characters compare. Thanks to MattBravehearts for the idea.",
+            }},
+        },
+    },
+    {
         version = "1.35.0", date = "2026-09-13",
         sections = {
             { head = "New", items = {

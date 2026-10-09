@@ -1,174 +1,112 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "1.35.0"
+local WHATS_NEW_VERSION = "2.0.0"
 
 local ENTRIES = {
     {
-        title = "Know you need a second coffer key before you go in",
-        desc  = "Dundun hides in every Bountiful Delve and can turn your run Abundantly Bountiful, which spawns a second chest at the end - and that chest wants a second Restored Coffer Key. The delve information panel now tells you where you stand on keys while you are still stood at the entrance. Thanks to LootFever for the request, and to Nickyjean01 for the coffer key idea.",
+        title = "A whole new look",
+        desc  = "The nine pages sit in a sidebar, laid out in cards, in the same style as Everything Quests and EQ Objective Tracker. The window resizes from its corner, maximizes from its header and remembers its size.",
     },
     {
-        title = "A reminder that Dundun is in there",
-        desc  = "He is disguised as a deliberately fake-looking tree and the announcement on entry clears after a few seconds, so the delve HUD now keeps a standing reminder up, with the /tar dundun trick for finding him.",
+        title = "Settings have their own window",
+        desc  = "Options, Profiles and About open from the cog in the header, a right-click on the minimap button, or /ed about. Opening them closes the main window, and /ed brings it back. Every setting keeps its saved value.",
     },
     {
-        title = "It knows when you have already had this week's extra chest",
-        desc  = "The Abundantly Bountiful chest comes around once a week. Once you have taken it, the panel stops telling you to hold a second key back. Thanks to drahgunfyre for his help with this.",
+        title = "Nothing else has changed",
+        desc  = "Only the windows are new. Delve logging, the delve HUD, the reminders and the map tooltips work exactly as before. If anything looks wrong, please tell me in the CurseForge comments, on Discord, or in a GitHub issue.",
     },
     {
-        title = "Ready for the next patch",
-        desc  = "The addon is flagged compatible with 12.1.5, so it will not show as out of date when that build arrives.",
+        title = "Some sections fill in a moment after login",
+        desc  = "A few figures come from the game shortly after you log in. The Delver's Journey needs the Journeys panel opened once, and world quests need each zone's map opened. The page says when it is waiting.",
+    },
+    {
+        title = "Coming next",
+        desc  = "A fix for the delve panel at The Ring of Glory (thanks to NoNe10), the Dundun reminder showing in delves that are not bountiful, and delve leaderboards (thanks to MattBravehearts).",
     },
 }
 
+local WIDTH, HEIGHT = 600, 560
+local PAD_TOP, PAD_SIDE, PAD_BOTTOM = 20, 24, 24
+local HEAD_GAP, SECTION_GAP = 4, 16
+local FOOTER_H, BAR_ROOM = 56, 10
 
-local POPUP_W  = 460
-local PAD      = 12
-local ENTRY_H  = 74
-local HEADER_H = 40
-local FOOTER_H = 74
-local popupH   = HEADER_H + (#ENTRIES * ENTRY_H) + FOOTER_H
+local frame
+
+local function markSeen()
+    if E.db then E.db.seenWhatsNewVersion = WHATS_NEW_VERSION end
+end
+
+local function build()
+    if frame then return frame end
+    local ui = E.ui
+
+    local f = ui:CreateWindow({ name = "EverythingDelvesWhatsNew", title = L["What's New"], width = WIDTH, height = HEIGHT })
+    f:SetSection("Everything Delves " .. WHATS_NEW_VERSION)
+    f:AddHeaderButton("icon-discord", L["Join our Discord"], L["Click to copy the invite link."],
+        function() E:ShowDiscord() end)
+    -- Closing it any way at all, Escape included, counts as having seen it
+    f:HookScript("OnHide", markSeen)
+
+    local area = ui:CreateScrollArea(f.body, {})
+    area:SetPoint("TOPLEFT", f.body, "TOPLEFT")
+    area:SetPoint("BOTTOMRIGHT", f.body, "BOTTOMRIGHT", 0, FOOTER_H)
+    local notes = ui:CreateTextBlock(area.content)
+    notes:SetPoint("TOPLEFT", area.content, "TOPLEFT", PAD_SIDE, -PAD_TOP)
+    notes:SetPoint("TOPRIGHT", area.content, "TOPRIGHT", -PAD_SIDE, -PAD_TOP)
+    for i, entry in ipairs(ENTRIES) do
+        notes:AddLine(entry.title, "title", { gap = (i > 1) and SECTION_GAP or nil })
+        notes:AddLine(entry.desc, "label", { gap = HEAD_GAP })
+    end
+
+    local footer = CreateFrame("Frame", nil, f.body)
+    footer:SetPoint("BOTTOMLEFT")
+    footer:SetPoint("BOTTOMRIGHT")
+    footer:SetHeight(FOOTER_H)
+    footer._controls = {}
+    ui:Paint(footer, "chrome", "divider", "T")
+
+    f.dontShow = ui:CreateCheckbox(footer, L["Don't show this again"],
+        function() return E.db and E.db.showWhatsNew == false end,
+        function(on)
+            if E.db then E.db.showWhatsNew = not on end
+            E:RefreshOptionsWidgets()
+        end)
+    f.dontShow:SetPoint("LEFT", footer, "LEFT", PAD_SIDE, 0)
+
+    f.gotIt = ui:CreateButton(footer, L["Got it"], nil, function() f:Hide() end, nil, "primary")
+    f.gotIt:SetPoint("RIGHT", footer, "RIGHT", -PAD_SIDE, 0)
+
+    -- Text measured while hidden can be short of the text as drawn, so it is measured again once shown
+    local function layout()
+        local h = PAD_TOP + notes:Measure() + PAD_BOTTOM
+        -- The scroll frame's own width, which leaves room for the bars, so the notes never scroll sideways
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = WIDTH - BAR_ROOM end
+        area:SetContentSize(w, h)
+        f.gotIt:Fit()
+    end
+    layout()
+    -- The settings window and /ed reset write showWhatsNew too, so the box is read again on every open
+    f:HookScript("OnShow", function()
+        f.dontShow:Refresh()
+        C_Timer.After(0, layout)
+    end)
+
+    frame = f
+    return f
+end
+
+function E.ShowWhatsNew()
+    local f = build()
+    f:Show()
+    -- Over the settings window, whose About tab opens it
+    f:Raise()
+end
 
 E:RegisterModule(function()
-    local popup = CreateFrame("Frame", "EverythingDelvesWhatsNewPopup", UIParent, "BackdropTemplate")
-    popup:SetSize(POPUP_W, popupH)
-    popup:SetFrameStrata("DIALOG")
-    popup:SetClampedToScreen(true)
-    popup:SetMovable(true)
-    popup:EnableMouse(true)
-    popup:RegisterForDrag("LeftButton")
-
-    local pos = E.db and E.db.whatsNewPos
-    if pos and pos.point then
-        popup:SetPoint(pos.point, UIParent, pos.relPoint or pos.point,
-            pos.x or 0, pos.y or 0)
-    else
-        popup:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
-    end
-
-    popup:SetScript("OnDragStart", popup.StartMoving)
-    popup:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint(1)
-        if E.db then
-            E.db.whatsNewPos = { point = point, relPoint = relPoint, x = x, y = y }
-        end
-    end)
-    popup:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    local bg = E.Colors.background
-    popup:SetBackdropColor(bg.r, bg.g, bg.b, 1.0)
-    E:RegisterThemed(function(p)
-        popup:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
-    end)
-    popup:Hide()
-
-    local titleFS = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    titleFS:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, -8)
-    titleFS:SetFont(titleFS:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    titleFS:SetText(
-        E.CC.header .. L["What's New"] .. E.CC.close
-        .. E.CC.muted .. "  \226\128\148  v" .. WHATS_NEW_VERSION .. E.CC.close
-    )
-
-    local titleDiv = popup:CreateTexture(nil, "ARTWORK")
-    titleDiv:SetHeight(1)
-    titleDiv:SetPoint("TOPLEFT",  popup, "TOPLEFT",  1, -26)
-    titleDiv:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -1, -26)
-    E:StyleAccentDivider(titleDiv)
-
-    local Y = -(HEADER_H - 2)
-    for _, entry in ipairs(ENTRIES) do
-        local tf = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        tf:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, Y)
-        tf:SetWidth(POPUP_W - PAD * 2)
-        tf:SetFont(tf:GetFont(), 11, "OUTLINE")
-        tf:SetJustifyH("LEFT")
-        tf:SetText(E.CC.gold .. entry.title .. E.CC.close)
-
-        local df = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        df:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, Y - 17)
-        df:SetWidth(POPUP_W - PAD * 2)
-        df:SetFont(df:GetFont(), 10)
-        df:SetJustifyH("LEFT")
-        df:SetWordWrap(true)
-        df:SetText(E.CC.body .. entry.desc .. E.CC.close)
-
-        Y = Y - ENTRY_H
-    end
-
-    local neverCB = CreateFrame("CheckButton", nil, popup, "UICheckButtonTemplate")
-    neverCB:SetSize(22, 22)
-    neverCB:SetPoint("BOTTOMLEFT", popup, "BOTTOMLEFT", PAD, 44)
-    neverCB:SetChecked(E.db and E.db.showWhatsNew == false)
-    local neverFS = neverCB:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    neverFS:SetPoint("LEFT", neverCB, "RIGHT", 4, 0)
-    neverFS:SetFont(neverFS:GetFont(), 11)
-    neverFS:SetText(E.CC.body .. L["Don't show this again"] .. E.CC.close)
-    neverCB:SetScript("OnClick", function(self)
-        if E.db then E.db.showWhatsNew = not self:GetChecked() end
-        if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
-    end)
-
-    local btn = E:CreateButton(popup, 100, 24, L["Got it"])
-    btn:SetPoint("BOTTOM", popup, "BOTTOM", 60, 16)
-    btn:SetScript("OnClick", function()
-        E.db.seenWhatsNewVersion = WHATS_NEW_VERSION
-        popup:Hide()
-    end)
-
-    -- Intentionally does NOT mark the popup seen, so the player can grab the invite and keep reading.
-    local discordBtn = CreateFrame("Button", nil, popup, "BackdropTemplate")
-    discordBtn:SetHeight(24)
-    local dBg = discordBtn:CreateTexture(nil, "BACKGROUND")
-    dBg:SetAllPoints()
-    dBg:SetColorTexture(0.10, 0.10, 0.10, 0.95)
-    discordBtn.icon = discordBtn:CreateTexture(nil, "OVERLAY")
-    discordBtn.icon:SetSize(16, 16)
-    discordBtn.icon:SetPoint("LEFT", 10, 0)
-    discordBtn.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
-    discordBtn.text = discordBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    discordBtn.text:SetPoint("LEFT", discordBtn.icon, "RIGHT", 6, 0)
-    discordBtn.text:SetText(L["Join our Discord!"])
-    discordBtn:SetWidth(10 + 16 + 6 + discordBtn.text:GetStringWidth() + 12)
-    discordBtn:SetPoint("RIGHT", btn, "LEFT", -10, 0)
-    discordBtn:SetScript("OnClick", function() E:ShowDiscord() end)
-    discordBtn:SetScript("OnEnter", function(self)
-        self.text:SetTextColor(1, 1, 1)
-    end)
-    discordBtn:SetScript("OnLeave", function(self)
-        local ac = E:GetAccentColor()
-        self.text:SetTextColor(ac.r, ac.g, ac.b)
-    end)
-    E:RegisterThemed(function()
-        local ac = E:GetAccentColor()
-        discordBtn.text:SetTextColor(ac.r, ac.g, ac.b)
-    end)
-    btn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-    end)
-    btn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-    end)
-
-    local function MaybeShow()
-        if E.db.showWhatsNew == false then return end
-        if (E.db.seenWhatsNewVersion or "") ~= WHATS_NEW_VERSION then
-            popup:Show()
-        end
-    end
-
-    MaybeShow()
-
-    -- The Options tab and /ed reset write showWhatsNew too, so resync on every open.
-    function E:ShowWhatsNew()
-        neverCB:SetChecked(E.db and E.db.showWhatsNew == false)
-        popup:Show()
+    if E.db.showWhatsNew == false then return end
+    if (E.db.seenWhatsNewVersion or "") ~= WHATS_NEW_VERSION then
+        E:ShowWhatsNew()
     end
 end)

@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
 </p>
 <p align="center">
-  Track bountiful delves, shard income, tier rewards, faction renown, delve history, and more — in a single dark-red themed window.
+  Track bountiful delves, shard income, tier rewards, faction renown, delve history, and more — in a single window.
 </p>
 <details>
 <summary>Screenshots</summary>
@@ -40,7 +40,9 @@
 
 Everything Delves is a display-only companion addon for WoW: Midnight (12.1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
 
-Open with **`/ed`** or the minimap button. Right-click the minimap button to jump to Options.
+Open with **`/ed`** or the minimap button. Right-click the minimap button to open the settings.
+
+Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests and EQ Objective Tracker: the pages sit in a resizable window with a sidebar, and Options, Profiles and About have a settings window of their own. Only the windows changed - everything the addon tracks works exactly as before.
 
 ---
 
@@ -59,17 +61,17 @@ Open with **`/ed`** or the minimap button. Right-click the minimap button to jum
 - **Achievements** — every delve's story variants, Sturdy Chest discoveries and Delver of the Depths tier goals in one list, headed by the Glory of the Midnight Delver rollup, plus which of today's story variants you still need and your own best tier per delve
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
 - **Bonus Spoils tracker** — an optional in-delve overlay that tracks the Nemesis Strongbox packs so you know you've cleared them all before pulling the boss; off by default
-- **Options, Profiles & About** — color themes, alerts, a curio reminder, Valeera and Dun-dun audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
-- **Plus** — delve achievements on world-map pin tooltips, a minimap/broker button with live status text, a dark Midnight theme, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
+- **Options, Profiles & About** — in their own settings window: an accent color for the delve HUD and reminders, alerts, a curio reminder, Valeera and Dun-dun audio mutes, per-character history profiles that auto-migrate and are never deleted, and an About tab with the full changelog and links
+- **Plus** — delve achievements on world-map pin tooltips, a minimap/broker button with live status text, a dark look shared with Everything Quests and EQ Objective Tracker, a resizable main window that remembers its size, a tiny ~600kb display-only footprint (no automation), and `/ed` to open it all
 
 ---
 
 ## Features
 
 ### Delve Locations
-All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up green while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves are highlighted with a gold star. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked with a star.
+All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves carry the game's own bountiful icon. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked and already open.
 
-A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then, color-graded relative to your own pace — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
+A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
 ### Current Bountiful Delves
 Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Delver's Journey stage, and a live **daily** reset countdown (bountiful delves and story variants rotate daily). Each delve shows its story variant, tier rating, and overcharged status, with a "Best Pick" suggestion for the highest-value bountiful. The checklist and progress bar fill in **automatically** from your completed runs. Quick-launch buttons for the Great Vault and Group Finder, and the **same expandable boss tactics** as the Delve Locations tab.
@@ -110,7 +112,7 @@ Lifetime stats and recent run history for every Midnight delve, including the Se
 - **Per-run detail** for your recent runs: tier, time, deaths, Coffer Key used, story variant, the **boss you faced**, and the date + time of day
 - **Free-form notes** — attach a note to any run (a build you tested, a notable drop, a curio experiment); click the note icon to add, edit, or clear it
 - **Delete a single run** — remove a bogus run (a disconnect artifact, a test run) with one click; its time, deaths, and key usage are subtracted from that delve's lifetime stats, and record stats recalculate automatically
-- **Configurable history depth** — a slider sets how many recent runs to keep per delve, from 20 up to 100
+- **Configurable history depth** — a slider in the settings window's General tab sets how many recent runs to keep per delve, from 20 up to 100
 - Lifetime totals persist across sessions with minimal memory cost
 
 ### Delver's Call
@@ -123,13 +125,13 @@ An account-wide dashboard of every character that has logged in with the addon. 
 An optional on-screen tracker for the **Nemesis Strongbox** (filled by clearing the Pactsworn groups). It shows at a glance when you've cleared them all so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default — turn it on in Options, then drag it wherever you like.
 
 ### Options
-UI scale, accent color theme (gold / red / purple / green / dark blue / your class color), default tab, minimap button toggle, and map-tooltip achievement detail (summary / full / off). Toggles for the in-delve HUD, the run timer, the best-time run result, the Bonus Spoils tracker, the delve-entrance Tier & Achievement panel, weekly earnable shards in the button tooltip, and the Trovehunter's Bounty reminder. Alerts for bountiful rotation, Special Assignments, a low shard warning threshold, and a **companion-role warning** (when your delve companion has no role assigned). **Companion Audio** mutes Valeera's voice lines, her speech bubbles, and Dun-dun. `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
+Options has its own settings window, split into General, Display, and Alerts & Tracking. UI scale, an accent color for the delve HUD, the curio and Trovehunter's Bounty reminders and the difficulty picker panel (gold / red / purple / green / dark blue / your class color), the page to open on, minimap button toggle, and map-tooltip achievement detail (summary / full / off). Toggles for the in-delve HUD, the run timer, the best-time run result, the Bonus Spoils tracker, the delve-entrance Tier & Achievement panel, weekly earnable shards in the button tooltip, and the Trovehunter's Bounty reminder. Alerts for bountiful rotation, Special Assignments, a low shard warning threshold, and a **companion-role warning** (when your delve companion has no role assigned). **Companion Audio** mutes Valeera's voice lines, her speech bubbles, and Dun-dun. `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
 
 ### Profiles
-Your delve history is tracked **per character** through profiles, so each alt keeps its own runs and stats instead of every character sharing one history. The Profiles tab lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
+Your delve history is tracked **per character** through profiles, so each alt keeps its own runs and stats instead of every character sharing one history. The Profiles tab of the settings window lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
 
 ### About
-A one-stop info tab: the addon version, a full slash-command reference, copyable links (Discord, CurseForge, GitHub, and a bug-report link), and the complete in-addon changelog so you can catch up on anything you missed. Open it directly with `/ed about`.
+A one-stop info tab in the settings window: the addon version, a full slash-command reference, copyable links (Discord, CurseForge, GitHub, and a bug-report link), and the complete in-addon changelog so you can catch up on anything you missed. Open it directly with `/ed about`.
 
 ### Quality of Life
 - **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot for your companion's assigned role, with hover help on its title and each bag-count number
@@ -166,7 +168,8 @@ A one-stop info tab: the addon version, a full slash-command reference, copyable
 | `/everythingdelves` | Toggle the main window (alternate) |
 | `/ed reset` | Reset account-wide settings to defaults (delve history & profiles untouched) |
 | **Left-click** minimap button | Toggle window |
-| **Right-click** minimap button | Open directly to Options |
+| **Right-click** minimap button | Open the settings window |
+| `/ed about` | Open the settings window's About tab |
 | **Drag** minimap button | Reposition around minimap |
 
 The minimap tooltip shows a live snapshot of your currencies, active bountiful count, and weekly reset timer.

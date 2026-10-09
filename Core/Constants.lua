@@ -6,9 +6,6 @@ E.Colors = {
     border      = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
     divider     = { r = 0.55, g = 0.00, b = 0.00, a = 0.80 },
 
-    tabActive   = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
-    tabInactive = { r = 0.15, g = 0.15, b = 0.15, a = 1.00 },
-
     header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },
 
     -- Intentionally hardcoded, not themed by accent color.
@@ -29,13 +26,11 @@ E.CC = {
     green  = "|cFF33CC33",
     yellow = "|cFFFFD100",
     red    = "|cFFFF3333",
-    purple = "|cFFB280FF",
     white  = "|cFFFFFFFF",
-    btnText = "|cFFEBB706",
     close  = "|r",
 }
 
--- Order matters: matches the tab button layout.
+-- Order matters: a saved defaultTab, each page's E:RegisterTab index and MainFrame's PAGE_ICONS are positions in it
 E.TAB_NAMES = {
     L["Delve Locations"],
     L["Current Bountiful Delves"],
@@ -46,11 +41,9 @@ E.TAB_NAMES = {
     L["Delver's Call"],
     L["Achievements"],
     L["Roster"],
-    L["Options"],
-    L["Profiles"],
-    L["About"],
 }
 E.NUM_TABS = #E.TAB_NAMES
+E.NUM_PAGES = 9
 
 -- index == tier number (1-11). recGear is seeded from a live read of
 -- C_DelvesUI.GetDelveEntranceTiers().suggestedILvl and is re-read whenever the
@@ -209,13 +202,15 @@ function E:GetTierCC(tier)
     end
 end
 
--- Story-grade letter colors; mirror TabCurrentBountiful's TIER_COLORS.
-local GRADE_CC = {
-    S = "|cFFFFD600", A = "|cFF33D933", B = "|cFF19CCE6",
-    C = "|cFFD9BF19", D = "|cFF8C8C8C", F = "|cFF733333",
-}
+-- F was 733333, too dark to read on the window
+local GRADE_HEX = { S = "FFD600", A = "33D933", B = "19CCE6", C = "D9BF19", D = "8C8C8C", F = "E0605A" }
+E.GRADE_COLORS = {}
+for letter, hex in pairs(GRADE_HEX) do
+    E.GRADE_COLORS[letter] = { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255,
+                               tonumber(hex:sub(5, 6), 16) / 255 }
+end
 function E:GetGradeCC(letter)
-    return GRADE_CC[letter] or "|cFFAAAAAA"
+    return GRADE_HEX[letter] and ("|cFF" .. GRADE_HEX[letter]) or "|cFFAAAAAA"
 end
 
 -- Champion/Hero are both Epic quality, so distinct track colors are used
@@ -355,77 +350,42 @@ E.AccentPresets = {
     red = {
         border      = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
         divider     = { r = 0.55, g = 0.00, b = 0.00, a = 0.80 },
-        tabActive   = { r = 0.55, g = 0.00, b = 0.00, a = 1.00 },
-        tabBorder   = { r = 0.70, g = 0.00, b = 0.00, a = 1.00 },
-        tabHover    = { r = 0.30, g = 0.00, b = 0.00, a = 0.80 },
         header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },
         headerCC    = "|cFFFF2222",
         buttonBg    = { r = 0.40, g = 0.00, b = 0.00, a = 1.00 },
         buttonHover = { r = 0.55, g = 0.05, b = 0.05, a = 1.00 },
-        progressFill= { r = 0.55, g = 0.00, b = 0.00, a = 0.90 },
-        scrollThumb = { r = 0.55, g = 0.00, b = 0.00, a = 0.80 },
-        closeBg     = { r = 0.30, g = 0.00, b = 0.00, a = 0.80 },
-        closeHover  = { r = 0.55, g = 0.05, b = 0.05, a = 1.00 },
     },
     gold = {
         border      = { r = 1.00, g = 0.82, b = 0.00, a = 1.00 },
         divider     = { r = 1.00, g = 0.82, b = 0.00, a = 0.80 },
-        tabActive   = { r = 0.78, g = 0.61, b = 0.04, a = 1.00 },
-        tabBorder   = { r = 1.00, g = 0.82, b = 0.00, a = 1.00 },
-        tabHover    = { r = 0.50, g = 0.40, b = 0.00, a = 0.80 },
         header      = { r = 1.00, g = 0.84, b = 0.00, a = 1.00 },
         headerCC    = "|cFFFFD100",
         buttonBg    = { r = 0.45, g = 0.36, b = 0.00, a = 1.00 },
         buttonHover = { r = 0.78, g = 0.61, b = 0.04, a = 1.00 },
-        progressFill= { r = 0.78, g = 0.61, b = 0.04, a = 0.90 },
-        scrollThumb = { r = 0.78, g = 0.61, b = 0.04, a = 0.80 },
-        closeBg     = { r = 0.40, g = 0.32, b = 0.00, a = 0.80 },
-        closeHover  = { r = 0.78, g = 0.61, b = 0.04, a = 1.00 },
     },
     purple = {
         border      = { r = 0.42, g = 0.05, b = 0.68, a = 1.00 },
         divider     = { r = 0.42, g = 0.05, b = 0.68, a = 0.80 },
-        tabActive   = { r = 0.42, g = 0.05, b = 0.68, a = 1.00 },
-        tabBorder   = { r = 0.55, g = 0.10, b = 0.80, a = 1.00 },
-        tabHover    = { r = 0.25, g = 0.03, b = 0.40, a = 0.80 },
         header      = { r = 0.70, g = 0.50, b = 1.00, a = 1.00 },
         headerCC    = "|cFFB280FF",
         buttonBg    = { r = 0.30, g = 0.04, b = 0.50, a = 1.00 },
         buttonHover = { r = 0.50, g = 0.10, b = 0.75, a = 1.00 },
-        progressFill= { r = 0.42, g = 0.05, b = 0.68, a = 0.90 },
-        scrollThumb = { r = 0.42, g = 0.05, b = 0.68, a = 0.80 },
-        closeBg     = { r = 0.22, g = 0.02, b = 0.36, a = 0.80 },
-        closeHover  = { r = 0.50, g = 0.10, b = 0.75, a = 1.00 },
     },
     green = {
         border      = { r = 0.00, g = 0.39, b = 0.00, a = 1.00 },
         divider     = { r = 0.00, g = 0.39, b = 0.00, a = 0.80 },
-        tabActive   = { r = 0.00, g = 0.45, b = 0.00, a = 1.00 },
-        tabBorder   = { r = 0.10, g = 0.55, b = 0.10, a = 1.00 },
-        tabHover    = { r = 0.00, g = 0.25, b = 0.00, a = 0.80 },
         header      = { r = 0.30, g = 0.85, b = 0.30, a = 1.00 },
         headerCC    = "|cFF4CD94C",
         buttonBg    = { r = 0.00, g = 0.30, b = 0.00, a = 1.00 },
         buttonHover = { r = 0.05, g = 0.45, b = 0.05, a = 1.00 },
-        progressFill= { r = 0.00, g = 0.45, b = 0.00, a = 0.90 },
-        scrollThumb = { r = 0.00, g = 0.45, b = 0.00, a = 0.80 },
-        closeBg     = { r = 0.00, g = 0.22, b = 0.00, a = 0.80 },
-        closeHover  = { r = 0.05, g = 0.45, b = 0.05, a = 1.00 },
     },
     darkblue = {
         border      = { r = 0.00, g = 0.19, b = 0.56, a = 1.00 },
         divider     = { r = 0.00, g = 0.19, b = 0.56, a = 0.80 },
-        tabActive   = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
-        tabBorder   = { r = 0.10, g = 0.30, b = 0.70, a = 1.00 },
-        tabHover    = { r = 0.00, g = 0.12, b = 0.35, a = 0.80 },
         header      = { r = 0.20, g = 0.55, b = 1.00, a = 1.00 },
         headerCC    = "|cFF3388FF",
         buttonBg    = { r = 0.00, g = 0.15, b = 0.45, a = 1.00 },
         buttonHover = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
-        progressFill= { r = 0.00, g = 0.22, b = 0.60, a = 0.90 },
-        scrollThumb = { r = 0.00, g = 0.22, b = 0.60, a = 0.80 },
-        closeBg     = { r = 0.00, g = 0.10, b = 0.32, a = 0.80 },
-        closeHover  = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
     },
 }
 
@@ -462,17 +422,10 @@ function E:EnsureClassAccent()
     self.AccentPresets.class = {
         border      = ShadeClass(c, 0.80),
         divider     = ShadeClass(c, 0.80, 0.80),
-        tabActive   = ShadeClass(c, 0.45),
-        tabBorder   = ShadeClass(c, 0.85),
-        tabHover    = ShadeClass(c, 0.28, 0.80),
         header      = ShadeClass(c, 1.00),
         headerCC    = "|cFF" .. hex,
         buttonBg    = ShadeClass(c, 0.35),
         buttonHover = ShadeClass(c, 0.55),
-        progressFill= ShadeClass(c, 0.60, 0.90),
-        scrollThumb = ShadeClass(c, 0.60, 0.80),
-        closeBg     = ShadeClass(c, 0.28, 0.80),
-        closeHover  = ShadeClass(c, 0.55),
     }
     return true
 end
@@ -497,12 +450,6 @@ function E:GetAccentPreset()
     return self.AccentPresets[key] or self.AccentPresets.gold
 end
 
-function E:GetAccentColor()
-    local key = (self.db and self.db.accentColor) or "gold"
-    if key == "class" then self:EnsureClassAccent() end
-    return self.AccentColors[key] or self.AccentColors.gold
-end
-
 -- Mutates E.Colors/E.CC in place so existing reads stay valid.
 function E:ApplyAccentColor(name)
     if name == "class" then self:EnsureClassAccent() end
@@ -521,7 +468,6 @@ function E:ApplyAccentColor(name)
     end
     copy(self.Colors.border,      p.border)
     copy(self.Colors.divider,     p.divider)
-    copy(self.Colors.tabActive,   p.tabActive)
     copy(self.Colors.header,      p.header)
     -- Buttons are intentionally hardcoded, not copied from the accent preset.
     self.CC.header = p.headerCC

@@ -1,31 +1,27 @@
 local E = EverythingDelves
 local L = E.L
 
-local math_max, math_min = math.max, math.min
+local ipairs, pairs = ipairs, pairs
+local math_abs, math_ceil, math_max, math_min = math.abs, math.ceil, math.max, math.min
 
-local ROW_HEIGHT = 26
-local LINE_HEIGHT = 16
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, GROUP_GAP, INTRO_GAP = 20, 24, 14, 28, 22, 16
+local ROW, LIST_ROW, HINT_GAP, COL_GAP, ITEM_GAP = 44, 28, 8, 10, 8
+local CHEVRON, CHECK, CELL_CHECK, STAR, CHECK_GAP = 12, 14, 12, 14, 6
+local NAME_MIN, REWARD_LINE, PILLAR_LINE, STORY_HEAD, STORY_LINE = 150, 20, 24, 18, 22
+local CRIT_HEAD, CRIT_LINE, CRIT_GAP, CRIT_INDENT = 20, 22, 6, CHEVRON + ITEM_GAP
+local STAR_ICON = "Interface\\Common\\FavoritesIcon"
 
-local COL_NAME    = 4
-local COL_ZONE    = 240
-local COL_STORIES = 386
-local COL_CHESTS  = 452
-local COL_DEPTHS  = 518
-local COL_BEST    = 584
-local COL_TODAY   = 656
+local COLUMNS = {
+    { key = "today",   label = L["Today's Story"], width = 150 },
+    { key = "best",    label = L["Your Best"],     width = 58, right = true },
+    { key = "depths",  label = L["Depths"],        width = 58, right = true, check = true },
+    { key = "chests",  label = L["Chests"],        width = 58, right = true, check = true },
+    { key = "stories", label = L["Stories"],       width = 58, right = true, check = true },
+    { key = "zone",    label = L["Zone"],          width = 112 },
+}
 
-local ICON_DONE  = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12:0:0|t"
-local ICON_TODO  = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:12:12:0:0|t"
-local ICON_TODAY = "|TInterface\\Common\\FavoritesIcon:14:14|t"
-
-local expandedDelve = {}
-
-local function Fraction(done, total)
-    if not total or total == 0 then
-        return E.CC.muted .. "--" .. E.CC.close
-    end
-    local cc = (done >= total) and E.CC.green or E.CC.red
-    return cc .. done .. "/" .. total .. E.CC.close
+local function StripCodes(s)
+    return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
 
 local function CountDone(criteria)
@@ -36,469 +32,567 @@ local function CountDone(criteria)
     return n
 end
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTabAchievementsContent")
+local function Fraction(done, total)
+    if not total or total == 0 then return "--", false, true end
+    return done .. "/" .. total, done >= total, false
+end
 
-    local Refresh
+-- A card centers a control in its row but never sizes it, and a row frame left with no height came up blank
+-- after a cold login
+local function Row(content, height)
+    local f = CreateFrame("Frame", nil, content)
+    if height then f:SetHeight(height) end
+    return f
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
-    scrollFrame:EnableMouseWheel(true)
+local function Check(ui, parent, size)
+    local t = parent:CreateTexture(nil, "ARTWORK")
+    t:SetSize(size, size)
+    t:SetTexture(ui:Texture("check"))
+    t:SetVertexColor(ui:Color("label"))
+    return t
+end
 
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
-    sc:SetHeight(1)
+-- Lines hang from the frame's top and the card centers the frame in its row, so it must be as tall as they are
+local function MeasureLines(self)
+    local h = self._linesH or 1
+    self:SetHeight(h)
+    return h
+end
 
-    local scrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    scrollBar:SetWidth(14)
-    scrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    scrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    scrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    scrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = scrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    scrollBar:SetThumbTexture(sbThumb)
-    scrollBar:SetOrientation("VERTICAL")
-    scrollBar:SetMinMaxValues(0, 1)
-    scrollBar:SetValue(0)
-    scrollBar:SetValueStep(1)
-    scrollBar:SetObeyStepOnDrag(true)
-    scrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
+local function Muted(ui, fs)
+    fs:SetTextColor(ui:Color("muted"))
+    return fs
+end
 
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        scrollBar:SetValue(newVal)
-    end)
+local function Collect()
+    local data = { status = {} }
+    for _, d in ipairs(E.DelveData or {}) do
+        data.status[d.name] = E:GetDelveAchievementStatus(d.name)
+    end
+    data.glory = E.GetGloryStatus and E:GetGloryStatus()
+    data.credits, data.variants = {}, {}
+    if E.GetTodaysStoryCredits then
+        data.credits, data.variants = E:GetTodaysStoryCredits(data.status)
+    end
+    data.creditByDelve = {}
+    for _, c in ipairs(data.credits) do data.creditByDelve[c.delve] = c.variant end
 
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        scrollBar:SetMinMaxValues(0, maxScroll)
-        scrollBar:SetShown(maxScroll > 0)
+    local stories, chests, depths = 0, 0, 0
+    for _, st in pairs(data.status) do
+        if st.stories then
+            -- Unnamed criteria are skipped by the expanded list, so
+            -- counting them here would claim more than it can show.
+            for _, c in ipairs(st.stories.criteria) do
+                if not c.completed and c.name ~= "" then stories = stories + 1 end
+            end
+        end
+        if st.discoveries and st.discoveries.total > 0 then
+            chests = chests + math_max(0, st.discoveries.total - st.discoveries.found)
+        end
+        depths = depths + #(st.depthsMissing or {})
+    end
+    data.totals = StripCodes(L["Still to earn: %s%d|r story variants, %s%d|r Sturdy Chests, %s%d|r tier goals"]
+        :format("", stories, "", chests, "", depths))
+    return data
+end
+
+local function BuildIntro(ui, content, v)
+    local b = ui:CreateTextBlock(content)
+    b:AddLine(L["Story variants, Sturdy Chests and tier goals for every delve"], "label")
+    b:AddLine(L["Achievements are account-wide and cover all of Midnight, not only this season."] .. " "
+        .. L["Your Best is the highest tier Everything Delves has logged you clearing, so it only counts runs since you installed it."],
+        "hint", { gap = HINT_GAP })
+    v.intro = b
+end
+
+local function BuildGlory(ui, content, v)
+    local card = ui:CreateGroup(content, nil)
+    local top = Row(content, ROW)
+    top.name = ui:CreateText(top, "", "title")
+    top.name:SetWordWrap(false)
+    top.name:SetPoint("LEFT")
+    top.check = Check(ui, top, CHECK)
+    top.state = Muted(ui, ui:CreateText(top, "", "label"))
+    top.state:SetWordWrap(false)
+    card:Add(top, { height = ROW, fill = true })
+
+    local list = Row(content)
+    list.reward = ui:CreateText(list, "", "hint")
+    list.reward:SetWordWrap(false)
+    list.reward:SetPoint("TOPLEFT")
+    list.pillars = {}
+    list.Measure = MeasureLines
+    card:Add(list, { fitHeight = true, fill = true })
+
+    v.gloryNone = Muted(ui, ui:CreateText(content, L["Achievement data unavailable"], "label"))
+    card:Add(v.gloryNone, { height = ROW, fill = true })
+    v.gloryTop, v.gloryList = top, list
+    return card
+end
+
+local function PillarLine(ui, list, i)
+    local p = list.pillars[i]
+    if p then return p end
+    p = { check = Check(ui, list, CHECK), name = ui:CreateText(list, "", "label") }
+    p.name:SetWordWrap(false)
+    p.left = Muted(ui, ui:CreateText(list, "", "label"))
+    p.left:SetWordWrap(false)
+    p.left:SetPoint("LEFT", p.name, "RIGHT", ITEM_GAP, 0)
+    list.pillars[i] = p
+    return p
+end
+
+local function RenderGlory(ui, v, glory)
+    local top, list = v.gloryTop, v.gloryList
+    top:SetShown(glory ~= nil)
+    list:SetShown(glory ~= nil)
+    v.gloryNone:SetShown(glory == nil)
+    if not glory then return end
+
+    top.name:SetText(glory.name or "")
+    top.check:SetShown(glory.done)
+    top.check:ClearAllPoints()
+    top.check:SetPoint("LEFT", top.name, "RIGHT", ITEM_GAP + 2, 0)
+    top.state:ClearAllPoints()
+    if glory.done then
+        top.state:SetPoint("LEFT", top.check, "RIGHT", CHECK_GAP, 0)
+        top.state:SetText(L["Complete"])
+    else
+        top.state:SetPoint("LEFT", top.name, "RIGHT", ITEM_GAP + 2, 0)
+        top.state:SetText(glory.remaining > 0 and L["%d of %d still to earn"]:format(glory.remaining, #glory.pillars)
+            or L["Incomplete"])
     end
 
-    local linePool, dividerPool, rowPool = {}, {}, {}
+    local y = 0
+    list.reward:SetShown(glory.reward ~= nil)
+    if glory.reward then
+        list.reward:SetText(glory.reward)
+        y = REWARD_LINE
+    end
+    for i, pillar in ipairs(glory.pillars) do
+        local p = PillarLine(ui, list, i)
+        local mid = -(y + PILLAR_LINE / 2)
+        p.check:ClearAllPoints()
+        p.check:SetPoint("LEFT", list, "TOPLEFT", 0, mid)
+        p.check:SetShown(pillar.done)
+        p.name:ClearAllPoints()
+        p.name:SetPoint("LEFT", list, "TOPLEFT", CHECK + ITEM_GAP, mid)
+        p.name:SetText(pillar.name)
+        p.name:Show()
+        local left = not pillar.done and pillar.left and pillar.left > 0
+        p.left:SetText(left and L["%d left"]:format(pillar.left) or "")
+        p.left:SetShown(left and true or false)
+        y = y + PILLAR_LINE
+    end
+    for i = #glory.pillars + 1, #list.pillars do
+        local p = list.pillars[i]
+        p.check:Hide()
+        p.name:Hide()
+        p.left:Hide()
+    end
+    list._linesH = math_max(1, y)
+end
 
-    local function AcquireLine(i)
-        local fs = linePool[i]
-        if not fs then
-            fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetFont(fs:GetFont(), 11)
-            fs:SetJustifyH("LEFT")
-            linePool[i] = fs
+local function BuildToday(ui, content, v)
+    local card = ui:CreateGroup(content, nil)
+    local f = Row(content)
+    f.head = ui:CreateText(f, "", "value")
+    f.head:SetWordWrap(false)
+    f.head:SetPoint("TOPLEFT")
+    f.lines = {}
+    f.Measure = MeasureLines
+    card:Add(f, { fitHeight = true, fill = true })
+    v.today = f
+    return card
+end
+
+local function RenderToday(ui, v, credits)
+    local f = v.today
+    if #credits > 0 then
+        f.head:SetText(L["%d of today's story variants are ones you still need"]:format(#credits))
+        f.head:SetTextColor(ui:Color("text"))
+    else
+        f.head:SetText(L["None of today's story variants are new to you."])
+        f.head:SetTextColor(ui:Color("muted"))
+    end
+    local dash = "  " .. E.DelveList.cc("muted") .. "-|r  "
+    local y = STORY_HEAD + (#credits > 0 and CHECK_GAP or 0)
+    for i, c in ipairs(credits) do
+        local line = f.lines[i]
+        if not line then
+            line = { star = f:CreateTexture(nil, "ARTWORK"), text = ui:CreateText(f, "", "label") }
+            line.star:SetSize(STAR, STAR)
+            line.star:SetTexture(STAR_ICON)
+            line.text:SetWordWrap(false)
+            f.lines[i] = line
         end
-        fs:ClearAllPoints()
+        local mid = -(y + STORY_LINE / 2)
+        line.star:ClearAllPoints()
+        line.star:SetPoint("LEFT", f, "TOPLEFT", 0, mid)
+        line.text:ClearAllPoints()
+        line.text:SetPoint("LEFT", f, "TOPLEFT", STAR + ITEM_GAP, mid)
+        line.text:SetText(c.delve .. dash .. c.variant)
+        line.star:Show()
+        line.text:Show()
+        y = y + STORY_LINE
+    end
+    for i = #credits + 1, #f.lines do
+        f.lines[i].star:Hide()
+        f.lines[i].text:Hide()
+    end
+    f._linesH = y
+end
+
+local function NewDelveRow(ui, content, v, delve)
+    local row = CreateFrame("Button", nil, content)
+    row:SetHeight(LIST_ROW)
+    row.delve = delve
+    local hl = row:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(ui:Color("hover"))
+    row.chevron = row:CreateTexture(nil, "ARTWORK")
+    row.chevron:SetSize(CHEVRON, CHEVRON)
+    row.chevron:SetPoint("LEFT")
+    row.chevron:SetVertexColor(ui:Color("muted"))
+    row.name = ui:CreateText(row, delve.name, "label")
+    row.name:SetTextColor(ui:Color("text"))
+    row.name:SetWordWrap(false)
+    row.done = Check(ui, row, CELL_CHECK)
+    row.cells, row.checks = {}, {}
+    for _, col in ipairs(COLUMNS) do
+        local fs = ui:CreateText(row, "", "label")
         fs:SetWordWrap(false)
-        return fs
+        if col.right then fs:SetJustifyH("RIGHT") end
+        row.cells[col.key] = fs
+        if col.check then row.checks[col.key] = Check(ui, row, CELL_CHECK) end
     end
+    row.star = row:CreateTexture(nil, "ARTWORK")
+    row.star:SetSize(STAR, STAR)
+    row.star:SetTexture(STAR_ICON)
 
-    local function AcquireDivider(i)
-        local tex = dividerPool[i]
-        if not tex then
-            tex = sc:CreateTexture(nil, "ARTWORK")
-            tex:SetHeight(1)
-            E:StyleAccentDivider(tex)
-            dividerPool[i] = tex
-        end
-        tex:ClearAllPoints()
-        return tex
-    end
-
-    local function Row_Toggle(self)
-        if not self.delveName then return end
-        expandedDelve[self.delveName] = not expandedDelve[self.delveName]
-        if Refresh then Refresh() end
-    end
-
-    local function CreateRow()
-        local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
-        row:SetHeight(ROW_HEIGHT)
-        row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-        row:RegisterForClicks("LeftButtonUp")
-        row:SetScript("OnClick", Row_Toggle)
-
-        local function Col(x, width, justify)
-            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("LEFT", row, "LEFT", x, 0)
-            fs:SetFont(fs:GetFont(), 11)
-            fs:SetWidth(width)
-            fs:SetJustifyH(justify or "LEFT")
-            fs:SetWordWrap(false)
-            return fs
-        end
-
-        row.nameFS    = Col(COL_NAME,    COL_ZONE - COL_NAME - 6)
-        row.zoneFS    = Col(COL_ZONE,    COL_STORIES - COL_ZONE - 6)
-        row.storiesFS = Col(COL_STORIES, 60, "CENTER")
-        row.chestsFS  = Col(COL_CHESTS,  60, "CENTER")
-        row.depthsFS  = Col(COL_DEPTHS,  60, "CENTER")
-        row.bestFS    = Col(COL_BEST,    60, "CENTER")
-
-        local todayFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        todayFS:SetPoint("LEFT",  row, "LEFT",  COL_TODAY, 0)
-        todayFS:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-        todayFS:SetFont(todayFS:GetFont(), 11)
-        todayFS:SetJustifyH("LEFT")
-        todayFS:SetWordWrap(false)
-        row.todayFS = todayFS
-
-        row:SetScript("OnEnter", function(self)
-            if not self.delveName then return end
-            E:ShowTooltip(self, self.delveName,
-                E.CC.muted .. (expandedDelve[self.delveName]
-                    and L["Click to hide what's left here."]
-                    or  L["Click to see what's left here."]) .. E.CC.close)
-        end)
-        row:SetScript("OnLeave", function() E:HideTooltip() end)
-
-        return row
-    end
-
-    local function AcquireRow(i)
-        local row = rowPool[i]
-        if not row then
-            row = CreateRow()
-            rowPool[i] = row
-        end
-        row:ClearAllPoints()
-        return row
-    end
-
-    local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -4)
-    mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, L["Delve Achievements"])
-
-    local subFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    subFS:SetPoint("LEFT", mainHeader, "RIGHT", 10, -1)
-    subFS:SetFont(subFS:GetFont(), 11)
-    subFS:SetText(E.CC.muted
-        .. L["Story variants, Sturdy Chests and tier goals for every delve"]
-        .. E.CC.close)
-
-    local hideCheck = CreateFrame("CheckButton", nil, sc, "UICheckButtonTemplate")
-    hideCheck:SetSize(22, 22)
-    local hideLabel = hideCheck:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    hideLabel:SetPoint("LEFT", hideCheck, "RIGHT", 2, 0)
-    hideLabel:SetFont(hideLabel:GetFont(), 11)
-    hideLabel:SetText(E.CC.body .. L["Hide finished delves"] .. E.CC.close)
-    hideCheck:SetScript("OnClick", function(self)
-        if E.db then
-            E.db.achHideCompleted = self:GetChecked() and true or false
-        end
-        if Refresh then Refresh() end
+    row:RegisterForClicks("LeftButtonUp")
+    row:SetScript("OnClick", function(self)
+        v.open[self.delve.name] = not v.open[self.delve.name]
+        v.relayout()
     end)
+    row:SetScript("OnEnter", function(self)
+        local body = v.open[self.delve.name] and L["Click to hide what's left here."] or L["Click to see what's left here."]
+        if self.unknown then body = body .. "\n" .. L["Tier progress for this delve could not be read."] end
+        ui:ShowTooltip(self, self.delve.name, body)
+    end)
+    row:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return row
+end
 
-    function Refresh()
-        for _, fs  in ipairs(linePool)    do fs:Hide()  end
-        for _, tex in ipairs(dividerPool) do tex:Hide() end
-        for _, row in ipairs(rowPool)     do row:Hide() end
+local function NewDetail(content)
+    local f = Row(content)
+    f.lines = {}
+    f.Measure = MeasureLines
+    return f
+end
 
-        local lUsed, dUsed, rUsed = 0, 0, 0
-        local yCur = 34
+local function DetailLine(ui, f, i)
+    local line = f.lines[i]
+    if line then return line end
+    line = { check = Check(ui, f, CHECK), head = ui:CreateText(f, "", "groupLabel"), text = ui:CreateText(f, "", "label") }
+    line.tail = Muted(ui, ui:CreateText(f, "", "label"))
+    for _, fs in ipairs({ line.head, line.text, line.tail }) do fs:SetWordWrap(false) end
+    line.tail:SetPoint("LEFT", line.text, "RIGHT", CHECK_GAP, 0)
+    f.lines[i] = line
+    return line
+end
 
-        local function Place(widget, x, h)
-            widget:ClearAllPoints()
-            widget:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
-            widget:Show()
-            yCur = yCur + h
+local function FillDetail(ui, f, st)
+    local items = {}
+    local s = st.stories
+    if s and #s.criteria > 0 then
+        items[#items + 1] = { head = L["Stories"] .. "  " .. (Fraction(CountDone(s.criteria), #s.criteria)) }
+        for _, c in ipairs(s.criteria) do
+            if c.name ~= "" then items[#items + 1] = { text = c.name, done = c.completed } end
         end
-
-        -- Rows stretch to the right edge, so they need the second anchor set
-        -- after Place's ClearAllPoints, not before it.
-        local function PlaceRow(row, h)
-            Place(row, 0, h)
-            row:SetPoint("RIGHT", sc, "RIGHT", -2, 0)
-        end
-
-        local function AddLine(text, x, h)
-            lUsed = lUsed + 1
-            local fs = AcquireLine(lUsed)
-            fs:SetText(text)
-            Place(fs, x or 8, h or LINE_HEIGHT)
-            return fs
-        end
-
-        local function AddDivider(gapBefore, gapAfter)
-            yCur = yCur + (gapBefore or 8)
-            dUsed = dUsed + 1
-            local tex = AcquireDivider(dUsed)
-            tex:SetPoint("TOPLEFT",  sc, "TOPLEFT",  8, -yCur)
-            tex:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -8, -yCur)
-            tex:Show()
-            yCur = yCur + 1 + (gapAfter or 8)
-        end
-
-        AddLine(E.CC.muted
-            .. L["Achievements are account-wide and cover all of Midnight, not only this season."]
-            .. E.CC.close, 8, 18)
-        AddLine(E.CC.muted
-            .. L["Your Best is the highest tier Everything Delves has logged you clearing, so it only counts runs since you installed it."]
-            .. E.CC.close, 8, 20)
-
-        local statusByDelve = {}
-        for _, d in ipairs(E.DelveData or {}) do
-            statusByDelve[d.name] = E:GetDelveAchievementStatus(d.name)
-        end
-
-        local glory = E.GetGloryStatus and E:GetGloryStatus()
-        if glory then
-            local state
-            if glory.done then
-                state = E.CC.green .. L["Complete"] .. E.CC.close
-            elseif glory.remaining > 0 then
-                state = E.CC.red .. L["%d of %d still to earn"]
-                    :format(glory.remaining, #glory.pillars) .. E.CC.close
-            else
-                state = E.CC.red .. L["Incomplete"] .. E.CC.close
+    end
+    local d = st.discoveries
+    if d and d.total > 0 then
+        items[#items + 1] = { head = L["Sturdy Chests"] .. "  " .. (Fraction(d.found, d.total)) }
+    end
+    if st.depths and #st.depths > 0 then
+        items[#items + 1] = { head = L["Delver of the Depths"] .. "  "
+            .. (Fraction(#st.depths - #st.depthsMissing, #st.depths)) }
+        for _, t in ipairs(st.depths) do
+            -- An earned series credits every delve, so show the
+            -- earned date rather than implying this delve was
+            -- cleared at that tier.
+            local tail
+            if t.seriesEarned then
+                tail = t.earnedText and L["achievement earned %s"]:format(t.earnedText) or L["earned account-wide"]
             end
-            AddLine(E.CC.gold .. tostring(glory.name or "") .. E.CC.close
-                .. "   " .. state, 8, 20)
-            if glory.reward then
-                AddLine(E.CC.muted .. glory.reward .. E.CC.close, 8, 18)
-            end
-            for _, p in ipairs(glory.pillars) do
-                local icon = p.done and ICON_DONE or ICON_TODO
-                local cc   = p.done and E.CC.green or E.CC.body
-                local tail = ""
-                if not p.done and p.left and p.left > 0 then
-                    tail = E.CC.muted .. "   " .. L["%d left"]:format(p.left)
-                        .. E.CC.close
-                end
-                AddLine("   " .. icon .. " " .. cc .. p.name .. E.CC.close .. tail, 8)
-            end
+            items[#items + 1] = { text = t.label, done = t.completed, tail = tail }
+        end
+    end
+    if st.depthsUnknown then
+        items[#items + 1] = { note = L["Tier progress for this delve could not be read."] }
+    end
+
+    local y = 0
+    for i, it in ipairs(items) do
+        local line = DetailLine(ui, f, i)
+        if it.head and i > 1 then y = y + CRIT_GAP end
+        local h = it.head and CRIT_HEAD or CRIT_LINE
+        local mid = -(y + h / 2)
+        line.head:SetShown(it.head ~= nil)
+        line.text:SetShown(it.head == nil)
+        line.check:SetShown(it.done == true)
+        line.tail:SetShown(it.tail ~= nil)
+        if it.head then
+            line.head:ClearAllPoints()
+            line.head:SetPoint("LEFT", f, "TOPLEFT", CRIT_INDENT, mid)
+            line.head:SetText(it.head)
         else
-            AddLine(E.CC.muted .. L["Achievement data unavailable"] .. E.CC.close,
-                8, 20)
+            line.check:ClearAllPoints()
+            line.check:SetPoint("LEFT", f, "TOPLEFT", CRIT_INDENT, mid)
+            line.text:ClearAllPoints()
+            line.text:SetPoint("LEFT", f, "TOPLEFT", CRIT_INDENT + (it.note and 0 or CHECK + ITEM_GAP), mid)
+            line.text:SetText(it.text or it.note)
+            line.text:SetTextColor(ui:Color(it.note and "muted" or "label"))
+            line.tail:SetText(it.tail or "")
         end
+        y = y + h
+    end
+    for i = #items + 1, #f.lines do
+        local line = f.lines[i]
+        line.check:Hide()
+        line.head:Hide()
+        line.text:Hide()
+        line.tail:Hide()
+    end
+    f._linesH = math_max(1, y)
+end
 
-        AddDivider()
+local function BuildTable(ui, content, v)
+    local card = ui:CreateGroup(content, L["Delve Achievements"])
 
-        local credits, variantByDelve = {}, {}
-        if E.GetTodaysStoryCredits then
-            credits, variantByDelve = E:GetTodaysStoryCredits(statusByDelve)
+    local top = Row(content, ROW)
+    top._controls = {}
+    top.box = ui:CreateCheckbox(top, L["Hide finished delves"],
+        function() return E.db and E.db.achHideCompleted == true end,
+        function(on)
+            if E.db then E.db.achHideCompleted = on end
+            v.relayout()
+        end)
+    top.totals = ui:CreateText(top, "", "label")
+    top.totals:SetWordWrap(false)
+    top.totals:SetPoint("LEFT")
+    top.totals:SetPoint("RIGHT", top.box, "LEFT", -COL_GAP, 0)
+    card:Add(top, { height = ROW, fill = true })
+    v.top = top
+
+    local head = Row(content, LIST_ROW)
+    head.name = ui:CreateText(head, L["Delve"], "groupLabel")
+    head.cells = {}
+    for _, col in ipairs(COLUMNS) do
+        local fs = ui:CreateText(head, col.label, "groupLabel")
+        fs:SetWordWrap(false)
+        if col.right then fs:SetJustifyH("RIGHT") end
+        head.cells[col.key] = fs
+    end
+    card:Add(head, { height = LIST_ROW, fill = true })
+    v.head = head
+
+    v.rows = {}
+    for i, delve in ipairs(E.DelveData or {}) do
+        local row = NewDelveRow(ui, content, v, delve)
+        card:Add(row, { height = LIST_ROW, fill = true })
+        row.detail = NewDetail(content)
+        card:Add(row.detail, { fitHeight = true, fill = true })
+        v.rows[i] = row
+    end
+
+    v.empty = Muted(ui, ui:CreateText(content, L["Every delve is finished. Nothing left to earn."], "label"))
+    card:Add(v.empty, { height = ROW, fill = true })
+    return card
+end
+
+local function ColumnWidths(head)
+    local widths, used = {}, 0
+    for i, col in ipairs(COLUMNS) do
+        local fs = head.cells[col.key]
+        fs:SetWidth(0)
+        widths[i] = math_max(col.width, math_ceil(fs:GetStringWidth() or 0) + 1)
+        used = used + widths[i] + COL_GAP
+    end
+    return widths, used
+end
+
+local function PlaceCells(row, widths, used, nameX)
+    local right = 0
+    for i, col in ipairs(COLUMNS) do
+        local fs = row.cells[col.key]
+        local x = (col.key == "today" and row.starred) and (STAR + CHECK_GAP) or 0
+        fs:ClearAllPoints()
+        fs:SetPoint("LEFT", row, "RIGHT", -(right + widths[i]) + x, 0)
+        fs:SetWidth(widths[i] - x)
+        if col.key == "today" and row.star then
+            row.star:ClearAllPoints()
+            row.star:SetPoint("LEFT", row, "RIGHT", -(right + widths[i]), 0)
         end
-        if #credits > 0 then
-            AddLine(E.CC.gold
-                .. L["%d of today's story variants are ones you still need"]
-                    :format(#credits)
-                .. E.CC.close, 8, 20)
-            for _, c in ipairs(credits) do
-                AddLine("   " .. E.CC.green .. c.delve .. E.CC.close
-                    .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                    .. E.CC.body .. c.variant .. E.CC.close, 8)
-            end
-        else
-            AddLine(E.CC.muted
-                .. L["None of today's story variants are new to you."]
-                .. E.CC.close, 8, 20)
-        end
+        right = right + widths[i] + COL_GAP
+    end
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row, "LEFT", nameX, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -used, 0)
+end
 
-        AddDivider()
+local function PlaceChecks(row, nameW)
+    for key, check in pairs(row.checks) do
+        local fs = row.cells[key]
+        check:ClearAllPoints()
+        check:SetPoint("RIGHT", fs, "RIGHT", -(math_ceil(fs:GetStringWidth() or 0) + 4), 0)
+    end
+    row.done:ClearAllPoints()
+    row.done:SetPoint("LEFT", row.name, "LEFT", math_min(math_ceil(row.name:GetStringWidth() or 0), nameW) + CHECK_GAP, 0)
+end
 
-        local storiesLeft, chestsLeft, depthsLeft = 0, 0, 0
-        for _, st in pairs(statusByDelve) do
-            if st then
-                if st.stories then
-                    -- Unnamed criteria are skipped by the expanded list, so
-                    -- counting them here would claim more than it can show.
-                    for _, c in ipairs(st.stories.criteria) do
-                        if not c.completed and c.name ~= "" then
-                            storiesLeft = storiesLeft + 1
-                        end
-                    end
-                end
-                if st.discoveries and st.discoveries.total > 0 then
-                    chestsLeft = chestsLeft
-                        + math_max(0, st.discoveries.total - st.discoveries.found)
-                end
-                depthsLeft = depthsLeft + #(st.depthsMissing or {})
-            end
-        end
+local function FillRow(ui, v, row, st)
+    local name = row.delve.name
+    row.chevron:SetTexture(ui:Texture(v.open[name] and "chevron-down" or "chevron-right"))
+    row.done:SetShown(st ~= nil and st.allDone == true)
+    row.unknown = st ~= nil and st.depthsUnknown
 
-        AddLine(E.CC.body .. L["Still to earn: %s%d|r story variants, %s%d|r Sturdy Chests, %s%d|r tier goals"]
-            :format(E.CC.gold, storiesLeft,
-                    E.CC.gold, chestsLeft,
-                    E.CC.gold, depthsLeft) .. E.CC.close,
-            8, 22)
+    local values = {}
+    if st and st.stories then values.stories = { Fraction(CountDone(st.stories.criteria), #st.stories.criteria) } end
+    if st and st.discoveries and st.discoveries.total > 0 then
+        values.chests = { Fraction(st.discoveries.found, st.discoveries.total) }
+    end
+    if st and st.depthsUnknown then
+        values.depths = { "?", false, true }
+    elseif st and st.depths and #st.depths > 0 then
+        values.depths = { Fraction(#st.depths - #st.depthsMissing, #st.depths) }
+    end
+    local hist = E.GetDelveHistory and E:GetDelveHistory(name)
+    local best = hist and hist.lifetime and hist.lifetime.highestTier
+    if best and best > 0 then values.best = { "T" .. best, false, false } end
 
-        hideCheck:ClearAllPoints()
-        hideCheck:SetPoint("TOPLEFT", sc, "TOPLEFT", 6, -yCur)
-        hideCheck:SetChecked(E.db and E.db.achHideCompleted == true)
-        hideCheck:Show()
-        yCur = yCur + 26
+    local credit = v.data.creditByDelve[name]
+    local variant = credit or v.data.variants[name]
+    if variant and variant ~= "" then values.today = { variant, false, false } end
+    row.starred = credit ~= nil
+    row.star:SetShown(row.starred)
+    values.zone = { row.delve.zone or "", false, false }
 
-        AddLine(E.CC.muted .. L["Delve"] .. E.CC.close, COL_NAME + 4, 0)
-        AddLine(E.CC.muted .. L["Zone"] .. E.CC.close, COL_ZONE, 0)
-        AddLine(E.CC.muted .. L["Stories"] .. E.CC.close, COL_STORIES, 0)
-        AddLine(E.CC.muted .. L["Chests"] .. E.CC.close, COL_CHESTS, 0)
-        AddLine(E.CC.muted .. L["Depths"] .. E.CC.close, COL_DEPTHS, 0)
-        AddLine(E.CC.muted .. L["Your Best"] .. E.CC.close, COL_BEST, 0)
-        AddLine(E.CC.muted .. L["Today's Story"] .. E.CC.close, COL_TODAY, 18)
+    for _, col in ipairs(COLUMNS) do
+        local val = values[col.key] or { "--", false, true }
+        local fs = row.cells[col.key]
+        fs:SetText(val[1])
+        fs:SetTextColor(ui:Color(val[3] and "muted" or "label"))
+        if row.checks[col.key] then row.checks[col.key]:SetShown(val[2]) end
+    end
+end
 
-        local creditByDelve = {}
-        for _, c in ipairs(credits) do creditByDelve[c.delve] = c.variant end
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTabAchievementsContent")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+
+    local v = { open = {} }
+    BuildIntro(ui, content, v)
+    local cards = { BuildGlory(ui, content, v), BuildToday(ui, content, v), BuildTable(ui, content, v) }
+
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
+    end
+
+    local function Render(recollect)
+        if recollect or not v.data then v.data = Collect() end
+        local data = v.data
+        local view = ViewWidth()
+        lastWidth = view
+
+        RenderGlory(ui, v, data.glory)
+        RenderToday(ui, v, data.credits)
+        v.top.totals:SetText(data.totals)
+        v.top.box:Refresh()
+        local boxLabel = math_ceil(v.top.box.label:GetStringWidth() or 0) + ui:Spacing("checkboxGap")
+        v.top.box:ClearAllPoints()
+        v.top.box:SetPoint("RIGHT", v.top, "RIGHT", -boxLabel, 0)
+        -- The library sized the click area from the label as measured while the page was built
+        v.top.box:SetHitRectInsets(0, -boxLabel, 0, 0)
+
+        local widths, used = ColumnWidths(v.head)
+        local nameX = CHEVRON + ITEM_GAP
+        -- Narrower than this, the table scrolls sideways rather than squeezing the names
+        local minWidth = nameX + NAME_MIN + used + ui:Spacing("rowPadding") * 2 + PAD_LEFT + PAD_RIGHT
+        local width = math_max(view, minWidth)
+        content:SetWidth(width)
+        local nameW = width - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2 - nameX - used
+        PlaceCells(v.head, widths, used, nameX)
 
         local hideDone = E.db and E.db.achHideCompleted
         local shown = 0
-
-        for _, delve in ipairs(E.DelveData or {}) do
-            local st = statusByDelve[delve.name]
-            local finished = st and st.allDone
-            if not (hideDone and finished) then
+        for _, row in ipairs(v.rows) do
+            local st = data.status[row.delve.name]
+            local visible = not (hideDone and st and st.allDone)
+            row:SetShown(visible)
+            local open = visible and st ~= nil and v.open[row.delve.name] == true
+            row.detail:SetShown(open)
+            if visible then
                 shown = shown + 1
-                rUsed = rUsed + 1
-                local row = AcquireRow(rUsed)
-                row:SetParent(sc)
-                row.delveName = delve.name
-
-                if rUsed % 2 == 0 then
-                    row:SetBackdropColor(0.08, 0.08, 0.08, 0.50)
-                else
-                    row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-                end
-
-                local caret = E.CC.gold
-                    .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
-                local nameCC = finished and E.CC.green or E.CC.body
-                row.nameFS:SetText(caret .. " " .. nameCC .. delve.name .. E.CC.close)
-                row.zoneFS:SetText(E.CC.muted .. delve.zone .. E.CC.close)
-
-                if st then
-                    local s = st.stories
-                    if s then
-                        row.storiesFS:SetText(
-                            Fraction(CountDone(s.criteria), #s.criteria))
-                    else
-                        row.storiesFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                    end
-
-                    local d = st.discoveries
-                    if d and d.total > 0 then
-                        row.chestsFS:SetText(Fraction(d.found, d.total))
-                    else
-                        row.chestsFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                    end
-
-                    if st.depthsUnknown then
-                        row.depthsFS:SetText(E.CC.yellow .. "?" .. E.CC.close)
-                    elseif st.depths and #st.depths > 0 then
-                        local tDone = #st.depths - #st.depthsMissing
-                        row.depthsFS:SetText(Fraction(tDone, #st.depths))
-                    else
-                        row.depthsFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                    end
-                else
-                    row.storiesFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                    row.chestsFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                    row.depthsFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                end
-
-                local hist = E.GetDelveHistory and E:GetDelveHistory(delve.name)
-                local best = hist and hist.lifetime and hist.lifetime.highestTier
-                if best and best > 0 then
-                    row.bestFS:SetText(E.CC.body .. "T" .. best .. E.CC.close)
-                else
-                    row.bestFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                end
-
-                local todayVariant = variantByDelve[delve.name]
-                if creditByDelve[delve.name] then
-                    row.todayFS:SetText(ICON_TODAY .. " " .. E.CC.green
-                        .. creditByDelve[delve.name] .. E.CC.close)
-                elseif todayVariant and todayVariant ~= "" then
-                    row.todayFS:SetText(E.CC.muted .. todayVariant .. E.CC.close)
-                else
-                    row.todayFS:SetText(E.CC.muted .. "--" .. E.CC.close)
-                end
-
-                PlaceRow(row, ROW_HEIGHT)
-
-                if expandedDelve[delve.name] and st then
-                    local s = st.stories
-                    if s and #s.criteria > 0 then
-                        AddLine(E.CC.gold .. L["Stories"] .. E.CC.close
-                            .. "   " .. Fraction(CountDone(s.criteria), #s.criteria),
-                            28, 18)
-                        for _, c in ipairs(s.criteria) do
-                            if c.name ~= "" then
-                                local icon = c.completed and ICON_DONE or ICON_TODO
-                                local cc = c.completed and E.CC.green or E.CC.body
-                                AddLine(icon .. " " .. cc .. c.name .. E.CC.close, 44)
-                            end
-                        end
-                    end
-
-                    local d = st.discoveries
-                    if d and d.total > 0 then
-                        AddLine(E.CC.gold .. L["Sturdy Chests"] .. E.CC.close
-                            .. "   " .. Fraction(d.found, d.total), 28, 18)
-                    end
-
-                    if st.depths and #st.depths > 0 then
-                        local tDone = #st.depths - #st.depthsMissing
-                        AddLine(E.CC.gold .. L["Delver of the Depths"] .. E.CC.close
-                            .. "   " .. Fraction(tDone, #st.depths), 28, 18)
-                        for _, t in ipairs(st.depths) do
-                            local icon = t.completed and ICON_DONE or ICON_TODO
-                            local cc = t.completed and E.CC.green or E.CC.body
-                            -- An earned series credits every delve, so show the
-                            -- earned date rather than implying this delve was
-                            -- cleared at that tier.
-                            local tail = ""
-                            if t.seriesEarned then
-                                tail = E.CC.muted .. "   "
-                                    .. (t.earnedText
-                                        and L["achievement earned %s"]:format(t.earnedText)
-                                        or L["earned account-wide"])
-                                    .. E.CC.close
-                            end
-                            AddLine(icon .. " " .. cc .. t.label .. E.CC.close
-                                .. tail, 44)
-                        end
-                    end
-
-                    if st.depthsUnknown then
-                        AddLine(E.CC.yellow
-                            .. L["Tier progress for this delve could not be read."]
-                            .. E.CC.close, 28, 18)
-                    end
-
-                    yCur = yCur + 4
-                end
+                FillRow(ui, v, row, st)
+                PlaceCells(row, widths, used, nameX)
+                PlaceChecks(row, nameW)
+                if open then FillDetail(ui, row.detail, st) end
             end
         end
+        v.empty:SetShown(shown == 0)
 
-        if shown == 0 then
-            AddLine(E.CC.green .. L["Every delve is finished. Nothing left to earn."]
-                .. E.CC.close, 8, 20)
+        local y = PAD_TOP
+        v.intro:ClearAllPoints()
+        v.intro:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        v.intro:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+        y = y + v.intro:Measure() + INTRO_GAP
+        for i, card in ipairs(cards) do
+            if i > 1 then y = y + GROUP_GAP end
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+            card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+            card:Layout()
+            y = y + card:GetHeight()
         end
+        area:SetContentSize(width, y + PAD_BOTTOM)
+    end
+    v.relayout = function() Render(false) end
 
-        sc:SetHeight(yCur + 12)
-        UpdateScrollRange()
+    -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
+    local pending = false
+    local function RenderSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0, function()
+            pending = false
+            if frame:IsVisible() then Render(false) end
+        end)
     end
 
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then
+            Render(false)
+            RenderSoon()
+        end
+    end)
+
     frame:SetScript("OnShow", function()
-        Refresh()
-        scrollFrame:SetVerticalScroll(0)
-        scrollBar:SetValue(0)
+        Render(true)
+        area:ScrollTo(0, 0)
+        RenderSoon()
     end)
 
     E:RegisterCallback("AchievementUpdate", function()
-        if frame:IsVisible() then Refresh() end
+        if frame:IsVisible() then Render(true) end
     end)
     -- AreaPoisUpdated is debounced at 0.25s and only today's story can change
     -- on it, so this throttles rather than running a full pass 4x a second.
@@ -508,7 +602,7 @@ E:RegisterModule(function()
         local now = GetTime()
         if now - lastPoiRefresh < 5 then return end
         lastPoiRefresh = now
-        Refresh()
+        Render(true)
     end)
 
     E:RegisterTab(8, frame)

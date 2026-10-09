@@ -1,14 +1,31 @@
-﻿-- Main window: tab buttons, tab switching, broker, and minimap button.
 local E = EverythingDelves
 local L = E.L
 
-local pairs, ipairs = pairs, ipairs
+local pairs, ipairs, tostring, tonumber = pairs, ipairs, tostring, tonumber
 local math_floor, math_max = math.floor, math.max
 local string_format = string.format
 
 local DELVE_ICON_ATLAS = "delves-bountiful"
 local DELVE_ICON_TRIM  = 0.15
 local FALLBACK_ICON    = "Interface\\Icons\\INV_Misc_Key_15"
+local ED_TEXTURES      = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
+
+local WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT = 1000, 660, 900, 520
+local GLANCE_TOP, GLANCE_SIDE, GLANCE_BOTTOM, GLANCE_ROW, GLANCE_GAP = 10, 12, 12, 22, 8
+local GLANCE_TICK = 60
+local HINT_GAP = 4
+
+local PAGE_ICONS = {
+    E.ui:Texture("icon-map"),
+    ED_TEXTURES .. "icon-key",
+    E.ui:Texture("icon-stats"),
+    ED_TEXTURES .. "icon-nemesis",
+    ED_TEXTURES .. "icon-shard",
+    E.ui:Texture("icon-history"),
+    E.ui:Texture("icon-globe"),
+    ED_TEXTURES .. "icon-trophy",
+    ED_TEXTURES .. "icon-people",
+}
 
 -- LibDBIcon needs a file, not an atlas; resolve + inset to trim the frame.
 local function GetDelveIcon()
@@ -25,70 +42,128 @@ local function GetDelveIcon()
     return FALLBACK_ICON, nil
 end
 
+local function GetCurrencyQty(id)
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(id)
+        if info then return info.quantity end
+    end
+    return 0
+end
+
+local function ResetText()
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
+        if secs and secs > 0 then
+            return string_format(L["%dd %dh"], math_floor(secs / 86400), math_floor((secs % 86400) / 3600))
+        end
+    end
+    return "?"
+end
+
+local function WindowDB()
+    return E.db and E.db.mainWindow
+end
+
+local function HideResizeHint(f)
+    local w = WindowDB()
+    if w then w.resizeHintSeen = true end
+    f.resizeHint:Hide()
+end
+
+local function RefreshGlance()
+    local f = E.MainFrame
+    if not (f and f:IsShown()) then return end
+    local values = f.glance.values
+    values[1]:SetText(tostring(GetCurrencyQty(E.CurrencyIDs.bountifulKeys)))
+    values[2]:SetText(tostring(GetCurrencyQty(E.CurrencyIDs.cofferKeyShards)))
+    values[3]:SetText(ResetText())
+end
+
+local function BuildGlance(f)
+    local ui = E.ui
+    local g = CreateFrame("Frame", nil, f.sidebar)
+    g:SetPoint("BOTTOMLEFT")
+    g:SetPoint("BOTTOMRIGHT")
+    g:SetHeight(GLANCE_TOP + 3 * GLANCE_ROW + GLANCE_BOTTOM)
+    ui:Paint(g, nil, "divider", "T")
+    g.values = {}
+    for i, label in ipairs({ L["Bountiful Keys:"], L["Coffer Key Shards:"], L["Weekly Reset:"] }) do
+        local y = -(GLANCE_TOP + (i - 0.5) * GLANCE_ROW)
+        local value = ui:CreateText(g, "", "value")
+        value:SetPoint("RIGHT", g, "TOPRIGHT", -GLANCE_SIDE, y)
+        local key = ui:CreateText(g, label, "hint")
+        key:SetPoint("LEFT", g, "TOPLEFT", GLANCE_SIDE, y)
+        key:SetPoint("RIGHT", value, "LEFT", -GLANCE_GAP, 0)
+        key:SetWordWrap(false)
+        g.values[i] = value
+    end
+    f.glance = g
+end
+
 function E:InitMainFrame()
     if self.MainFrame then return end
+    local ui = self.ui
 
-    local frame = CreateFrame("Frame", "EverythingDelvesFrame", UIParent,
-                              "BackdropTemplate")
-    self.MainFrame = frame
-
-    local scale = self.db.uiScale or 1.0
-    frame:SetSize(900, 650)
-    frame:SetScale(scale)
-    frame:SetFrameStrata("HIGH")
-    frame:SetFrameLevel(100)
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:SetToplevel(true)
-
-    frame:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
+    local f = ui:CreateWindow({
+        name = "EverythingDelvesFrame", title = "Everything Delves",
+        width = WIDTH, height = HEIGHT, minWidth = MIN_WIDTH, minHeight = MIN_HEIGHT,
+        sidebarWidth = ui:Spacing("sidebarWidth"), gripTip = L["Drag to resize"],
+        getSize = function()
+            local w = WindowDB()
+            if w then return w.width, w.height end
+        end,
+        setSize = function(width, height)
+            local w = WindowDB()
+            if w then w.width, w.height = width, height end
+        end,
+        getMaximized = function()
+            local w = WindowDB()
+            return w and w.maximized or false
+        end,
+        setMaximized = function(on)
+            local w = WindowDB()
+            if w then w.maximized = on or nil end
+        end,
+        onResize = function(win) HideResizeHint(win) end,
     })
-    local bg = E.Colors.background
-    frame:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
-    E:RegisterThemed(function(p)
-        frame:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
-    end)
+    self.MainFrame = f
+    f:SetScale(self.db.uiScale or 1)
 
-    if self.db.framePosition then
-        local p = self.db.framePosition
-        frame:SetPoint(p.point, UIParent, p.relPoint, p.x, p.y)
-    else
-        frame:SetPoint("CENTER")
+    f:AddHeaderButton("icon-settings", L["Options"], nil, function() E:ShowOptions() end)
+    f:AddHeaderButton("icon-discord", L["Join our Discord"], L["Click to copy the invite link."],
+        function() E:ShowDiscord() end)
+
+    f.resizeHint = ui:CreateText(f.grip, L["Drag to resize"], "hint")
+    f.resizeHint:SetPoint("RIGHT", f.grip, "LEFT", -HINT_GAP, 0)
+    local saved = WindowDB()
+    if saved and saved.resizeHintSeen then f.resizeHint:Hide() end
+
+    local pages = {}
+    for i, title in ipairs(E.TAB_NAMES) do
+        pages[i] = { id = tostring(i), title = title, icon = PAGE_ICONS[i] }
     end
+    f.nav = ui:CreateNav(f.sidebar, pages, function(id) E:SelectTab(tonumber(id)) end)
+    BuildGlance(f)
 
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function(f) f:StartMoving() end)
-    frame:SetScript("OnDragStop", function(f)
-        f:StopMovingOrSizing()
-        local point, _, relPoint, x, y = f:GetPoint()
-        E.db.framePosition = {
-            point    = point,
-            relPoint = relPoint,
-            x        = x,
-            y        = y,
-        }
-    end)
+    self.tabFrames = {}
+    self.contentFrame = f.body
 
-    -- Window is built once and reused; re-apply default tab on every Show so it
-    -- doesn't stick on the last-viewed tab. (Broker right-click SelectTab(10)
-    -- runs after Show returns, so it still wins.)
-    frame:SetScript("OnShow", function()
+    f:HookScript("OnShow", function()
         E:SelectTab(E.db.defaultTab or 1)
+        RefreshGlance()
+        if not f.glanceTicker and C_Timer.NewTicker then
+            f.glanceTicker = C_Timer.NewTicker(GLANCE_TICK, RefreshGlance)
+        end
+        f:Raise()
     end)
+    f:HookScript("OnHide", function()
+        if f.glanceTicker then
+            f.glanceTicker:Cancel()
+            f.glanceTicker = nil
+        end
+    end)
+    self:RegisterCallback("CurrencyUpdate", RefreshGlance)
 
-    -- Frames in UISpecialFrames auto-hide on Escape without tainting.
-    table.insert(UISpecialFrames, "EverythingDelvesFrame")
-
-    frame:Hide()
-
-    self:CreateTitleBar(frame)
-    self:CreateCloseButton(frame)
-    self:CreateTabButtons(frame)
-    self:CreateContentArea(frame)
     self:CreateBrokerObject()
     self:CreateMinimapButton()
 
@@ -99,186 +174,6 @@ function E:InitMainFrame()
     self:SelectTab(self.db.defaultTab or 1)
 end
 
-function E:CreateTitleBar(parent)
-    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOP", parent, "TOP", 0, -18)
-    title:SetFont(title:GetFont(), 25, "OUTLINE")
-    self:StyleAccentHeader(title, "Everything Delves")
-    parent.titleText = title
-
-    -- High-strata frame so scrollbars never cover the version label.
-    local verFrame = CreateFrame("Frame", nil, parent)
-    verFrame:SetSize(80, 16)
-    verFrame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -6)
-    verFrame:SetFrameStrata("HIGH")
-    local ver = verFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    ver:SetPoint("RIGHT")
-    ver:SetText(E.CC.muted .. "v" .. E.version .. E.CC.close)
-    parent.versionText = ver
-
-    -- Click pops a copyable invite (E:ShowDiscord) — WoW can't open a browser.
-    local discord = CreateFrame("Button", nil, parent)
-    discord:SetFrameStrata("HIGH")
-    discord.icon = discord:CreateTexture(nil, "OVERLAY")
-    discord.icon:SetSize(16, 16)
-    discord.icon:SetPoint("LEFT", 0, 0)
-    discord.icon:SetTexture("Interface\\AddOns\\EverythingDelves\\Media\\Textures\\discord.tga")
-    discord.text = discord:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    discord.text:SetPoint("LEFT", discord.icon, "RIGHT", 5, 0)
-    discord.text:SetText(L["Join our Discord!"])
-    discord:SetSize(16 + 5 + discord.text:GetStringWidth() + 4, 18)
-    discord:SetPoint("TOPLEFT", parent, "TOPLEFT", 14, -12)
-    discord:SetScript("OnClick", function() E:ShowDiscord() end)
-    discord:SetScript("OnEnter", function(self)
-        self.text:SetTextColor(1, 1, 1)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        local ac = E:GetAccentPreset().header
-        GameTooltip:SetText(L["Join our Discord"], ac.r, ac.g, ac.b)
-        GameTooltip:AddLine(L["Click to copy the invite link."], 0.8, 0.8, 0.8)
-        GameTooltip:Show()
-    end)
-    discord:SetScript("OnLeave", function(self)
-        local ac = E:GetAccentPreset().header
-        self.text:SetTextColor(ac.r, ac.g, ac.b)
-        GameTooltip:Hide()
-    end)
-    E:RegisterThemed(function()
-        local ac = E:GetAccentPreset().header
-        discord.text:SetTextColor(ac.r, ac.g, ac.b)
-    end)
-    parent.discordButton = discord
-end
-
-function E:CreateCloseButton(parent)
-    local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    btn:SetSize(20, 20)
-    btn:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -6, -6)
-    btn:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-
-    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("CENTER", 0, 1)
-    label:SetFont(label:GetFont(), 12, "OUTLINE")
-    label:SetText("|cFFFFFFFFX|r")
-
-    btn:SetScript("OnEnter", function(self)
-        local p = E:GetAccentPreset()
-        self:SetBackdropColor(p.closeHover.r, p.closeHover.g,
-                              p.closeHover.b, p.closeHover.a)
-    end)
-    btn:SetScript("OnLeave", function(self)
-        local p = E:GetAccentPreset()
-        self:SetBackdropColor(p.closeBg.r, p.closeBg.g,
-                              p.closeBg.b, p.closeBg.a)
-    end)
-    btn:SetScript("OnClick", function() parent:Hide() end)
-
-    E:RegisterThemed(function(p)
-        btn:SetBackdropColor(p.closeBg.r, p.closeBg.g, p.closeBg.b, p.closeBg.a)
-        btn:SetBackdropBorderColor(p.border.r, p.border.g, p.border.b, p.border.a)
-    end)
-end
-
-function E:CreateTabButtons(parent)
-    self.tabButtons = {}
-    self.tabFrames  = {}
-
-    local TAB_HEIGHT  = 28
-    local TAB_Y       = -54
-    local TAB_PADDING = 4
-    local TAB_START_X = 10
-
-    local rowContentWidth = 0
-
-    local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    measure:Hide()
-
-    for i, name in ipairs(E.TAB_NAMES) do
-        local tab = CreateFrame("Button", "EverythingDelvesTab" .. i,
-                                parent, "BackdropTemplate")
-        tab:SetHeight(TAB_HEIGHT)
-
-        measure:SetText(name)
-        local tabWidth = measure:GetStringWidth() + 24
-        tab:SetWidth(tabWidth)
-        rowContentWidth = rowContentWidth + tabWidth
-        if i > 1 then
-            rowContentWidth = rowContentWidth + TAB_PADDING
-        end
-
-        if i == 1 then
-            tab:SetPoint("TOPLEFT", parent, "TOPLEFT", TAB_START_X, TAB_Y)
-        else
-            tab:SetPoint("LEFT", self.tabButtons[i - 1], "RIGHT", TAB_PADDING, 0)
-        end
-
-        tab:SetBackdrop({
-            bgFile   = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-        })
-
-        local label = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        label:SetPoint("CENTER")
-        label:SetFont(label:GetFont(), 11)
-        label:SetText(E.CC.body .. name .. E.CC.close)
-        tab.label = label
-
-        local ic = E.Colors.tabInactive
-        tab:SetBackdropColor(ic.r, ic.g, ic.b, ic.a)
-        tab:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-
-        tab.tabIndex = i
-
-        tab:SetScript("OnClick", function(self)
-            E:SelectTab(self.tabIndex)
-        end)
-        tab:SetScript("OnEnter", function(self)
-            if E.activeTab ~= self.tabIndex then
-                local p = E:GetAccentPreset()
-                self:SetBackdropColor(p.tabHover.r, p.tabHover.g,
-                                      p.tabHover.b, p.tabHover.a)
-            end
-        end)
-        tab:SetScript("OnLeave", function(self)
-            if E.activeTab ~= self.tabIndex then
-                local c = E.Colors.tabInactive
-                self:SetBackdropColor(c.r, c.g, c.b, c.a)
-            end
-        end)
-
-        self.tabButtons[i] = tab
-    end
-
-    -- Tab row can outgrow the default 900px frame width on the stock UI font;
-    -- widen so the whole row fits plus a matching right margin.
-    local neededWidth = TAB_START_X + rowContentWidth + TAB_START_X
-    if parent:GetWidth() < neededWidth then
-        parent:SetWidth(neededWidth)
-    end
-
-    local divider = parent:CreateTexture(nil, "ARTWORK")
-    divider:SetHeight(1)
-    divider:SetPoint("TOPLEFT",  parent, "TOPLEFT",  6, TAB_Y - TAB_HEIGHT - 4)
-    divider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -6, TAB_Y - TAB_HEIGHT - 4)
-    self:StyleAccentDivider(divider)
-    parent.divider = divider
-
-    E:RegisterThemed(function(_)
-        if E.activeTab then E:SelectTab(E.activeTab) end
-    end)
-end
-
-function E:CreateContentArea(parent)
-    local content = CreateFrame("Frame", "EverythingDelvesContent", parent)
-    content:SetPoint("TOPLEFT",     parent, "TOPLEFT",      6, -90)
-    content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT",  -6,   6)
-    self.contentFrame = content
-end
-
 function E:RegisterTab(index, frame)
     self.tabFrames[index] = frame
     frame:SetParent(self.contentFrame)
@@ -287,45 +182,18 @@ function E:RegisterTab(index, frame)
 end
 
 function E:SelectTab(index)
-    if not self.tabButtons then return end
-    -- A downgrade can leave a migrated defaultTab past the end of the list,
-    -- which would hide every frame and highlight no tab.
-    if type(index) ~= "number" or index < 1 or index > E.NUM_TABS then
+    local f = self.MainFrame
+    if not f then return end
+    -- The page list raises on a page it lacks
+    if type(index) ~= "number" or index < 1 or index > E.NUM_TABS or index % 1 ~= 0 then
         index = 1
     end
     self.activeTab = index
-
-    local p = E:GetAccentPreset()
-    for i, btn in ipairs(self.tabButtons) do
-        if i == index then
-            local ac = E.Colors.tabActive
-            btn:SetBackdropColor(ac.r, ac.g, ac.b, ac.a)
-            btn:SetBackdropBorderColor(p.tabBorder.r, p.tabBorder.g,
-                                       p.tabBorder.b, p.tabBorder.a)
-            btn.label:SetText(E.CC.white .. E.TAB_NAMES[i] .. E.CC.close)
-        else
-            local ic = E.Colors.tabInactive
-            btn:SetBackdropColor(ic.r, ic.g, ic.b, ic.a)
-            btn:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-            btn.label:SetText(E.CC.body .. E.TAB_NAMES[i] .. E.CC.close)
-        end
+    f.nav:Select(tostring(index))
+    f:SetSection(E.TAB_NAMES[index])
+    for i, page in pairs(self.tabFrames) do
+        page:SetShown(i == index)
     end
-
-    for i, f in pairs(self.tabFrames) do
-        if i == index then
-            f:Show()
-        else
-            f:Hide()
-        end
-    end
-end
-
-local function GetCurrencyQty(id)
-    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
-        local info = C_CurrencyInfo.GetCurrencyInfo(id)
-        if info then return info.quantity end
-    end
-    return 0
 end
 
 local function AddLiveStats(tip)
@@ -392,18 +260,9 @@ function E:UpdateBrokerText()
         end
     end
 
-    local resetStr = "?"
-    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
-        local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
-        if secs and secs > 0 then
-            resetStr = string_format(L["%dd %dh"],
-                math_floor(secs / 86400), math_floor((secs % 86400) / 3600))
-        end
-    end
-
     self.brokerObj.text = string_format(
         L["Keys: %s%d|r  Shards: %s%s|r  Reset: %s%s|r"],
-        E.CC.gold, keys, E.CC.gold, shardStr, E.CC.gold, resetStr)
+        E.CC.gold, keys, E.CC.gold, shardStr, E.CC.gold, ResetText())
 end
 
 function E:CreateBrokerObject()
@@ -420,10 +279,7 @@ function E:CreateBrokerObject()
             if btn == "LeftButton" then
                 E:ToggleMainFrame()
             elseif btn == "RightButton" then
-                E:ToggleMainFrame()
-                if E.MainFrame:IsShown() then
-                    E:SelectTab(10) -- Options
-                end
+                E:ToggleOptions("general")
             end
         end,
         OnTooltipShow = function(tip)
@@ -591,10 +447,7 @@ function E:CreateMinimapButton()
         if btn == "LeftButton" then
             E:ToggleMainFrame()
         elseif btn == "RightButton" then
-            E:ToggleMainFrame()
-            if E.MainFrame:IsShown() then
-                E:SelectTab(10) -- Options
-            end
+            E:ToggleOptions("general")
         end
     end)
 

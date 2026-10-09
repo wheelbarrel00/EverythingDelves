@@ -1,33 +1,25 @@
 local E = EverythingDelves
 local L = E.L
 
-local math_max, math_min, math_floor = math.max, math.min, math.floor
+local ipairs, pairs, time, tostring = ipairs, pairs, time, tostring
+local math_abs, math_ceil, math_floor, math_max = math.abs, math.ceil, math.floor, math.max
+local table_sort, table_concat = table.sort, table.concat
 
--- Inline textures: the default UI font lacks the triangle glyphs (render as tofu).
-local ARROW_UP   = " |TInterface\\Buttons\\Arrow-Up-Up:12:12|t"
-local ARROW_DOWN = " |TInterface\\Buttons\\Arrow-Down-Up:12:12|t"
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, INTRO_GAP, HINT_GAP = 20, 24, 14, 28, 16, 8
+local HEAD, ROW, EMPTY_ROW = 28, 28, 44
+local INSET, GAP, NAME_MIN, NAME_GAP, CHECK, BUTTON, SORT_ICON, SORT_GAP, CELL_PAD = 14, 10, 140, 6, 14, 24, 10, 4, 4
 
 local COLUMNS = {
-    { key = "name",     label = L["Character"], x = 12,  numeric = false },
-    { key = "ilvl",     label = L["iLvl"],      x = 206, numeric = true  },
-    { key = "keys",     label = L["Keys"],      x = 250, numeric = true  },
-    { key = "shards",   label = L["Shards"],    x = 296, numeric = true  },
-    { key = "wkshards", label = L["Wk Shards"], x = 344, numeric = true  },
-    { key = "bounty",   label = L["Bounty"],    x = 414, numeric = true  },
-    { key = "vault",    label = L["Vault"],     x = 470, numeric = true  },
-    { key = "gilded",   label = L["Gilded"],    x = 524, numeric = true  },
-    { key = "weekly",   label = L["Weekly"],    x = 578, numeric = true  },
-    { key = "trove",    label = L["Trove"],     x = 636, numeric = true  },
-    { key = "updated",  label = L["Updated"],   x = 692, numeric = true  },
+    { key = "ilvl",     label = L["iLvl"] },
+    { key = "keys",     label = L["Keys"] },
+    { key = "shards",   label = L["Shards"] },
+    { key = "wkshards", label = L["Wk Shards"] },
+    { key = "bounty",   label = L["Bounty"] },
+    { key = "vault",    label = L["Vault"] },
+    { key = "gilded",   label = L["Gilded"] },
+    { key = "weekly",   label = L["Weekly"], check = true },
+    { key = "trove",    label = L["Trove"],  check = true },
 }
-local DELETE_X  = 780
-local ROW_W     = 802
-local ROW_H     = 22
-
-local function ClassColorOpen(class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return "|c" .. (c and c.colorStr or "FFE0E0E0")
-end
 
 local function FormatAgo(secs)
     if not secs or secs < 0 then return "?" end
@@ -37,385 +29,373 @@ local function FormatAgo(secs)
     return L["%dd ago"]:format(math_floor(secs / 86400))
 end
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTabRosterContent")
+-- The summary phrase carries its own colors, which the library's look drops
+local function StripCodes(s)
+    return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0,   0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
-    scrollFrame:EnableMouseWheel(true)
+local function SortVal(e, key)
+    local rec = e.rec
+    if key == "name"     then return (rec.name or e.key):lower() end
+    if key == "ilvl"     then return rec.ilvl or 0 end
+    if key == "keys"     then return rec.keys or 0 end
+    if key == "shards"   then return rec.shards or 0 end
+    if key == "wkshards" then return e.valid and (rec.shardsEarnedWeek or 0) or -1 end
+    if key == "bounty"   then return rec.bountyMaps or 0 end
+    if key == "vault"    then return e.valid and (rec.vaultSlots or 0) or -1 end
+    if key == "gilded"   then return e.valid and (rec.gildedCollected or 0) or -1 end
+    if key == "weekly"   then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
+    if key == "trove"    then return e.valid and (rec.bountyLooted and 1 or 0) or -1 end
+    return rec.updated or 0
+end
 
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
-    sc:SetHeight(600)
-
-    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    tabScrollBar:SetWidth(14)
-    tabScrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    tabScrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    tabScrollBar:SetThumbTexture(sbThumb)
-    tabScrollBar:SetOrientation("VERTICAL")
-    tabScrollBar:SetMinMaxValues(0, 1)
-    tabScrollBar:SetValue(0)
-    tabScrollBar:SetValueStep(1)
-    tabScrollBar:SetObeyStepOnDrag(true)
-    tabScrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        tabScrollBar:SetValue(newVal)
-    end)
-
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        tabScrollBar:SetMinMaxValues(0, maxScroll)
-        tabScrollBar:SetShown(maxScroll > 0)
-    end
-
-    local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -4)
-    mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, L["Roster"])
-
-    local subFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    subFS:SetPoint("LEFT", mainHeader, "RIGHT", 10, -1)
-    subFS:SetFont(subFS:GetFont(), 11)
-    subFS:SetText(E.CC.muted .. L["Account-wide alt overview"] .. E.CC.close)
-
-    local summaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    summaryFS:SetPoint("TOPLEFT", mainHeader, "BOTTOMLEFT", 0, -8)
-    summaryFS:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-    summaryFS:SetFont(summaryFS:GetFont(), 11)
-    summaryFS:SetJustifyH("LEFT")
-
-    local hintFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    hintFS:SetPoint("TOPLEFT", summaryFS, "BOTTOMLEFT", 0, -4)
-    hintFS:SetFont(hintFS:GetFont(), 10)
-    hintFS:SetText(E.CC.muted
-        .. L["Log into a character to record it. Click a column to sort; hover a row for detail."]
-        .. E.CC.close)
-
-    local div1 = sc:CreateTexture(nil, "ARTWORK")
-    div1:SetHeight(1)
-    div1:SetPoint("TOPLEFT", hintFS, "BOTTOMLEFT", 0, -8)
-    div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div1)
-
-    local sortKey, sortDesc = "ilvl", true
-    local RefreshAll
-
-    local headerBtns = {}
-    for _, col in ipairs(COLUMNS) do
-        local btn = CreateFrame("Button", nil, sc)
-        btn:SetHeight(16)
-        btn:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", col.x, -8)
-        local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("LEFT", btn, "LEFT", 0, 0)
-        fs:SetFont(fs:GetFont(), 10)
-        fs:SetJustifyH("LEFT")
-        btn.label = fs
-        btn:SetScript("OnClick", function()
-            if sortKey == col.key then
-                sortDesc = not sortDesc
-            else
-                sortKey  = col.key
-                sortDesc = col.numeric
-            end
-            RefreshAll()
-        end)
-        btn:SetScript("OnEnter", function() fs:SetTextColor(1, 1, 1) end)
-        btn:SetScript("OnLeave", function()
-            if sortKey ~= col.key then fs:SetTextColor(0.6, 0.6, 0.6) end
-        end)
-        headerBtns[col.key] = btn
-    end
-
-    local function RefreshHeaders()
-        for _, col in ipairs(COLUMNS) do
-            local btn = headerBtns[col.key]
-            local active = (sortKey == col.key)
-            local arrow  = active and (sortDesc and ARROW_DOWN or ARROW_UP) or ""
-            btn.label:SetText(col.label .. arrow)
-            btn.label:SetTextColor(active and 1 or 0.6,
-                                   active and 1 or 0.6,
-                                   active and 1 or 0.6)
-            btn:SetWidth(btn.label:GetStringWidth() + 4)
-        end
-    end
-
-    local rowPool = {}
-    local function AcquireRow(i)
-        local row = rowPool[i]
-        if row then return row end
-        row = CreateFrame("Button", nil, sc)
-        row:SetHeight(ROW_H)
-        row:SetWidth(ROW_W)
-
-        row.bg = row:CreateTexture(nil, "BACKGROUND")
-        row.bg:SetAllPoints(row)
-        row.bg:Hide()
-
-        row.cells = {}
-        for _, col in ipairs(COLUMNS) do
-            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("LEFT", row, "LEFT", col.x, 0)
-            fs:SetFont(fs:GetFont(), 11)
-            fs:SetJustifyH("LEFT")
-            if col.key == "name" then fs:SetWidth(186) end
-            row.cells[col.key] = fs
-        end
-
-        row.delBtn = E:CreateButton(row, 18, 16, "x")
-        row.delBtn:SetPoint("LEFT", row, "LEFT", DELETE_X, 0)
-
-        row:SetScript("OnEnter", function(self)
-            if not self.bg:IsShown() then
-                self.bg:SetColorTexture(1, 1, 1, 0.05)
-                self.bg:Show()
-                self.hoverOnly = true
-            end
-            if self.tip then E:ShowTooltip(self, unpack(self.tip)) end
-        end)
-        row:SetScript("OnLeave", function(self)
-            if self.hoverOnly then
-                self.bg:Hide()
-                self.hoverOnly = false
-            end
-            E:HideTooltip()
-        end)
-
-        rowPool[i] = row
-        return row
-    end
-
-    StaticPopupDialogs["EVERYTHINGDELVES_DELETEROSTER"] = {
-        text = L["Remove %s from the roster?\n\nThis only clears the saved snapshot; logging into that character records it again."],
-        button1 = L["Remove"],
-        button2 = L["Cancel"],
-        OnAccept = function(_, data)
-            local sv = EverythingDelvesDB
-            if sv and sv.roster then sv.roster[data] = nil end
-            RefreshAll()
-        end,
-        timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+local function Values(e)
+    local rec, valid = e.rec, e.valid
+    return {
+        ilvl     = rec.ilvl and tostring(rec.ilvl) or nil,
+        keys     = tostring(rec.keys or 0),
+        shards   = tostring(rec.shards or 0),
+        wkshards = (valid and (rec.shardsMaxWeek or 0) > 0) and ((rec.shardsEarnedWeek or 0) .. "/" .. rec.shardsMaxWeek) or nil,
+        bounty   = tostring(rec.bountyMaps or 0),
+        vault    = (valid and (rec.vaultTotal or 0) > 0) and ((rec.vaultSlots or 0) .. "/3") or nil,
+        gilded   = (valid and rec.gildedTotal) and ((rec.gildedCollected or 0) .. "/" .. rec.gildedTotal) or nil,
+        weekly   = (valid and rec.weeklyQuestDone) and true or nil,
+        trove    = (valid and rec.bountyLooted) and true or nil,
     }
+end
 
-    local lastRow
+local function TipLines(e, now)
+    local rec = e.rec
+    local tip = {
+        L["Item level: %s"]:format(rec.ilvl or "?"),
+        L["Coffer Keys: %d   Shards: %d"]:format(rec.keys or 0, rec.shards or 0),
+        L["Bounty maps: %d"]:format(rec.bountyMaps or 0),
+    }
+    if e.valid then
+        if (rec.shardsMaxWeek or 0) > 0 then
+            tip[#tip + 1] = L["Weekly shards earned: %d/%d"]:format(rec.shardsEarnedWeek or 0, rec.shardsMaxWeek)
+        end
+        tip[#tip + 1] = L["Great Vault delves: %d/%d  (%d/3 slots)"]
+            :format(rec.vaultProgress or 0, rec.vaultTotal or 0, rec.vaultSlots or 0)
+        if rec.gildedTotal then
+            tip[#tip + 1] = L["Gilded Stash: %d/%d"]:format(rec.gildedCollected or 0, rec.gildedTotal)
+        end
+        tip[#tip + 1] = L["Trovehunter's Bounty: %s"]:format(rec.bountyLooted and L["looted this week"] or L["not looted"])
+    else
+        tip[#tip + 1] = L["Weekly data resets at the next reset"]
+    end
+    tip[#tip + 1] = L["Updated: %s"]:format(FormatAgo(now - (rec.updated or now)))
+    return table_concat(tip, "\n")
+end
 
-    function RefreshAll()
+local function BuildIntro(ui, content, v)
+    local b = ui:CreateTextBlock(content)
+    v.summaryLine = b:AddLine("", "label")
+    b:AddLine(L["Log into a character to record it. Click a column to sort; hover a row for detail."], "hint",
+        { gap = HINT_GAP })
+    v.intro = b
+end
+
+local function HeadCell(ui, head, v, key, label, right)
+    local cell = CreateFrame("Button", nil, head)
+    cell:SetHeight(HEAD)
+    cell.key = key
+    cell.text = ui:CreateText(cell, label, "groupLabel")
+    cell.text:SetWordWrap(false)
+    cell.chevron = cell:CreateTexture(nil, "ARTWORK")
+    cell.chevron:SetSize(SORT_ICON, SORT_ICON)
+    cell.chevron:SetTexture(ui:Texture("chevron-down"))
+    cell.chevron:SetVertexColor(ui:Color("text"))
+    cell.right = right
+    cell:SetScript("OnClick", function(self)
+        if v.sortKey == self.key then
+            v.sortDesc = not v.sortDesc
+        else
+            v.sortKey, v.sortDesc = self.key, self.key ~= "name"
+        end
+        v.relayout()
+    end)
+    cell:SetScript("OnEnter", function(self) self.text:SetTextColor(ui:Color("text")) end)
+    cell:SetScript("OnLeave", function(self)
+        if v.sortKey ~= self.key then self.text:SetTextColor(ui:Color("muted")) end
+    end)
+    return cell
+end
+
+local function PaintHead(ui, v, cell, width)
+    local on = v.sortKey == cell.key
+    local textW = math_ceil(cell.text:GetStringWidth() or 0) + 1
+    local group = textW + (on and (SORT_GAP + SORT_ICON) or 0)
+    cell.text:ClearAllPoints()
+    cell.text:SetPoint("LEFT", cell, "LEFT", cell.right and math_max(0, width - group) or 0, 0)
+    cell.text:SetTextColor(ui:Color(on and "text" or "muted"))
+    cell.chevron:SetShown(on)
+    cell.chevron:ClearAllPoints()
+    cell.chevron:SetPoint("LEFT", cell.text, "RIGHT", SORT_GAP, 0)
+    if v.sortDesc then cell.chevron:SetTexCoord(0, 1, 0, 1) else cell.chevron:SetTexCoord(0, 1, 1, 0) end
+end
+
+local function NewRow(ui, t, v)
+    local r = CreateFrame("Button", nil, t)
+    r:SetHeight(ROW)
+    r.you = ui:Paint(r, "accentSoft", "divider", "T")
+    local hl = r:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(ui:Color("hover"))
+    r.name = E.NamePair(ui, r, "value")
+    r.suffix = ui:CreateText(r, "", "label")
+    r.suffix:SetTextColor(ui:Color("muted"))
+    r.suffix:SetWordWrap(false)
+    r.cells, r.checks = {}, {}
+    for _, col in ipairs(COLUMNS) do
+        local fs = ui:CreateText(r, "", "label")
+        fs:SetWordWrap(false)
+        fs:SetJustifyH("RIGHT")
+        r.cells[col.key] = fs
+        if col.check then
+            local c = r:CreateTexture(nil, "ARTWORK")
+            c:SetSize(CHECK, CHECK)
+            c:SetTexture(ui:Texture("check"))
+            c:SetVertexColor(ui:Color("label"))
+            r.checks[col.key] = c
+        end
+    end
+    r.remove = ui:CreateIconButton(r, "close", BUTTON)
+    r.remove:SetPoint("RIGHT", r, "RIGHT", -INSET, 0)
+    r.remove:SetScript("OnClick", function(self) v.removeChar(self:GetParent()) end)
+    r.remove:SetScript("OnEnter", function(self) ui:ShowTooltip(self, L["Remove"], nil) end)
+    r.remove:SetScript("OnLeave", function() ui:HideTooltip() end)
+    r:SetScript("OnEnter", function(self) ui:ShowTooltip(self, self.title, self.tip) end)
+    r:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return r
+end
+
+local function FillRow(ui, r, e, isCur, now)
+    local rec = e.rec
+    r.entry = e
+    r.you:SetShown(isCur)
+    r.remove:SetShown(not isCur)
+    r.title = (rec.name or e.key) .. " - " .. (rec.realm or "?")
+    r.tip = TipLines(e, now)
+    r.shownName = E.ShowNamePair(ui, r.name, rec.name or e.key, E.ClassRGB(ui, rec.class))
+    r.suffix:SetText((rec.level and tostring(rec.level) or "") .. (isCur and ("  " .. L["(you)"]) or ""))
+    local values = Values(e)
+    for _, col in ipairs(COLUMNS) do
+        local val = values[col.key]
+        local fs = r.cells[col.key]
+        if col.check then
+            r.checks[col.key]:SetShown(val == true)
+            fs:SetText(val and "" or "--")
+        else
+            fs:SetText(val or "--")
+        end
+        fs:SetTextColor(ui:Color(val and "label" or "muted"))
+    end
+end
+
+local function ColumnWidths(t, rows, used, v)
+    local widths = {}
+    for i, col in ipairs(COLUMNS) do
+        local cell = t.heads[i + 1]
+        local w = math_ceil(cell.text:GetStringWidth() or 0) + 1 + (v.sortKey == col.key and (SORT_GAP + SORT_ICON) or 0)
+        for r = 1, used do
+            local fs = rows[r].cells[col.key]
+            fs:SetWidth(0)
+            w = math_max(w, col.check and CHECK or math_ceil(fs:GetStringWidth() or 0))
+        end
+        widths[i] = w + CELL_PAD
+    end
+    return widths
+end
+
+-- Spans the whole card, past the card's own inset, so a row's tint and divider reach both edges
+local function Place(item, t, y)
+    item:SetPoint("TOPLEFT", t, "TOPLEFT", -INSET, -y)
+    item:SetPoint("TOPRIGHT", t, "TOPRIGHT", INSET, -y)
+end
+
+local function PlaceColumns(r, widths, cellFor)
+    local right = INSET + BUTTON + GAP
+    for i = #COLUMNS, 1, -1 do
+        local cell = cellFor(r, i)
+        cell:ClearAllPoints()
+        cell:SetPoint("RIGHT", r, "RIGHT", -right, 0)
+        cell:SetWidth(widths[i])
+        local check = r.checks and r.checks[COLUMNS[i].key]
+        if check then
+            check:ClearAllPoints()
+            check:SetPoint("RIGHT", r, "RIGHT", -right, 0)
+        end
+        right = right + widths[i] + GAP
+    end
+    return right
+end
+
+local function RowCell(r, i)
+    return r.cells[COLUMNS[i].key]
+end
+
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTabRosterContent")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+
+    local v = { sortKey = "ilvl", sortDesc = true }
+    BuildIntro(ui, content, v)
+
+    local card = ui:CreateGroup(content, nil)
+    local t = CreateFrame("Frame", nil, content)
+    t.head = CreateFrame("Frame", nil, t)
+    t.head:SetHeight(HEAD)
+    t.heads = { HeadCell(ui, t.head, v, "name", L["Character"], false) }
+    for _, col in ipairs(COLUMNS) do t.heads[#t.heads + 1] = HeadCell(ui, t.head, v, col.key, col.label, true) end
+    t.empty = ui:CreateText(t, L["No characters tracked yet."], "label")
+    t.empty:SetTextColor(ui:Color("muted"))
+    t.rows = {}
+    card:Add(t, { height = EMPTY_ROW, fill = true })
+
+    v.removeChar = function(row)
+        local delKey = row.entry and row.entry.key
+        if not delKey then return end
+        E:ShowDialog({
+            text = L["Remove %s from the roster?\n\nThis only clears the saved snapshot; logging into that character records it again."]
+                :format(row.entry.rec.name or delKey),
+            button1 = L["Remove"], button2 = L["Cancel"], danger = true,
+            onAccept = function()
+                local saved = EverythingDelvesDB
+                if saved and saved.roster then saved.roster[delKey] = nil end
+                v.relayout()
+            end,
+        })
+    end
+
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
+    end
+
+    local function Render()
         E:CaptureRosterSnapshot()
-        RefreshHeaders()
-
-        local sv     = EverythingDelvesDB
+        local sv = EverythingDelvesDB
         local roster = (sv and sv.roster) or {}
         local curKey = E.CharKey()
-        local now    = time()
+        local now = time()
 
         -- Wrap records (don't add transient fields to the persisted tables).
         local list = {}
         for k, rec in pairs(roster) do
             list[#list + 1] = { key = k, rec = rec, valid = rec.weekEnd and now < rec.weekEnd }
         end
-
-        local function SortVal(e)
-            local rec = e.rec
-            if sortKey == "name"    then return (rec.name or e.key):lower() end
-            if sortKey == "ilvl"    then return rec.ilvl or 0 end
-            if sortKey == "keys"    then return rec.keys or 0 end
-            if sortKey == "shards"   then return rec.shards or 0 end
-            if sortKey == "wkshards" then return e.valid and (rec.shardsEarnedWeek or 0) or -1 end
-            if sortKey == "bounty"   then return rec.bountyMaps or 0 end
-            if sortKey == "vault"    then return e.valid and (rec.vaultSlots or 0) or -1 end
-            if sortKey == "gilded"   then return e.valid and (rec.gildedCollected or 0) or -1 end
-            if sortKey == "weekly"   then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
-            if sortKey == "trove"    then return e.valid and (rec.bountyLooted and 1 or 0) or -1 end
-            return rec.updated or 0
-        end
-        table.sort(list, function(a, b)
-            local va, vb = SortVal(a), SortVal(b)
+        table_sort(list, function(a, b)
+            local va, vb = SortVal(a, v.sortKey), SortVal(b, v.sortKey)
             if va == vb then return (a.rec.name or a.key) < (b.rec.name or b.key) end
-            if sortDesc then return va > vb end
+            if v.sortDesc then return va > vb end
             return va < vb
         end)
 
-        local totalKeys, totalBounty, weeklyDone = 0, 0, 0
+        local keys, bounty, weekly = 0, 0, 0
         for _, e in ipairs(list) do
-            totalKeys   = totalKeys   + (e.rec.keys or 0)
-            totalBounty = totalBounty + (e.rec.bountyMaps or 0)
-            if e.valid and e.rec.weeklyQuestDone then weeklyDone = weeklyDone + 1 end
+            keys = keys + (e.rec.keys or 0)
+            bounty = bounty + (e.rec.bountyMaps or 0)
+            if e.valid and e.rec.weeklyQuestDone then weekly = weekly + 1 end
         end
-        summaryFS:SetText(string.format(
-            L["%s%d|r %scharacters|r   %s\194\183|r   %s%d|r %skeys|r   %s\194\183|r   %s%d|r %sbounty maps|r   %s\194\183|r   %s%d|r %sweekly delve quest done|r"],
-            E.CC.white, #list, E.CC.body,
-            E.CC.muted,
-            E.CC.gold, totalKeys, E.CC.body,
-            E.CC.muted,
-            E.CC.gold, totalBounty, E.CC.body,
-            E.CC.muted,
-            E.CC.green, weeklyDone, E.CC.body))
+        v.summaryLine:SetText(StripCodes(L["%s%d|r %scharacters|r   %s\194\183|r   %s%d|r %skeys|r   %s\194\183|r   %s%d|r %sbounty maps|r   %s\194\183|r   %s%d|r %sweekly delve quest done|r"]
+            :format("", #list, "", "", "", keys, "", "", "", bounty, "", "", "", weekly, "")))
 
-        lastRow = div1
         for i, e in ipairs(list) do
-            local rec   = e.rec
-            local valid = e.valid
-            local row   = AcquireRow(i)
-            local isCur = (e.key == curKey)
-            row:ClearAllPoints()
-            local anchor = (i == 1) and div1 or rowPool[i - 1]
-            local yOff   = (i == 1) and -28 or -2
-            row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, yOff)
-
-            if isCur then
-                row.bg:SetColorTexture(1, 0.82, 0, 0.10)
-                row.bg:Show()
-                row.hoverOnly = false
-            else
-                row.bg:Hide()
-                row.hoverOnly = false
-            end
-
-            row.cells.name:SetText(
-                ClassColorOpen(rec.class) .. (rec.name or e.key) .. "|r"
-                .. (rec.level and ("  " .. E.CC.muted .. rec.level .. E.CC.close) or "")
-                .. (isCur and ("  " .. E.CC.muted .. L["(you)"] .. E.CC.close) or ""))
-
-            row.cells.ilvl:SetText(rec.ilvl
-                and (E.CC.body .. rec.ilvl .. E.CC.close)
-                or  (E.CC.muted .. "\226\128\148" .. E.CC.close))
-
-            local keys = rec.keys or 0
-            row.cells.keys:SetText((keys > 0 and E.CC.gold or E.CC.muted) .. keys .. E.CC.close)
-
-            row.cells.shards:SetText(E.CC.body .. (rec.shards or 0) .. E.CC.close)
-
-            if valid and (rec.shardsMaxWeek or 0) > 0 then
-                local earned = rec.shardsEarnedWeek or 0
-                local mx     = rec.shardsMaxWeek
-                local cc = (earned >= mx) and E.CC.green
-                    or (earned > 0 and E.CC.gold or E.CC.muted)
-                row.cells.wkshards:SetText(cc .. earned .. "/" .. mx .. E.CC.close)
-            else
-                row.cells.wkshards:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
-            end
-
-            local bounty = rec.bountyMaps or 0
-            row.cells.bounty:SetText((bounty > 0 and E.CC.gold or E.CC.muted) .. bounty .. E.CC.close)
-
-            if valid and (rec.vaultTotal or 0) > 0 then
-                local slots = rec.vaultSlots or 0
-                local cc = (slots >= 3) and E.CC.green or (slots > 0 and E.CC.gold or E.CC.muted)
-                row.cells.vault:SetText(cc .. slots .. "/3" .. E.CC.close)
-            else
-                row.cells.vault:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
-            end
-
-            if valid and rec.gildedTotal then
-                local col = rec.gildedCollected or 0
-                local cc = (col >= rec.gildedTotal) and E.CC.green or E.CC.body
-                row.cells.gilded:SetText(cc .. col .. "/" .. rec.gildedTotal .. E.CC.close)
-            else
-                row.cells.gilded:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
-            end
-
-            if valid and rec.weeklyQuestDone then
-                row.cells.weekly:SetText(E.CC.green .. L["Done"] .. E.CC.close)
-            else
-                row.cells.weekly:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
-            end
-
-            if valid and rec.bountyLooted then
-                row.cells.trove:SetText(E.CC.green .. L["Done"] .. E.CC.close)
-            else
-                row.cells.trove:SetText(E.CC.muted .. "\226\128\148" .. E.CC.close)
-            end
-
-            row.cells.updated:SetText(E.CC.muted .. FormatAgo(now - (rec.updated or now)) .. E.CC.close)
-
-            -- Built sequentially (no nil holes) so unpack() reaches every line.
-            local tip = {
-                (rec.name or e.key) .. " - " .. (rec.realm or "?"),
-                L["Item level: %s"]:format(rec.ilvl or "?"),
-                L["Coffer Keys: %d   Shards: %d"]:format(rec.keys or 0, rec.shards or 0),
-                L["Bounty maps: %d"]:format(rec.bountyMaps or 0),
-            }
-            if valid then
-                if (rec.shardsMaxWeek or 0) > 0 then
-                    tip[#tip + 1] = L["Weekly shards earned: %d/%d"]
-                        :format(rec.shardsEarnedWeek or 0, rec.shardsMaxWeek)
-                end
-                tip[#tip + 1] = L["Great Vault delves: %d/%d  (%d/3 slots)"]
-                    :format(rec.vaultProgress or 0, rec.vaultTotal or 0, rec.vaultSlots or 0)
-                if rec.gildedTotal then
-                    tip[#tip + 1] = L["Gilded Stash: %d/%d"]
-                        :format(rec.gildedCollected or 0, rec.gildedTotal)
-                end
-                tip[#tip + 1] = L["Trovehunter's Bounty: %s"]:format(
-                    rec.bountyLooted and L["looted this week"] or L["not looted"])
-            else
-                tip[#tip + 1] = L["Weekly data resets at the next reset"]
-            end
-            tip[#tip + 1] = L["Updated: %s"]:format(FormatAgo(now - (rec.updated or now)))
-            row.tip = tip
-
-            if isCur then
-                row.delBtn:Hide()
-            else
-                row.delBtn:Show()
-                local delKey, delName = e.key, (rec.name or e.key)
-                row.delBtn:SetScript("OnClick", function()
-                    local dlg = StaticPopup_Show("EVERYTHINGDELVES_DELETEROSTER", delName)
-                    if dlg then dlg.data = delKey end
-                end)
-            end
-
-            row:Show()
-            lastRow = row
+            if not t.rows[i] then t.rows[i] = NewRow(ui, t, v) end
+            FillRow(ui, t.rows[i], e, e.key == curKey, now)
         end
+        for i = #list + 1, #t.rows do t.rows[i]:Hide() end
 
-        for j = #list + 1, #rowPool do
-            rowPool[j]:Hide()
-        end
+        local widths = ColumnWidths(t, t.rows, #list, v)
+        local view = ViewWidth()
+        lastWidth = view
+        local cols = INSET + BUTTON + GAP
+        for _, w in ipairs(widths) do cols = cols + w + GAP end
+        -- Wider than the window, the table scrolls sideways rather than squeezing the names
+        local width = math_max(view, INSET + NAME_MIN + cols + PAD_LEFT + PAD_RIGHT)
+        content:SetWidth(width)
 
+        t.head:SetShown(#list > 0)
+        t.empty:SetShown(#list == 0)
+        local y
         if #list == 0 then
-            summaryFS:SetText(E.CC.muted .. L["No characters tracked yet."] .. E.CC.close)
-        end
-
-        C_Timer.After(0, function()
-            local scTop   = sc:GetTop()
-            local lastBot = lastRow and lastRow:GetBottom()
-            if scTop and lastBot and scTop > lastBot then
-                sc:SetHeight((scTop - lastBot) + 24)
+            t.empty:ClearAllPoints()
+            t.empty:SetPoint("LEFT", t, "TOPLEFT", 0, -EMPTY_ROW / 2)
+            y = EMPTY_ROW
+        else
+            t.head:ClearAllPoints()
+            Place(t.head, t, 0)
+            local nameRight = PlaceColumns(t.head, widths, function(_, i) return t.heads[i + 1] end)
+            local nameCell = t.heads[1]
+            nameCell:ClearAllPoints()
+            nameCell:SetPoint("LEFT", t.head, "LEFT", INSET, 0)
+            nameCell:SetPoint("RIGHT", t.head, "RIGHT", -nameRight, 0)
+            for i, cell in ipairs(t.heads) do
+                PaintHead(ui, v, cell, i == 1 and (cell:GetWidth() or 0) or widths[i - 1])
             end
-            UpdateScrollRange()
+            y = HEAD
+            for i = 1, #list do
+                local r = t.rows[i]
+                r:ClearAllPoints()
+                Place(r, t, y)
+                r:Show()
+                nameRight = PlaceColumns(r, widths, RowCell)
+                r.shownName:ClearAllPoints()
+                r.shownName:SetPoint("LEFT", r, "LEFT", INSET, 0)
+                r.suffix:ClearAllPoints()
+                r.suffix:SetPoint("LEFT", r.shownName, "RIGHT", NAME_GAP, 0)
+                r.suffix:SetPoint("RIGHT", r, "RIGHT", -nameRight, 0)
+                y = y + ROW
+            end
+        end
+        t:SetHeight(y)
+        t._euiRow:SetHeight(y)
+
+        local top = PAD_TOP
+        v.intro:ClearAllPoints()
+        v.intro:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -top)
+        v.intro:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -top)
+        top = top + v.intro:Measure() + INTRO_GAP
+        card:ClearAllPoints()
+        card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -top)
+        card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -top)
+        card:Layout()
+        area:SetContentSize(width, top + card:GetHeight() + PAD_BOTTOM)
+    end
+    v.relayout = Render
+
+    -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
+    local pending = false
+    local function RenderSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0, function()
+            pending = false
+            if frame:IsVisible() then Render() end
         end)
     end
 
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then
+            Render()
+            RenderSoon()
+        end
+    end)
+
     frame:SetScript("OnShow", function()
-        RefreshAll()
-        UpdateScrollRange()
-        scrollFrame:SetVerticalScroll(0)
-        tabScrollBar:SetValue(0)
+        Render()
+        area:ScrollTo(0, 0)
+        RenderSoon()
     end)
 
     local function OnData()
-        if frame:IsVisible() then RefreshAll() else E:CaptureRosterSnapshot() end
+        if frame:IsVisible() then Render() else E:CaptureRosterSnapshot() end
     end
     E:RegisterCallback("CurrencyUpdate",   OnData)
     E:RegisterCallback("QuestLogUpdate",   OnData)

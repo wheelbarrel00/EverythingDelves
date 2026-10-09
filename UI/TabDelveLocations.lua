@@ -1,18 +1,10 @@
 local E = EverythingDelves
 local L = E.L
 
-local math_floor, math_max, math_min = math.floor, math.max, math.min
-local table_insert, table_sort = table.insert, table.sort
-local string_format = string.format
+local math_abs, math_max = math.abs, math.max
+local table_insert, table_sort, table_concat = table.insert, table.sort, table.concat
 
 local filteredData   = {}
-local sortField      = "name"
-local sortAscending  = true
-local ROW_HEIGHT     = 28
-
--- boss-level keys are "<delveName>##<bossIndex>".
-local expandedDelve  = {}
-local expandedBoss   = {}
 
 local todayStoryByName = {}
 local todayTierByName  = {}
@@ -38,15 +30,7 @@ local function GetLowerZone(delve)
     return v
 end
 
-local DLOC_TIER_COLORS = {
-    S = {1.00, 0.84, 0.00},
-    A = {0.20, 0.85, 0.20},
-    B = {0.10, 0.80, 0.90},
-    C = {0.85, 0.75, 0.10},
-    D = {0.55, 0.55, 0.55},
-    F = {0.45, 0.20, 0.20},
-}
-local DLOC_TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
+local DLOC_TIER_ORDER = E.DelveList.GRADE_ORDER
 
 local DELVE_NOTES = {
     ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note=L["Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear."] },
@@ -73,18 +57,7 @@ for delveName, info in pairs(DELVE_NOTES) do
     E.DelveSignatureTier[delveName] = info.tier
 end
 
-local function RoleCC(role)
-    local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    local rgb = m and m.rgb or {0.80, 0.80, 0.85}
-    return string_format("|cFF%02X%02X%02X",
-        math_floor(rgb[1]*255), math_floor(rgb[2]*255), math_floor(rgb[3]*255))
-end
-local function RoleLabel(role)
-    local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    return (m and m.label or L["Note"]) .. ":"
-end
-
-local function RefreshFilteredData()
+local function RefreshFilteredData(sortField, sortAscending)
     wipe(filteredData)
     for _, delve in ipairs(E.DelveData) do
         table_insert(filteredData, delve)
@@ -150,647 +123,199 @@ local function RefreshFilteredData()
     end)
 end
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")
-    local TOOLBAR_Y = -4
-    local LIST_Y    = -78
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM = 20, 24, 14, 28
+local BAR_H, HINT_GAP, HINT_H, SUMMARY_GAP = 32, 10, 16, 16
+local SEP = "   \226\128\162   "
 
-    -- Forward-declared so row/header click handlers can call it.
-    local Refresh
+local COLUMNS = {
+    { key = "zone",  label = L["Zone"],          width = 118, sort = "zone" },
+    { key = "tier",  label = L["Tier"],          width = 34,  sort = "tier", align = "CENTER", weight = "navActive" },
+    { key = "story", label = L["Today's Story"], width = 156 },
+    { key = "speed", label = L["Speed"],         width = 50,  sort = "speed", align = "RIGHT",
+      tip = { L["Sort by Speed"], L["Quickest clear first. Shows your own average time once you've run a delve, or a tier- and gear-based estimate (marked *) until then."] } },
+}
 
-    local delveRowPool = {}
-    local bossRowPool  = {}
-    local noteLinePool = {}
+local function IsBountiful(delve)
+    if not E.currentBountifulNames then return false end
+    return (E.currentBountifulNames[delve.name]
+        or E.currentBountifulNames[GetLowerName(delve)]
+        or (E.currentBountifulPOIs and delve.poiID and E.currentBountifulPOIs[delve.poiID])) and true or false
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",  4,   LIST_Y - 16)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
-    scrollFrame:EnableMouseWheel(true)
+local function TipBody(delve, isBountiful, expanded)
+    local lines = hoverTipLines
+    wipe(lines)
+    if isBountiful then lines[#lines + 1] = L["* Bountiful Delve today!"] end
+    lines[#lines + 1] = L["Zone:"] .. " " .. delve.zone
 
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
-    sc:SetHeight(1)
-
-    local scrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    scrollBar:SetWidth(14)
-    scrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    scrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    scrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    scrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = scrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    scrollBar:SetThumbTexture(sbThumb)
-    scrollBar:SetOrientation("VERTICAL")
-    scrollBar:SetMinMaxValues(0, 1)
-    scrollBar:SetValue(0)
-    scrollBar:SetValueStep(1)
-    scrollBar:SetObeyStepOnDrag(true)
-    scrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        scrollBar:SetValue(newVal)
-    end)
-
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        scrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then
-            scrollBar:Hide()
+    local story = todayStoryByName[delve.name]
+    if story and story ~= "" then
+        local si = E.GetStoryTier and E:GetStoryTier(story)
+        lines[#lines + 1] = ""
+        if si and si.tier then
+            lines[#lines + 1] = L["Today's Story:"] .. " " .. story .. "  (" .. L["%s Tier"]:format(si.tier) .. ")"
         else
-            scrollBar:Show()
+            lines[#lines + 1] = L["Today's Story:"] .. " " .. story
+        end
+        if si and si.note then lines[#lines + 1] = si.note end
+    end
+
+    local secs = todaySpeedByName[delve.name]
+    if secs then
+        local label = E:GetSpeedGrade(secs)
+        lines[#lines + 1] = ""
+        if todaySpeedSrcByName[delve.name] == "personal" then
+            lines[#lines + 1] = L["Your average clear:"] .. " " .. E:FormatClock(secs) .. "  (" .. label .. ")"
+        else
+            lines[#lines + 1] = L["Estimated clear:"] .. " " .. E:FormatClock(secs) .. "  (" .. label .. ")"
+            lines[#lines + 1] = L["Run it once to replace this with your own time."]
         end
     end
 
-    local function DelveRow_Toggle(self)
-        local d = self.delve
-        if not d then return end
-        expandedDelve[d.name] = not expandedDelve[d.name]
-        if Refresh then Refresh() end
+    if E:GetDelveBosses(delve.name) then
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = expanded and L["Click to hide boss tactics"] or L["Click to show boss tactics"]
     end
+    return table_concat(lines, "\n")
+end
 
-    local function BossRow_OnClick(self)
-        if not self.bossKey then return end
-        expandedBoss[self.bossKey] = not expandedBoss[self.bossKey]
-        if Refresh then Refresh() end
-    end
-
-    local function CreateDelveRow()
-        local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
-        row:SetHeight(ROW_HEIGHT)
-        row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-        row:RegisterForClicks("LeftButtonUp")
-        row:SetScript("OnClick", DelveRow_Toggle)
-
-        local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameText:SetPoint("LEFT", row, "LEFT", 4, 0)
-        nameText:SetFont(nameText:GetFont(), 11)
-        nameText:SetWidth(246)
-        nameText:SetJustifyH("LEFT")
-        nameText:SetWordWrap(false)
-        row.nameText = nameText
-
-        local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        zoneText:SetPoint("LEFT", row, "LEFT", 256, 0)
-        zoneText:SetFont(zoneText:GetFont(), 11)
-        zoneText:SetWidth(120)
-        zoneText:SetJustifyH("LEFT")
-        zoneText:SetWordWrap(false)
-        row.zoneText = zoneText
-
-        local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        tierText:SetPoint("LEFT", row, "LEFT", 380, 0)
-        tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
-        tierText:SetWidth(30)
-        tierText:SetJustifyH("CENTER")
-        row.tierText = tierText
-
-        local wpBtn = E:CreateButton(row, 32, 20, L["Pin"])
-        wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
-        wpBtn:SetPoint("LEFT", row, "LEFT", 422, 0)
-        E:WireDelvePinButton(wpBtn, function() return row.delve end)
-        row.wpBtn = wpBtn
-
-        local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
-        ttBtn.label:SetFont(ttBtn.label:GetFont(), 10)
-        ttBtn:SetPoint("LEFT", row, "LEFT", 460, 0)
-        ttBtn:SetScript("OnClick", function()
-            if row.delve then
-                E:AddTomTomWaypoint(row.delve.mapID,
-                                    row.delve.x, row.delve.y,
-                                    row.delve.name)
-                E:FlashButtonConfirm(ttBtn)
-            end
-        end)
-        ttBtn:SetScript("OnEnter", function(self)
-            local hc = E.Colors.buttonHover
-            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-            if E:IsTomTomLoaded() then
-                E:ShowTooltip(self, L["TomTom Waypoint"],
-                              L["Add an arrow waypoint via TomTom."])
-            else
-                E:ShowTooltip(self, L["TomTom Not Installed"],
-                              L["Install the TomTom addon to use arrow waypoints."])
-            end
-        end)
-        ttBtn:SetScript("OnLeave", function(self)
-            local bc = E.Colors.buttonBg
-            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-            E:HideTooltip()
-        end)
-        row.ttBtn = ttBtn
-
-        local storyText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        storyText:SetPoint("LEFT",  row, "LEFT",  520, 0)
-        storyText:SetPoint("RIGHT", row, "RIGHT", -96, 0)
-        storyText:SetFont(storyText:GetFont(), 11)
-        storyText:SetJustifyH("LEFT")
-        storyText:SetWordWrap(false)
-        row.storyText = storyText
-
-        local speedText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        speedText:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-        speedText:SetWidth(82)
-        speedText:SetFont(speedText:GetFont(), 11)
-        speedText:SetJustifyH("RIGHT")
-        speedText:SetWordWrap(false)
-        row.speedText = speedText
-
-        row:SetScript("OnEnter", function(self)
-            if self.delve then
-                local tipLines = hoverTipLines
-                wipe(tipLines)
-                if self.isBountiful then
-                    table_insert(tipLines,
-                        E.CC.gold .. L["* Bountiful Delve today!"] .. E.CC.close)
-                end
-                table_insert(tipLines,
-                    E.CC.muted .. L["Zone:"] .. " " .. E.CC.close
-                        .. E.CC.body .. self.delve.zone .. E.CC.close)
-
-                local todayStory = todayStoryByName[self.delve.name]
-                if todayStory and todayStory ~= "" then
-                    local si = E.GetStoryTier and E:GetStoryTier(todayStory)
-                    table_insert(tipLines, "")
-                    if si and si.tier then
-                        local tc = DLOC_TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
-                        local cc = string_format("|cFF%02X%02X%02X",
-                            math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
-                        table_insert(tipLines,
-                            E.CC.muted .. L["Today's Story:"] .. " " .. E.CC.close
-                            .. E.CC.body .. todayStory .. E.CC.close
-                            .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                            .. cc .. L["%s Tier"]:format(si.tier) .. "|r")
-                    else
-                        table_insert(tipLines,
-                            E.CC.muted .. L["Today's Story:"] .. " " .. E.CC.close
-                            .. E.CC.body .. todayStory .. E.CC.close)
-                    end
-                    if si and si.note then
-                        table_insert(tipLines, E.CC.muted .. si.note .. E.CC.close)
-                    end
-                end
-
-                local secs = todaySpeedByName[self.delve.name]
-                if secs and E.FormatClock then
-                    local src = todaySpeedSrcByName[self.delve.name]
-                    local label, gr, gg, gb = E:GetSpeedGrade(secs)
-                    local gcc = string_format("|cFF%02X%02X%02X",
-                        math_floor((gr or 0.7)*255), math_floor((gg or 0.7)*255),
-                        math_floor((gb or 0.7)*255))
-                    table_insert(tipLines, "")
-                    if src == "personal" then
-                        table_insert(tipLines,
-                            E.CC.muted .. L["Your average clear:"] .. " " .. E.CC.close
-                            .. gcc .. E:FormatClock(secs) .. "|r"
-                            .. E.CC.muted .. "  (" .. label .. ")" .. E.CC.close)
-                    else
-                        table_insert(tipLines,
-                            E.CC.muted .. L["Estimated clear:"] .. " " .. E.CC.close
-                            .. gcc .. E:FormatClock(secs) .. "|r"
-                            .. E.CC.muted .. "  (" .. label .. ")" .. E.CC.close)
-                        table_insert(tipLines, E.CC.muted
-                            .. L["Run it once to replace this with your own time."]
-                            .. E.CC.close)
-                    end
-                end
-
-                local bosses = E.GetDelveBosses and E:GetDelveBosses(self.delve.name)
-                if bosses then
-                    table_insert(tipLines, "")
-                    table_insert(tipLines, E.CC.muted
-                        .. (expandedDelve[self.delve.name]
-                            and L["Click to hide boss tactics"]
-                            or  L["Click to show boss tactics"])
-                        .. E.CC.close)
-                end
-
-                E:ShowTooltip(self, self.delve.name, unpack(tipLines))
-            end
-        end)
-        row:SetScript("OnLeave", function()
-            E:HideTooltip()
-        end)
-
-        return row
-    end
-
-    local function AcquireDelveRow(i)
-        local row = delveRowPool[i]
-        if not row then
-            row = CreateDelveRow()
-            delveRowPool[i] = row
-        end
-        row:ClearAllPoints()
-        return row
-    end
-
-    local function CreateBossRow()
-        local row = CreateFrame("Button", nil, sc)
-        row:RegisterForClicks("LeftButtonUp")
-        row:SetScript("OnClick", BossRow_OnClick)
-
-        local caretFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        caretFS:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2)
-        caretFS:SetFont(caretFS:GetFont(), 11, "OUTLINE")
-        row.caretFS = caretFS
-
-        local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("TOPLEFT", caretFS, "TOPRIGHT", 6, 0)
-        nameFS:SetFont(nameFS:GetFont(), 11, "OUTLINE")
-        nameFS:SetJustifyH("LEFT")
-        row.nameFS = nameFS
-
-        local briefFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        briefFS:SetPoint("TOPLEFT", row, "TOPLEFT", 18, -17)
-        briefFS:SetFont(briefFS:GetFont(), 10)
-        briefFS:SetJustifyH("LEFT")
-        briefFS:SetSpacing(2)
-        row.briefFS = briefFS
-
-        return row
-    end
-
-    local function AcquireBossRow(i)
-        local row = bossRowPool[i]
-        if not row then
-            row = CreateBossRow()
-            bossRowPool[i] = row
-        end
-        row:ClearAllPoints()
-        return row
-    end
-
-    local function AcquireNoteLine(i)
-        local fs = noteLinePool[i]
-        if not fs then
-            fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetFont(fs:GetFont(), 10)
-            fs:SetJustifyH("LEFT")
-            fs:SetSpacing(2)
-            noteLinePool[i] = fs
-        end
-        fs:ClearAllPoints()
-        return fs
-    end
-
-    local setAllBtn = E:CreateButton(frame, 130, 24, L["Set All Waypoints"])
-    setAllBtn.label:SetFont(setAllBtn.label:GetFont(), 10)
-    setAllBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, TOOLBAR_Y)
-    setAllBtn:SetScript("OnClick", function()
-        if not E:IsTomTomLoaded() then
-            print(E.CC.header .. "Everything Delves|r: "
-                .. L["TomTom is required for bulk waypoints."])
-            return
-        end
-        for _, delve in ipairs(filteredData) do
-            E:AddTomTomWaypoint(delve.mapID, delve.x, delve.y, delve.name)
-        end
-        print(E.CC.header .. "Everything Delves|r: "
-            .. L["Added %d TomTom waypoints."]:format(#filteredData))
-    end)
-    setAllBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, L["Set All Waypoints"],
-                      L["Adds TomTom waypoints for every delve in the list."],
-                      "",
-                      E.CC.muted .. L["Requires TomTom addon."] .. E.CC.close)
-    end)
-    setAllBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
-    local summaryFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    summaryFS:SetPoint("LEFT", frame, "TOPLEFT", 6, TOOLBAR_Y - 8)
-    summaryFS:SetPoint("RIGHT", setAllBtn, "LEFT", -10, 0)
-    summaryFS:SetFont(summaryFS:GetFont(), 11)
-    summaryFS:SetJustifyH("LEFT")
-    summaryFS:SetWordWrap(false)
-
-    local function UpdateSummary()
-        local quickName, quickSecs, quickSrc
-        local bestName, bestScore, bestSecs, bestTier, bestSrc
-        for _, delve in ipairs(filteredData) do
-            local secs = todaySpeedByName[delve.name]
-            if secs and (not quickSecs or secs < quickSecs) then
-                quickSecs, quickName = secs, delve.name
-                quickSrc = todaySpeedSrcByName[delve.name]
-            end
-            if E.GetDelveValue then
-                local score, vsecs, vtier, vsrc = E:GetDelveValue(delve.name,
-                    todayTierByName[delve.name])
-                if score and (not bestScore or score > bestScore) then
-                    bestScore, bestName, bestSecs, bestTier, bestSrc =
-                        score, delve.name, vsecs, vtier, vsrc
-                end
-            end
-        end
-
-        if not quickName then
-            summaryFS:SetText("")
-            return
-        end
-
-        local qSuffix = (quickSrc == "estimate")
-            and (E.CC.muted .. "*" .. E.CC.close) or ""
-        local qcc = E.SpeedColorCode and E:SpeedColorCode(quickSecs) or E.CC.body
-        local text = E.CC.gold .. L["Quickest:"] .. " " .. E.CC.close
-            .. E.CC.body .. quickName .. E.CC.close
-            .. E.CC.muted .. " " .. E.CC.close
-            .. qcc .. E:FormatClock(quickSecs) .. "|r" .. qSuffix
-
-        if bestName then
-            local tc = DLOC_TIER_COLORS[bestTier] or {0.6, 0.6, 0.6}
-            local tcc = string_format("|cFF%02X%02X%02X",
-                math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
-            local bcc = E.SpeedColorCode and E:SpeedColorCode(bestSecs) or E.CC.body
-            local bSuffix = (bestSrc == "estimate")
-                and (E.CC.muted .. "*" .. E.CC.close) or ""
-            text = text
-                .. E.CC.muted .. "      \226\128\162      " .. E.CC.close
-                .. E.CC.gold .. L["Best value:"] .. " " .. E.CC.close
-                .. E.CC.body .. bestName .. E.CC.close
-                .. E.CC.muted .. " " .. E.CC.close
-                .. tcc .. (bestTier or "?") .. "|r"
-                .. E.CC.muted .. " " .. E.CC.close
-                .. bcc .. E:FormatClock(bestSecs) .. "|r" .. bSuffix
-        end
-        summaryFS:SetText(text)
-    end
-
-    local sortHint = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sortHint:SetPoint("TOPRIGHT", frame, "TOPLEFT", 514, LIST_Y + 46)
-    sortHint:SetFont(sortHint:GetFont(), 9)
-    sortHint:SetTextColor(0.38, 0.38, 0.38, 1)
-    sortHint:SetJustifyH("RIGHT")
-    sortHint:SetText(L["Click a delve for boss tactics  \226\128\148  click headers to sort"])
-
-    local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
-    headerLineTop:SetHeight(1)
-    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y + 36)
-    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 36)
-    E:StyleGreyLine(headerLineTop)
-
-    do
-        local cols = {
-            { field = "name", label = L["Delve Name"], width = 250, anchor = 0   },
-            { field = "zone", label = L["Zone"],       width = 120, anchor = 256 },
-            { field = "tier", label = L["Tier"],       width = 35,  anchor = 378 },
+local function BuildModels(list)
+    local models = {}
+    for i, delve in ipairs(filteredData) do
+        local name = delve.name
+        local hist = E:GetDelveHistory(name)
+        local runs = hist and hist.lifetime and hist.lifetime.totalRuns
+        local tier = todayTierByName[name]
+        local story = todayStoryByName[name]
+        local secs = todaySpeedByName[name]
+        local estimate = todaySpeedSrcByName[name] == "estimate"
+        local bountiful = IsBountiful(delve)
+        models[i] = {
+            key = name, delve = delve, bossName = name, name = name,
+            bountiful = bountiful,
+            runs = (runs and runs > 0) and runs or nil,
+            call = (E.db and E.db.showDelversCallDone and E:IsDelversCallComplete(name)) or nil,
+            cells = {
+                zone  = { text = delve.zone },
+                tier  = E.DelveList.GradeCell(tier),
+                story = (story and story ~= "") and { text = story } or { text = "--", muted = true },
+                speed = secs and { text = E:FormatClock(secs) .. (estimate and "*" or ""), muted = estimate }
+                    or { text = "--", muted = true },
+            },
+            tip = { name, TipBody(delve, bountiful, list.expanded[name]) },
         }
-        for _, col in ipairs(cols) do
-            local btn = CreateFrame("Button", nil, frame)
-            btn:SetSize(col.width, 22)
-            btn:SetPoint("TOPLEFT", frame, "TOPLEFT", col.anchor, LIST_Y + 22)
-            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            text:SetPoint("LEFT")
-            if col.field == "name" then
-                text:SetFont(text:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-            else
-                text:SetFont(text:GetFont(), 11, "OUTLINE")
-            end
-            E:StyleAccentHeader(text, col.label)
-            btn:SetScript("OnClick", function()
-                if sortField == col.field then
-                    sortAscending = not sortAscending
-                else
-                    sortField = col.field
-                    sortAscending = true
-                end
-                if Refresh then Refresh() end
-            end)
-        end
+    end
+    return models
+end
 
-        for _, info in ipairs({
-            { label = L["Pin"],           x = 422 },
-            { label = "TomTom",           x = 462 },
-            { label = L["Today's Story"], x = 520 },
-        }) do
-            local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("LEFT", frame, "TOPLEFT", info.x, LIST_Y + 22 - 11)
-            fs:SetFont(fs:GetFont(), 11, "OUTLINE")
-            E:StyleAccentHeader(fs, info.label)
+local function SummaryText()
+    local quickName, quickSecs, quickSrc
+    local bestName, bestScore, bestSecs, bestTier, bestSrc
+    for _, delve in ipairs(filteredData) do
+        local secs = todaySpeedByName[delve.name]
+        if secs and (not quickSecs or secs < quickSecs) then
+            quickSecs, quickName, quickSrc = secs, delve.name, todaySpeedSrcByName[delve.name]
         end
-
-        local speedHeader = CreateFrame("Button", nil, frame)
-        speedHeader:SetSize(82, 22)
-        speedHeader:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -32, LIST_Y + 22)
-        local shText = speedHeader:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        shText:SetPoint("RIGHT")
-        shText:SetFont(shText:GetFont(), 11, "OUTLINE")
-        E:StyleAccentHeader(shText, L["Speed"])
-        speedHeader:SetScript("OnClick", function()
-            if sortField == "speed" then
-                sortAscending = not sortAscending
-            else
-                sortField = "speed"
-                sortAscending = true
+        if E.GetDelveValue then
+            local score, vsecs, vtier, vsrc = E:GetDelveValue(delve.name, todayTierByName[delve.name])
+            if score and (not bestScore or score > bestScore) then
+                bestScore, bestName, bestSecs, bestTier, bestSrc = score, delve.name, vsecs, vtier, vsrc
             end
-            if Refresh then Refresh() end
-        end)
-        speedHeader:SetScript("OnEnter", function(self)
-            E:ShowTooltip(self, L["Sort by Speed"],
-                L["Quickest clear first. Shows your own average time once you've run a delve, or a tier- and gear-based estimate (marked *) until then."])
-        end)
-        speedHeader:SetScript("OnLeave", function() E:HideTooltip() end)
+        end
+    end
+    if not quickName then return "" end
+
+    local muted, label = E.DelveList.cc("muted"), E.DelveList.cc("label")
+    local text = muted .. L["Quickest:"] .. "|r " .. label .. quickName .. " " .. E:FormatClock(quickSecs) .. "|r"
+        .. (quickSrc == "estimate" and (muted .. "*|r") or "")
+    if bestName then
+        text = text .. muted .. SEP .. L["Best value:"] .. "|r " .. label .. bestName .. "|r "
+            .. E:GetGradeCC(bestTier) .. (bestTier or "?") .. "|r " .. label .. E:FormatClock(bestSecs) .. "|r"
+            .. (bestSrc == "estimate" and (muted .. "*|r") or "")
+    end
+    return text
+end
+
+local function SetAllWaypoints()
+    if not E:IsTomTomLoaded() then
+        print(E.CC.header .. "Everything Delves|r: " .. L["TomTom is required for bulk waypoints."])
+        return
+    end
+    for _, delve in ipairs(filteredData) do
+        E:AddTomTomWaypoint(delve.mapID, delve.x, delve.y, delve.name)
+    end
+    print(E.CC.header .. "Everything Delves|r: " .. L["Added %d TomTom waypoints."]:format(#filteredData))
+end
+
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTab1Content")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+    local Render
+
+    local setAll = ui:CreateButton(content, L["Set All Waypoints"], nil, SetAllWaypoints,
+        L["Adds TomTom waypoints for every delve in the list."] .. "\n\n" .. L["Requires TomTom addon."])
+    local summary = ui:CreateText(content, "", "label")
+    summary:SetWordWrap(false)
+    local hint = ui:CreateText(content, L["Click a delve for boss tactics  \226\128\148  click headers to sort"], "hint")
+    hint:SetWordWrap(false)
+
+    local list = E.DelveList.New(content, {
+        columns = COLUMNS, nameLabel = L["Delve Name"], nameSort = "name", sortKey = "tier",
+        onChange = function() Render() end,
+    })
+
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
     end
 
-    local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
-    headerLineBot:SetHeight(1)
-    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  4,   LIST_Y - 8)
-    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y - 8)
-    E:StyleGreyLine(headerLineBot)
+    function Render()
+        RefreshFilteredData(list.sortKey, list.sortAsc)
+        local width = ViewWidth()
+        lastWidth = width
+        content:SetWidth(width)
 
-    function Refresh()
-        RefreshFilteredData()
+        setAll:Fit()
+        setAll:ClearAllPoints()
+        setAll:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -PAD_TOP)
+        summary:ClearAllPoints()
+        summary:SetPoint("LEFT", content, "TOPLEFT", PAD_LEFT, -(PAD_TOP + BAR_H / 2))
+        summary:SetPoint("RIGHT", setAll, "LEFT", -SUMMARY_GAP, 0)
+        summary:SetText(SummaryText())
 
-        for _, r in ipairs(delveRowPool) do r:Hide() end
-        for _, r in ipairs(bossRowPool)  do r:Hide() end
-        for _, r in ipairs(noteLinePool) do r:Hide() end
+        local y = PAD_TOP + BAR_H + HINT_GAP
+        hint:ClearAllPoints()
+        hint:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        hint:SetPoint("RIGHT", content, "RIGHT", -PAD_RIGHT, 0)
+        y = y + HINT_H + HINT_GAP
 
-        local dUsed, bUsed, nUsed = 0, 0, 0
-        local yCur = 2
-
-        local function PlaceRow(row, x, h)
-            row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
-            row:SetPoint("RIGHT",   sc, "RIGHT",  -2, 0)
-            row:Show()
-            yCur = yCur + h
-        end
-
-        for _, delve in ipairs(filteredData) do
-            dUsed = dUsed + 1
-            local row = AcquireDelveRow(dUsed)
-            row:SetParent(sc)
-            row.delve = delve
-            E:RefreshDelvePin(row.wpBtn)
-
-            if dUsed % 2 == 0 then
-                row:SetBackdropColor(0.08, 0.08, 0.08, 0.50)
-            else
-                row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-            end
-
-            local isBountiful = false
-            if E.currentBountifulNames then
-                isBountiful = E.currentBountifulNames[delve.name]
-                    or E.currentBountifulNames[GetLowerName(delve)]
-                    or (E.currentBountifulPOIs and delve.poiID
-                        and E.currentBountifulPOIs[delve.poiID])
-                    or false
-            end
-            row.isBountiful = isBountiful
-
-            local hist = E:GetDelveHistory(delve.name)
-            local runSuffix = ""
-            local totalRuns = hist and hist.lifetime and hist.lifetime.totalRuns
-            if totalRuns and totalRuns > 0 then
-                runSuffix = E.CC.muted .. " (" .. totalRuns .. "x)" .. E.CC.close
-            end
-
-            local dcCheck = ""
-            if E.db and E.db.showDelversCallDone
-                    and E:IsDelversCallComplete(delve.name) then
-                dcCheck = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:12:12:0:0|t"
-            end
-
-            local caret = E.CC.gold
-                .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
-            if isBountiful then
-                row.nameText:SetText(caret .. " "
-                    .. E.CC.gold .. "* " .. delve.name .. E.CC.close .. runSuffix .. dcCheck)
-            else
-                row.nameText:SetText(caret .. " "
-                    .. E.CC.body .. delve.name .. E.CC.close .. runSuffix .. dcCheck)
-            end
-
-            row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
-
-            local tierLetter = todayTierByName[delve.name]
-            if tierLetter then
-                local tc = DLOC_TIER_COLORS[tierLetter]
-                if tc then
-                    row.tierText:SetTextColor(tc[1], tc[2], tc[3])
-                else
-                    row.tierText:SetTextColor(0.60, 0.60, 0.60)
-                end
-                row.tierText:SetText(tierLetter)
-            else
-                row.tierText:SetText("")
-            end
-
-            local story = todayStoryByName[delve.name]
-            if story and story ~= "" then
-                row.storyText:SetText(E.CC.body .. story .. E.CC.close)
-            else
-                row.storyText:SetText(E.CC.muted .. "--" .. E.CC.close)
-            end
-
-            local secs = todaySpeedByName[delve.name]
-            if secs and E.FormatClock then
-                local suffix = (todaySpeedSrcByName[delve.name] == "estimate")
-                    and (E.CC.muted .. "*" .. E.CC.close) or ""
-                local cc = E.SpeedColorCode and E:SpeedColorCode(secs) or E.CC.body
-                row.speedText:SetText(cc .. E:FormatClock(secs) .. "|r" .. suffix)
-            else
-                row.speedText:SetText(E.CC.muted .. "--" .. E.CC.close)
-            end
-
-            PlaceRow(row, 0, ROW_HEIGHT)
-
-            if expandedDelve[delve.name] then
-                local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
-                if bosses then
-                    local todaysBoss = E.GetTodaysBossName
-                        and E:GetTodaysBossName(delve.name)
-                    for bi, boss in ipairs(bosses) do
-                        bUsed = bUsed + 1
-                        local brow = AcquireBossRow(bUsed)
-                        brow:SetParent(sc)
-                        local bossKey = delve.name .. "##" .. bi
-                        brow.bossKey = bossKey
-
-                        local bExpanded = expandedBoss[bossKey]
-                        brow.caretFS:SetText(E.CC.muted
-                            .. (bExpanded and "v" or ">") .. E.CC.close)
-                        if todaysBoss and boss.name == todaysBoss then
-                            brow.nameFS:SetText(
-                                "|TInterface\\Common\\FavoritesIcon:14:14|t "
-                                .. E.CC.gold .. boss.name .. E.CC.close
-                                .. E.CC.muted .. "   " .. L["(today's boss)"] .. E.CC.close)
-                        else
-                            brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
-                        end
-
-                        local briefW = math_max(150,
-                            (sc:GetWidth() or 600) - 18 - 16)
-                        brow.briefFS:SetWidth(briefW)
-                        brow.briefFS:SetText(E.CC.muted .. (boss.brief or "") .. E.CC.close)
-
-                        local bh = 18 + (brow.briefFS:GetStringHeight() or 12) + 6
-                        brow:SetHeight(bh)
-                        PlaceRow(brow, 24, bh)
-
-                        if bExpanded and boss.notes then
-                            for _, note in ipairs(boss.notes) do
-                                nUsed = nUsed + 1
-                                local nl = AcquireNoteLine(nUsed)
-                                nl:SetParent(sc)
-                                local w = math_max(150,
-                                    (sc:GetWidth() or 600) - 48 - 12)
-                                nl:SetWidth(w)
-                                nl:SetText(
-                                    RoleCC(note.role) .. RoleLabel(note.role) .. "|r  "
-                                    .. E.CC.body .. note.text .. E.CC.close)
-                                local h = (nl:GetStringHeight() or 12) + 5
-                                nl:SetPoint("TOPLEFT", sc, "TOPLEFT", 48, -yCur)
-                                nl:Show()
-                                yCur = yCur + h
-                            end
-                        end
-                    end
-                end
-            end
-        end
-
-        sc:SetHeight(yCur + 8)
-        UpdateScrollRange()
-        UpdateSummary()
+        y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT)
+        area:SetContentSize(width, y + PAD_BOTTOM)
     end
+
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then Render() end
+    end)
 
     frame:SetScript("OnShow", function()
-        Refresh()
-        scrollFrame:SetVerticalScroll(0)
-        scrollBar:SetValue(0)
+        Render()
+        area:ScrollTo(0, 0)
     end)
 
     function E:RefreshDelveLocations()
-        if frame:IsVisible() then Refresh() end
+        if frame:IsVisible() then Render() end
     end
 
     E:RegisterCallback("AreaPoisUpdated", function()
-        if frame:IsVisible() then
-            Refresh()
-        end
+        if frame:IsVisible() then Render() end
     end)
 
     E:RegisterTab(1, frame)
 
-    RefreshFilteredData()
+    RefreshFilteredData(list.sortKey, list.sortAsc)
 end)

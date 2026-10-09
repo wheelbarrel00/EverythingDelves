@@ -1,10 +1,39 @@
 local E = EverythingDelves
 local L = E.L
 
-local pairs, ipairs, type, time = pairs, ipairs, type, time
-local math_floor, math_max, math_min = math.floor, math.max, math.min
+local ipairs, type, time = ipairs, type, time
+local math_floor, math_max, math_min, math_ceil, math_abs = math.floor, math.max, math.min, math.ceil, math.abs
 local string_format = string.format
 local table_insert, table_sort, wipe = table.insert, table.sort, wipe
+
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, GROUP_GAP = 20, 24, 14, 28, 22
+local ROW, LIST_ROW, HINT_ROW, ITEM_GAP, COL_GAP, PAIR_GAP = 44, 28, 36, 12, 12, 24
+local BAR_LABEL, ICON, CHECK, BUTTON, BUTTON_GAP, DIM = 160, 16, 14, 24, 10, 0.4
+local WARN_PAD, WARN_LINE, EMPTY_ROW, SIDE_GAP = 10, 18, 52, 10
+local CREST_COLS, SOURCE_COLS = { 90, 100, 110 }, { 70, 100, 110 }
+local WQ_ZONE, WQ_SHARDS = 150, 70
+local ED_TEXTURES = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
+
+local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424, 2512 }
+local WQ_CURRENCY = 3310
+local MAX_WQ_ROWS = 12
+
+-- The titles are English fallbacks for QuestTitle
+local SPECIAL_ASSIGNMENTS = {
+    { questID = 93013, unlockID = 94391, title = "Push back the Light" },
+    { questID = 92063, unlockID = 94390, title = "A Hunter's Regret" },
+    { questID = 92145, unlockID = 92848, title = "The Grand Magister's Drink" },
+    { questID = 91796, unlockID = 94866, title = "Ours Once More!" },
+    { questID = 93244, unlockID = 94795, title = "Agents of the Shield" },
+    { questID = 92139, unlockID = 95435, title = "Shade and Claw" },
+    { questID = 91390, unlockID = 94865, title = "What Remains of a Temple Broken" },
+    { questID = 93438, unlockID = 94743, title = "Precision Excision" },
+}
+local SA_WEEKLY_MAX = 3
+
+local WEEKLY_DELVE_QUESTS = {
+    { questID = 93909, title = "Midnight: Delves" },
+}
 
 local function GetCurrency(currencyID)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
@@ -16,7 +45,6 @@ local function GetCurrency(currencyID)
     return 0
 end
 
--- Returns quantity, maxWeeklyQuantity, quantityEarnedThisWeek
 local function GetCurrencyFull(currencyID)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
@@ -41,6 +69,28 @@ local function FormatNumber(n)
     return formatted
 end
 
+-- The Session Tracker's phrases carry their own colors, which the library's look drops
+local function StripCodes(s)
+    return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+local function Done(questID)
+    return C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(questID) or false
+end
+
+-- Asked once a session, since an answer redraws the page and the redraw would ask again
+local titleAsked = {}
+
+local function QuestTitle(questID, fallback)
+    local title = C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)
+    if type(title) == "string" and title ~= "" then return title end
+    if not titleAsked[questID] and C_QuestLog and C_QuestLog.RequestLoadQuestByID then
+        titleAsked[questID] = true
+        C_QuestLog.RequestLoadQuestByID(questID)
+    end
+    return fallback
+end
+
 -- Cached for RefreshSessionTimer so the per-second tick avoids API table churn.
 local cachedShards = 0
 local cachedKeys   = 0
@@ -52,671 +102,566 @@ local cachedUcIcon = nil
 local saActiveBuf  = nil
 local saLookupBuf  = nil
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTab4Content")
-
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
-    scrollFrame:EnableMouseWheel(true)
-
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-
-    scrollFrame:SetScript("OnSizeChanged", function(self, w)
-        sc:SetWidth(w)
-    end)
-    -- Oversized initially; UpdateContentHeight() recomputes after layout.
-    sc:SetHeight(1400)
-
-    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    tabScrollBar:SetWidth(14)
-    tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
-    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    tabScrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    tabScrollBar:SetThumbTexture(sbThumb)
-    tabScrollBar:SetOrientation("VERTICAL")
-    tabScrollBar:SetMinMaxValues(0, 1)
-    tabScrollBar:SetValue(0)
-    tabScrollBar:SetValueStep(1)
-    tabScrollBar:SetObeyStepOnDrag(true)
-    tabScrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        tabScrollBar:SetValue(newVal)
-    end)
-
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        tabScrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then
-            tabScrollBar:Hide()
-        else
-            tabScrollBar:Show()
+local function SourceProgress(src)
+    local done, total = 0, 0
+    if src.questLineID and C_QuestLine and C_QuestLine.GetQuestLineQuests then
+        if not questLineCache[src.questLineID] then
+            questLineCache[src.questLineID] = C_QuestLine.GetQuestLineQuests(src.questLineID) or {}
+        end
+        local quests = questLineCache[src.questLineID]
+        total = #quests
+        for _, qid in ipairs(quests) do
+            if Done(qid) then done = done + 1 end
+        end
+    elseif src.questIDs then
+        total = #src.questIDs
+        for _, qid in ipairs(src.questIDs) do
+            if Done(qid) then done = done + 1 end
         end
     end
+    return done, total
+end
 
+-- A card centers a control in its row but never sizes it, and a row frame left with no height came up blank
+-- after a cold login
+local function Row(content, height)
+    local f = CreateFrame("Frame", nil, content)
+    if height then f:SetHeight(height) end
+    return f
+end
 
-    -- SECTION 1: Currency Overview
-    local SECT_X = 8
-    local SECT_Y = -6
+local function Bar(ui, row, left, right)
+    local bar = ui:CreateProgressBar(row)
+    bar:SetPoint("LEFT", left, "RIGHT", ITEM_GAP, 0)
+    bar:SetPoint("RIGHT", right, "LEFT", -ITEM_GAP, 0)
+    return bar
+end
 
-    local currHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    currHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", SECT_X, SECT_Y)
-    currHeader:SetFont(currHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(currHeader, L["Currency Overview"])
+local function Check(ui, row)
+    local t = row:CreateTexture(nil, "ARTWORK")
+    t:SetSize(CHECK, CHECK)
+    t:SetTexture(ui:Texture("check"))
+    t:SetVertexColor(ui:Color("label"))
+    return t
+end
 
-    local shardIcon = sc:CreateTexture(nil, "ARTWORK")
-    shardIcon:SetPoint("TOPLEFT", currHeader, "BOTTOMLEFT", 0, -4)
-    shardIcon:SetSize(16, 16)
+local function PlaceCells(row, widths)
+    local right = 0
+    for i = #widths, 1, -1 do
+        local fs = row.cells[i + 1]
+        fs:ClearAllPoints()
+        fs:SetPoint("RIGHT", row, "RIGHT", -right, 0)
+        fs:SetWidth(widths[i])
+        right = right + widths[i] + COL_GAP
+    end
+    local first = row.cells[1]
+    first:ClearAllPoints()
+    first:SetPoint("LEFT", row, "LEFT", row.firstX, 0)
+    first:SetPoint("RIGHT", row, "RIGHT", -right, 0)
+end
 
-    local shardLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    shardLabelFS:SetPoint("LEFT", shardIcon, "RIGHT", 4, 0)
-    shardLabelFS:SetFont(shardLabelFS:GetFont(), 11)
-    shardLabelFS:SetText(E.CC.muted .. L["Coffer Key Shards:"] .. E.CC.close)
+local function Cells(ui, row, widths, style, iconSize)
+    row.cells = {}
+    for i = #widths, 1, -1 do
+        local fs = ui:CreateText(row, "", style)
+        fs:SetWordWrap(false)
+        fs:SetJustifyH("RIGHT")
+        row.cells[i + 1] = fs
+    end
+    row.firstX = 0
+    if iconSize then
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(iconSize, iconSize)
+        row.icon:SetPoint("LEFT")
+        row.firstX = iconSize + 8
+    end
+    local first = ui:CreateText(row, "", style)
+    first:SetWordWrap(false)
+    row.cells[1] = first
+    PlaceCells(row, widths)
+end
 
-    local shardValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    shardValueFS:SetPoint("LEFT", shardLabelFS, "RIGHT", 6, 0)
-    shardValueFS:SetFont(shardValueFS:GetFont(), 13, "OUTLINE")
+local function FitColumns(head, rows, base)
+    local widths = {}
+    for i, w in ipairs(base) do
+        local fs = head.cells[i + 1]
+        fs:SetWidth(0)
+        widths[i] = math_max(w, math_ceil(fs:GetStringWidth() or 0) + 1)
+    end
+    PlaceCells(head, widths)
+    for _, row in ipairs(rows) do PlaceCells(row, widths) end
+end
 
-    local keyIcon = sc:CreateTexture(nil, "ARTWORK")
-    keyIcon:SetPoint("LEFT", shardValueFS, "RIGHT", 24, 0)
-    keyIcon:SetSize(16, 16)
+local function CheckBefore(check, fs, shown)
+    check:SetShown(shown)
+    check:ClearAllPoints()
+    check:SetPoint("RIGHT", fs, "RIGHT", -(math_ceil(fs:GetStringWidth() or 0) + 6), 0)
+end
 
-    local keyLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    keyLabelFS:SetPoint("LEFT", keyIcon, "RIGHT", 4, 0)
-    keyLabelFS:SetFont(keyLabelFS:GetFont(), 11)
-    keyLabelFS:SetText(E.CC.muted .. L["Bountiful Keys:"] .. E.CC.close)
+local function SideText(ui, card)
+    local fs = ui:CreateText(card, "", "hint")
+    fs:SetPoint("LEFT", card.label, "RIGHT", SIDE_GAP, 0)
+    fs:SetWordWrap(false)
+    return fs
+end
 
-    local keyValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    keyValueFS:SetPoint("LEFT", keyLabelFS, "RIGHT", 6, 0)
-    keyValueFS:SetFont(keyValueFS:GetFont(), 13, "OUTLINE")
+local function BuildWarning(ui, content, v)
+    local f = CreateFrame("Frame", nil, content)
+    ui:Paint(f, "surface", "danger")
+    f.title = ui:CreateText(f, L["(!) Low shards!"], "navActive")
+    f.title:SetTextColor(ui:Color("danger"))
+    f.title:SetPoint("TOPLEFT", ui:Spacing("rowPadding"), -WARN_PAD)
+    f.body = ui:CreateText(f, "", "label")
+    f.body:SetPoint("TOPLEFT", ui:Spacing("rowPadding"), -(WARN_PAD + WARN_LINE))
+    f.body:SetPoint("RIGHT", -ui:Spacing("rowPadding"), 0)
+    f.body:SetWordWrap(false)
+    f:SetHeight(WARN_PAD * 2 + WARN_LINE * 2)
+    v.warning = f
+    return f
+end
 
-    local ucIcon = sc:CreateTexture(nil, "ARTWORK")
-    ucIcon:SetPoint("TOPLEFT", shardIcon, "BOTTOMLEFT", 0, -4)
-    ucIcon:SetSize(16, 16)
+local function BuildOverview(ui, content, v)
+    local card = ui:CreateGroup(content, L["Currency Overview"])
+    local top = Row(content, ROW)
+    top.values, top.icons = {}, {}
+    local prev
+    for i, label in ipairs({ L["Coffer Key Shards:"], L["Bountiful Keys:"], L["Undercoins:"] }) do
+        local icon = top:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(ICON, ICON)
+        if prev then icon:SetPoint("LEFT", prev, "RIGHT", PAIR_GAP, 0) else icon:SetPoint("LEFT") end
+        local lbl = ui:CreateText(top, label, "label")
+        lbl:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+        local value = ui:CreateText(top, "", "value")
+        value:SetPoint("LEFT", lbl, "RIGHT", 10, 0)
+        top.icons[i], top.values[i] = icon, value
+        prev = value
+    end
+    card:Add(top, { height = ROW, fill = true })
 
-    local ucLabelFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    ucLabelFS:SetPoint("LEFT", ucIcon, "RIGHT", 4, 0)
-    ucLabelFS:SetFont(ucLabelFS:GetFont(), 11)
-    ucLabelFS:SetText(E.CC.muted .. L["Undercoins:"] .. E.CC.close)
+    local function barRow(label)
+        local row = Row(content, ROW)
+        row.label = ui:CreateText(row, label, "label")
+        row.label:SetPoint("LEFT")
+        row.label:SetWidth(BAR_LABEL)
+        row.label:SetWordWrap(false)
+        row.value = ui:CreateText(row, "", "value")
+        row.value:SetPoint("RIGHT")
+        row.bar = Bar(ui, row, row.label, row.value)
+        card:Add(row, { height = ROW, fill = true })
+        local note = ui:CreateText(content, "", "hint")
+        note:SetWordWrap(true)
+        card:Add(note, { height = HINT_ROW, fill = true })
+        return row, note
+    end
+    v.nextKey, v.nextKeyNote = barRow(L["Shards to Next Key"])
+    v.weeklyCap, v.weeklyCapNote = barRow(L["Weekly Shard Cap"])
+    v.overviewTop, v.overviewCard = top, card
+    return card
+end
 
-    local ucValueFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    ucValueFS:SetPoint("LEFT", ucLabelFS, "RIGHT", 6, 0)
-    ucValueFS:SetFont(ucValueFS:GetFont(), 13, "OUTLINE")
-
-    local nextKeyBar = E:CreateProgressBar(sc, 0, 14, L["Shards to Next Key"])
-    nextKeyBar:SetPoint("TOPLEFT", ucIcon, "BOTTOMLEFT", 0, -8)
-    nextKeyBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-
-    local nextKeyNote = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nextKeyNote:SetPoint("TOPLEFT", nextKeyBar, "BOTTOMLEFT", 0, -2)
-    nextKeyNote:SetFont(nextKeyNote:GetFont(), 10)
-
-    local weeklyCapBar = E:CreateProgressBar(sc, 0, 14, L["Weekly Shard Cap"])
-    weeklyCapBar:SetPoint("TOPLEFT", nextKeyNote, "BOTTOMLEFT", 0, -6)
-    weeklyCapBar:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-
-    local weeklyCapNote = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    weeklyCapNote:SetPoint("TOPLEFT", weeklyCapBar, "BOTTOMLEFT", 0, -2)
-    weeklyCapNote:SetFont(weeklyCapNote:GetFont(), 10)
-
-    local dc = E.Colors.divider
-    local div1 = sc:CreateTexture(nil, "ARTWORK")
-    div1:SetHeight(1)
-    div1:SetPoint("TOPLEFT", weeklyCapNote, "BOTTOMLEFT", 0, -32)
-    div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div1)
-
-    -- SECTION 1b: crests
-    -- "Season Max" is info.maxQuantity, which caps earned or held depending
-    -- on useTotalEarnedForMaxQty. A hotfix can move it, so read it live.
-    local crestHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    crestHeader:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", 0, -32)
-    crestHeader:SetFont(crestHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    -- Season-neutral until the currency API resolves, then renamed to whatever
-    -- this season's crests are actually called (see RefreshCrestHeader).
-    E:StyleAccentHeader(crestHeader, L["Crests"])
-
-    local crestHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
-    crestHeaderDiv:SetHeight(1)
-    crestHeaderDiv:SetPoint("TOPLEFT",  crestHeader, "BOTTOMLEFT",  0,  -2)
-    crestHeaderDiv:SetPoint("TOPRIGHT", crestHeader, "BOTTOMLEFT", 545, -2)
-    E:StyleGreyLine(crestHeaderDiv)
-
-    -- Each data column gets a transparent hover frame for its tooltip;
-    -- FontStrings can't take OnEnter scripts.
-    local CREST_COL_Y = -12
-    local CREST_COL_TIPS = {
-        ["On Hand"] = {
-            title = L["On Hand"],
-            lines = {
-                L["How many of this crest you currently have available to spend on gear upgrades."],
-            },
-        },
-        ["Season Max"] = {
-            title = L["Season Max"],
-            lines = {
-                L["The seasonal cap on this crest. For some crests it limits how many you can earn all season. For others it limits how many you can hold at once, and spending frees room again."],
-                " ",
-                L["Shows \"Uncapped\" when Blizzard has lifted the cap for the rest of the season."],
-            },
-        },
-        ["Season Total"] = {
-            title = L["Season Total"],
-            lines = {
-                L["How many of this crest you've earned in total this season - including any you've already spent on upgrades."],
-                " ",
-                L["Usually higher than \"On Hand\" for that reason."],
-            },
-        },
+local function BuildCrests(ui, content, v)
+    -- Always this label: a name taken from the currency only worked in English.
+    local card = ui:CreateGroup(content, L["Crests"])
+    local head = Row(content, LIST_ROW)
+    Cells(ui, head, CREST_COLS, "groupLabel")
+    head.cells[1]:SetText(L["Crest"])
+    local tips = {
+        { L["On Hand"], L["How many of this crest you currently have available to spend on gear upgrades."] },
+        { L["Season Max"], L["The seasonal cap on this crest. For some crests it limits how many you can earn all season. For others it limits how many you can hold at once, and spending frees room again."]
+            .. "\n\n" .. L["Shows \"Uncapped\" when Blizzard has lifted the cap for the rest of the season."] },
+        { L["Season Total"], L["How many of this crest you've earned in total this season - including any you've already spent on upgrades."]
+            .. "\n\n" .. L["Usually higher than \"On Hand\" for that reason."] },
     }
-    -- `key` stays English because it indexes CREST_COL_TIPS. `label` is what is drawn.
-    for _, col in ipairs({
-        { key = "Crest",        label = L["Crest"],        x = 0   },
-        { key = "On Hand",      label = L["On Hand"],      x = 260 },
-        { key = "Season Max",   label = L["Season Max"],   x = 360 },
-        { key = "Season Total", label = L["Season Total"], x = 460 },
-    }) do
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", col.x, CREST_COL_Y)
-        fs:SetFont(fs:GetFont(), 10, "OUTLINE")
-        fs:SetText(E.CC.muted .. col.label .. E.CC.close)
-
-        local tip = CREST_COL_TIPS[col.key]
-        if tip then
-            local hover = CreateFrame("Button", nil, sc)
-            hover:SetPoint("TOPLEFT", fs, "TOPLEFT", -3, 2)
-            hover:SetSize((fs:GetStringWidth() or 60) + 8, 16)
-            hover:SetScript("OnEnter", function(self)
-                E:ShowTooltip(self, tip.title, unpack(tip.lines))
-            end)
-            hover:SetScript("OnLeave", function() E:HideTooltip() end)
-        end
+    for i, tip in ipairs(tips) do
+        head.cells[i + 1]:SetText(tip[1])
+        ui:AttachTooltip(head.cells[i + 1], tip[1], tip[2])
     end
-
-    local CREST_ROW_H  = 20
-    local CREST_ROW_Y  = CREST_COL_Y - 16
-    local crestRows    = {}
-
+    card:Add(head, { height = LIST_ROW, fill = true })
+    v.crestHead, v.crestRows = head, {}
     for i, crest in ipairs(E.Crests) do
-        local rowY = CREST_ROW_Y - ((i - 1) * CREST_ROW_H)
-
-        if i % 2 == 0 then
-            local rowBg = sc:CreateTexture(nil, "BACKGROUND")
-            rowBg:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", -2, rowY + 2)
-            rowBg:SetSize(550, CREST_ROW_H)
-            rowBg:SetColorTexture(0.08, 0.08, 0.08, 0.50)
-        end
-
-        local icon = sc:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 0, rowY + 1)
-        icon:SetSize(14, 14)
-
-        local nameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 20, rowY)
-        nameFS:SetFont(nameFS:GetFont(), 10)
-        nameFS:SetWidth(235)
-        nameFS:SetJustifyH("LEFT")
-
-        local handFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        handFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 260, rowY)
-        handFS:SetFont(handFS:GetFont(), 10)
-
-        local maxFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        maxFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 360, rowY)
-        maxFS:SetFont(maxFS:GetFont(), 10)
-
-        local seasonFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        seasonFS:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 460, rowY)
-        seasonFS:SetFont(seasonFS:GetFont(), 10)
-
-        crestRows[i] = {
-            id       = crest.id,
-            label    = crest.label,
-            icon     = icon,
-            nameFS   = nameFS,
-            handFS   = handFS,
-            maxFS    = maxFS,
-            seasonFS = seasonFS,
-            iconSet  = false,
-        }
+        local row = Row(content, LIST_ROW)
+        Cells(ui, row, CREST_COLS, "label", CHECK)
+        row.crest = crest
+        card:Add(row, { height = LIST_ROW, fill = true })
+        v.crestRows[i] = row
     end
+    v.crestCard = card
+    return card
+end
 
-    -- Crests are renamed every season, so take the name from the currency
-    -- itself. Runs at most once: StyleAccentHeader registers a themed closure
-    -- per call, and currency info is not loaded yet when the tab is built.
-    local crestHeaderNamed = false
-    local function RefreshCrestHeader()
-        if crestHeaderNamed then return end
-        local first = E.Crests and E.Crests[1]
-        if not (first and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then return end
-        local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, first.id)
-        local name = ok and type(info) == "table" and info.name
-        if type(name) ~= "string" then return end
-        local word = name:match("(%a+)%s*$")
-        if not word then return end
-        crestHeaderNamed = true
-        E:StyleAccentHeader(crestHeader, word .. "s")
-    end
-
-    local crestBottomY = CREST_ROW_Y - ((#E.Crests - 1) * CREST_ROW_H)
-        - CREST_ROW_H
-    local div1b = sc:CreateTexture(nil, "ARTWORK")
-    div1b:SetHeight(1)
-    div1b:SetPoint("TOPLEFT", crestHeader, "BOTTOMLEFT", 0, crestBottomY - 16)
-    div1b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div1b)
-
-    -- SECTION 2: Weekly Shard Sources
-    local srcHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    srcHeader:SetPoint("TOPLEFT", div1b, "BOTTOMLEFT", 0, -32)
-    srcHeader:SetFont(srcHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(srcHeader, L["Weekly Shard Sources"])
-
-    local srcHeaderDiv = sc:CreateTexture(nil, "ARTWORK")
-    srcHeaderDiv:SetHeight(1)
-    srcHeaderDiv:SetPoint("TOPLEFT",  srcHeader, "BOTTOMLEFT",  0,  -2)
-    srcHeaderDiv:SetPoint("TOPRIGHT", srcHeader, "BOTTOMLEFT", 445, -2)
-    E:StyleGreyLine(srcHeaderDiv)
-
-    local weeklyTotalFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    weeklyTotalFS:SetPoint("LEFT", srcHeader, "RIGHT", 16, 0)
-    weeklyTotalFS:SetFont(weeklyTotalFS:GetFont(), 11)
-
-    local COL_HEADERS_Y = -12
-    local colNameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colNameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, COL_HEADERS_Y)
-    colNameFS:SetFont(colNameFS:GetFont(), 10, "OUTLINE")
-    colNameFS:SetText(E.CC.muted .. L["Source"] .. E.CC.close)
-
-    local colPerFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colPerFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 260, 0)
-    colPerFS:SetFont(colPerFS:GetFont(), 10, "OUTLINE")
-    colPerFS:SetText(E.CC.muted .. L["Per"] .. E.CC.close)
-
-    local colCapFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colCapFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 310, 0)
-    colCapFS:SetFont(colCapFS:GetFont(), 10, "OUTLINE")
-    colCapFS:SetText(E.CC.muted .. L["Weekly Cap"] .. E.CC.close)
-
-    local colStatusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colStatusFS:SetPoint("TOPLEFT", colNameFS, "TOPLEFT", 405, 0)
-    colStatusFS:SetFont(colStatusFS:GetFont(), 10, "OUTLINE")
-    colStatusFS:SetText(E.CC.muted .. L["Status"] .. E.CC.close)
-
-    local ROW_HEIGHT    = 20
-    local SOURCE_ROW_Y  = COL_HEADERS_Y - 16
-    local sourceRows    = {}
-
+local function BuildSources(ui, content, v)
+    local card = ui:CreateGroup(content, L["Weekly Shard Sources"])
+    v.weeklyTotal = ui:CreateText(content, "", "label")
+    card:Add(v.weeklyTotal, { height = HINT_ROW, fill = true })
+    local head = Row(content, LIST_ROW)
+    Cells(ui, head, SOURCE_COLS, "groupLabel")
+    for i, label in ipairs({ L["Source"], L["Per"], L["Weekly Cap"], L["Status"] }) do head.cells[i]:SetText(label) end
+    card:Add(head, { height = LIST_ROW, fill = true })
+    v.sourceHead, v.sourceRows = head, {}
     for i, src in ipairs(E.ShardSources) do
-        local rowY = SOURCE_ROW_Y - ((i - 1) * ROW_HEIGHT)
-
-        if i % 2 == 0 then
-            local rowBg = sc:CreateTexture(nil, "BACKGROUND")
-            rowBg:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", -2, rowY + 2)
-            rowBg:SetSize(500, ROW_HEIGHT)
-            rowBg:SetColorTexture(0.08, 0.08, 0.08, 0.50)
-        end
-
-        local nameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, rowY)
-        nameFS:SetFont(nameFS:GetFont(), 10)
-        nameFS:SetWidth(255)
-        nameFS:SetJustifyH("LEFT")
-
-        local perFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        perFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 260, rowY)
-        perFS:SetFont(perFS:GetFont(), 10)
-
-        local capFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        capFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 310, rowY)
-        capFS:SetFont(capFS:GetFont(), 10)
-
-        local statusFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        statusFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 405, rowY)
-        statusFS:SetFont(statusFS:GetFont(), 10)
-
-        sourceRows[i] = {
-            nameFS   = nameFS,
-            perFS    = perFS,
-            capFS    = capFS,
-            statusFS = statusFS,
-            src      = src,
-        }
+        local row = Row(content, LIST_ROW)
+        Cells(ui, row, SOURCE_COLS, "label")
+        row.check = Check(ui, row)
+        row.src = src
+        card:Add(row, { height = LIST_ROW, fill = true })
+        v.sourceRows[i] = row
     end
+    local foot = ui:CreateText(content, L["* Value unconfirmed - may differ in game"], "hint")
+    card:Add(foot, { height = HINT_ROW, fill = true })
+    v.sourcesCard = card
+    return card
+end
 
-    local lastRowY = SOURCE_ROW_Y - ((#E.ShardSources - 1) * ROW_HEIGHT)
-    local belowLastRow = lastRowY - ROW_HEIGHT
+local function BuildSession(ui, content, v)
+    local card = ui:CreateGroup(content, L["Session Tracker"])
+    v.session = {}
+    for i = 1, 4 do
+        local fs = ui:CreateText(content, "", "label")
+        fs:SetWordWrap(false)
+        card:Add(fs, { height = LIST_ROW, fill = true })
+        v.session[i] = fs
+    end
+    local note = ui:CreateText(content, L["Tracking starts when you first open this tab, not at login. Resets on /reload."], "hint")
+    note:SetWordWrap(true)
+    card:Add(note, { height = HINT_ROW, fill = true })
+    v.sessionCard = card
+    return card
+end
 
-    local footnoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    footnoteFS:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 2)
-    footnoteFS:SetFont(footnoteFS:GetFont(), 9)
-    footnoteFS:SetText(E.CC.muted .. L["* Value unconfirmed - may differ in game"] .. E.CC.close)
+local function QuestRow(ui, content, card)
+    local row = Row(content, LIST_ROW)
+    row.check = Check(ui, row)
+    row.check:SetPoint("LEFT")
+    row.text = ui:CreateText(row, "", "label")
+    row.text:SetPoint("LEFT", row, "LEFT", CHECK + 8, 0)
+    row.text:SetPoint("RIGHT")
+    row.text:SetWordWrap(false)
+    card:Add(row, { height = LIST_ROW, fill = true })
+    return row
+end
 
-    local div2 = sc:CreateTexture(nil, "ARTWORK")
-    div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", srcHeader, "BOTTOMLEFT", 0, belowLastRow - 40)
-    div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div2)
-
-    -- SECTION 3: Session Tracker
-    local sessHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", 0, -32)
-    sessHeader:SetFont(sessHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(sessHeader, L["Session Tracker"])
-
-    local sessShardsFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessShardsFS:SetPoint("TOPLEFT", sessHeader, "BOTTOMLEFT", 0, -4)
-    sessShardsFS:SetFont(sessShardsFS:GetFont(), 11)
-
-    local sessKeysFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessKeysFS:SetPoint("TOPLEFT", sessShardsFS, "BOTTOMLEFT", 0, -2)
-    sessKeysFS:SetFont(sessKeysFS:GetFont(), 11)
-
-    local sessTimeFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessTimeFS:SetPoint("TOPLEFT", sessKeysFS, "BOTTOMLEFT", 0, -2)
-    sessTimeFS:SetFont(sessTimeFS:GetFont(), 11)
-
-    local sessRateFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessRateFS:SetPoint("TOPLEFT", sessTimeFS, "BOTTOMLEFT", 0, -2)
-    sessRateFS:SetFont(sessRateFS:GetFont(), 10)
-
-    local sessNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sessNoteFS:SetPoint("TOPLEFT", sessRateFS, "BOTTOMLEFT", 0, -4)
-    sessNoteFS:SetFont(sessNoteFS:GetFont(), 10)
-    sessNoteFS:SetText(
-        E.CC.muted
-        .. L["Tracking starts when you first open this tab, not at login. Resets on /reload."]
-        .. E.CC.close
-    )
-
-    local div3 = sc:CreateTexture(nil, "ARTWORK")
-    div3:SetHeight(1)
-    div3:SetPoint("TOPLEFT", sessNoteFS, "BOTTOMLEFT", 0, -32)
-    div3:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div3)
-
-    -- SECTION 3b: Special Assignments (weekly limit of 3 completions)
-    local SPECIAL_ASSIGNMENTS = {
-        { questID = 93013, unlockID = 94391, title = "Push back the Light" },
-        { questID = 92063, unlockID = 94390, title = "A Hunter's Regret" },
-        { questID = 92145, unlockID = 92848, title = "The Grand Magister's Drink" },
-        { questID = 91796, unlockID = 94866, title = "Ours Once More!" },
-        { questID = 93244, unlockID = 94795, title = "Agents of the Shield" },
-        { questID = 92139, unlockID = 95435, title = "Shade and Claw" },
-        { questID = 91390, unlockID = 94865, title = "What Remains of a Temple Broken" },
-        { questID = 93438, unlockID = 94743, title = "Precision Excision" },
-    }
-    local SA_WEEKLY_MAX = 3
-
-    local saHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    saHeader:SetPoint("TOPLEFT", div3, "BOTTOMLEFT", 0, -32)
-    saHeader:SetFont(saHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(saHeader, L["Special Assignments"])
-
-    local saSummaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    saSummaryFS:SetPoint("LEFT", saHeader, "RIGHT", 12, 0)
-    saSummaryFS:SetFont(saSummaryFS:GetFont(), 11)
-
-    local saRows = {}
+local function BuildAssignments(ui, content, v)
+    local card = ui:CreateGroup(content, L["Special Assignments"])
+    v.saSide = SideText(ui, card)
+    v.saRows = {}
     for i, sa in ipairs(SPECIAL_ASSIGNMENTS) do
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", saHeader, "BOTTOMLEFT", 0, -4 - ((i - 1) * 16))
-        fs:SetFont(fs:GetFont(), 10)
-        fs:SetWidth(500)
-        fs:SetJustifyH("LEFT")
-        saRows[i] = { fs = fs, questID = sa.questID, unlockID = sa.unlockID, title = sa.title }
+        local row = QuestRow(ui, content, card)
+        row.sa = sa
+        v.saRows[i] = row
     end
+    v.saCard = card
+    return card
+end
 
-    local div3b = sc:CreateTexture(nil, "ARTWORK")
-    div3b:SetHeight(1)
-    div3b:SetPoint("TOPLEFT", saRows[#saRows].fs, "BOTTOMLEFT", 0, -32)
-    div3b:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div3b)
-
-    -- SECTION 3c: Weekly Delve Quests
-    local WEEKLY_DELVE_QUESTS = {
-        { questID = 93909, title = "Midnight: Delves" },
-    }
-
-    local wdqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wdqHeader:SetPoint("TOPLEFT", div3b, "BOTTOMLEFT", 0, -32)
-    wdqHeader:SetFont(wdqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(wdqHeader, L["Weekly Delve Quests"])
-
-    local wdqRows = {}
-    for i, wq in ipairs(WEEKLY_DELVE_QUESTS) do
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", wdqHeader, "BOTTOMLEFT", 0, -4 - ((i - 1) * 16))
-        fs:SetFont(fs:GetFont(), 10)
-        fs:SetWidth(500)
-        fs:SetJustifyH("LEFT")
-        wdqRows[i] = { fs = fs, questID = wq.questID, title = wq.title }
+local function BuildWeekly(ui, content, v)
+    local card = ui:CreateGroup(content, L["Weekly Delve Quests"])
+    v.weeklyRows = {}
+    for i, quest in ipairs(WEEKLY_DELVE_QUESTS) do
+        local row = QuestRow(ui, content, card)
+        row.quest = quest
+        v.weeklyRows[i] = row
     end
+    v.weeklyCard = card
+    return card
+end
 
-    local div3c = sc:CreateTexture(nil, "ARTWORK")
-    div3c:SetHeight(1)
-    div3c:SetPoint("TOPLEFT", wdqRows[#wdqRows].fs, "BOTTOMLEFT", 0, -32)
-    div3c:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div3c)
+local function QuestLocation(wq)
+    if wq and C_TaskQuest and C_TaskQuest.GetQuestLocation then
+        return C_TaskQuest.GetQuestLocation(wq.questID, wq.zoneID)
+    end
+end
 
-    -- SECTION 4: Low-Shard Warning
-    local warnFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    warnFS:SetPoint("TOPLEFT", div3c, "BOTTOMLEFT", 0, -6)
-    warnFS:SetFont(warnFS:GetFont(), 11)
+local function NewWQRow(ui, content)
+    local row = Row(content, LIST_ROW)
+    row.zone = ui:CreateText(row, "", "label")
+    row.zone:SetPoint("LEFT")
+    row.zone:SetWidth(WQ_ZONE)
+    row.zone:SetWordWrap(false)
+    row.tt = E.DelveList.IconButton(row, ED_TEXTURES .. "icon-tomtom")
+    row.tt:SetPoint("RIGHT")
+    row.pin = E.DelveList.IconButton(row, ui:Texture("icon-map"))
+    row.pin:SetPoint("RIGHT", row.tt, "LEFT", -BUTTON_GAP, 0)
+    row.amount = ui:CreateText(row, "", "label")
+    row.amount:SetPoint("RIGHT", row.pin, "LEFT", -COL_GAP, 0)
+    row.amount:SetWidth(WQ_SHARDS)
+    row.amount:SetJustifyH("RIGHT")
+    row.title = ui:CreateText(row, "", "label")
+    row.title:SetPoint("LEFT", row, "LEFT", WQ_ZONE + COL_GAP, 0)
+    row.title:SetPoint("RIGHT", row.amount, "LEFT", -COL_GAP, 0)
+    row.title:SetWordWrap(false)
 
-    -- SECTION 5: Coffer Shard World Quests (Midnight zones, currency 3310)
-    local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424, 2512 }
-    local WQ_CURRENCY = 3310
-    local MAX_WQ_ROWS = 12
-
-    local div4 = sc:CreateTexture(nil, "ARTWORK")
-    div4:SetHeight(1)
-    div4:SetPoint("TOPLEFT", warnFS, "BOTTOMLEFT", 0, -32)
-    div4:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div4)
-
-    local wqHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqHeader:SetPoint("TOPLEFT", div4, "BOTTOMLEFT", 0, -32)
-    wqHeader:SetFont(wqHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(wqHeader, L["Coffer Shard World Quests"])
-
-    local wqCountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqCountFS:SetPoint("LEFT", wqHeader, "RIGHT", 12, 0)
-    wqCountFS:SetFont(wqCountFS:GetFont(), 11)
-
-    local wqRefreshBtn = E:CreateButton(sc, 60, 18, L["Refresh"])
-    wqRefreshBtn.label:SetFont(wqRefreshBtn.label:GetFont(), 9)
-    wqRefreshBtn:SetPoint("LEFT", wqCountFS, "RIGHT", 12, 0)
-    wqRefreshBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, L["Refresh WQs"],
-            L["Force rescan all Midnight zones for\nCoffer Key Shard world quests."])
+    -- Both read self.wq, which each refresh sets, so a pooled row's scripts are bound once
+    row.pin:SetScript("OnClick", function(self)
+        local x, y = QuestLocation(self.wq)
+        if x and y and E:SetWaypoint(self.wq.zoneID, x * 100, y * 100) then
+            E.DelveList.Flash(self)
+        end
     end)
-    wqRefreshBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
+    row.pin:SetScript("OnEnter", function(self) ui:ShowTooltip(self, L["Pin"], nil) end)
+    row.pin:SetScript("OnLeave", function() ui:HideTooltip() end)
+    row.tt:SetScript("OnClick", function(self)
+        if not E:IsTomTomLoaded() then return end
+        local x, y = QuestLocation(self.wq)
+        if x and y and E:AddTomTomWaypoint(self.wq.zoneID, x * 100, y * 100, self.wq.title) then
+            E.DelveList.Flash(self)
+        end
     end)
+    row.tt:SetScript("OnEnter", function(self)
+        if E:IsTomTomLoaded() then
+            ui:ShowTooltip(self, L["TomTom Waypoint"], L["Add an arrow waypoint via TomTom."])
+        else
+            ui:ShowTooltip(self, L["TomTom Not Installed"], L["Install the TomTom addon to use arrow waypoints."])
+        end
+    end)
+    row.tt:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return row
+end
 
-    local wqNoteFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqNoteFS:SetPoint("TOPLEFT", wqHeader, "BOTTOMLEFT", 0, -14)
-    wqNoteFS:SetFont(wqNoteFS:GetFont(), 9)
-    wqNoteFS:SetText(
-        E.CC.muted
-        .. L["WQs rewarding Coffer Key Shards. Rewards rotate - click Refresh to update."]
-        .. E.CC.close
-    )
+local function BuildWorldQuests(ui, content, v)
+    local card = ui:CreateGroup(content, L["Coffer Shard World Quests"])
+    v.wqSide = SideText(ui, card)
 
-    local wqCapWarningFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqCapWarningFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, -2)
-    wqCapWarningFS:SetFont(wqCapWarningFS:GetFont(), 9, "OUTLINE")
-    wqCapWarningFS:SetWidth(540)
-    wqCapWarningFS:SetJustifyH("LEFT")
-    wqCapWarningFS:SetText(
-        E.CC.gold
-        .. L["Weekly shard cap reached — shards will not be awarded until reset."]
-        .. E.CC.close
-    )
-    wqCapWarningFS:Hide()
+    local top = Row(content, ROW)
+    top.refresh = ui:CreateButton(top, L["Refresh"], nil, function() if v.onWQRefresh then v.onWQRefresh() end end)
+    top.refresh:SetScript("OnEnter", function(self)
+        ui:ShowTooltip(self, L["Refresh WQs"], L["Force rescan all Midnight zones for\nCoffer Key Shard world quests."])
+    end)
+    top.refresh:SetScript("OnLeave", function() ui:HideTooltip() end)
+    top.refresh:SetPoint("RIGHT")
+    top.note = ui:CreateText(top, L["WQs rewarding Coffer Key Shards. Rewards rotate - click Refresh to update."], "label")
+    top.note:SetPoint("LEFT")
+    top.note:SetPoint("RIGHT", top.refresh, "LEFT", -ITEM_GAP, 0)
+    top.note:SetWordWrap(true)
+    card:Add(top, { height = ROW, fill = true })
+    v.wqTop = top
 
-    local wqColY = -18
+    v.wqCap = ui:CreateText(content, L["Weekly shard cap reached \226\128\148 shards will not be awarded until reset."], "label")
+    v.wqCap:SetWordWrap(true)
+    card:Add(v.wqCap, { height = HINT_ROW, fill = true })
 
-    local wqHdrLineTop = sc:CreateTexture(nil, "ARTWORK")
-    wqHdrLineTop:SetHeight(1)
-    wqHdrLineTop:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY + 10)
-    wqHdrLineTop:SetPoint("TOPRIGHT", wqNoteFS, "BOTTOMLEFT", 520, wqColY + 10)
-    E:StyleGreyLine(wqHdrLineTop)
+    local head = Row(content, LIST_ROW)
+    head.zone = ui:CreateText(head, L["Zone"], "groupLabel")
+    head.zone:SetPoint("LEFT")
+    head.title = ui:CreateText(head, L["Quest"], "groupLabel")
+    head.title:SetPoint("LEFT", head, "LEFT", WQ_ZONE + COL_GAP, 0)
+    head.amount = ui:CreateText(head, L["Shards"], "groupLabel")
+    head.amount:SetPoint("RIGHT", head, "RIGHT", -(BUTTON * 2 + BUTTON_GAP + COL_GAP), 0)
+    head.amount:SetWidth(WQ_SHARDS)
+    head.amount:SetJustifyH("RIGHT")
+    card:Add(head, { height = LIST_ROW, fill = true })
+    v.wqHead = head
 
-    for _, col in ipairs({
-        { label = L["Zone"],   x = 0   },
-        { label = L["Quest"],  x = 140 },
-        { label = L["Shards"], x = 380 },
-        { label = L["Pin"],    x = 430 },
-        { label = "TomTom",    x = 470 },
-    }) do
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", col.x, wqColY)
-        fs:SetFont(fs:GetFont(), 10, "OUTLINE")
-        fs:SetText(E.CC.muted .. col.label .. E.CC.close)
-    end
-
-    local wqHdrLineBot = sc:CreateTexture(nil, "ARTWORK")
-    wqHdrLineBot:SetHeight(1)
-    wqHdrLineBot:SetPoint("TOPLEFT",  wqNoteFS, "BOTTOMLEFT",  0, wqColY - 16)
-    wqHdrLineBot:SetPoint("TOPRIGHT", wqNoteFS, "BOTTOMLEFT", 520, wqColY - 16)
-    E:StyleGreyLine(wqHdrLineBot)
-
-    local wqRows = {}
+    v.wqRows = {}
     for i = 1, MAX_WQ_ROWS do
-        local rowY = wqColY - 28 - ((i - 1) * 18)
-
-        local zoneFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        zoneFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, rowY)
-        zoneFS:SetFont(zoneFS:GetFont(), 10)
-        zoneFS:SetWidth(135)
-        zoneFS:SetJustifyH("LEFT")
-
-        local nameFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 140, rowY)
-        nameFS:SetFont(nameFS:GetFont(), 10)
-        nameFS:SetWidth(235)
-        nameFS:SetJustifyH("LEFT")
-
-        local amountFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        amountFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 380, rowY)
-        amountFS:SetFont(amountFS:GetFont(), 10)
-
-        local wpBtn = E:CreateButton(sc, 30, 16, L["Pin"])
-        wpBtn.label:SetFont(wpBtn.label:GetFont(), 9)
-        wpBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 430, rowY + 2)
-        wpBtn:SetScript("OnEnter", function(self)
-            if self.dimmed then return end
-            local hc = E.Colors.buttonHover
-            self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        end)
-        wpBtn:SetScript("OnLeave", function(self)
-            if self.dimmed then return end
-            local bc = E.Colors.buttonBg
-            self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        end)
-        -- Shared OnClick reads self.wq (set each refresh) to avoid a closure per row.
-        wpBtn:SetScript("OnClick", function(self)
-            local wq = self.wq
-            if wq and C_TaskQuest and C_TaskQuest.GetQuestLocation then
-                local x, y = C_TaskQuest.GetQuestLocation(wq.questID, wq.zoneID)
-                if x and y then
-                    E:SetWaypoint(wq.zoneID, x * 100, y * 100)
-                    E:FlashButtonConfirm(self)
-                end
-            end
-        end)
-
-        local ttBtn = E:CreateButton(sc, 50, 16, "TomTom")
-        ttBtn.label:SetFont(ttBtn.label:GetFont(), 9)
-        ttBtn:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 470, rowY + 2)
-        ttBtn:SetScript("OnEnter", function(self)
-            if not self.dimmed then
-                local hc = E.Colors.buttonHover
-                self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-            end
-            if E:IsTomTomLoaded() then
-                E:ShowTooltip(self, L["TomTom Waypoint"],
-                              L["Add an arrow waypoint via TomTom."])
-            else
-                E:ShowTooltip(self, L["TomTom Not Installed"],
-                              L["Install the TomTom addon to use arrow waypoints."])
-            end
-        end)
-        ttBtn:SetScript("OnLeave", function(self)
-            if not self.dimmed then
-                local bc = E.Colors.buttonBg
-                self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-            end
-            E:HideTooltip()
-        end)
-        ttBtn:SetScript("OnClick", function(self)
-            local wq = self.wq
-            if not (wq and C_TaskQuest and C_TaskQuest.GetQuestLocation) then return end
-            if not E:IsTomTomLoaded() then return end
-            local x, y = C_TaskQuest.GetQuestLocation(wq.questID, wq.zoneID)
-            if x and y then
-                E:AddTomTomWaypoint(wq.zoneID, x * 100, y * 100, wq.title)
-                E:FlashButtonConfirm(self)
-            end
-        end)
-
-        wqRows[i] = {
-            zoneFS   = zoneFS,
-            nameFS   = nameFS,
-            amountFS = amountFS,
-            wpBtn    = wpBtn,
-            ttBtn    = ttBtn,
-            visible  = false,
-        }
-        zoneFS:Hide()
-        nameFS:Hide()
-        amountFS:Hide()
-        wpBtn:Hide()
-        ttBtn:Hide()
+        local row = NewWQRow(ui, content)
+        card:Add(row, { height = LIST_ROW, fill = true })
+        v.wqRows[i] = row
     end
 
-    local wqEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqEmptyFS:SetPoint("TOPLEFT", wqNoteFS, "BOTTOMLEFT", 0, wqColY - 35)
-    wqEmptyFS:SetFont(wqEmptyFS:GetFont(), 10)
-    wqEmptyFS:SetText(
-        E.CC.yellow .. L["No Coffer Key Shard WQs found. Click Refresh to rescan."] .. "\n"
-        .. E.CC.close .. E.CC.muted
-        .. L["Tip: Open your World Map to each Midnight zone first to load quest data."]
-        .. E.CC.close
-    )
-    wqEmptyFS:Hide()
+    local empty = Row(content, EMPTY_ROW)
+    empty.line1 = ui:CreateText(empty, L["No Coffer Key Shard WQs found. Click Refresh to rescan."], "label")
+    empty.line1:SetPoint("TOPLEFT", 0, -9)
+    empty.line1:SetPoint("TOPRIGHT", 0, -9)
+    empty.line2 = ui:CreateText(empty, L["Tip: Open your World Map to each Midnight zone first to load quest data."], "hint")
+    empty.line2:SetPoint("TOPLEFT", empty.line1, "BOTTOMLEFT", 0, -4)
+    empty.line2:SetPoint("TOPRIGHT", empty.line1, "BOTTOMRIGHT", 0, -4)
+    card:Add(empty, { height = EMPTY_ROW, fill = true })
+    v.wqEmpty = empty
 
-    -- Anchor is updated in RefreshAll to follow the last visible row/message.
-    local wqBottomFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
-    wqBottomFS:SetFont(wqBottomFS:GetFont(), 9)
-    wqBottomFS:SetText(
-        E.CC.muted .. L["* Tip: Visit zone maps to load WQ data before refreshing."] .. E.CC.close
-    )
+    local foot = ui:CreateText(content, L["* Tip: Visit zone maps to load WQ data before refreshing."], "hint")
+    card:Add(foot, { height = HINT_ROW, fill = true })
+    v.wqCard = card
+    return card
+end
+
+local function RenderOverview(v, shards, keys, weeklyCap, weeklyEarned, width)
+    local labelW = BAR_LABEL
+    for _, row in ipairs({ v.nextKey, v.weeklyCap }) do
+        row.label:SetWidth(0)
+        labelW = math_max(labelW, math_ceil(row.label:GetStringWidth() or 0) + 1)
+    end
+    labelW = math_max(1, math_min(labelW, math_floor((width - PAD_LEFT - PAD_RIGHT) / 2)))
+    v.nextKey.label:SetWidth(labelW)
+    v.weeklyCap.label:SetWidth(labelW)
+
+    local top = v.overviewTop
+    top.icons[1]:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
+    top.icons[2]:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey))
+    if not cachedUcIcon then
+        local ucInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.undercoins)
+        if ucInfo and ucInfo.iconFileID then
+            cachedUcIcon = ucInfo.iconFileID
+        end
+    end
+    if cachedUcIcon then top.icons[3]:SetTexture(cachedUcIcon) end
+    top.values[1]:SetText(FormatNumber(shards))
+    top.values[2]:SetText(FormatNumber(keys))
+    top.values[3]:SetText(FormatNumber(GetCurrency(E.CurrencyIDs.undercoins)))
+
+    local partial = shards % E.SHARDS_PER_KEY
+    if partial == 0 and shards > 0 then
+        partial = E.SHARDS_PER_KEY
+    end
+    v.nextKey.bar:SetProgress(partial / E.SHARDS_PER_KEY)
+    v.nextKey.value:SetText(partial .. " / " .. E.SHARDS_PER_KEY)
+    v.nextKeyNote:SetText(L["Progress toward next key - %s shards remaining"]:format(E.SHARDS_PER_KEY - partial))
+
+    v.weeklyCap:SetShown(weeklyCap > 0)
+    if weeklyCap > 0 then
+        v.weeklyCap.bar:SetProgress(weeklyEarned / weeklyCap)
+        v.weeklyCap.value:SetText(weeklyEarned .. " / " .. weeklyCap)
+        v.weeklyCapNote:SetText(L["Weekly shard cap - %s shards remaining this week"]:format(math_max(0, weeklyCap - weeklyEarned)))
+    else
+        v.weeklyCapNote:SetText(L["Weekly shard cap data unavailable"])
+    end
+    v.overviewCard:Layout()
+end
+
+local function RenderCrests(ui, v)
+    FitColumns(v.crestHead, v.crestRows, CREST_COLS)
+    for _, row in ipairs(v.crestRows) do
+        local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(row.crest.id)
+        local c = row.cells
+        if info then
+            if info.iconFileID then row.icon:SetTexture(info.iconFileID) end
+            local qty    = info.quantity or 0
+            local season = info.totalEarned or 0
+            -- Zero means uncapped (a hotfix lifted the S1 caps). Read live so a
+            -- reintroduced cap shows up without an addon update.
+            local seasonMax = info.maxQuantity or 0
+            -- maxQuantity caps totalEarned only when the currency says so,
+            -- else it caps what you hold and spending frees room again.
+            local capOnTotal = info.useTotalEarnedForMaxQty
+            local atCap = seasonMax > 0 and ((capOnTotal and season or qty) >= seasonMax)
+            c[1]:SetText((info.name and info.name ~= "") and info.name or row.crest.label)
+            c[1]:SetTextColor(ui:Color("label"))
+            c[2]:SetText(FormatNumber(qty))
+            c[2]:SetTextColor(ui:Color((atCap and not capOnTotal) and "danger" or "text"))
+            c[3]:SetText(seasonMax > 0 and FormatNumber(seasonMax) or L["Uncapped"])
+            c[3]:SetTextColor(ui:Color(seasonMax > 0 and "label" or "muted"))
+            c[4]:SetText(season > 0 and FormatNumber(season) or "-")
+            c[4]:SetTextColor(ui:Color((atCap and capOnTotal) and "danger" or (season > 0 and "label" or "muted")))
+        else
+            c[1]:SetText(row.crest.label)
+            for i = 1, 4 do c[i]:SetTextColor(ui:Color("muted")) end
+            for i = 2, 4 do c[i]:SetText("-") end
+        end
+    end
+    v.crestCard:Layout()
+end
+
+local function RenderSources(ui, v, weeklyCap)
+    -- Live cap from the currency API (600 in S1), not a sum of rows, so it never goes stale.
+    v.weeklyTotal:SetShown(weeklyCap > 0)
+    v.weeklyTotal:SetText(E.DelveList.cc("muted") .. L["Weekly cap:"] .. "|r " .. L["%s shards/week"]:format(FormatNumber(weeklyCap)))
+    FitColumns(v.sourceHead, v.sourceRows, SOURCE_COLS)
+    for _, row in ipairs(v.sourceRows) do
+        local src, c = row.src, row.cells
+        c[1]:SetText(src.name .. (src.unconfirmed and " *" or ""))
+        c[2]:SetText(tostring(src.shardsEach) .. (src.unconfirmed and "*" or ""))
+        if src.weeklyMax then
+            local maxShards = type(src.shardsEach) == "number" and src.shardsEach * src.weeklyMax or 0
+            c[3]:SetText(src.weeklyMax .. "x" .. (maxShards > 0 and (" (" .. maxShards .. ")") or ""))
+            c[3]:SetTextColor(ui:Color("label"))
+        else
+            c[3]:SetText("-")
+            c[3]:SetTextColor(ui:Color("muted"))
+        end
+        local finished = false
+        if src.trackable then
+            local done, total = SourceProgress(src)
+            if total > 0 then
+                finished = done >= total
+                c[4]:SetText(done .. " / " .. total)
+            else
+                c[4]:SetText(L["Trackable"])
+            end
+            c[4]:SetTextColor(ui:Color(finished and "text" or "label"))
+        else
+            c[4]:SetText(L["Manual"])
+            c[4]:SetTextColor(ui:Color("muted"))
+        end
+        CheckBefore(row.check, c[4], finished)
+    end
+    v.sourcesCard:Layout()
+end
+
+local function QuestLine(ui, row, done, text, color)
+    row.check:SetShown(done)
+    row.text:SetText(text)
+    row.text:SetTextColor(ui:Color(color))
+end
+
+local function RenderAssignments(ui, v)
+    local completed, active = 0, 0
+    for _, row in ipairs(v.saRows) do
+        local sa = row.sa
+        local title = QuestTitle(sa.questID, sa.title)
+        local unlocked = not sa.unlockID or not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or Done(sa.unlockID)
+        if not unlocked then
+            QuestLine(ui, row, false, L["SA: %s - Locked"]:format(title), "muted")
+        elseif Done(sa.questID) then
+            completed = completed + 1
+            QuestLine(ui, row, true, L["SA: %s"]:format(title), "label")
+        elseif C_QuestLog and C_QuestLog.IsOnQuest and C_QuestLog.IsOnQuest(sa.questID) then
+            active = active + 1
+            QuestLine(ui, row, false, L["SA: %s - active"]:format(title), "text")
+        else
+            QuestLine(ui, row, false, L["SA: %s"]:format(title), "label")
+        end
+    end
+    v.saSide:SetText(L["%s / %d completed"]:format(completed, SA_WEEKLY_MAX)
+        .. (active > 0 and ("  " .. L["%d active"]:format(active)) or ""))
+    for _, row in ipairs(v.weeklyRows) do
+        local title = QuestTitle(row.quest.questID, row.quest.title)
+        if Done(row.quest.questID) then
+            QuestLine(ui, row, true, title, "label")
+        else
+            QuestLine(ui, row, false, L["%s - not yet done"]:format(title), "label")
+        end
+    end
+    v.saCard:Layout()
+    v.weeklyCard:Layout()
+end
+
+local function RenderWorldQuests(ui, v, wqs, isAtCap)
+    v.wqSide:SetText(L["%s active"]:format(#wqs))
+    v.wqTop.refresh:Fit()
+    v.wqCap:SetShown(isAtCap)
+    v.wqHead:SetShown(#wqs > 0)
+    v.wqEmpty:SetShown(#wqs == 0)
+    -- Dimmed at cap but still clickable
+    local color = isAtCap and "muted" or "label"
+    for i, row in ipairs(v.wqRows) do
+        local wq = wqs[i]
+        row:SetShown(wq ~= nil)
+        if wq then
+            row.zone:SetText(wq.zone)
+            row.title:SetText(wq.title)
+            row.amount:SetText(tostring(wq.amount))
+            for _, fs in ipairs({ row.zone, row.title, row.amount }) do fs:SetTextColor(ui:Color(color)) end
+            row.pin.wq, row.tt.wq = wq, wq
+            row.pin:SetAlpha(isAtCap and DIM or 1)
+            row.tt:SetAlpha((isAtCap or not E:IsTomTomLoaded()) and DIM or 1)
+        end
+    end
+    v.wqCard:Layout()
+end
+
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTab4Content")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+
+    local v = {}
+    local warning = BuildWarning(ui, content, v)
+    local cards = {
+        BuildOverview(ui, content, v), BuildCrests(ui, content, v), BuildSources(ui, content, v),
+        BuildSession(ui, content, v), BuildAssignments(ui, content, v), BuildWeekly(ui, content, v),
+        BuildWorldQuests(ui, content, v),
+    }
 
     local wqCache      = {}
     local wqEntryPool  = {}
@@ -729,8 +674,7 @@ E:RegisterModule(function()
     local zoneNameCache = {}
     local seenQuestIDs = {}
 
-    local RefreshAll  -- forward decl; retry calls it
-    local UpdateContentHeight  -- forward decl; assigned in OnShow setup
+    local Render
 
     local function wqSortFunc(a, b)
         if a.zone == b.zone then return a.title < b.title end
@@ -778,28 +722,21 @@ E:RegisterModule(function()
                     if qid and qid > 0 and not seenQuestIDs[qid]
                             and C_QuestLog.IsWorldQuest
                             and C_QuestLog.IsWorldQuest(qid)
-                            and not (C_QuestLog.IsQuestFlaggedCompleted
-                                     and C_QuestLog.IsQuestFlaggedCompleted(qid))
+                            and not Done(qid)
                     then
-                        local currencies = C_QuestLog
-                            .GetQuestRewardCurrencies(qid)
+                        local currencies = C_QuestLog.GetQuestRewardCurrencies(qid)
                         if currencies then
                             for _, ci in ipairs(currencies) do
                                 if ci.currencyID == WQ_CURRENCY then
                                     local title = L["Unknown Quest"]
                                     if C_TaskQuest.GetQuestInfoByQuestID then
-                                        title = C_TaskQuest
-                                            .GetQuestInfoByQuestID(qid)
-                                            or title
+                                        title = C_TaskQuest.GetQuestInfoByQuestID(qid) or title
                                     end
                                     -- Use the quest's own mapID (its location), not the scanned parent.
                                     local questMapID = qData.mapID or zoneID
                                     if not zoneNameCache[questMapID] then
-                                        local mi = C_Map and C_Map.GetMapInfo
-                                                   and C_Map.GetMapInfo(questMapID)
-                                        zoneNameCache[questMapID] =
-                                            (mi and mi.name)
-                                            or L["Zone %d"]:format(questMapID)
+                                        local mi = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(questMapID)
+                                        zoneNameCache[questMapID] = (mi and mi.name) or L["Zone %d"]:format(questMapID)
                                     end
                                     seenQuestIDs[qid] = true
                                     local n = #wqEntryPool
@@ -838,8 +775,8 @@ E:RegisterModule(function()
             C_Timer.After(3, function()
                 wqRetryPending = false
                 wqCacheTime = 0
-                if RefreshAll and frame:IsVisible() then
-                    RefreshAll(true)
+                if Render and frame:IsVisible() then
+                    Render(true)
                 end
             end)
         elseif #wqCache > 0 then
@@ -862,15 +799,9 @@ E:RegisterModule(function()
         end
     end
 
-    -- Lightweight: session timer and deltas only. Called every 1s via OnUpdate.
+    -- Answers whether the rate line should show
     local function RefreshSessionTimer()
-        if not sessionBaseline then
-            EnsureBaseline()
-        end
-        if not sessionBaseline then
-            sessionBaseline = { shards = 0, keys = 0, time = time() }
-        end
-
+        EnsureBaseline()
         local sessShards = cachedShards - sessionBaseline.shards
         local sessKeys   = cachedKeys   - sessionBaseline.keys
         local sessTime   = time() - sessionBaseline.time
@@ -880,471 +811,102 @@ E:RegisterModule(function()
         local seconds = sessTime % 60
         local elapsed = string_format("%d:%02d:%02d", hours, minutes, seconds)
 
-        sessShardsFS:SetText(
-            sessShards >= 0
-                and string_format(L["|cFF999999Shards earned: |r|cFFFFD700+%s|r"], FormatNumber(sessShards))
-                or  string_format(L["|cFF999999Shards earned: |r|cFFFF3333%s|r"], FormatNumber(sessShards))
-        )
-
-        sessKeysFS:SetText(
-            sessKeys >= 0
-                and string_format(L["|cFF999999Keys earned: |r|cFFFFD700+%d|r"], sessKeys)
-                or  string_format(L["|cFF999999Keys earned: |r|cFFFF3333%d|r"], sessKeys)
-        )
-
-        sessTimeFS:SetText(
-            string_format(L["|cFF999999Session time: |r|cFFE0E0E0%s|r"], elapsed)
-        )
-
-        if sessTime >= 60 and sessShards > 0 then
+        local s = v.session
+        s[1]:SetText(StripCodes(string_format(L["|cFF999999Session time: |r|cFFE0E0E0%s|r"], elapsed)))
+        s[2]:SetText(StripCodes(sessShards >= 0
+            and string_format(L["|cFF999999Shards earned: |r|cFFFFD700+%s|r"], FormatNumber(sessShards))
+            or  string_format(L["|cFF999999Shards earned: |r|cFFFF3333%s|r"], FormatNumber(sessShards))))
+        s[3]:SetText(StripCodes(sessKeys >= 0
+            and string_format(L["|cFF999999Keys earned: |r|cFFFFD700+%d|r"], sessKeys)
+            or  string_format(L["|cFF999999Keys earned: |r|cFFFF3333%d|r"], sessKeys)))
+        local rate = sessTime >= 60 and sessShards > 0
+        if rate then
             local perHour = math_floor(sessShards / (sessTime / 3600))
-            sessRateFS:SetText(
-                string_format(L["|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r"], FormatNumber(perHour))
-            )
-            sessRateFS:Show()
-        else
-            sessRateFS:SetText("")
-            sessRateFS:Hide()
+            s[4]:SetText(StripCodes(string_format(L["|cFF999999Rate: ~|r|cFFFFD700%s shards/hour|r"], FormatNumber(perHour))))
         end
+        return rate
     end
 
-    -- Full refresh of all sections. Event/OnShow/button driven, not timed.
-    -- forceWQRescan bypasses the WQ scan cache.
-    RefreshAll = function(forceWQRescan)
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
+    end
 
-        -- Section 1: Currency overview
+    Render = function(forceWQRescan)
+        local width = ViewWidth()
+        lastWidth = width
+        content:SetWidth(width)
+
         cachedShards = GetCurrency(E.CurrencyIDs.cofferKeyShards)
         cachedKeys   = GetCurrency(E.CurrencyIDs.bountifulKeys)
-        local shards = cachedShards
-        local keys   = cachedKeys
-
         local _, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
-        local weeklyRemaining = math_max(0, weeklyCap - weeklyEarned)
         local isAtCap = weeklyCap > 0 and weeklyEarned >= weeklyCap
 
-        shardIcon:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
-        keyIcon:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey))
-
-        if not cachedUcIcon then
-            local ucInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.undercoins)
-            if ucInfo and ucInfo.iconFileID then
-                cachedUcIcon = ucInfo.iconFileID
-            end
-        end
-        if cachedUcIcon then ucIcon:SetTexture(cachedUcIcon) end
-        local uc = GetCurrency(E.CurrencyIDs.undercoins)
-        ucValueFS:SetText(E.CC.gold .. FormatNumber(uc) .. E.CC.close)
-
-        shardValueFS:SetText(E.CC.gold .. FormatNumber(shards) .. E.CC.close)
-        keyValueFS:SetText(E.CC.gold .. FormatNumber(keys) .. E.CC.close)
-
-        local partial = shards % E.SHARDS_PER_KEY
-        if partial == 0 and shards > 0 then
-            partial = E.SHARDS_PER_KEY
-        end
-        nextKeyBar:SetProgress(partial, E.SHARDS_PER_KEY)
-        local remaining = E.SHARDS_PER_KEY - partial
-        nextKeyNote:SetText(
-            E.CC.muted .. L["Progress toward next key - %s shards remaining"]:format(
-                E.CC.close .. E.CC.gold .. remaining .. E.CC.close .. E.CC.muted)
-            .. E.CC.close
-        )
-
-        if weeklyCap > 0 then
-            weeklyCapBar:SetProgress(weeklyEarned, weeklyCap)
-            weeklyCapNote:SetText(
-                E.CC.muted
-                .. L["Weekly shard cap - %s shards remaining this week"]:format(
-                    E.CC.close .. E.CC.gold .. weeklyRemaining
-                    .. E.CC.close .. E.CC.muted)
-                .. E.CC.close
-            )
-            weeklyCapBar:Show()
-            weeklyCapNote:Show()
-        else
-            weeklyCapBar:Hide()
-            weeklyCapNote:SetText(
-                E.CC.muted .. L["Weekly shard cap data unavailable"] .. E.CC.close
-            )
+        local threshold = E.db and E.db.lowShardThreshold or 100
+        local low = E.db and E.db.lowShardWarning and cachedShards < threshold
+        warning:SetShown(low and true or false)
+        if low then
+            warning.body:SetText(L["You have %s shards, below your %s threshold."]:format(FormatNumber(cachedShards),
+                FormatNumber(threshold)))
         end
 
-        RefreshCrestHeader()
-        for _, row in ipairs(crestRows) do
-            local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
-                         and C_CurrencyInfo.GetCurrencyInfo(row.id)
-            if info then
-                if not row.iconSet and info.iconFileID then
-                    row.icon:SetTexture(info.iconFileID)
-                    row.iconSet = true
-                end
-                local crestName = (info.name and info.name ~= "")
-                    and info.name or row.label
-                local qty    = info.quantity or 0
-                local season = info.totalEarned or 0
-                -- Zero = uncapped (S1 caps removed by hotfix); read live so a
-                -- reintroduced cap shows up without an addon update.
-                local seasonMax = info.maxQuantity or 0
-                -- maxQuantity caps totalEarned only when the currency says so,
-                -- else it caps what you hold and spending frees room again.
-                local capOnTotal = info.useTotalEarnedForMaxQty
-                local atCap = seasonMax > 0
-                    and ((capOnTotal and season or qty) >= seasonMax)
-                row.nameFS:SetText(E.CC.body .. crestName .. E.CC.close)
-                row.handFS:SetText(((atCap and not capOnTotal) and E.CC.red or E.CC.gold)
-                    .. FormatNumber(qty) .. E.CC.close)
-                row.maxFS:SetText(seasonMax > 0
-                    and (E.CC.body .. FormatNumber(seasonMax) .. E.CC.close)
-                    or  (E.CC.muted .. L["Uncapped"] .. E.CC.close))
-                row.seasonFS:SetText(season > 0
-                    and (((atCap and capOnTotal) and E.CC.red or E.CC.body)
-                        .. FormatNumber(season) .. E.CC.close)
-                    or  (E.CC.muted .. "-" .. E.CC.close))
-            else
-                row.nameFS:SetText(E.CC.muted .. row.label .. E.CC.close)
-                row.handFS:SetText(E.CC.muted .. "-" .. E.CC.close)
-                row.maxFS:SetText(E.CC.muted .. "-" .. E.CC.close)
-                row.seasonFS:SetText(E.CC.muted .. "-" .. E.CC.close)
-            end
+        RenderOverview(v, cachedShards, cachedKeys, weeklyCap, weeklyEarned, width)
+        RenderCrests(ui, v)
+        RenderSources(ui, v, weeklyCap)
+        v.session[4]:SetShown(RefreshSessionTimer())
+        v.sessionCard:Layout()
+        RenderAssignments(ui, v)
+        RenderWorldQuests(ui, v, ScanCofferShardWQs(forceWQRescan), isAtCap)
+
+        local y = PAD_TOP
+        if low then
+            warning:ClearAllPoints()
+            warning:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+            warning:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+            y = y + warning:GetHeight() + GROUP_GAP
         end
-
-        -- Section 2: Weekly shard sources
-        for _, row in ipairs(sourceRows) do
-            local src = row.src
-
-            local displayName = src.name
-            if src.unconfirmed then
-                displayName = displayName .. " *"
-            end
-            row.nameFS:SetText(E.CC.body .. displayName .. E.CC.close)
-
-            local perText = tostring(src.shardsEach)
-            if src.unconfirmed then
-                perText = perText .. "*"
-            end
-            row.perFS:SetText(E.CC.gold .. perText .. E.CC.close)
-
-            if src.weeklyMax then
-                local maxShards = 0
-                if type(src.shardsEach) == "number" then
-                    maxShards = src.shardsEach * src.weeklyMax
-                end
-                row.capFS:SetText(
-                    E.CC.body .. src.weeklyMax .. "x"
-                    .. (maxShards > 0
-                        and (" (" .. E.CC.gold .. maxShards .. E.CC.close
-                             .. E.CC.body .. ")")
-                        or "")
-                    .. E.CC.close
-                )
-            else
-                row.capFS:SetText(E.CC.muted .. "-" .. E.CC.close)
-            end
-
-            if src.trackable then
-                local done, total = 0, 0
-
-                if src.questLineID and C_QuestLine
-                        and C_QuestLine.GetQuestLineQuests then
-                    if not questLineCache[src.questLineID] then
-                        questLineCache[src.questLineID] =
-                            C_QuestLine.GetQuestLineQuests(src.questLineID) or {}
-                    end
-                    local quests = questLineCache[src.questLineID]
-                    if quests then
-                        total = #quests
-                        for _, qid in ipairs(quests) do
-                            if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-                                    and C_QuestLog.IsQuestFlaggedCompleted(qid) then
-                                done = done + 1
-                            end
-                        end
-                    end
-                elseif src.questIDs then
-                    total = #src.questIDs
-                    for _, qid in ipairs(src.questIDs) do
-                        if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-                                and C_QuestLog.IsQuestFlaggedCompleted(qid) then
-                            done = done + 1
-                        end
-                    end
-                end
-
-                if total > 0 then
-                    local cc = (done >= total) and E.CC.green or E.CC.yellow
-                    row.statusFS:SetText(
-                        cc .. done .. " / " .. total .. E.CC.close
-                    )
-                else
-                    row.statusFS:SetText(
-                        E.CC.green .. L["Trackable"] .. E.CC.close
-                    )
-                end
-            else
-                row.statusFS:SetText(
-                    E.CC.muted .. L["Manual"] .. E.CC.close
-                )
-            end
+        for i, card in ipairs(cards) do
+            if i > 1 then y = y + GROUP_GAP end
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+            card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+            y = y + card:GetHeight()
         end
-
-        -- Live cap from the currency API (600 in S1), not a sum of rows, so it never goes stale.
-        if weeklyCap and weeklyCap > 0 then
-            weeklyTotalFS:SetText(
-                E.CC.muted .. L["Weekly cap:"] .. " " .. E.CC.close
-                .. E.CC.gold .. L["%s shards/week"]:format(FormatNumber(weeklyCap))
-                .. E.CC.close
-            )
-        else
-            weeklyTotalFS:SetText("")
-        end
-
-        RefreshSessionTimer()
-
-        -- Section 3b: Special Assignments
-        local saCompleted = 0
-        local saActive    = 0
-        for _, row in ipairs(saRows) do
-            local unlocked = true
-            if row.unlockID and C_QuestLog
-                    and C_QuestLog.IsQuestFlaggedCompleted then
-                unlocked = C_QuestLog.IsQuestFlaggedCompleted(row.unlockID)
-            end
-
-            if not unlocked then
-                row.fs:SetText(
-                    E.CC.red .. "  " .. L["SA: %s - Locked"]:format(row.title)
-                    .. E.CC.close
-                )
-            else
-                local done = false
-                local active = false
-                if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-                    done = C_QuestLog.IsQuestFlaggedCompleted(row.questID)
-                end
-                if not done and C_QuestLog and C_QuestLog.IsOnQuest then
-                    active = C_QuestLog.IsOnQuest(row.questID)
-                end
-
-                if done then
-                    saCompleted = saCompleted + 1
-                    row.fs:SetText(
-                        "|cFF33FF33" .. "  " .. L["[Done] SA: %s"]:format(row.title)
-                        .. E.CC.close
-                    )
-                elseif active then
-                    saActive = saActive + 1
-                    row.fs:SetText(
-                        E.CC.green .. "  > " .. L["SA: %s - active"]:format(row.title)
-                        .. E.CC.close
-                    )
-                else
-                    row.fs:SetText(
-                        E.CC.muted .. "  - " .. L["SA: %s"]:format(row.title) .. E.CC.close
-                    )
-                end
-            end
-        end
-
-        saSummaryFS:SetText(
-            E.CC.muted .. L["%s / %d completed"]:format(
-                E.CC.gold .. saCompleted .. E.CC.close .. E.CC.muted, SA_WEEKLY_MAX)
-            .. (saActive > 0
-                and (" - " .. E.CC.green .. L["%d active"]:format(saActive) .. E.CC.close)
-                or "")
-            .. E.CC.close
-        )
-
-        -- SA new-availability detection lives in DetectSpecialAssignments so it
-        -- runs on currency/quest events even while this tab is hidden.
-
-        -- Section 3c: Weekly Delve Quests
-        for _, row in ipairs(wdqRows) do
-            local done = false
-            if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-                done = C_QuestLog.IsQuestFlaggedCompleted(row.questID)
-            end
-            if done then
-                row.fs:SetText(
-                    "|cFF33FF33" .. "  " .. L["[Done] %s - completed"]:format(row.title)
-                    .. E.CC.close
-                )
-            else
-                row.fs:SetText(
-                    E.CC.green .. "  - " .. L["%s - not yet done"]:format(row.title)
-                    .. E.CC.close
-                )
-            end
-        end
-
-        -- Section 4: Low-shard warning
-        if E.db and E.db.lowShardWarning then
-            local threshold = E.db.lowShardThreshold or 100
-            if shards < threshold then
-                warnFS:SetText(
-                    E.CC.red .. L["(!) Low shards!"] .. " " .. E.CC.close
-                    .. E.CC.body
-                    .. L["You have %s shards, below your %s threshold."]:format(
-                        E.CC.gold .. FormatNumber(shards) .. E.CC.close .. E.CC.body,
-                        E.CC.gold .. FormatNumber(threshold) .. E.CC.close .. E.CC.body)
-                    .. E.CC.close
-                )
-                warnFS:Show()
-            else
-                warnFS:Hide()
-            end
-        else
-            warnFS:Hide()
-        end
-
-        -- Section 5: Coffer Shard World Quests
-        local wqs = ScanCofferShardWQs(forceWQRescan)
-        wqCountFS:SetText(
-            E.CC.muted .. L["%s active"]:format(
-                E.CC.gold .. #wqs .. E.CC.close .. E.CC.muted) .. E.CC.close
-        )
-
-        if isAtCap then
-            wqCapWarningFS:Show()
-        else
-            wqCapWarningFS:Hide()
-        end
-
-        if #wqs == 0 then
-            wqEmptyFS:Show()
-            for _, row in ipairs(wqRows) do
-                row.zoneFS:Hide()
-                row.nameFS:Hide()
-                row.amountFS:Hide()
-                row.wpBtn:Hide()
-                row.ttBtn:Hide()
-            end
-            wqCapWarningFS:ClearAllPoints()
-            wqBottomFS:ClearAllPoints()
-            if isAtCap then
-                wqCapWarningFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -16)
-                wqBottomFS:SetPoint("TOPLEFT", wqCapWarningFS, "BOTTOMLEFT", 0, -12)
-            else
-                wqBottomFS:SetPoint("TOPLEFT", wqEmptyFS, "BOTTOMLEFT", 0, -14)
-            end
-        else
-            wqEmptyFS:Hide()
-            for i, row in ipairs(wqRows) do
-                if i <= #wqs then
-                    local wq = wqs[i]
-                    local zoneCC   = isAtCap and E.CC.muted  or E.CC.body
-                    local nameCC   = isAtCap and E.CC.muted  or E.CC.purple
-                    local amountCC = isAtCap and E.CC.muted  or E.CC.gold
-                    row.zoneFS:SetText(zoneCC   .. wq.zone   .. E.CC.close)
-                    row.nameFS:SetText(nameCC   .. wq.title  .. E.CC.close)
-                    row.amountFS:SetText(amountCC .. wq.amount .. E.CC.close)
-                    -- Dim buttons at cap (still clickable); restored on uncap.
-                    if isAtCap then
-                        row.wpBtn.dimmed = true
-                        row.ttBtn.dimmed = true
-                        row.wpBtn:SetBackdropColor(0.15, 0.15, 0.15, 0.80)
-                        row.ttBtn:SetBackdropColor(0.15, 0.15, 0.15, 0.80)
-                        row.wpBtn:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
-                        row.ttBtn:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
-                        row.wpBtn.label:SetTextColor(0.55, 0.55, 0.55, 1)
-                        row.ttBtn.label:SetTextColor(0.55, 0.55, 0.55, 1)
-                    else
-                        row.wpBtn.dimmed = false
-                        row.ttBtn.dimmed = false
-                        local bc = E.Colors.buttonBg
-                        row.wpBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-                        row.ttBtn:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-                        -- Buttons aren't accent-themed; restore the hardcoded dark border.
-                        row.wpBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
-                        row.ttBtn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
-                        row.wpBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
-                        row.ttBtn.label:SetTextColor(0.922, 0.718, 0.024, 1)
-                    end
-                    row.wpBtn.wq = wq
-                    row.ttBtn.wq = wq
-                    row.zoneFS:Show()
-                    row.nameFS:Show()
-                    row.amountFS:Show()
-                    row.wpBtn:Show()
-                    row.ttBtn:Show()
-                else
-                    row.zoneFS:Hide()
-                    row.nameFS:Hide()
-                    row.amountFS:Hide()
-                    row.wpBtn:Hide()
-                    row.ttBtn:Hide()
-                end
-            end
-            -- #wqs can exceed the MAX_WQ_ROWS pool; clamp so it is not nil (crash).
-            local lastRow = wqRows[math_min(#wqs, MAX_WQ_ROWS)]
-            wqCapWarningFS:ClearAllPoints()
-            wqBottomFS:ClearAllPoints()
-            if isAtCap then
-                wqCapWarningFS:SetPoint("TOPLEFT", lastRow.zoneFS, "BOTTOMLEFT", 0, -16)
-                wqBottomFS:SetPoint("TOPLEFT", wqCapWarningFS, "BOTTOMLEFT", 0, -12)
-            else
-                wqBottomFS:SetPoint("TOPLEFT", lastRow.zoneFS, "BOTTOMLEFT", 0, -14)
-            end
-        end
-
-        -- Deferred to next frame so layout is settled before measuring.
-        if UpdateContentHeight then
-            C_Timer.After(0, UpdateContentHeight)
-        end
+        area:SetContentSize(width, y + PAD_BOTTOM)
     end
 
-    wqRefreshBtn:SetScript("OnClick", function()
+    v.onWQRefresh = function()
         wqCacheTime   = 0
         wqRetriesUsed = 0   -- give the retry budget back on user request
-        RefreshAll(true)
-        E:FlashButtonConfirm(wqRefreshBtn)
-    end)
-
-    -- Recompute the scroll child's content height to match the visible extent.
-    UpdateContentHeight = function()
-        -- WQ rows may be hidden; fall back through candidates to the lowest laid-out one.
-        local candidates = { wqEmptyFS, wqBottomFS }
-        for i = #wqRows, 1, -1 do
-            candidates[#candidates + 1] = wqRows[i].wpBtn
-            candidates[#candidates + 1] = wqRows[i].ttBtn
-        end
-        local scTop = sc:GetTop()
-        local lowest
-        for _, fr in ipairs(candidates) do
-            if fr and fr:IsShown() then
-                local b = fr:GetBottom()
-                if b and (not lowest or b < lowest) then lowest = b end
-            end
-        end
-        if scTop and lowest and scTop > lowest then
-            sc:SetHeight((scTop - lowest) + 40)
-        end
-        UpdateScrollRange()
+        Render(true)
     end
+
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then Render() end
+    end)
 
     frame:SetScript("OnShow", function()
         EnsureBaseline()
         wqRetriesUsed = 0   -- fresh retry budget each time the tab opens
         if #wqCache == 0 then wqCacheTime = 0 end
-        RefreshAll()
-        C_Timer.After(0, UpdateContentHeight)
-        UpdateScrollRange()
-        scrollFrame:SetVerticalScroll(0)
-        tabScrollBar:SetValue(0)
+        Render()
+        area:ScrollTo(0, 0)
     end)
 
-    -- Timer refreshes the session clock only; full data is event-driven.
     local timerElapsed = 0
     frame:SetScript("OnUpdate", function(_, dt)
         timerElapsed = timerElapsed + dt
         if timerElapsed >= 1 then
             timerElapsed = 0
-            if frame:IsVisible() then
-                RefreshSessionTimer()
+            if frame:IsVisible() and RefreshSessionTimer() ~= (v.session[4]:IsShown() and true or false) then
+                Render()
             end
         end
     end)
 
-    -- Separate from RefreshAll so the SA alert fires even with the tab hidden;
-    -- only reads C_QuestLog + E.db, so it is safe to run before the show gate.
+    -- Separate from Render so the alert fires with the page shut. It reads no page state.
     local function DetectSpecialAssignments()
         if not (E.db and E.db.alertSpecialAssignment) then return end
         -- Reusable scratch tables to detect the "no SA" -> "SA active" transition.
@@ -1353,13 +915,11 @@ E:RegisterModule(function()
         wipe(saActiveBuf)
         wipe(saLookupBuf)
 
-        for _, row in ipairs(saRows) do
-            local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-                         and C_QuestLog.IsQuestFlaggedCompleted(row.questID)
-            local active = (not done) and C_QuestLog and C_QuestLog.IsOnQuest
-                           and C_QuestLog.IsOnQuest(row.questID)
+        for _, sa in ipairs(SPECIAL_ASSIGNMENTS) do
+            local active = (not Done(sa.questID)) and C_QuestLog and C_QuestLog.IsOnQuest
+                           and C_QuestLog.IsOnQuest(sa.questID)
             if active then
-                table_insert(saActiveBuf, row.questID)
+                table_insert(saActiveBuf, sa.questID)
             end
         end
         table_sort(saActiveBuf)
@@ -1404,25 +964,26 @@ E:RegisterModule(function()
         end
     end
 
-    -- Background event refreshes must not reset scroll: UpdateContentHeight can
-    -- clamp it when content shrinks, so save and restore the value around it.
-    local function RefreshPreservingScroll()
+    local function RefreshFromEvent()
         DetectSpecialAssignments()  -- before the visibility gate: alert fires tab-closed
-        if not frame:IsVisible() then return end
-        local prevScroll = scrollFrame:GetVerticalScroll()
-        RefreshAll()
-        C_Timer.After(0, function()
-            if scrollFrame and scrollFrame.SetVerticalScroll then
-                scrollFrame:SetVerticalScroll(prevScroll)
-                if tabScrollBar and tabScrollBar.SetValue then
-                    tabScrollBar:SetValue(prevScroll)
-                end
-            end
-        end)
+        if frame:IsVisible() then Render() end
     end
 
-    E:RegisterCallback("CurrencyUpdate", RefreshPreservingScroll)
-    E:RegisterCallback("QuestLogUpdate", RefreshPreservingScroll)
+    E:RegisterCallback("CurrencyUpdate", RefreshFromEvent)
+    E:RegisterCallback("QuestLogUpdate", RefreshFromEvent)
+
+    -- A title QuestTitle asked for arrives later. A failed load leaves nothing new to draw.
+    local titleEvents = CreateFrame("Frame")
+    pcall(titleEvents.RegisterEvent, titleEvents, "QUEST_DATA_LOAD_RESULT")
+    titleEvents:SetScript("OnEvent", function(_, _, questID, success)
+        if not (success and frame:IsVisible()) then return end
+        for _, sa in ipairs(SPECIAL_ASSIGNMENTS) do
+            if sa.questID == questID then Render() return end
+        end
+        for _, q in ipairs(WEEKLY_DELVE_QUESTS) do
+            if q.questID == questID then Render() return end
+        end
+    end)
 
     E:RegisterTab(5, frame)
 end)

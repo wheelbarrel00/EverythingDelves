@@ -23,6 +23,8 @@ docs/_translation_worklist.json
 docs/_translation_worklist.txt
 docs/_ingest_translations.py
 docs/_review_locale_values.py
+docs/harness/
+docs/tools/
 __pycache__/
 session_qr.png
 

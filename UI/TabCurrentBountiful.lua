@@ -17,21 +17,7 @@ local function EnsureBlizzardAddon(addonName)
     return ok and (loaded ~= false)
 end
 
-local TIER_ORDER = { S=1, A=2, B=3, C=4, D=5, F=6 }
-local TIER_COLORS = {
-    S = {1.00, 0.84, 0.00},
-    A = {0.20, 0.85, 0.20},
-    B = {0.10, 0.80, 0.90},
-    C = {0.85, 0.75, 0.10},
-    D = {0.55, 0.55, 0.55},
-    F = {0.45, 0.20, 0.20},
-}
-local function TierCC(tier)
-    local tc = TIER_COLORS[tier]
-    if not tc then return "|cFFAAAAAA" end
-    return string_format("|cFF%02X%02X%02X",
-        math_floor(tc[1]*255), math_floor(tc[2]*255), math_floor(tc[3]*255))
-end
+local TIER_ORDER = E.DelveList.GRADE_ORDER
 
 local STORY_TIERS = {
     ["Invasive Glow"]               = { tier="S", note=L["Bomb DoT scales with tier — keep it rolling and the clear is trivial."] },
@@ -117,9 +103,6 @@ function E:GetStoryTier(storyVariant)
     return GetStoryTier(storyVariant)
 end
 
-local bestPickFS = nil
-
-local ROW_HEIGHT     = 36
 local bountifulList  = {}
 local reAddSeen      = {}
 
@@ -127,28 +110,7 @@ local reAddSeen      = {}
 -- OnShow / area-POI update / refresh click, so pool to avoid churn.
 local bountifulEntryPool = {}
 
--- Expansion state for boss tactics, keyed by delve name / "name##idx".
-local expandedDelve = {}
-local expandedBoss  = {}
-
-local delveRowPool = {}
-local bossRowPool  = {}
-local noteLinePool = {}
-local sc, scrollFrame, scrollBar
-local emptyStateFS
 local sawLivePOI = false
-local UpdateScrollRange
-
-local function RoleCC(role)
-    local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    local rgb = m and m.rgb or {0.80, 0.80, 0.85}
-    return string_format("|cFF%02X%02X%02X",
-        math_floor(rgb[1]*255), math_floor(rgb[2]*255), math_floor(rgb[3]*255))
-end
-local function RoleLabel(role)
-    local m = E.BossRoleMeta and E.BossRoleMeta[role]
-    return (m and m.label or L["Note"]) .. ":"
-end
 
 local function AcquireBountifulEntry()
     local n = #bountifulEntryPool
@@ -165,9 +127,6 @@ local function ReleaseBountifulList(list)
         wipe(e)
         bountifulEntryPool[#bountifulEntryPool + 1] = e
     end
-    -- Pooled rows still hold a pointer into the entries just wiped and stay
-    -- Shown until the next UpdateRows.
-    for _, r in ipairs(delveRowPool) do r.delve = nil end
 end
 
 -- A delve POI with atlasName "delves-bountiful" is bountiful today;
@@ -317,36 +276,6 @@ local function GetJourneyProgress()
         end
     end
     return 0, 0, 1
-end
-
-local function UpdateBestPick()
-    if not bestPickFS then return end
-    local best, bestOrder = nil, 8
-    for _, d in ipairs(bountifulList) do
-        if not d.completed then
-            local si = GetStoryTier(d.storyVariant)
-            local order = si and (TIER_ORDER[si.tier] or 7) or 7
-            if order < bestOrder then
-                bestOrder, best = order, d
-            end
-        end
-    end
-    if best then
-        local si = GetStoryTier(best.storyVariant)
-        if si and si.tier then
-            local cc = TierCC(si.tier)
-            bestPickFS:SetText(
-                E.CC.muted .. L["Best Pick:"] .. " " .. E.CC.close
-                .. E.CC.gold .. best.name .. E.CC.close
-                .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                .. E.CC.body .. StripStoryPrefix(best.storyVariant) .. E.CC.close
-                .. E.CC.muted .. "  \226\128\148  " .. E.CC.close
-                .. cc .. L["%s Tier"]:format(si.tier) .. "|r"
-            )
-            return
-        end
-    end
-    bestPickFS:SetText("")
 end
 
 -- Incomplete first, then by tier, then alphabetical.
@@ -523,705 +452,352 @@ local function RefreshBountifulData(force)
 end
 
 
-local function CreateStatRow(parent, labelText, yOffset, xOffset, itemIconID)
-    xOffset = xOffset or 0
-    local anchorX = 8 + xOffset
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM = 20, 24, 14, 28
+local BAR_H, HINT_GAP, HINT_H, SUMMARY_GAP, BUTTON_GAP = 32, 10, 16, 16, 10
+local GROUP_GAP, CARD_ROW, CARD_PAD, PAIR_GAP, ITEM_ICON = 22, 44, 14, 10, 16
+local EMPTY_H, EMPTY_INSET, UNLOCK_LEVEL, DIM = 64, 40, 68, 0.4
+local SEP = "   \226\128\162   "
 
-    local icon
-    if itemIconID then
-        icon = parent:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("TOPLEFT", parent, "TOPLEFT", anchorX, yOffset + 2)
-        icon:SetSize(14, 14)
-        anchorX = 0
+local COLUMNS = {
+    { key = "zone", label = L["Zone"], width = 132 },
+    { key = "tier", label = L["Tier"], width = 34, align = "CENTER", weight = "navActive" },
+}
+
+local pageFrame, RenderView
+
+local function OpenGreatVault()
+    -- Blizzard_WeeklyRewards is load-on-demand.
+    if not WeeklyRewardsFrame then
+        EnsureBlizzardAddon("Blizzard_WeeklyRewards")
     end
-
-    local lbl = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    if icon then
-        lbl:SetPoint("LEFT", icon, "RIGHT", 3, 0)
+    if WeeklyRewardsFrame then
+        if WeeklyRewardsFrame:IsShown() then
+            HideUIPanel(WeeklyRewardsFrame)
+        else
+            ShowUIPanel(WeeklyRewardsFrame)
+        end
+    ---@diagnostic disable-next-line: undefined-global
+    elseif ToggleGreatVaultUI then
+        ---@diagnostic disable-next-line: undefined-global
+        ToggleGreatVaultUI()
     else
-        lbl:SetPoint("TOPLEFT", parent, "TOPLEFT", anchorX, yOffset)
+        print(E.CC.header .. "Everything Delves|r: " .. L["Great Vault UI could not be loaded."])
     end
-    lbl:SetFont(lbl:GetFont(), 11)
-    lbl:SetText(E.CC.muted .. labelText .. E.CC.close)
-
-    local val = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    val:SetPoint("LEFT", lbl, "RIGHT", 6, 0)
-    val:SetFont(val:GetFont(), 11)
-
-    return val, icon
 end
 
--- Forward declaration so the row/boss toggle handlers can call it.
-local UpdateRows
-
-local function DelveRow_Toggle(self)
-    local d = self.delve
-    if not d then return end
-    expandedDelve[d.name] = not expandedDelve[d.name]
-    if UpdateRows then UpdateRows() end
-end
-
-local function BossRow_OnClick(self)
-    if not self.bossKey then return end
-    expandedBoss[self.bossKey] = not expandedBoss[self.bossKey]
-    if UpdateRows then UpdateRows() end
-end
-
-local function CreateDelveRow()
-    local row = CreateFrame("Button", nil, sc, "BackdropTemplate")
-    row:SetHeight(ROW_HEIGHT)
-    row:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-    row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-    row:RegisterForClicks("LeftButtonUp")
-    row:SetScript("OnClick", DelveRow_Toggle)
-
-    local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 4, -3)
-    nameText:SetFont(nameText:GetFont(), 11)
-    nameText:SetWidth(220)
-    nameText:SetJustifyH("LEFT")
-    nameText:SetWordWrap(false)
-    row.nameText = nameText
-
-    local variantText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    variantText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -1)
-    variantText:SetFont(variantText:GetFont(), 9)
-    variantText:SetWidth(220)
-    variantText:SetJustifyH("LEFT")
-    variantText:SetWordWrap(false)
-    row.variantText = variantText
-
-    local zoneText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    zoneText:SetPoint("LEFT", row, "LEFT", 230, 0)
-    zoneText:SetFont(zoneText:GetFont(), 11)
-    zoneText:SetWidth(100)
-    zoneText:SetJustifyH("LEFT")
-    zoneText:SetWordWrap(false)
-    row.zoneText = zoneText
-
-    local tierText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    tierText:SetPoint("LEFT", row, "LEFT", 335, 0)
-    tierText:SetFont(tierText:GetFont(), 11, "OUTLINE")
-    tierText:SetWidth(30)
-    tierText:SetJustifyH("CENTER")
-    row.tierText = tierText
-
-    local wpBtn = E:CreateButton(row, 32, 20, L["Pin"])
-    wpBtn.label:SetFont(wpBtn.label:GetFont(), 10)
-    wpBtn:SetPoint("LEFT", row, "LEFT", 370, 0)
-    E:WireDelvePinButton(wpBtn, function() return row.delve end)
-    row.wpBtn = wpBtn
-
-    local ttBtn = E:CreateButton(row, 50, 20, "TomTom")
-    ttBtn.label:SetFont(ttBtn.label:GetFont(), 10)
-    ttBtn:SetPoint("LEFT", row, "LEFT", 408, 0)
-    ttBtn:SetScript("OnClick", function()
-        if row.delve then
-            E:AddTomTomWaypoint(row.delve.mapID,
-                                row.delve.x, row.delve.y,
-                                row.delve.name)
-            E:FlashButtonConfirm(ttBtn)
+local function OpenDelveLFG()
+    -- Blizzard_GroupFinder / Blizzard_PVPUI are load-on-demand.
+    if not PVEFrame or not LFGListFrame then
+        EnsureBlizzardAddon("Blizzard_GroupFinder")
+        EnsureBlizzardAddon("Blizzard_PVPUI")
+    end
+    if not PVEFrame then
+        print(E.CC.header .. "Everything Delves|r: " .. L["LFG UI could not be loaded."])
+        return
+    end
+    if not PVEFrame:IsShown() then
+        PVEFrame_ToggleFrame()
+    end
+    if GroupFinderFrameGroupButton3 then
+        GroupFinderFrameGroupButton3:Click()
+    end
+    -- Category 121 is the Delves LFG category.
+    if LFGListFrame and LFGListFrame.CategorySelection and LFGListCategorySelection_SelectCategory then
+        LFGListCategorySelection_SelectCategory(LFGListFrame.CategorySelection, 121, 0)
+        if LFGListFrame.CategorySelection.StartGroupButton then
+            LFGListFrame.CategorySelection.StartGroupButton:Click()
         end
-    end)
-    ttBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        if E:IsTomTomLoaded() then
-            E:ShowTooltip(self, L["TomTom Waypoint"],
-                          L["Add an arrow waypoint via TomTom."])
-        else
-            E:ShowTooltip(self, L["TomTom Not Installed"],
-                          L["Install the TomTom addon to use arrow waypoints."])
-        end
-    end)
-    ttBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-    row.ttBtn = ttBtn
-
-    row:SetScript("OnEnter", function(self)
-        if self.delve then
-            local anchorTo = self.ttBtn or self
-            GameTooltip:SetOwner(anchorTo, "ANCHOR_NONE")
-            GameTooltip:ClearAllPoints()
-            GameTooltip:SetPoint("TOPLEFT", anchorTo, "TOPRIGHT", 8, 0)
-            GameTooltip:AddLine(self.delve.name, 1, 0.84, 0, true)
-            local si = GetStoryTier(self.delve.storyVariant)
-            if si then
-                if si.tier then
-                    local tc = TIER_COLORS[si.tier] or {0.6, 0.6, 0.6}
-                    GameTooltip:AddLine(L["%s Tier"]:format(si.tier),
-                                        tc[1], tc[2], tc[3], true)
-                end
-                GameTooltip:AddLine(si.note, 0.80, 0.80, 0.80, true)
-                GameTooltip:AddLine(" ")
-            end
-            if self.delve.overcharged then
-                GameTooltip:AddLine(L["Overcharged"], 1, 1, 0, true)
-            end
-            GameTooltip:AddLine(self.delve.storyVariant,
-                                0.88, 0.88, 0.88, true)
-            local bosses = E.GetDelveBosses and E:GetDelveBosses(self.delve.name)
-            if bosses then
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(expandedDelve[self.delve.name]
-                    and L["Click to hide boss tactics"]
-                    or  L["Click to show boss tactics"], 0.55, 0.55, 0.55, true)
-            end
-            GameTooltip:Show()
-        end
-    end)
-    row:SetScript("OnLeave", function()
-        E:HideTooltip()
-    end)
-
-    return row
-end
-
-local function AcquireDelveRow(i)
-    local row = delveRowPool[i]
-    if not row then
-        row = CreateDelveRow()
-        delveRowPool[i] = row
     end
-    row:ClearAllPoints()
-    return row
-end
-
-local function CreateBossRow()
-    local row = CreateFrame("Button", nil, sc)
-    row:RegisterForClicks("LeftButtonUp")
-    row:SetScript("OnClick", BossRow_OnClick)
-
-    local caretFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    caretFS:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -2)
-    caretFS:SetFont(caretFS:GetFont(), 11, "OUTLINE")
-    row.caretFS = caretFS
-
-    local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nameFS:SetPoint("TOPLEFT", caretFS, "TOPRIGHT", 6, 0)
-    nameFS:SetFont(nameFS:GetFont(), 11, "OUTLINE")
-    nameFS:SetJustifyH("LEFT")
-    row.nameFS = nameFS
-
-    local briefFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    briefFS:SetPoint("TOPLEFT", row, "TOPLEFT", 18, -17)
-    briefFS:SetFont(briefFS:GetFont(), 10)
-    briefFS:SetJustifyH("LEFT")
-    briefFS:SetSpacing(2)
-    row.briefFS = briefFS
-
-    return row
-end
-
-local function AcquireBossRow(i)
-    local row = bossRowPool[i]
-    if not row then
-        row = CreateBossRow()
-        bossRowPool[i] = row
+    if LFGListFrame and LFGListFrame.EntryCreation and LFGListFrame.EntryCreation.GroupDropdown
+            and LFGListFrame.EntryCreation.GroupDropdown.OpenMenu then
+        LFGListFrame.EntryCreation.GroupDropdown:OpenMenu()
     end
-    row:ClearAllPoints()
-    return row
 end
 
-local function AcquireNoteLine(i)
-    local fs = noteLinePool[i]
-    if not fs then
-        fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetFont(fs:GetFont(), 10)
-        fs:SetJustifyH("LEFT")
-        fs:SetSpacing(2)
-        noteLinePool[i] = fs
-    end
-    fs:ClearAllPoints()
-    return fs
+local function LFGBlocked()
+    if IsInRaid() then return L["Cannot list while in a raid group."] end
+    if IsInGroup() and not UnitIsGroupLeader("player") then return L["Only the group leader can list."] end
 end
 
-function UpdateRows()
-    if not sc then return end
-
-    for _, r in ipairs(delveRowPool) do r:Hide() end
-    for _, r in ipairs(bossRowPool)  do r:Hide() end
-    for _, r in ipairs(noteLinePool) do r:Hide() end
-
-    local dUsed, bUsed, nUsed = 0, 0, 0
-    local yCur = 2
-
-    local function PlaceRow(row, x, h)
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
-        row:SetPoint("RIGHT",   sc, "RIGHT",  -2, 0)
-        row:Show()
-        yCur = yCur + h
+local function NormalAvailable(delve)
+    if delve.completed or not (delve.normalPoiID and delve.mapID and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then
+        return false
     end
+    return C_AreaPoiInfo.GetAreaPOIInfo(delve.mapID, delve.normalPoiID) ~= nil
+end
 
-    for _, delve in ipairs(bountifulList) do
-        dUsed = dUsed + 1
-        local row = AcquireDelveRow(dUsed)
-        row:SetParent(sc)
-        row.delve = delve
-        E:RefreshDelvePin(row.wpBtn)
+local function TipBody(delve, bossName, expanded)
+    local lines = {}
+    local si = GetStoryTier(delve.storyVariant)
+    if si then
+        if si.tier then lines[#lines + 1] = L["%s Tier"]:format(si.tier) end
+        if si.note then lines[#lines + 1] = si.note end
+        lines[#lines + 1] = ""
+    end
+    if delve.overcharged then lines[#lines + 1] = L["Overcharged"] end
+    lines[#lines + 1] = delve.storyVariant or ""
+    if E:GetDelveBosses(bossName) then
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = expanded and L["Click to hide boss tactics"] or L["Click to show boss tactics"]
+    end
+    return table.concat(lines, "\n")
+end
 
-        local caret = (delve.completed and E.CC.muted or E.CC.gold)
-            .. (expandedDelve[delve.name] and "v" or ">") .. E.CC.close
-
-        if delve.completed then
-            -- Use a ready-check |T...|t texture, not a Unicode check (U+2713):
-            -- the default game font has no glyph and renders a missing-glyph box.
-            row.nameText:SetText(
-                caret .. " "
-                .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14|t "
-                .. E.CC.muted .. delve.name .. E.CC.close
-            )
-            row.zoneText:SetText(E.CC.muted .. delve.zone .. E.CC.close)
-            local completedPrefix = delve.overcharged
-                and (E.CC.muted .. L["Overcharged"] .. E.CC.close
-                         .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
-                or ""
-            row.variantText:SetText(
-                completedPrefix
-                .. E.CC.muted .. delve.storyVariant .. E.CC.close
-            )
-            row:SetBackdropColor(0.05, 0.05, 0.05, 0.30)
-        else
-            row.nameText:SetText(
-                caret .. " " .. E.CC.gold .. delve.name .. E.CC.close
-            )
-            row.zoneText:SetText(E.CC.body .. delve.zone .. E.CC.close)
-
-            local normalNote = ""
-            if delve.normalPoiID and delve.mapID
-                    and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo then
-                local nPoi = C_AreaPoiInfo.GetAreaPOIInfo(
-                                 delve.mapID, delve.normalPoiID)
-                if nPoi then
-                    normalNote = E.CC.muted
-                        .. " " .. L["(Normal version available)"] .. E.CC.close
-                end
-            end
-
-            local overchargedPrefix = delve.overcharged
-                and (E.CC.yellow .. L["Overcharged"] .. E.CC.close
-                     .. (delve.storyVariant ~= "" and E.CC.muted .. "  " .. E.CC.close or ""))
-                or ""
-            row.variantText:SetText(
-                overchargedPrefix
-                .. E.CC.muted .. delve.storyVariant .. E.CC.close
-                .. normalNote
-            )
-            row:SetBackdropColor(0.05, 0.05, 0.05, 0.20)
-        end
-
+local function BuildModels(list)
+    local models = {}
+    for i, delve in ipairs(bountifulList) do
+        local done = delve.completed and true or nil
         local si = GetStoryTier(delve.storyVariant)
-        if si then
-            local tc = TIER_COLORS[si.tier]
-            if delve.completed then
-                row.tierText:SetTextColor(0.40, 0.40, 0.40)
-            elseif tc then
-                row.tierText:SetTextColor(tc[1], tc[2], tc[3])
-            else
-                row.tierText:SetTextColor(0.60, 0.60, 0.60)
+        local story = StripStoryPrefix(delve.storyVariant)
+        if NormalAvailable(delve) then
+            story = (story ~= "" and (story .. "  ") or "") .. L["(Normal version available)"]
+        end
+        local bossName = delve.canonicalName or delve.name
+        models[i] = {
+            key = delve.name, delve = delve, bossName = bossName, name = delve.name, done = done,
+            line2 = { tag = delve.overcharged and L["Overcharged"] or nil, text = story },
+            cells = {
+                zone = { text = delve.zone, muted = done },
+                tier = E.DelveList.GradeCell(si and si.tier, done),
+            },
+            tip = { delve.name, TipBody(delve, bossName, list.expanded[delve.name]) },
+        }
+    end
+    return models
+end
+
+local function BestPickText()
+    local best, bestOrder = nil, 8
+    for _, d in ipairs(bountifulList) do
+        if not d.completed then
+            local si = GetStoryTier(d.storyVariant)
+            local order = si and (TIER_ORDER[si.tier] or 7) or 7
+            if order < bestOrder then
+                bestOrder, best = order, d
             end
-            row.tierText:SetText(si.tier or "")
+        end
+    end
+    local si = best and GetStoryTier(best.storyVariant)
+    if not (si and si.tier) then return "" end
+    local muted, label = E.DelveList.cc("muted"), E.DelveList.cc("label")
+    return muted .. L["Best Pick:"] .. "|r " .. label .. best.name .. "|r"
+        .. muted .. SEP .. "|r" .. label .. StripStoryPrefix(best.storyVariant) .. "|r"
+        .. muted .. SEP .. "|r" .. E:GetGradeCC(si.tier) .. L["%s Tier"]:format(si.tier) .. "|r"
+end
+
+local function NewCard(content)
+    local ui = E.ui
+    local card = CreateFrame("Frame", nil, content)
+    ui:Paint(card, "surface", "surfaceBorder")
+    card:SetHeight(CARD_ROW * 4)
+    local rows = {}
+    for i = 1, 4 do
+        local r = CreateFrame("Frame", nil, card)
+        r:SetPoint("TOPLEFT", card, "TOPLEFT", 0, -(i - 1) * CARD_ROW)
+        r:SetPoint("TOPRIGHT", card, "TOPRIGHT", 0, -(i - 1) * CARD_ROW)
+        r:SetHeight(CARD_ROW)
+        if i > 1 then ui:Paint(r, nil, "divider", "T") end
+        rows[i] = r
+    end
+
+    card.doneLabel = ui:CreateText(rows[1], L["Bountiful Delves Completed"], "label")
+    card.doneLabel:SetPoint("LEFT", rows[1], "LEFT", CARD_PAD, 0)
+    card.doneValue = ui:CreateText(rows[1], "", "value")
+    card.doneValue:SetPoint("RIGHT", rows[1], "RIGHT", -CARD_PAD, 0)
+    card.bar = ui:CreateProgressBar(rows[1])
+    card.bar:SetPoint("LEFT", card.doneLabel, "RIGHT", CARD_PAD, 0)
+    card.bar:SetPoint("RIGHT", card.doneValue, "LEFT", -CARD_PAD, 0)
+
+    card.values, card.icons = {}, {}
+    local function pair(row, right, label, key, icon)
+        local lbl = ui:CreateText(row, label, "label")
+        local first = lbl
+        if icon then
+            first = row:CreateTexture(nil, "ARTWORK")
+            first:SetSize(ITEM_ICON, ITEM_ICON)
+            card.icons[key] = first
+        end
+        if right then
+            first:SetPoint("LEFT", row, "CENTER", CARD_PAD / 2, 0)
         else
-            row.tierText:SetText("")
+            first:SetPoint("LEFT", row, "LEFT", CARD_PAD, 0)
         end
-
-        PlaceRow(row, 0, ROW_HEIGHT)
-
-        if expandedDelve[delve.name] then
-            local bosses = E.GetDelveBosses and E:GetDelveBosses(delve.name)
-            if bosses then
-                local todaysBoss = E.GetTodaysBossName
-                    and E:GetTodaysBossName(delve.canonicalName or delve.name)
-                for bi, boss in ipairs(bosses) do
-                    bUsed = bUsed + 1
-                    local brow = AcquireBossRow(bUsed)
-                    brow:SetParent(sc)
-                    local bossKey = delve.name .. "##" .. bi
-                    brow.bossKey = bossKey
-
-                    local bExpanded = expandedBoss[bossKey]
-                    brow.caretFS:SetText(E.CC.muted
-                        .. (bExpanded and "v" or ">") .. E.CC.close)
-                    if todaysBoss and boss.name == todaysBoss then
-                        brow.nameFS:SetText(
-                            "|TInterface\\Common\\FavoritesIcon:14:14|t "
-                            .. E.CC.gold .. boss.name .. E.CC.close
-                            .. E.CC.muted .. "   " .. L["(today's boss)"] .. E.CC.close)
-                    else
-                        brow.nameFS:SetText(E.CC.white .. boss.name .. E.CC.close)
-                    end
-
-                    local briefW = math_max(150, (sc:GetWidth() or 600) - 18 - 16)
-                    brow.briefFS:SetWidth(briefW)
-                    brow.briefFS:SetText(E.CC.muted .. (boss.brief or "") .. E.CC.close)
-
-                    local bh = 18 + (brow.briefFS:GetStringHeight() or 12) + 6
-                    brow:SetHeight(bh)
-                    PlaceRow(brow, 24, bh)
-
-                    if bExpanded and boss.notes then
-                        for _, note in ipairs(boss.notes) do
-                            nUsed = nUsed + 1
-                            local nl = AcquireNoteLine(nUsed)
-                            nl:SetParent(sc)
-                            local w = math_max(150, (sc:GetWidth() or 600) - 48 - 12)
-                            nl:SetWidth(w)
-                            nl:SetText(
-                                RoleCC(note.role) .. RoleLabel(note.role) .. "|r  "
-                                .. E.CC.body .. note.text .. E.CC.close)
-                            local h = (nl:GetStringHeight() or 12) + 5
-                            nl:SetPoint("TOPLEFT", sc, "TOPLEFT", 48, -yCur)
-                            nl:Show()
-                            yCur = yCur + h
-                        end
-                    end
-                end
-            end
+        if icon then lbl:SetPoint("LEFT", first, "RIGHT", PAIR_GAP, 0) end
+        local v = ui:CreateText(row, "", "value")
+        v:SetWordWrap(false)
+        v:SetPoint("LEFT", lbl, "RIGHT", PAIR_GAP, 0)
+        if right then
+            v:SetPoint("RIGHT", row, "RIGHT", -CARD_PAD, 0)
+        else
+            v:SetPoint("RIGHT", row, "CENTER", -CARD_PAD / 2, 0)
         end
+        card.values[key] = v
     end
+    pair(rows[2], false, L["Bountiful Keys:"], "keys", true)
+    pair(rows[2], true, L["Journey:"], "journey")
+    pair(rows[3], false, L["Coffer Key Shards:"], "shards", true)
+    pair(rows[3], true, L["Bountiful Reset:"], "reset")
+    pair(rows[4], false, L["Keys from Shards:"], "fromShards")
+    pair(rows[4], true, L["Session Completions:"], "session")
+    return card
+end
 
-    if #bountifulList == 0 then
-        if not emptyStateFS then
-            emptyStateFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            emptyStateFS:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, -12)
-            emptyStateFS:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-            emptyStateFS:SetJustifyH("LEFT")
-            emptyStateFS:SetFont(emptyStateFS:GetFont(), 12)
-        end
-        -- A cold POI cache returns nil for delves that really are bountiful, so
-        -- an empty list only means "none today" once one has resolved.
-        emptyStateFS:SetText(E.CC.muted .. (sawLivePOI
-            and L["No bountiful delves are active right now.\nThey rotate daily - check back after reset."]
-            or  L["Loading bountiful delve data...\nClick Refresh if this does not clear."]) .. E.CC.close)
-        emptyStateFS:Show()
-        yCur = yCur + 48
-    elseif emptyStateFS then
-        emptyStateFS:Hide()
+local function RefreshStats(card)
+    local keys = GetBountifulKeys()
+    local shards, shardsThisWeek, weeklyCap = GetCofferShards()
+    local stage, cur, stageMax = GetJourneyProgress()
+    local sessionDone = (E.sessionData and E.sessionData.bountifulCompleted) or 0
+    local muted = E.DelveList.cc("muted")
+    local v = card.values
+
+    card.icons.keys:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey))
+    card.icons.shards:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard))
+    v.keys:SetText(tostring(keys))
+    v.shards:SetText(shards .. (weeklyCap > 0
+        and ("  " .. muted .. L["(%d / %d this week)"]:format(shardsThisWeek, weeklyCap) .. "|r") or ""))
+    v.fromShards:SetText(KeysFromShards(shards) .. "  " .. muted .. "(" .. shards .. " / " .. E.SHARDS_PER_KEY .. ")|r")
+    v.journey:SetText(L["Stage %d"]:format(stage) .. " " .. muted .. "- " .. cur .. " / " .. stageMax .. "|r")
+    v.reset:SetText(GetResetTimeString())
+    v.session:SetText(tostring(sessionDone))
+
+    local done = 0
+    for _, d in ipairs(bountifulList) do
+        if d.completed then done = done + 1 end
     end
-
-    sc:SetHeight(yCur + 8)
-    if UpdateScrollRange then UpdateScrollRange() end
+    card.doneValue:SetText(done .. " / " .. #bountifulList)
+    card.bar:SetProgress(#bountifulList > 0 and (done / #bountifulList) or 0)
 end
 
 E:RegisterModule(function()
+    local ui = E.ui
     local frame = CreateFrame("Frame", "EverythingDelvesTab2Content")
+    pageFrame = frame
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+    local Render
 
-    local statValues = {}
-
-    local STAT_Y = -4
-    local COL2_X = 310
-
-    local keyIconTex, cofferShardIconTex
-    statValues.bountifulKeys, keyIconTex   = CreateStatRow(frame, L["Bountiful Keys:"], STAT_Y, nil, E.ItemIcons.cofferKey)
-    statValues.cofferShards, cofferShardIconTex = CreateStatRow(frame, L["Coffer Key Shards:"], STAT_Y - 18, nil, E.ItemIcons.cofferShard)
-    statValues.keysFromShards= CreateStatRow(frame, L["Keys from Shards:"], STAT_Y - 36)
-
-    statValues.journey       = CreateStatRow(frame, L["Journey:"], STAT_Y, COL2_X)
-    statValues.resetTimer    = CreateStatRow(frame, L["Bountiful Reset:"], STAT_Y - 18, COL2_X)
-    statValues.sessionCount  = CreateStatRow(frame, L["Session Completions:"], STAT_Y - 36, COL2_X)
-
-    local function RefreshStats()
-        local keys  = GetBountifulKeys()
-        local shards, shardsThisWeek, weeklyCap = GetCofferShards()
-        local stage, cur, stageMax = GetJourneyProgress()
-        local sessionDone = (E.sessionData and E.sessionData.bountifulCompleted) or 0
-
-        if keyIconTex then keyIconTex:SetTexture(E.CachedIcons.cofferKey or C_Item.GetItemIconByID(E.ItemIcons.cofferKey)) end
-        if cofferShardIconTex then cofferShardIconTex:SetTexture(E.CachedIcons.cofferShard or C_Item.GetItemIconByID(E.ItemIcons.cofferShard)) end
-
-        statValues.bountifulKeys:SetText(E.CC.gold .. keys .. E.CC.close)
-        statValues.cofferShards:SetText(
-            E.CC.gold .. shards .. E.CC.close
-            .. (weeklyCap > 0
-                and (E.CC.muted .. "  "
-                     .. L["(%d / %d this week)"]:format(shardsThisWeek, weeklyCap)
-                     .. E.CC.close)
-                or "")
-        )
-        statValues.keysFromShards:SetText(
-            E.CC.gold .. KeysFromShards(shards) .. E.CC.close
-            .. E.CC.muted .. "  (" .. shards .. " / "
-            .. E.SHARDS_PER_KEY .. ")" .. E.CC.close
-        )
-        statValues.journey:SetText(
-            E.CC.gold .. L["Stage %d"]:format(stage) .. E.CC.close
-            .. E.CC.muted .. " - " .. cur .. " / " .. stageMax .. E.CC.close
-        )
-        statValues.resetTimer:SetText(E.CC.gold .. GetResetTimeString() .. E.CC.close)
-        statValues.sessionCount:SetText(E.CC.gold .. sessionDone .. E.CC.close)
-    end
-
-    local progressBar = E:CreateProgressBar(frame, 0, 14, L["Bountiful Delves Completed"])
-    progressBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, STAT_Y - 60)
-    progressBar:SetPoint("RIGHT", frame, "RIGHT", -20, 0)
-    frame.progressBar = progressBar
-
-    local ACTIONS_Y = STAT_Y - 84
-
-    local gvBtn = E:CreateButton(frame, 90, 24, L["Great Vault"])
-    gvBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, ACTIONS_Y)
-    gvBtn:SetScript("OnClick", function()
-        -- Blizzard_WeeklyRewards is load-on-demand; force-load before use.
-        if not WeeklyRewardsFrame then
-            EnsureBlizzardAddon("Blizzard_WeeklyRewards")
-        end
-        if WeeklyRewardsFrame then
-            if WeeklyRewardsFrame:IsShown() then
-                HideUIPanel(WeeklyRewardsFrame)
-            else
-                ShowUIPanel(WeeklyRewardsFrame)
-            end
-        ---@diagnostic disable-next-line: undefined-global
-        elseif ToggleGreatVaultUI then
-            ---@diagnostic disable-next-line: undefined-global
-            ToggleGreatVaultUI()
-        else
-            print(E.CC.header .. "Everything Delves|r: "
-                .. L["Great Vault UI could not be loaded."])
-        end
+    local lfgBtn = ui:CreateButton(content, L["Start LFG"], nil, function()
+        if not LFGBlocked() then OpenDelveLFG() end
     end)
-    gvBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, L["Great Vault"], L["Open the Great Vault reward panel."])
+    lfgBtn:SetScript("OnEnter", function(self)
+        ui:ShowTooltip(self, L["Start LFG"], LFGBlocked() or L["Open the Group Finder to list a Delve group."])
     end)
-    gvBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
+    lfgBtn:SetScript("OnLeave", function() ui:HideTooltip() end)
+    local vaultBtn = ui:CreateButton(content, L["Great Vault"], nil, OpenGreatVault, L["Open the Great Vault reward panel."])
+    local refreshBtn = ui:CreateButton(content, L["Refresh"], nil, function()
+        RefreshBountifulData(true)
+        Render()
+    end, L["Re-query bountiful delve data and currency values."])
 
-    local lfgStartBtn = E:CreateButton(frame, 90, 24, L["Start LFG"])
-    lfgStartBtn:SetPoint("LEFT", gvBtn, "RIGHT", 12, 0)
+    local summary = ui:CreateText(content, "", "label")
+    summary:SetWordWrap(false)
+    local hint = ui:CreateText(content, L["Today's Bountiful Delves"], "hint")
+    hint:SetWordWrap(false)
+    local message = ui:CreateEmptyState(content, "")
 
-    local function OpenDelveLFG()
-        -- Blizzard_GroupFinder / Blizzard_PVPUI are load-on-demand.
-        if not PVEFrame or not LFGListFrame then
-            EnsureBlizzardAddon("Blizzard_GroupFinder")
-            EnsureBlizzardAddon("Blizzard_PVPUI")
-        end
-        if not PVEFrame then
-            print(E.CC.header .. "Everything Delves|r: "
-                .. L["LFG UI could not be loaded."])
-            return
-        end
-        if not PVEFrame:IsShown() then
-            PVEFrame_ToggleFrame()
-        end
-        if GroupFinderFrameGroupButton3 then
-            GroupFinderFrameGroupButton3:Click()
-        end
-        -- Category 121 is the Delves LFG category.
-        if LFGListFrame and LFGListFrame.CategorySelection
-                and LFGListCategorySelection_SelectCategory then
-            LFGListCategorySelection_SelectCategory(
-                LFGListFrame.CategorySelection, 121, 0)
-            if LFGListFrame.CategorySelection.StartGroupButton then
-                LFGListFrame.CategorySelection.StartGroupButton:Click()
-            end
-        end
-        if LFGListFrame and LFGListFrame.EntryCreation
-                and LFGListFrame.EntryCreation.GroupDropdown
-                and LFGListFrame.EntryCreation.GroupDropdown.OpenMenu then
-            LFGListFrame.EntryCreation.GroupDropdown:OpenMenu()
-        end
-    end
-
-    lfgStartBtn:SetScript("OnClick", OpenDelveLFG)
-    lfgStartBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        if IsInRaid() then
-            E:ShowTooltip(self, L["Start LFG"],
-                          E.CC.red .. L["Cannot list while in a raid group."] .. E.CC.close)
-        elseif IsInGroup() and not UnitIsGroupLeader("player") then
-            E:ShowTooltip(self, L["Start LFG"],
-                          E.CC.red .. L["Only the group leader can list."] .. E.CC.close)
-        else
-            E:ShowTooltip(self, L["Start LFG"],
-                          L["Open the Group Finder to list a Delve group."])
-        end
-    end)
-    lfgStartBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
+    local list = E.DelveList.New(content, {
+        columns = COLUMNS, nameLabel = L["Delve Name"], twoLine = true,
+        onChange = function() Render() end,
+    })
+    local card = NewCard(content)
 
     local function RefreshLFGButton()
-        if IsInRaid() or (IsInGroup() and not UnitIsGroupLeader("player")) then
-            lfgStartBtn:SetAlpha(0.40)
-            lfgStartBtn:SetScript("OnClick", function() end)
-            lfgStartBtn.disabled = true
-        else
-            lfgStartBtn:SetAlpha(1.0)
-            lfgStartBtn:SetScript("OnClick", OpenDelveLFG)
-            lfgStartBtn.disabled = false
-        end
+        lfgBtn:SetAlpha(LFGBlocked() and DIM or 1)
     end
 
-    local LIST_Y = ACTIONS_Y - 70
-
-    local actionDiv = frame:CreateTexture(nil, "ARTWORK")
-    actionDiv:SetHeight(1)
-    actionDiv:SetPoint("TOPLEFT",  frame, "TOPLEFT",   8, ACTIONS_Y - 30)
-    actionDiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, ACTIONS_Y - 30)
-    E:StyleAccentDivider(actionDiv)
-
-    local headerLineTop = frame:CreateTexture(nil, "ARTWORK")
-    headerLineTop:SetHeight(1)
-    headerLineTop:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y + 8)
-    headerLineTop:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y + 8)
-    E:StyleGreyLine(headerLineTop)
-
-    local listHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    listHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, LIST_Y)
-    listHeader:SetFont(listHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(listHeader, L["Today's Bountiful Delves"])
-
-    bestPickFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    bestPickFS:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 2, -2)
-    bestPickFS:SetFont(bestPickFS:GetFont(), 10)
-    bestPickFS:SetJustifyH("LEFT")
-
-    local headerLineBot = frame:CreateTexture(nil, "ARTWORK")
-    headerLineBot:SetHeight(1)
-    headerLineBot:SetPoint("TOPLEFT",  frame, "TOPLEFT",  8,   LIST_Y - 44)
-    headerLineBot:SetPoint("TOPRIGHT", frame, "TOPLEFT", 462,  LIST_Y - 44)
-    E:StyleGreyLine(headerLineBot)
-
-    local unlockWarning = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    unlockWarning:SetPoint("TOPLEFT", listHeader, "BOTTOMLEFT", 0, -8)
-    unlockWarning:SetFont(unlockWarning:GetFont(), 12)
-    unlockWarning:SetText(E.CC.red .. L["Delves unlock at Level 68"] .. E.CC.close)
-    unlockWarning:Hide()
-
-    local refreshBtn = E:CreateButton(frame, 70, 22, L["Refresh"])
-    refreshBtn.label:SetFont(refreshBtn.label:GetFont(), 10)
-    refreshBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -22, LIST_Y + 2)
-    refreshBtn:SetScript("OnClick", function()
-        RefreshBountifulData(true)
-        UpdateRows()
-        UpdateBestPick()
-        RefreshStats()
-        local done = 0
-        for _, d in ipairs(bountifulList) do
-            if d.completed then done = done + 1 end
-        end
-        progressBar:SetProgress(done, #bountifulList)
-    end)
-    refreshBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, L["Refresh"],
-                      L["Re-query bountiful delve data and currency values."])
-    end)
-    refreshBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
-    local COL_Y = LIST_Y - 50
-    for _, col in ipairs({
-        { label = L["Delve Name"], x = 8   },
-        { label = L["Zone"],       x = 234 },
-        { label = L["Tier"],       x = 338 },
-        { label = L["Pin"],        x = 374 },
-        { label = "TomTom",        x = 412 },
-    }) do
-        local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", frame, "TOPLEFT", col.x, COL_Y)
-        fs:SetFont(fs:GetFont(), 10, "OUTLINE")
-        E:StyleAccentHeader(fs, col.label)
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
     end
 
-    scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",  4, COL_Y - 16)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -22, 4)
-    scrollFrame:EnableMouseWheel(true)
-    frame.listFrame = scrollFrame
-    local listFrame = scrollFrame
-
-    sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
-    sc:SetHeight(1)
-
-    scrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    scrollBar:SetWidth(14)
-    scrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    scrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    scrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    scrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    scrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = scrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    scrollBar:SetThumbTexture(sbThumb)
-    scrollBar:SetOrientation("VERTICAL")
-    scrollBar:SetMinMaxValues(0, 1)
-    scrollBar:SetValue(0)
-    scrollBar:SetValueStep(1)
-    scrollBar:SetObeyStepOnDrag(true)
-    scrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math.min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        scrollBar:SetValue(newVal)
-    end)
-    function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        scrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then
-            scrollBar:Hide()
-        else
-            scrollBar:Show()
-        end
+    local function PlaceMessage(y, text)
+        message:SetText(text)
+        message:ClearAllPoints()
+        message:SetPoint("TOPLEFT", content, "TOPLEFT", EMPTY_INSET, -(y + EMPTY_H / 2 - 8))
+        message:SetPoint("TOPRIGHT", content, "TOPRIGHT", -EMPTY_INSET, -(y + EMPTY_H / 2 - 8))
+        message:Show()
+        return y + EMPTY_H
     end
 
-    listFrame.progressBar = progressBar
+    function Render()
+        local width = ViewWidth()
+        lastWidth = width
+        content:SetWidth(width)
+        local low = UnitLevel("player") < UNLOCK_LEVEL
 
-    frame:SetScript("OnShow", function(self)
-        -- Delves unlock at level 68.
-        if UnitLevel("player") < 68 then
-            unlockWarning:Show()
-            listFrame:Hide()
-            refreshBtn:Hide()
-            progressBar:Hide()
+        local prev
+        for _, btn in ipairs({ lfgBtn, vaultBtn, refreshBtn }) do
+            btn:Fit()
+            btn:ClearAllPoints()
+            if prev then
+                btn:SetPoint("RIGHT", prev, "LEFT", -BUTTON_GAP, 0)
+            else
+                btn:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -PAD_TOP)
+            end
+            prev = btn
+        end
+        refreshBtn:SetShown(not low)
+        summary:ClearAllPoints()
+        summary:SetPoint("LEFT", content, "TOPLEFT", PAD_LEFT, -(PAD_TOP + BAR_H / 2))
+        summary:SetPoint("RIGHT", low and vaultBtn or refreshBtn, "LEFT", -SUMMARY_GAP, 0)
+        summary:SetText(low and "" or BestPickText())
+
+        local y = PAD_TOP + BAR_H + HINT_GAP
+        message:Hide()
+        if low then
+            hint:Hide()
+            list:Hide()
+            card:Hide()
+            y = PlaceMessage(y, L["Delves unlock at Level 68"])
+            area:SetContentSize(width, y + PAD_BOTTOM)
             return
+        end
+        hint:ClearAllPoints()
+        hint:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        hint:SetPoint("RIGHT", content, "RIGHT", -PAD_RIGHT, 0)
+        hint:Show()
+        y = y + HINT_H + HINT_GAP
+
+        if #bountifulList == 0 then
+            list:Hide()
+            -- A cold POI cache returns nil for delves that really are bountiful, so
+            -- an empty list only means "none today" once one has resolved.
+            y = PlaceMessage(y, sawLivePOI
+                and L["No bountiful delves are active right now.\nThey rotate daily - check back after reset."]
+                or  L["Loading bountiful delve data...\nClick Refresh if this does not clear."])
         else
-            unlockWarning:Hide()
-            listFrame:Show()
-            refreshBtn:Show()
-            progressBar:Show()
+            y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT)
         end
 
+        y = y + GROUP_GAP
+        card:ClearAllPoints()
+        card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+        card:Show()
+        RefreshStats(card)
+        y = y + card:GetHeight()
+        area:SetContentSize(width, y + PAD_BOTTOM)
+    end
+    RenderView = Render
+
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math.abs((w or 0) - lastWidth) >= 1 then Render() end
+    end)
+
+    frame:SetScript("OnShow", function()
         RefreshBountifulData(true)
-        RefreshStats()
         RefreshLFGButton()
+        Render()
+        area:ScrollTo(0, 0)
+    end)
 
-        local done = 0
-        for _, d in ipairs(bountifulList) do
-            if d.completed then done = done + 1 end
-        end
-        progressBar:SetProgress(done, #bountifulList)
-
-        UpdateRows()
-        UpdateBestPick()
+    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    frame:RegisterEvent("PARTY_LEADER_CHANGED")
+    frame:SetScript("OnEvent", function(self)
+        if self:IsVisible() then RefreshLFGButton() end
     end)
 
     -- OnUpdate fires every frame; throttle the reset-timer refresh to 1/s.
@@ -1230,34 +806,21 @@ E:RegisterModule(function()
         elapsed = elapsed + dt
         if elapsed >= 1 then
             elapsed = 0
-            if self:IsVisible() then
-                statValues.resetTimer:SetText(
-                    E.CC.gold .. GetResetTimeString() .. E.CC.close
-                )
+            if self:IsVisible() and card:IsShown() then
+                card.values.reset:SetText(GetResetTimeString())
             end
         end
     end)
 
     E:RegisterCallback("CurrencyUpdate", function()
-        if frame:IsVisible() then
-            RefreshStats()
-        end
+        if frame:IsVisible() and card:IsShown() then RefreshStats(card) end
     end)
 
     E:RegisterCallback("AreaPoisUpdated", function()
         -- Refresh regardless of which tab is open, so E.currentBountifulNames
         -- stays current for other systems (Gilded Stash, Delve Locations).
         RefreshBountifulData()
-        if frame:IsVisible() then
-            RefreshStats()
-            local done = 0
-            for _, d in ipairs(bountifulList) do
-                if d.completed then done = done + 1 end
-            end
-            progressBar:SetProgress(done, #bountifulList)
-            UpdateRows()
-            UpdateBestPick()
-        end
+        if frame:IsVisible() then Render() end
     end)
 
     E:RegisterTab(2, frame)
@@ -1267,16 +830,12 @@ end)
 
 -- Public hook for other modules (BeginDelveRun) to force the bountiful
 -- lookup current at delve entry even if this tab was never opened.
--- Debounced (2 s) internally, so cheap to call repeatedly.
 function E:RefreshBountifulData(force)
     RefreshBountifulData(force)
     -- Public callers get no view refresh otherwise, and rows left Shown still
     -- point at entry tables the rebuild recycled. Only when it is on screen: the
     -- delve heartbeat calls this once a second with the tab closed.
-    if sc and sc:IsVisible() then
-        UpdateRows()
-        UpdateBestPick()
-    end
+    if pageFrame and pageFrame:IsVisible() and RenderView then RenderView() end
     -- Fire a PLAYER_LOGIN-flagged repair once the live names exist;
     -- AutoRepair clears the flag and no-ops on later calls.
     if E._autoRepairPending and E.AutoRepairBountifulHistory then

@@ -2,7 +2,6 @@
 local E = EverythingDelves
 local L = E.L
 
-local math_floor, math_max, math_min = math.floor, math.max, math.min
 local string_format = string.format
 local tostring = tostring
 
@@ -81,9 +80,10 @@ function E:SetWaypoint(mapID, x, y)
             print("|cFFFF2222[Everything Delves]|r "
                 .. string_format(L["Could not set waypoint: %s"], tostring(err)))
         end
-    else
-        print(E.CC.header .. "Everything Delves|r: " .. L["Waypoint API unavailable."])
+        return ok
     end
+    print(E.CC.header .. "Everything Delves|r: " .. L["Waypoint API unavailable."])
+    return false
 end
 
 local AREA_POI_PIN = Enum.SuperTrackingMapPinType and Enum.SuperTrackingMapPinType.AreaPOI
@@ -125,83 +125,8 @@ function E:ToggleDelveSuperTrack(delve)
             return "tracking"
         end
     end
-    self:SetWaypoint(delve.mapID, delve.x, delve.y)
-    return "waypoint"
-end
-
-E._delvePins = E._delvePins or {}
-
-local PIN_TRACK_BORDER = { 0.16, 0.86, 0.32, 1.0 }
-local PIN_TRACK_LABEL  = { 0.40, 0.92, 0.45, 1.0 }
-local PIN_IDLE_BORDER  = { 0.10, 0.00, 0.00, 1.0 }
-local PIN_IDLE_LABEL   = { 0.922, 0.718, 0.024, 1.0 }
-
-function E:RefreshDelvePin(btn)
-    if not (btn and btn.label) then return end
-    local delve = btn._getDelve and btn._getDelve()
-    if delve and self:IsSuperTrackingDelve(delve) then
-        btn:SetBackdropBorderColor(unpack(PIN_TRACK_BORDER))
-        btn.label:SetTextColor(unpack(PIN_TRACK_LABEL))
-    else
-        btn:SetBackdropBorderColor(unpack(PIN_IDLE_BORDER))
-        btn.label:SetTextColor(unpack(PIN_IDLE_LABEL))
-    end
-end
-
-function E:RefreshAllDelvePins()
-    for btn in pairs(self._delvePins) do
-        if btn:IsShown() then self:RefreshDelvePin(btn) end
-    end
-end
-
-function E:WireDelvePinButton(btn, getDelve)
-    btn._getDelve = getDelve
-    self._delvePins[btn] = true
-    btn:SetScript("OnClick", function()
-        local delve = getDelve()
-        if not delve then return end
-        if E:ToggleDelveSuperTrack(delve) == "waypoint" then
-            E:FlashButtonConfirm(btn)
-        end
-        E:RefreshDelvePin(btn)
-    end)
-    btn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        local delve = getDelve()
-        if delve and E:IsSuperTrackingDelve(delve) then
-            E:ShowTooltip(self, L["Tracking This Delve"],
-                          L["The on-screen arrow is guiding you here."],
-                          E.CC.muted .. L["Click to stop tracking."] .. E.CC.close)
-        else
-            E:ShowTooltip(self, L["Track This Delve"],
-                          L["Point the on-screen arrow at this entrance."],
-                          E.CC.muted .. L["Click again to stop."] .. E.CC.close)
-        end
-    end)
-    btn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-    self:RefreshDelvePin(btn)
-end
-
-local superTrackFrame = CreateFrame("Frame")
-superTrackFrame:RegisterEvent("SUPER_TRACKING_CHANGED")
-superTrackFrame:SetScript("OnEvent", function()
-    E:RefreshAllDelvePins()
-end)
-
-function E:FlashButtonConfirm(btn)
-    if not btn or not btn.label then return end
-    local original = btn.label:GetText()
-    btn.label:SetText("|cFF00FF00" .. L["Set!"] .. "|r")
-    C_Timer.After(1.5, function()
-        if btn.label then
-            btn.label:SetText(original)
-        end
-    end)
+    if self:SetWaypoint(delve.mapID, delve.x, delve.y) then return "waypoint" end
+    return nil
 end
 
 function E:ShowTooltip(owner, title, ...)
@@ -218,62 +143,6 @@ end
 
 function E:HideTooltip()
     GameTooltip:Hide()
-end
-
-function E:CreateProgressBar(parent, width, height, caption)
-    local bar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    if width and width > 0 then
-        bar:SetSize(width, height)
-    else
-        bar:SetHeight(height)
-    end
-    bar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    bar:SetBackdropColor(0.10, 0.10, 0.10, 1)
-    bar:SetBackdropBorderColor(0.30, 0.30, 0.30, 0.60)
-
-    local fill = bar:CreateTexture(nil, "ARTWORK")
-    fill:SetPoint("TOPLEFT", bar, "TOPLEFT", 1, -1)
-    fill:SetHeight(height - 2)
-    bar.fill = fill
-
-    -- Accent-driven fill; a direct SetColorTexture override is repainted on the next ApplyAccentColor.
-    E:RegisterThemed(function(p)
-        if fill.SetColorTexture then
-            fill:SetColorTexture(p.progressFill.r, p.progressFill.g,
-                                 p.progressFill.b, p.progressFill.a)
-        end
-    end)
-
-    local label = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetFont(label:GetFont(), 10, "OUTLINE")
-    bar.label = label
-
-    if caption and caption ~= "" then
-        local cap = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        cap:SetPoint("LEFT", bar, "LEFT", 6, 0)
-        cap:SetFont(cap:GetFont(), 10, "OUTLINE")
-        cap:SetText("|cFFFFFFFF" .. caption .. "|r")
-        bar.caption = cap
-
-        label:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
-    else
-        label:SetPoint("CENTER")
-    end
-
-    function bar:SetProgress(current, max)
-        local pct = (max > 0) and (current / max) or 0
-        pct = math_min(pct, 1)
-        self.fill:SetWidth(math_max(1, (self:GetWidth() - 2) * pct))
-        self.label:SetText(
-            string_format("|cFFFFFFFF%d / %d  (%d%%)|r", current, max, math_floor(pct * 100))
-        )
-    end
-
-    return bar
 end
 
 -- A new item id is issued each season, so watching only Season 1's meant the
@@ -313,16 +182,6 @@ function E:GetTrovehunterMapCount()
         total = total + (C_Item.GetItemCount(id) or 0)
     end
     return total
-end
-
-function E:StyleAccentHeader(fs, rawText)
-    if not fs or not rawText then return end
-    fs:SetText(self.CC.header .. rawText .. self.CC.close)
-    self:RegisterThemed(function(_)
-        if fs and fs.SetText then
-            fs:SetText(E.CC.header .. rawText .. E.CC.close)
-        end
-    end)
 end
 
 function E:StyleAccentDivider(tex)
@@ -411,16 +270,6 @@ function E:GetCompanionData()
         xpMax      = ceil and math.max(1, ceil - floor) or 0,
         isMaxLevel = (ceil == nil),
     }
-end
-
-function E:StyleAccentThumb(tex)
-    if not tex or not tex.SetColorTexture then return end
-    self:RegisterThemed(function(p)
-        if tex and tex.SetColorTexture then
-            tex:SetColorTexture(p.scrollThumb.r, p.scrollThumb.g,
-                                p.scrollThumb.b, p.scrollThumb.a)
-        end
-    end)
 end
 
 function E.CompareAlpha(a, b)

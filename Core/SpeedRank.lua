@@ -135,12 +135,6 @@ function E:GetSpeedGrade(seconds)
     return last.label, last.rgb[1], last.rgb[2], last.rgb[3]
 end
 
-function E:SpeedColorCode(seconds)
-    local _, r, g, b = self:GetSpeedGrade(seconds)
-    return string.format("|cFF%02X%02X%02X",
-        math_floor(r * 255), math_floor(g * 255), math_floor(b * 255))
-end
-
 -- Value-per-minute: rewardWeight(tier) / minutes, x1.5 if bountiful today.
 -- Returns score, seconds, tierLetter, source. nil if unrankable.
 function E:GetDelveValue(delveName, tierOverride)

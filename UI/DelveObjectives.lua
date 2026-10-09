@@ -746,7 +746,7 @@ E:RegisterModule(function()
         DoRefresh()
     end
 
-    -- /ed objdump — raw dump of every objective-ish data source so unknown
+    -- /ed objdump - raw dump of every objective-ish data source so unknown
     -- counters can be located on the live client and wired in precisely.
     function E:DumpDelveObjectiveData()
         local function out(s) print("|cFFFFD700[ED obj]|r " .. s) end
@@ -1099,7 +1099,7 @@ E:RegisterModule(function()
                 end
             end
         else
-            out("  picker not shown — open a delve entrance, then /ed objdump")
+            out("  picker not shown - open a delve entrance, then /ed objdump")
         end
 
         -- Whatever tooltip is up now (hover the modifier icon if the FontString
@@ -1114,7 +1114,7 @@ E:RegisterModule(function()
             end
         end
 
-        out("=== end — screenshot/paste me everything above ===")
+        out("=== end - screenshot/paste me everything above ===")
     end
 
     -- /ed dundun - snapshot/diff probe. Bracket an interaction to expose a state

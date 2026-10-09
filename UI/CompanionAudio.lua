@@ -1,6 +1,6 @@
 local E = EverythingDelves
 
--- Valeera companion voice line sound IDs — Midnight 12.0 Season 1
+-- Valeera companion voice line sound IDs - Midnight 12.0 Season 1
 local VALEERA_SOUNDS = {
     7243762, 7243934, 7329273, 7430043, 7430047, 7430050, 7430053, 7430056, 7430059, 7430063,
     7430066, 7430069, 7430072, 7430075, 7430078, 7430082, 7430086, 7430089, 7430092, 7430095,
@@ -19,7 +19,7 @@ local VALEERA_SOUNDS = {
     7431093, 7431103, 7431106, 7431109, 7431112, 7431115, 7431119, 7431123, 7440991, 7461759,
 }
 
--- Dundun voice line sound IDs — Midnight 12.0 Season 1. MuteSoundFile is global,
+-- Dundun voice line sound IDs - Midnight 12.0 Season 1. MuteSoundFile is global,
 -- so the mute applies everywhere he speaks (Abundance cave events), not just in delves.
 local DUNDUN_SOUNDS = {
     7249707, 7251759, 7251762, 7251765, 7251768, 7251771, 7251774, 7251777,

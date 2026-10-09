@@ -1,15 +1,21 @@
 local E = EverythingDelves
 local L = E.L
 
-local math_max, math_min = math.max, math.min
+local ipairs, pairs, select, time = ipairs, pairs, select, time
+local math_abs, math_max = math.abs, math.max
+local table_sort = table.sort
 
-local ORANGE = "|cFFFF8800"
-local DC_STATE = {
-    fresh      = { text = L["Available"],   cc = E.CC.muted },
-    inProgress = { text = L["In Progress"], cc = ORANGE      },
-    ready      = { text = L["Banked"],      cc = E.CC.gold   },
-    completed  = { text = L["Turned In"],   cc = E.CC.green  },
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, GROUP_GAP, INTRO_GAP = 20, 24, 14, 28, 22, 16
+local ROW, LIST_ROW, HINT_GAP, COL_GAP, NAME_GAP = 44, 28, 8, 12, 6
+local ZONE_W, STATUS_W, COUNT_W, CHECK, CHECK_GAP = 160, 150, 90, 14, 6
+
+local STATE_LABEL = {
+    fresh      = L["Available"],
+    inProgress = L["In Progress"],
+    ready      = L["Banked"],
+    completed  = L["Turned In"],
 }
+local ROLLUP = { "inProgress", "ready", "completed", "fresh" }
 
 local function GetState(questID)
     if not questID or not C_QuestLog then return "fresh" end
@@ -35,362 +41,301 @@ local function GetState(questID)
     return "fresh"
 end
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTabDelversCallContent")
+local function ComputeStates()
+    local states = {}
+    local counts = { fresh = 0, inProgress = 0, ready = 0, completed = 0 }
+    for _, entry in ipairs(E.DelversCall) do
+        local st = GetState(entry.questID)
+        states[entry.delve] = st
+        counts[st] = (counts[st] or 0) + 1
+    end
+    return states, counts
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     frame, "TOPLEFT",     0,   0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
-    scrollFrame:EnableMouseWheel(true)
+-- Alts' quest logs aren't readable, so each character snapshots its own states here.
+local function PersistRoster(states)
+    local sv = EverythingDelvesDB
+    if not sv then return end
+    sv.delversCallRoster = sv.delversCallRoster or {}
+    local key = E.CharKey()
+    local rec = sv.delversCallRoster[key] or {}
+    rec.name    = UnitName("player")  or rec.name
+    rec.realm   = GetRealmName()      or rec.realm
+    rec.class   = select(2, UnitClass("player")) or rec.class
+    rec.states  = states
+    rec.updated = time()
+    sv.delversCallRoster[key] = rec
+end
 
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
+local function StripCodes(s)
+    return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
 
-    scrollFrame:SetScript("OnSizeChanged", function(self, w)
-        sc:SetWidth(w)
-    end)
-    sc:SetHeight(900)
+-- A card centers a control in its row but never sizes it, and a row frame left with no height came up blank
+-- after a cold login
+local function Row(content, height)
+    local f = CreateFrame("Frame", nil, content)
+    if height then f:SetHeight(height) end
+    return f
+end
 
-    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    tabScrollBar:SetWidth(14)
-    tabScrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    tabScrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    tabScrollBar:SetThumbTexture(sbThumb)
-    tabScrollBar:SetOrientation("VERTICAL")
-    tabScrollBar:SetMinMaxValues(0, 1)
-    tabScrollBar:SetValue(0)
-    tabScrollBar:SetValueStep(1)
-    tabScrollBar:SetObeyStepOnDrag(true)
-    tabScrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
+local function Check(ui, parent)
+    local t = parent:CreateTexture(nil, "ARTWORK")
+    t:SetSize(CHECK, CHECK)
+    t:SetTexture(ui:Texture("check"))
+    t:SetVertexColor(ui:Color("label"))
+    return t
+end
 
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        tabScrollBar:SetValue(newVal)
-    end)
+local function CallColumns(row, name, zone, status)
+    status:SetPoint("LEFT", row, "RIGHT", -STATUS_W, 0)
+    zone:SetPoint("LEFT", row, "RIGHT", -(STATUS_W + COL_GAP + ZONE_W), 0)
+    zone:SetWidth(ZONE_W)
+    name:SetPoint("LEFT")
+    name:SetPoint("RIGHT", row, "RIGHT", -(STATUS_W + COL_GAP * 2 + ZONE_W), 0)
+end
 
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        tabScrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then
-            tabScrollBar:Hide()
-        else
-            tabScrollBar:Show()
-        end
+local function CountCells(ui, row, style)
+    local cells = {}
+    for i = #ROLLUP, 1, -1 do
+        local fs = ui:CreateText(row, "", style)
+        fs:SetWordWrap(false)
+        fs:SetJustifyH("RIGHT")
+        fs:SetWidth(COUNT_W)
+        fs:SetPoint("RIGHT", row, "RIGHT", -(#ROLLUP - i) * (COUNT_W + COL_GAP), 0)
+        cells[i] = fs
+    end
+    return cells
+end
+
+local COUNTS_W = #ROLLUP * COUNT_W + #ROLLUP * COL_GAP
+
+local function BuildIntro(ui, content, v)
+    local b = ui:CreateTextBlock(content)
+    v.summary = b:AddLine("", "label")
+    b:AddLine(L["World Tour weekly quest tracker"], "hint", { gap = HINT_GAP })
+    v.intro = b
+end
+
+local function BuildStrategy(ui, content)
+    local card = ui:CreateGroup(content, nil)
+    local b = ui:CreateTextBlock(content)
+    -- One string cannot change weight partway through a wrapped line, so the warning stands out by color
+    local warn = E.DelveList.cc("text") .. L["don't turn it in yet"] .. "|r"
+    b:AddLine(L["Each rotational delve has a Delver's Call quest. Run every delve once to pick the quest up, but %s \226\128\148 the XP scales to your level at turn-in. Bank all %d, then cash them in once you're a few levels short of cap for a push through the final levels."]
+        :format(warn, #E.DelversCall))
+    card:Add(b, { fitHeight = true })
+    return card
+end
+
+local function StatusCell(ui, row)
+    local cell = CreateFrame("Frame", nil, row)
+    cell:SetSize(STATUS_W, LIST_ROW)
+    cell.check = Check(ui, cell)
+    cell.check:SetPoint("LEFT")
+    cell.text = ui:CreateText(cell, "", "label")
+    cell.text:SetWordWrap(false)
+    cell.tag = ui:CreateTag(cell, STATE_LABEL.ready, "outline")
+    cell.tag:SetPoint("LEFT")
+    return cell
+end
+
+local function BuildCalls(ui, content, v)
+    local card = ui:CreateGroup(content, L["Delver's Call"])
+
+    local zoneOf = {}
+    for _, d in ipairs(E.DelveData or {}) do
+        if d.name and d.zone and not zoneOf[d.name] then zoneOf[d.name] = d.zone end
     end
 
-    local GRID_X = 8
+    local head = Row(content, LIST_ROW)
+    CallColumns(head, ui:CreateText(head, L["Delve"], "groupLabel"), ui:CreateText(head, L["Zone"], "groupLabel"),
+        ui:CreateText(head, L["Status"], "groupLabel"))
+    card:Add(head, { height = LIST_ROW, fill = true })
 
-    local COL_NAME   = 12
-    local COL_ZONE   = 230
-    local COL_STATUS = 400
-    local ROW_HEIGHT = 22
-
-    local delveZone = {}
-    if E.DelveData then
-        for _, d in ipairs(E.DelveData) do
-            if d.name and d.zone and not delveZone[d.name] then
-                delveZone[d.name] = d.zone
-            end
-        end
-    end
-
-    local mainHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    mainHeader:SetPoint("TOPLEFT", sc, "TOPLEFT", GRID_X, -4)
-    mainHeader:SetFont(mainHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(mainHeader, L["Delver's Call"])
-
-    local subFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    subFS:SetPoint("LEFT", mainHeader, "RIGHT", 10, -1)
-    subFS:SetFont(subFS:GetFont(), 11)
-    subFS:SetText(E.CC.muted .. L["World Tour weekly quest tracker"] .. E.CC.close)
-
-    local strategyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    strategyFS:SetPoint("TOPLEFT", mainHeader, "BOTTOMLEFT", 0, -8)
-    strategyFS:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-    strategyFS:SetFont(strategyFS:GetFont(), 11)
-    strategyFS:SetJustifyH("LEFT")
-    strategyFS:SetText(
-        E.CC.body
-        .. L["Each rotational delve has a Delver's Call quest. Run every delve once to pick the quest up, but %s \226\128\148 the XP scales to your level at turn-in. Bank all %d, then cash them in once you're a few levels short of cap for a push through the final levels."]
-            :format(E.CC.gold .. L["don't turn it in yet"] .. E.CC.close .. E.CC.body,
-                    #E.DelversCall)
-        .. E.CC.close
-    )
-
-    local summaryFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    summaryFS:SetPoint("TOPLEFT", strategyFS, "BOTTOMLEFT", 0, -10)
-    summaryFS:SetFont(summaryFS:GetFont(), 11)
-
-    local div1 = sc:CreateTexture(nil, "ARTWORK")
-    div1:SetHeight(1)
-    div1:SetPoint("TOPLEFT", summaryFS, "BOTTOMLEFT", 0, -10)
-    div1:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div1)
-
-    local colHead = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colHead:SetPoint("TOPLEFT", div1, "BOTTOMLEFT", COL_NAME, -8)
-    colHead:SetFont(colHead:GetFont(), 10)
-    colHead:SetText(E.CC.muted .. L["Delve"] .. E.CC.close)
-
-    local colHeadZone = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colHeadZone:SetPoint("TOPLEFT", colHead, "TOPLEFT", COL_ZONE - COL_NAME, 0)
-    colHeadZone:SetFont(colHeadZone:GetFont(), 10)
-    colHeadZone:SetText(E.CC.muted .. L["Zone"] .. E.CC.close)
-
-    local colHeadStatus = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    colHeadStatus:SetPoint("TOPLEFT", colHead, "TOPLEFT", COL_STATUS - COL_NAME, 0)
-    colHeadStatus:SetFont(colHeadStatus:GetFont(), 10)
-    colHeadStatus:SetText(E.CC.muted .. L["Status"] .. E.CC.close)
-
-    local rowWidgets = {}
-    local rowAnchor  = colHead
+    v.calls = {}
     for i, entry in ipairs(E.DelversCall) do
-        local row = CreateFrame("Frame", nil, sc)
-        row:SetHeight(ROW_HEIGHT)
-        -- First row pulls back -COL_NAME to undo the column header's indent; later rows chain at x=0.
-        row:SetPoint("TOPLEFT",  rowAnchor, "BOTTOMLEFT", (i == 1) and -COL_NAME or 0, (i == 1) and -4 or -2)
-        row:SetPoint("RIGHT", sc, "RIGHT", -20, 0)
-
-        local bar = row:CreateTexture(nil, "ARTWORK")
-        bar:SetPoint("LEFT", row, "LEFT", 0, 0)
-        bar:SetSize(3, ROW_HEIGHT - 4)
-        bar:SetColorTexture(1, 0.82, 0, 1)
-        bar:Hide()
-
-        local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("LEFT", row, "LEFT", COL_NAME, 0)
-        nameFS:SetWidth(COL_ZONE - COL_NAME - 6)
-        nameFS:SetJustifyH("LEFT")
-        nameFS:SetFont(nameFS:GetFont(), 11)
-        nameFS:SetText(E.CC.body .. entry.delve .. E.CC.close)
-
-        local zoneFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        zoneFS:SetPoint("LEFT", row, "LEFT", COL_ZONE, 0)
-        zoneFS:SetWidth(COL_STATUS - COL_ZONE - 6)
-        zoneFS:SetJustifyH("LEFT")
-        zoneFS:SetFont(zoneFS:GetFont(), 11)
-        zoneFS:SetText(E.CC.muted .. (delveZone[entry.delve] or "") .. E.CC.close)
-
-        local statusFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        statusFS:SetPoint("LEFT", row, "LEFT", COL_STATUS, 0)
-        statusFS:SetJustifyH("LEFT")
-        statusFS:SetFont(statusFS:GetFont(), 11)
-
-        rowWidgets[i] = { row = row, status = statusFS, bar = bar }
-        rowAnchor = row
+        local row = Row(content, LIST_ROW)
+        row.entry = entry
+        row.name = ui:CreateText(row, entry.delve, "label")
+        row.name:SetWordWrap(false)
+        row.zone = ui:CreateText(row, zoneOf[entry.delve] or "", "label")
+        row.zone:SetWordWrap(false)
+        row.status = StatusCell(ui, row)
+        CallColumns(row, row.name, row.zone, row.status)
+        card:Add(row, { height = LIST_ROW, fill = true })
+        v.calls[i] = row
     end
 
-    local div2 = sc:CreateTexture(nil, "ARTWORK")
-    div2:SetHeight(1)
-    div2:SetPoint("TOPLEFT", rowAnchor, "BOTTOMLEFT", 0, -10)
-    div2:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(div2)
+    local holder = Row(content, ROW)
+    holder._controls = {}
+    local box = ui:CreateCheckbox(holder,
+        L["Show a green checkmark on the Delve Locations tab for delves whose Delver's Call you've turned in"],
+        function() return E.db and E.db.showDelversCallDone == true end,
+        function(on)
+            if E.db then E.db.showDelversCallDone = on end
+            if E.RefreshDelveLocations then E:RefreshDelveLocations() end
+        end)
+    box:SetPoint("LEFT")
+    -- Long in every language, so it wraps inside the row rather than running past the card
+    box.label:SetPoint("RIGHT", holder, "RIGHT")
+    box.label:SetWordWrap(true)
+    card:Add(holder, { height = ROW, fill = true })
+    v.showDone = box
+    return card
+end
 
-    local rollupHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    rollupHeader:SetPoint("TOPLEFT", div2, "BOTTOMLEFT", GRID_X, -16)
-    rollupHeader:SetFont(rollupHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(rollupHeader, L["Alt Rollup"])
+local function BuildRollup(ui, content, v)
+    local card = ui:CreateGroup(content, L["Alt Rollup"])
+    local head = Row(content, LIST_ROW)
+    for i, fs in ipairs(CountCells(ui, head, "groupLabel")) do fs:SetText(STATE_LABEL[ROLLUP[i]]) end
+    card:Add(head, { height = LIST_ROW, fill = true })
+    v.rollHead = head
 
-    local rollupPool = {}
-    local function GetRollupLine(i)
-        local fs = rollupPool[i]
-        if not fs then
-            fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetFont(fs:GetFont(), 11)
-            fs:SetJustifyH("LEFT")
-            rollupPool[i] = fs
+    v.rollEmpty = ui:CreateText(content, L["No characters tracked yet."], "label")
+    v.rollEmpty:SetTextColor(ui:Color("muted"))
+    card:Add(v.rollEmpty, { height = LIST_ROW, fill = true })
+
+    v.rollCard, v.rollRows = card, {}
+    return card
+end
+
+-- Rows join the card as characters appear, and the card stacks them after the heading and the empty line
+local function RollupRow(ui, content, v, i)
+    local row = v.rollRows[i]
+    if row then return row end
+    row = Row(content, LIST_ROW)
+    row.name = E.NamePair(ui, row, "value")
+    row.realm = E.NamePair(ui, row, "label")
+    row.counts = CountCells(ui, row, "label")
+    v.rollCard:Add(row, { height = LIST_ROW, fill = true })
+    v.rollRows[i] = row
+    return row
+end
+
+local function RenderRollup(ui, content, v)
+    local sv = EverythingDelvesDB
+    local roster = (sv and sv.delversCallRoster) or {}
+    local total = #E.DelversCall
+    local curKey = E.CharKey()
+
+    local keys = {}
+    for k in pairs(roster) do keys[#keys + 1] = k end
+    table_sort(keys)
+
+    for i, k in ipairs(keys) do
+        local rec = roster[k]
+        local n = { fresh = 0, inProgress = 0, ready = 0, completed = 0 }
+        for _, st in pairs(rec.states or {}) do
+            if n[st] and st ~= "fresh" then n[st] = n[st] + 1 end
         end
-        return fs
+        n.fresh = math_max(0, total - n.inProgress - n.ready - n.completed)
+
+        local row = RollupRow(ui, content, v, i)
+        local name = E.ShowNamePair(ui, row.name, rec.name or k, E.ClassRGB(ui, rec.class))
+        local mr, mg, mb = ui:Color("muted")
+        local realm = E.ShowNamePair(ui, row.realm, "(" .. (rec.realm or "?") .. ")"
+            .. (k == curKey and ("  " .. L["(you)"]) or ""), mr, mg, mb)
+        name:ClearAllPoints()
+        name:SetPoint("LEFT")
+        realm:ClearAllPoints()
+        realm:SetPoint("LEFT", name, "RIGHT", NAME_GAP, 0)
+        realm:SetPoint("RIGHT", row, "RIGHT", -COUNTS_W, 0)
+        for c, st in ipairs(ROLLUP) do row.counts[c]:SetText(tostring(n[st])) end
+        row:Show()
+    end
+    for i = #keys + 1, #v.rollRows do v.rollRows[i]:Hide() end
+    v.rollHead:SetShown(#keys > 0)
+    v.rollEmpty:SetShown(#keys == 0)
+end
+
+local function PaintStatus(ui, cell, st)
+    cell.check:SetShown(st == "completed")
+    -- A tag sizes itself only when its text is set, which for this one was while the page was built
+    cell.tag:Fit()
+    cell.tag:SetShown(st == "ready")
+    cell.text:SetShown(st ~= "ready")
+    cell.text:ClearAllPoints()
+    cell.text:SetPoint("LEFT", cell, "LEFT", st == "completed" and (CHECK + CHECK_GAP) or 0, 0)
+    cell.text:SetText(STATE_LABEL[st] or STATE_LABEL.fresh)
+    cell.text:SetTextColor(ui:Color((st == "completed" or st == "fresh") and "muted" or "label"))
+end
+
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTabDelversCallContent")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+
+    local v = {}
+    BuildIntro(ui, content, v)
+    local cards = { BuildStrategy(ui, content), BuildCalls(ui, content, v), BuildRollup(ui, content, v) }
+
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
     end
 
-    local rollupBottom = rollupHeader
+    local function Render()
+        local width = ViewWidth()
+        lastWidth = width
+        content:SetWidth(width)
 
-    local function ComputeStates()
-        local states = {}
-        local counts = { fresh = 0, inProgress = 0, ready = 0, completed = 0 }
-        for _, entry in ipairs(E.DelversCall) do
-            local st = GetState(entry.questID)
-            states[entry.delve] = st
-            counts[st] = (counts[st] or 0) + 1
-        end
-        return states, counts
-    end
-
-    -- Alts' quest logs aren't readable, so each character snapshots its own states here.
-    local function PersistRoster(states)
-        local sv = EverythingDelvesDB
-        if not sv then return end
-        sv.delversCallRoster = sv.delversCallRoster or {}
-        local key = E.CharKey()
-        local rec = sv.delversCallRoster[key] or {}
-        rec.name    = UnitName("player")  or rec.name
-        rec.realm   = GetRealmName()      or rec.realm
-        rec.class   = select(2, UnitClass("player")) or rec.class
-        rec.states  = states
-        rec.updated = time()
-        sv.delversCallRoster[key] = rec
-    end
-
-    local function RefreshRollup()
-        local sv = EverythingDelvesDB
-        local roster = (sv and sv.delversCallRoster) or {}
-        local total  = #E.DelversCall
-        local curKey = E.CharKey()
-
-        local keys = {}
-        for k in pairs(roster) do keys[#keys + 1] = k end
-        table.sort(keys)
-
-        local last = rollupHeader
-        local idx  = 0
-        for _, k in ipairs(keys) do
-            idx = idx + 1
-            local rec = roster[k]
-            local inProg, ready, done = 0, 0, 0
-            if rec.states then
-                for _, st in pairs(rec.states) do
-                    if     st == "inProgress" then inProg = inProg + 1
-                    elseif st == "ready"      then ready  = ready  + 1
-                    elseif st == "completed"  then done   = done   + 1 end
-                end
-            end
-            local remaining = math_max(0, total - inProg - ready - done)
-            local isCur   = (k == curKey)
-            local nameCC  = isCur and E.CC.white or E.CC.body
-            local youTag  = isCur and (E.CC.muted .. "  " .. L["(you)"] .. E.CC.close) or ""
-
-            local line = GetRollupLine(idx)
-            line:ClearAllPoints()
-            line:SetPoint("TOPLEFT", last, "BOTTOMLEFT", (idx == 1) and 4 or 0, (idx == 1) and -8 or -4)
-            line:SetText(string.format(
-                L["%s%s|r %s(%s)|r%s  \226\128\148  %s%d|r in progress  %s%d|r banked  %s%d|r done  %s%d|r left"],
-                nameCC, rec.name or k,
-                E.CC.muted, rec.realm or "?", youTag,
-                ORANGE, inProg,
-                E.CC.gold, ready,
-                E.CC.green, done,
-                E.CC.muted, remaining
-            ))
-            line:Show()
-            last = line
-        end
-
-        for j = idx + 1, #rollupPool do
-            rollupPool[j]:Hide()
-        end
-
-        if idx == 0 then
-            local line = GetRollupLine(1)
-            line:ClearAllPoints()
-            line:SetPoint("TOPLEFT", rollupHeader, "BOTTOMLEFT", 4, -8)
-            line:SetText(E.CC.muted .. L["No characters tracked yet."] .. E.CC.close)
-            line:Show()
-            last = line
-        end
-
-        rollupBottom = last
-    end
-
-    local footerDiv = sc:CreateTexture(nil, "ARTWORK")
-    footerDiv:SetHeight(1)
-    footerDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    E:StyleAccentDivider(footerDiv)
-
-    local doneCheck = CreateFrame("CheckButton", nil, sc, "UICheckButtonTemplate")
-    doneCheck:SetSize(24, 24)
-
-    local doneLabel = doneCheck:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    doneLabel:SetPoint("LEFT", doneCheck, "RIGHT", 4, 0)
-    doneLabel:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-    doneLabel:SetJustifyH("LEFT")
-    doneLabel:SetWordWrap(true)
-    doneLabel:SetFont(doneLabel:GetFont(), 11)
-    doneLabel:SetText(E.CC.body
-        .. L["Show a green checkmark on the Delve Locations tab for delves whose Delver's Call you've turned in"]
-        .. E.CC.close)
-
-    doneCheck:SetScript("OnClick", function(self)
-        if E.db then
-            E.db.showDelversCallDone = self:GetChecked() and true or false
-        end
-        if E.RefreshDelveLocations then E:RefreshDelveLocations() end
-    end)
-
-    local function PositionFooter()
-        footerDiv:ClearAllPoints()
-        footerDiv:SetPoint("TOPLEFT", rollupBottom, "BOTTOMLEFT", 0, -14)
-        footerDiv:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-        doneCheck:ClearAllPoints()
-        doneCheck:SetPoint("TOPLEFT", footerDiv, "BOTTOMLEFT", GRID_X, -8)
-    end
-
-    local function UpdateContentHeight()
-        local scTop   = sc:GetTop()
-        local lastBot = doneLabel and doneLabel:GetBottom()
-        local ckBot   = doneCheck and doneCheck:GetBottom()
-        if ckBot and (not lastBot or ckBot < lastBot) then lastBot = ckBot end
-        if scTop and lastBot and scTop > lastBot then
-            sc:SetHeight((scTop - lastBot) + 24)
-        end
-        UpdateScrollRange()
-    end
-
-    local function RefreshAll()
         local states, counts = ComputeStates()
-
-        doneCheck:SetChecked(E.db and E.db.showDelversCallDone == true)
-
-        for i, entry in ipairs(E.DelversCall) do
-            local st  = states[entry.delve] or "fresh"
-            local def = DC_STATE[st] or DC_STATE.fresh
-            local w   = rowWidgets[i]
-            w.status:SetText(def.cc .. def.text .. E.CC.close)
-            w.bar:SetShown(st == "ready")
-        end
-
-        summaryFS:SetText(string.format(
-            L["%sThis character:|r  %s%d|r available   %s%d|r in progress   %s%d|r banked   %s%d|r turned in   %s(of %d)|r"],
-            E.CC.body,
-            E.CC.muted, counts.fresh,
-            ORANGE, counts.inProgress,
-            E.CC.gold, counts.ready,
-            E.CC.green, counts.completed,
-            E.CC.muted, #E.DelversCall
-        ))
-
         PersistRoster(states)
-        RefreshRollup()
-        PositionFooter()
-        C_Timer.After(0, UpdateContentHeight)
+        v.summary:SetText(StripCodes(L["%sThis character:|r  %s%d|r available   %s%d|r in progress   %s%d|r banked   %s%d|r turned in   %s(of %d)|r"]
+            :format("", "", counts.fresh, "", counts.inProgress, "", counts.ready, "", counts.completed, "", #E.DelversCall)))
+        for _, row in ipairs(v.calls) do PaintStatus(ui, row.status, states[row.entry.delve] or "fresh") end
+        v.showDone:Refresh()
+        RenderRollup(ui, content, v)
+
+        local y = PAD_TOP
+        v.intro:ClearAllPoints()
+        v.intro:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        v.intro:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+        y = y + v.intro:Measure() + INTRO_GAP
+        for i, card in ipairs(cards) do
+            if i > 1 then y = y + GROUP_GAP end
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+            card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+            card:Layout()
+            y = y + card:GetHeight()
+        end
+        area:SetContentSize(width, y + PAD_BOTTOM)
     end
+
+    -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
+    local pending = false
+    local function RenderSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0, function()
+            pending = false
+            if frame:IsVisible() then Render() end
+        end)
+    end
+
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then
+            Render()
+            RenderSoon()
+        end
+    end)
 
     frame:SetScript("OnShow", function()
-        RefreshAll()
-        UpdateScrollRange()
-        scrollFrame:SetVerticalScroll(0)
-        tabScrollBar:SetValue(0)
+        Render()
+        area:ScrollTo(0, 0)
+        RenderSoon()
     end)
 
     -- Keep the roster current even while the tab is closed; only repaint when visible.
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsVisible() then
-            RefreshAll()
+            Render()
         else
             PersistRoster((ComputeStates()))
         end

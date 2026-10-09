@@ -1,12 +1,31 @@
 local E = EverythingDelves
 local L = E.L
----@diagnostic disable: need-check-nil
 
-local pairs, ipairs              = pairs, ipairs
-local math_floor, math_max       = math.floor, math.max
-local string_format              = string.format
-local table_sort, table_insert   = table.sort, table.insert
-local date, time                 = date, time
+local pairs, ipairs, tostring = pairs, ipairs, tostring
+local math_abs, math_ceil, math_floor, math_max = math.abs, math.ceil, math.floor, math.max
+local string_format = string.format
+local table_sort, table_insert = table.sort, table.insert
+local date = date
+
+local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, GROUP_GAP, INTRO_GAP = 20, 24, 14, 28, 22, 16
+local HEAD, DELVE_ROW, RUN_ROW, EMPTY_ROW, HINT_GAP = 28, 32, 28, 44, 8
+local INSET, CHEVRON, GAP, RUN_GAP, ICON, BUTTON = 14, 12, 10, 8, 14, 24
+local NAME_X = INSET + CHEVRON + GAP
+local TIER_W, TIME_W, DEATHS_W, BOSS_W, DATE_W, STORY_MIN, NAME_MIN = 30, 60, 90, 140, 116, 100, 150
+local NOTE_X, NOTE_PAD, NOTE_SIZE = 50, 6, 12
+local NOTE_MAX = 280
+local EDITOR_W, EDITOR_H, EDITOR_PAD, FIELD_H, FOOTER_H = 440, 304, 20, 110, 56
+local ED_TEXTURES = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
+local BOUNTIFUL_ATLAS = "delves-bountiful"
+local QUOTE_OPEN, QUOTE_CLOSE, BULLET = "\226\128\156", "\226\128\157", "\226\128\162"
+
+local STATS = {
+    { key = "deaths",  label = L["Total Deaths:"], width = 84 },
+    { key = "fastest", label = L["Fastest:"],      width = 72 },
+    { key = "avg",     label = L["Avg:"],          width = 64 },
+    { key = "best",    label = L["Best Tier:"],    width = 76 },
+    { key = "runs",    label = L["Runs:"],         width = 64 },
+}
 
 local function FormatDuration(sec)
     sec = sec or 0
@@ -25,14 +44,14 @@ local function FormatDuration(sec)
     return string_format("%dh %dm %02ds", h, m, s)
 end
 
-local function FormatDate(ts)
+local function FormatDay(ts)
     if not ts or ts == 0 then return "" end
-    return date("%b %d, %Y", ts)
+    return date("%Y-%m-%d", ts)
 end
 
-local function FormatDateTime(ts)
+local function FormatStamp(ts)
     if not ts or ts == 0 then return "" end
-    return date("%b %d, %Y at %H:%M", ts)
+    return date("%Y-%m-%d %H:%M", ts)
 end
 
 -- Prefer the live variant captured at log time; fall back to the delve's
@@ -44,886 +63,489 @@ local function ResolveRunStory(run, delveKey)
     return E.DelveStories and E.DelveStories[delveKey] or nil
 end
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTabHistoryContent")
-
-    local HDR_X = 8
-    local HDR_Y = -6
-
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", frame, "TOPLEFT", HDR_X, HDR_Y)
-    title:SetFont(title:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(title, L["Delve History"])
-
-    local summaryFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    summaryFS:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    summaryFS:SetFont(summaryFS:GetFont(), 11)
-
-    local footerDiv = frame:CreateTexture(nil, "ARTWORK")
-    footerDiv:SetHeight(1)
-    footerDiv:SetPoint("BOTTOMLEFT",  frame, "BOTTOMLEFT",  8, 22)
-    footerDiv:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 22)
-    E:StyleGreyLine(footerDiv)
-
-    local noteFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    noteFS:SetPoint("BOTTOM", frame, "BOTTOM", 0, 7)
-    local nf, _, nflags = noteFS:GetFont()
-    noteFS:SetFont(nf, 10, nflags)
-    noteFS:SetJustifyH("CENTER")
-    noteFS:SetText(
-        E.CC.muted
-        .. L["Note: Closing the WoW client during a delve will reset that run's timer. /reload is fine."]
-        .. E.CC.close
-    )
-
-    local dc = E.Colors.divider
-    local headerDiv = frame:CreateTexture(nil, "ARTWORK")
-    headerDiv:SetHeight(1)
-    headerDiv:SetPoint("TOPLEFT",  summaryFS, "BOTTOMLEFT", 0, -6)
-    headerDiv:SetPoint("RIGHT",    frame, "RIGHT", -8, 0)
-    E:StyleAccentDivider(headerDiv)
-
-    local clearBtn = E:CreateButton(frame, 100, 20, L["Clear History"])
-    clearBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -6)
-    if clearBtn.Text then
-        clearBtn.Text:SetFont(clearBtn.Text:GetFont(), 10)
-    end
-    clearBtn:SetScript("OnClick", function()
-        StaticPopup_Show("EVERYTHINGDELVES_CLEAR_HISTORY")
-    end)
-    clearBtn:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-        E:ShowTooltip(self, L["Clear Delve History"],
-            L["Erase all recorded delve runs and lifetime stats"],
-            E.CC.red .. L["This cannot be undone."] .. E.CC.close)
-    end)
-    clearBtn:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
-    -- In the fixed header, not the scrolling content, so it never scrolls out of reach.
-    local CAP_MIN  = E.HISTORY_CAP_MIN or 20
-    local CAP_MAX  = E.HISTORY_CAP_MAX or 100
-    local CAP_STEP = 10
-
-    local function ClampCap(v)
-        v = math_floor((v / CAP_STEP) + 0.5) * CAP_STEP
-        if v < CAP_MIN then v = CAP_MIN elseif v > CAP_MAX then v = CAP_MAX end
-        return v
-    end
-
-    local capValFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    capValFS:SetPoint("RIGHT", clearBtn, "LEFT", -14, 0)
-    capValFS:SetFont(capValFS:GetFont(), 11)
-
-    local capSlider = CreateFrame("Slider", nil, frame, "OptionsSliderTemplate")
-    capSlider:SetSize(110, 16)
-    capSlider:SetPoint("RIGHT", capValFS, "LEFT", -8, 0)
-    capSlider:SetMinMaxValues(CAP_MIN, CAP_MAX)
-    capSlider:SetValueStep(CAP_STEP)
-    capSlider:SetObeyStepOnDrag(true)
-    if capSlider.Low  then capSlider.Low:SetText("")  end
-    if capSlider.High then capSlider.High:SetText("") end
-    if capSlider.Text then capSlider.Text:SetText("") end
-
-    local capLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    capLabel:SetPoint("RIGHT", capSlider, "LEFT", -8, 0)
-    capLabel:SetFont(capLabel:GetFont(), 11)
-    capLabel:SetText(E.CC.body .. L["Runs kept per delve:"] .. E.CC.close)
-
-    capSlider:SetScript("OnValueChanged", function(_, val)
-        val = ClampCap(val)
-        if E.db then E.db.historyCap = val end
-        capValFS:SetText(E.CC.gold .. val .. E.CC.close)
-    end)
-
-    local function CapTooltip(self)
-        E:ShowTooltip(self, L["History kept per delve"],
-            L["How many recent runs to store for each delve (newest first)."],
-            E.CC.muted
-            .. L["Default 20, up to %d. Raising it keeps more history from now on; runs already trimmed can't be recovered. Lowering it trims a delve's oldest runs the next time you run it."]:format(CAP_MAX)
-            .. E.CC.close)
-    end
-    capSlider:SetScript("OnEnter", CapTooltip)
-    capSlider:SetScript("OnLeave", function() E:HideTooltip() end)
-
-    -- Set the readout explicitly: when the saved value equals the slider's
-    -- current value, SetValue won't fire OnValueChanged and it'd stay blank.
-    local function SyncHistoryCap()
-        local v = ClampCap((E.db and E.db.historyCap) or CAP_MIN)
-        capSlider:SetValue(v)
-        capValFS:SetText(E.CC.gold .. v .. E.CC.close)
-    end
-    SyncHistoryCap()
-    frame.SyncHistoryCap = SyncHistoryCap
-
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT",     headerDiv, "BOTTOMLEFT", 0, -4)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 30)
-    scrollFrame:EnableMouseWheel(true)
-
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w) sc:SetWidth(w) end)
-    sc:SetHeight(400)
-
-    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    tabScrollBar:SetWidth(14)
-    tabScrollBar:SetPoint("TOPRIGHT",    scrollFrame, "TOPRIGHT",    16, 0)
-    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    tabScrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    tabScrollBar:SetThumbTexture(sbThumb)
-    tabScrollBar:SetOrientation("VERTICAL")
-    tabScrollBar:SetMinMaxValues(0, 1)
-    tabScrollBar:SetValue(0)
-    tabScrollBar:SetValueStep(1)
-    tabScrollBar:SetObeyStepOnDrag(true)
-    tabScrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math.min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        tabScrollBar:SetValue(newVal)
-    end)
-
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        tabScrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then
-            tabScrollBar:Hide()
-        else
-            tabScrollBar:Show()
-        end
-    end
-
-    local nemesisHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemesisHeader:SetFont(nemesisHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(nemesisHeader, L["Seasonal Nemesis"])
-
-    local nemesisEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    nemesisEmptyFS:SetFont(nemesisEmptyFS:GetFont(), 10)
-    nemesisEmptyFS:SetText(E.CC.muted
-        .. L["No nemesis delve runs recorded yet."] .. E.CC.close)
-
-    local midnightHeader = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    midnightHeader:SetFont(midnightHeader:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(midnightHeader, L["Midnight Delves"])
-
-    local midnightEmptyFS = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    midnightEmptyFS:SetFont(midnightEmptyFS:GetFont(), 10)
-    midnightEmptyFS:SetText(E.CC.muted
-        .. L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"]
-        .. E.CC.close)
-
-    -- Parented to sc (not frame) so they scroll with the content; children of
-    -- frame stay pinned to the viewport and float over rows as you scroll.
-    local nemesisDivider = sc:CreateTexture(nil, "ARTWORK")
-    nemesisDivider:SetHeight(1)
-    E:StyleAccentDivider(nemesisDivider)
-    nemesisDivider:Hide()
-
-    local midnightDivider = sc:CreateTexture(nil, "ARTWORK")
-    midnightDivider:SetHeight(1)
-    E:StyleAccentDivider(midnightDivider)
-    midnightDivider:Hide()
-
-    local HEADER_ROW_HEIGHT = 22
-    local RUN_ROW_HEIGHT    = 16
-
-    local headerRowPool = {}
-    local runRowPool    = {}
-    local noteLinePool  = {}
-
-    -- Expanded state keyed by delve name — survives refresh.
-    local expandedByKey = {}
-
-    local Refresh
-    local OpenNoteEditor
-
-    local function HeaderRow_OnClick(self)
-        local key = self.delveKey
-        if not key then return end
-        expandedByKey[key] = not expandedByKey[key]
-        if Refresh then Refresh() end
-    end
-
-    -- A run is identified by delve name + timestamp, so its note survives
-    -- refresh and re-sorting.
-    local noteEditor = CreateFrame("Frame", "EverythingDelvesRunNoteEditor",
-                                   UIParent, "BackdropTemplate")
-    noteEditor:SetSize(440, 230)
-    noteEditor:SetPoint("CENTER")
-    noteEditor:SetFrameStrata("DIALOG")
-    noteEditor:SetToplevel(true)
-    noteEditor:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    noteEditor:SetBackdropColor(0.04, 0.04, 0.05, 0.98)
-    E:RegisterThemed(function(p)
-        noteEditor:SetBackdropBorderColor(p.border.r, p.border.g,
-                                          p.border.b, p.border.a)
-    end)
-    noteEditor:EnableMouse(true)
-    noteEditor:Hide()
-
-    local neTitle = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    neTitle:SetPoint("TOPLEFT", noteEditor, "TOPLEFT", 14, -12)
-    neTitle:SetFont(neTitle:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-    E:StyleAccentHeader(neTitle, L["Run Note"])
-
-    local neContext = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    neContext:SetPoint("TOPLEFT", neTitle, "BOTTOMLEFT", 0, -4)
-    neContext:SetFont(neContext:GetFont(), 11)
-    neContext:SetJustifyH("LEFT")
-
-    local neBox = CreateFrame("Frame", nil, noteEditor, "BackdropTemplate")
-    neBox:SetPoint("TOPLEFT",  noteEditor, "TOPLEFT",  14, -60)
-    neBox:SetPoint("TOPRIGHT", noteEditor, "TOPRIGHT", -14, -60)
-    neBox:SetHeight(118)
-    neBox:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    neBox:SetBackdropColor(0.10, 0.10, 0.10, 1)
-    neBox:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.80)
-
-    local neEdit = CreateFrame("EditBox", nil, neBox)
-    neEdit:SetMultiLine(true)
-    neEdit:SetAutoFocus(false)
-    neEdit:SetMaxLetters(280)
-    neEdit:SetFontObject(GameFontNormal)
-    do
-        local fp, _, ff = neEdit:GetFont()
-        neEdit:SetFont(fp, 12, ff or "")
-    end
-    neEdit:SetTextColor(0.92, 0.92, 0.92, 1)
-    neEdit:SetPoint("TOPLEFT", neBox, "TOPLEFT", 6, -6)
-    neEdit:SetPoint("BOTTOMRIGHT", neBox, "BOTTOMRIGHT", -6, 6)
-    neEdit:SetScript("OnEscapePressed", function() noteEditor:Hide() end)
-
-    local neCount = noteEditor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    neCount:SetPoint("TOPRIGHT", neBox, "BOTTOMRIGHT", 0, -4)
-    neCount:SetFont(neCount:GetFont(), 9)
-    neEdit:SetScript("OnTextChanged", function(self)
-        neCount:SetText(E.CC.muted .. self:GetNumLetters() .. " / 280" .. E.CC.close)
-    end)
-
-    local function CloseNoteEditor()
-        neEdit:ClearFocus()
-        noteEditor:Hide()
-    end
-
-    local function SaveNoteEditor()
-        if noteEditor.delveKey and noteEditor.timestamp then
-            E:SetRunNote(noteEditor.delveKey, noteEditor.timestamp,
-                         neEdit:GetText())
-        end
-        CloseNoteEditor()
-        if Refresh then Refresh() end
-    end
-
-    local neSave = E:CreateButton(noteEditor, 90, 24, L["Save"])
-    neSave:SetPoint("BOTTOMRIGHT", noteEditor, "BOTTOMRIGHT", -14, 14)
-    neSave:SetScript("OnClick", SaveNoteEditor)
-    neSave:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-    end)
-    neSave:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-    end)
-
-    local neCancel = E:CreateButton(noteEditor, 90, 24, L["Cancel"])
-    neCancel:SetPoint("RIGHT", neSave, "LEFT", -10, 0)
-    neCancel:SetScript("OnClick", CloseNoteEditor)
-    neCancel:SetScript("OnEnter", function(self)
-        local hc = E.Colors.buttonHover
-        self:SetBackdropColor(hc.r, hc.g, hc.b, hc.a)
-    end)
-    neCancel:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-    end)
-
-    local neDelete = E:CreateButton(noteEditor, 90, 24, L["Delete"])
-    neDelete:SetPoint("BOTTOMLEFT", noteEditor, "BOTTOMLEFT", 14, 14)
-    neDelete:SetScript("OnClick", function()
-        if noteEditor.delveKey and noteEditor.timestamp then
-            E:SetRunNote(noteEditor.delveKey, noteEditor.timestamp, "")
-        end
-        CloseNoteEditor()
-        if Refresh then Refresh() end
-    end)
-    neDelete:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(0.45, 0.12, 0.12, 0.90)
-        E:ShowTooltip(self, L["Delete Note"],
-            E.CC.red .. L["Removes this run's note."] .. E.CC.close)
-    end)
-    neDelete:SetScript("OnLeave", function(self)
-        local bc = E.Colors.buttonBg
-        self:SetBackdropColor(bc.r, bc.g, bc.b, bc.a)
-        E:HideTooltip()
-    end)
-
-    function OpenNoteEditor(delveKey, run, niceName)
-        if not (delveKey and run) then return end
-        noteEditor.delveKey  = delveKey
-        noteEditor.timestamp = run.timestamp
-        neContext:SetText(
-            E.CC.gold .. (niceName or delveKey) .. E.CC.close
-            .. E.CC.muted .. "   \226\128\148   T" .. (run.tier or 0)
-            .. "   \226\128\148   " .. FormatDate(run.timestamp) .. E.CC.close
-        )
-        neEdit:SetText(run.note or "")
-        neEdit:SetCursorPosition(#(run.note or ""))
-        if run.note and run.note ~= "" then
-            neDelete:Show()
-        else
-            neDelete:Hide()
-        end
-        noteEditor:Show()
-        neEdit:SetFocus()
-    end
-
-    -- Shared across all note buttons (no per-row closures); read state off self.row.
-    local function NoteBtn_SetState(btn, hasNote)
-        if hasNote then
-            btn.tex:SetDesaturated(false)
-            btn.tex:SetVertexColor(1, 0.82, 0, 1)
-            btn:SetAlpha(1)
-        else
-            btn.tex:SetDesaturated(true)
-            btn.tex:SetVertexColor(1, 1, 1, 1)
-            btn:SetAlpha(0.40)
-        end
-    end
-
-    local function NoteBtn_OnClick(self)
-        local row = self.row
-        if row and row.run then
-            OpenNoteEditor(row.delveKey, row.run, row.niceName)
-        end
-    end
-
-    local function NoteBtn_OnEnter(self)
-        self:SetAlpha(1)
-        local row = self.row
-        local note = row and row.run and row.run.note
-        if note and note ~= "" then
-            E:ShowTooltip(self, L["Run Note"], note)
-        else
-            E:ShowTooltip(self, L["Add a Note"],
-                L["Click to attach a free-form note to this run."])
-        end
-    end
-
-    local function NoteBtn_OnLeave(self)
-        NoteBtn_SetState(self, self.row and self.row.run and self.row.run.note
-                              and self.row.run.note ~= "")
-        E:HideTooltip()
-    end
-
-    -- E:DeleteRun also subtracts the run's contribution from lifetime stats.
-    StaticPopupDialogs["EVERYTHINGDELVES_DELETE_RUN"] = {
-        text = L["Delete this %s run?\n\n%s\n\nIts time, deaths, and key usage are removed from the delve's lifetime stats. This cannot be undone."],
-        button1 = L["Delete"],
-        button2 = L["Cancel"],
-        OnAccept = function(_, data)
-            if data and E:DeleteRun(data.key, data.timestamp) then
-                Refresh()
-            end
-        end,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-        preferredIndex = 3,
-    }
-
-    local function DelBtn_OnClick(self)
-        local row = self.row
-        local run = row and row.run
-        if not (run and run.timestamp) then return end
-        local desc = "T" .. (run.tier or 0) .. "  -  "
-            .. FormatDateTime(run.timestamp)
-        StaticPopup_Show("EVERYTHINGDELVES_DELETE_RUN",
-            row.niceName or row.delveKey, desc,
-            { key = row.delveKey, timestamp = run.timestamp })
-    end
-
-    local function DelBtn_OnEnter(self)
-        self:SetAlpha(1)
-        E:ShowTooltip(self, L["Delete Run"],
-            L["Permanently remove this run and its\ncontribution to lifetime stats."])
-    end
-
-    local function DelBtn_OnLeave(self)
-        self:SetAlpha(0.40)
-        E:HideTooltip()
-    end
-
-    -- The lone "B" glyph is ambiguous (Bountiful? Boss? Bonus?); give it a legend.
-    local function BountBadge_OnEnter(self)
-        local row = self.row
-        if row and row.run and row.run.wasBountiful then
-            E:ShowTooltip(self, E.CC.gold .. "B" .. E.CC.close .. " = " .. L["Bountiful"],
-                L["This run was in a Bountiful Delve."])
-        end
-    end
-
-    local function BountBadge_OnLeave()
-        E:HideTooltip()
-    end
-
-    local function AcquireNoteLine(i)
-        local fs = noteLinePool[i]
-        if not fs then
-            fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetFont(fs:GetFont(), 10)
-            fs:SetJustifyH("LEFT")
-            fs:SetSpacing(2)
-            noteLinePool[i] = fs
-        end
-        fs:ClearAllPoints()
-        return fs
-    end
-
-    local function CreateHeaderRow()
-        local row = CreateFrame("Button", nil, sc)
-        row:SetHeight(HEADER_ROW_HEIGHT)
-        row:SetPoint("LEFT",  sc, "LEFT",  8,  0)
-        row:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-
-        local arrowFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        arrowFS:SetPoint("LEFT", row, "LEFT", 2, 0)
-        arrowFS:SetFont(arrowFS:GetFont(), 11, "OUTLINE")
-        row.arrowFS = arrowFS
-
-        local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameFS:SetPoint("LEFT", arrowFS, "RIGHT", 6, 0)
-        nameFS:SetFont(nameFS:GetFont(), 11, "OUTLINE")
-        nameFS:SetJustifyH("LEFT")
-        nameFS:SetWidth(170)
-        row.nameFS = nameFS
-
-        local function statCol(x, w)
-            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("LEFT", row, "LEFT", x, 0)
-            fs:SetFont(fs:GetFont(), 10)
-            fs:SetWidth(w)
-            fs:SetJustifyH("LEFT")
-            fs:SetWordWrap(false)
-            return fs
-        end
-        row.runsFS   = statCol(186, 56)
-        row.btierFS  = statCol(244, 86)
-        row.avgFS    = statCol(332, 92)
-        row.fastFS   = statCol(426, 104)
-
-        local hdeathsFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        hdeathsFS:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-        hdeathsFS:SetFont(hdeathsFS:GetFont(), 10)
-        hdeathsFS:SetWidth(104)
-        hdeathsFS:SetJustifyH("LEFT")
-        hdeathsFS:SetWordWrap(false)
-        row.hdeathsFS = hdeathsFS
-
-        -- Blank when no keys were ever used, so non-key delves stay uncluttered.
-        local keysFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        keysFS:SetPoint("RIGHT", hdeathsFS, "LEFT", -10, 0)
-        keysFS:SetFont(keysFS:GetFont(), 10)
-        keysFS:SetWidth(92)
-        keysFS:SetJustifyH("LEFT")
-        keysFS:SetWordWrap(false)
-        row.keysFS = keysFS
-
-        local latestFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        latestFS:SetPoint("LEFT",  row, "LEFT", 534, 0)
-        latestFS:SetPoint("RIGHT", keysFS, "LEFT", -8, 0)
-        latestFS:SetFont(latestFS:GetFont(), 10)
-        latestFS:SetJustifyH("LEFT")
-        latestFS:SetWordWrap(false)
-        row.latestFS = latestFS
-
-        row:SetScript("OnClick", HeaderRow_OnClick)
-        return row
-    end
-
-    local function SetHeaderStats(row, life, latest)
-        local timed = life.timedRuns or life.totalRuns or 0
-        local avg = timed > 0 and math_floor((life.totalDuration or 0) / timed) or 0
-        row.runsFS:SetText(
-            E.CC.muted .. L["Runs:"] .. " " .. E.CC.close
-            .. E.CC.body .. (life.totalRuns or 0) .. E.CC.close)
-        row.btierFS:SetText(
-            E.CC.muted .. L["Best Tier:"] .. " " .. E.CC.close
-            .. E.CC.body .. "T" .. (life.highestTier or 0) .. E.CC.close)
-        row.avgFS:SetText(
-            E.CC.muted .. L["Avg:"] .. " " .. E.CC.close
-            .. E.CC.body .. FormatDuration(avg) .. E.CC.close)
-        row.fastFS:SetText(
-            E.CC.muted .. L["Fastest:"] .. " " .. E.CC.close
-            .. E.CC.body .. FormatDuration(life.fastestTime) .. E.CC.close)
-        if latest then
-            row.latestFS:SetText(
-                E.CC.muted .. L["Latest: %s on %s"]:format(
-                    E.CC.body .. FormatDuration(latest.duration) .. E.CC.close .. E.CC.muted,
-                    FormatDateTime(latest.timestamp))
-                .. E.CC.close)
-        else
-            row.latestFS:SetText("")
-        end
-        local keysUsed = life.totalKeysUsed or 0
-        row.keysFS:SetText(keysUsed > 0
-            and (E.CC.muted .. L["Keys used:"] .. " " .. E.CC.close
-                 .. E.CC.gold .. string_format("%d", keysUsed) .. E.CC.close)
-            or "")
-        row.hdeathsFS:SetText(
-            E.CC.muted .. L["Total Deaths:"] .. " " .. E.CC.close
-            .. E.CC.body .. string_format("%d", life.totalDeaths or 0) .. E.CC.close)
-    end
-
-    local function CreateRunRow()
-        local row = CreateFrame("Frame", nil, sc)
-        row:SetHeight(RUN_ROW_HEIGHT)
-        row:SetPoint("LEFT",  sc, "LEFT",  32, 0)
-        row:SetPoint("RIGHT", sc, "RIGHT", -8, 0)
-
-        local noteBtn = CreateFrame("Button", nil, row)
-        noteBtn:SetSize(15, 15)
-        noteBtn:SetPoint("RIGHT", row, "RIGHT", -2, 0)
-        local tex = noteBtn:CreateTexture(nil, "ARTWORK")
-        tex:SetAllPoints()
-        tex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
-        noteBtn.tex = tex
-        noteBtn.row = row
-        noteBtn:SetScript("OnClick", NoteBtn_OnClick)
-        noteBtn:SetScript("OnEnter", NoteBtn_OnEnter)
-        noteBtn:SetScript("OnLeave", NoteBtn_OnLeave)
-        row.noteBtn = noteBtn
-
-        local delBtn = CreateFrame("Button", nil, row)
-        delBtn:SetSize(15, 15)
-        delBtn:SetPoint("RIGHT", noteBtn, "LEFT", -4, 0)
-        local dtex = delBtn:CreateTexture(nil, "ARTWORK")
-        dtex:SetAllPoints()
-        dtex:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
-        delBtn.tex = dtex
-        delBtn.row = row
-        delBtn:SetAlpha(0.40)
-        delBtn:SetScript("OnClick", DelBtn_OnClick)
-        delBtn:SetScript("OnEnter", DelBtn_OnEnter)
-        delBtn:SetScript("OnLeave", DelBtn_OnLeave)
-        row.delBtn = delBtn
-
-        -- Fixed-position columns so rows align into a grid despite the proportional font.
-        local function col(x, w, justify)
-            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("LEFT", row, "LEFT", x, 0)
-            fs:SetFont(fs:GetFont(), 10)
-            fs:SetWidth(w)
-            fs:SetJustifyH(justify or "LEFT")
-            fs:SetWordWrap(false)
-            return fs
-        end
-        row.bountFS  = col(0,   12)
-        local bountHover = CreateFrame("Frame", nil, row)
-        bountHover:SetPoint("LEFT", row, "LEFT", 0, 0)
-        bountHover:SetSize(14, RUN_ROW_HEIGHT)
-        bountHover:EnableMouse(true)
-        bountHover.row = row
-        bountHover:SetScript("OnEnter", BountBadge_OnEnter)
-        bountHover:SetScript("OnLeave", BountBadge_OnLeave)
-        row.bountHover = bountHover
-        row.tierFS   = col(14,  32)
-        row.durFS    = col(48,  66)
-        row.deathsFS = col(116, 74)
-        row.keyFS    = col(192, 30)
-        row.storyFS  = col(224, 150)
-        row.bossFS   = col(378, 158)
-        row.dateFS   = col(540, 170)
-        return row
-    end
-
-    local function AcquireHeaderRow(i)
-        local row = headerRowPool[i]
-        if not row then
-            row = CreateHeaderRow()
-            headerRowPool[i] = row
-        end
-        row:ClearAllPoints()
-        return row
-    end
-
-    local function AcquireRunRow(i)
-        local row = runRowPool[i]
-        if not row then
-            row = CreateRunRow()
-            runRowPool[i] = row
-        end
-        row:ClearAllPoints()
-        return row
-    end
-
-    -- Reused every refresh, wiped instead of reallocated.
-    local nemesisKeys  = {}
-    local midnightKeys = {}
-
-    local function CollectKeys(history)
-        for i = #nemesisKeys,  1, -1 do nemesisKeys[i]  = nil end
-        for i = #midnightKeys, 1, -1 do midnightKeys[i] = nil end
-        if not history then return end
+-- The headings are the old "Runs:" phrases, drawn without their colon (a full-width one in Chinese)
+local function NoColon(s)
+    return (s:gsub("%s*:%s*$", ""):gsub("%s*\239\188\154%s*$", ""))
+end
+
+local function Stats(life)
+    local timed = life.timedRuns or life.totalRuns or 0
+    local avg = timed > 0 and math_floor((life.totalDuration or 0) / timed) or 0
+    return { runs = tostring(life.totalRuns or 0), best = "T" .. (life.highestTier or 0), avg = FormatDuration(avg),
+             fastest = FormatDuration(life.fastestTime), deaths = string_format("%d", life.totalDeaths or 0) }
+end
+
+local function Collect(v)
+    local history = E.db and E.db.delveHistory or nil
+    v.history = history
+    v.nemesisKeys, v.midnightKeys = {}, {}
+    local runs, deaths, dur = 0, 0, 0
+    if history then
         local nameMap = E.LoggableDelveNames
         for name, entry in pairs(history) do
-            if entry and entry.lifetime and (entry.lifetime.totalRuns or 0) > 0 then
-                local kind = nameMap and nameMap[name]
-                if kind == "nemesis" then
-                    table_insert(nemesisKeys, name)
-                elseif kind == "regular" then
-                    table_insert(midnightKeys, name)
-                end
-            end
-        end
-        table_sort(nemesisKeys)
-        table_sort(midnightKeys)
-    end
-
-    local LEFT_X = 8
-    local INDENT = 0
-
-    function Refresh()
-        local history = E.db and E.db.delveHistory or nil
-        CollectKeys(history)
-
-        local totalRuns, totalDeaths, totalDur = 0, 0, 0
-        if history then
-            for _, entry in pairs(history) do
-                local l = entry and entry.lifetime
-                if l then
-                    totalRuns   = totalRuns   + (l.totalRuns     or 0)
-                    totalDeaths = totalDeaths + (l.totalDeaths   or 0)
-                    totalDur    = totalDur    + (l.totalDuration or 0)
-                end
-            end
-        end
-        summaryFS:SetFormattedText(
-            L["%sTotal Runs:%s %s%d%s   %s||%s   %sTotal Deaths:%s %s%d%s   %s||%s   %sTotal Time:%s %s%s%s"],
-            E.CC.muted, E.CC.close, E.CC.gold, totalRuns, E.CC.close,
-            E.CC.muted, E.CC.close,
-            E.CC.muted, E.CC.close, E.CC.gold, totalDeaths, E.CC.close,
-            E.CC.muted, E.CC.close,
-            E.CC.muted, E.CC.close, E.CC.gold, FormatDuration(totalDur), E.CC.close
-        )
-
-        -- Hide all pool rows up front; we re-anchor the used ones fresh.
-        for _, r in ipairs(headerRowPool) do r:Hide() end
-        for _, r in ipairs(runRowPool)    do r:Hide() end
-        for _, r in ipairs(noteLinePool)  do r:Hide() end
-
-        nemesisEmptyFS:Hide()
-        midnightEmptyFS:Hide()
-
-        local hUsed, rUsed, nUsed = 0, 0, 0
-        -- Every widget anchors directly to sc TOPLEFT at a fixed X with -yCur as
-        -- its Y; no chained sibling anchors, so rows can't X-drift.
-        local yCur = 4
-        local X_PARENT = 0
-        local X_CHILD  = 16
-
-        local function PlaceAt(widget, x, h)
-            widget:ClearAllPoints()
-            widget:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
-            widget:Show()
-            yCur = yCur + h
-        end
-
-        local function PlaceRow(row, x, h)
-            row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", sc, "TOPLEFT", x, -yCur)
-            row:SetPoint("RIGHT",   sc, "RIGHT",  -8, 0)
-            row:Show()
-            yCur = yCur + h
-        end
-
-        local function EmitRun(run, key, niceName)
-            rUsed = rUsed + 1
-            local rrow = AcquireRunRow(rUsed)
-            rrow:SetParent(sc)
-            rrow.run      = run
-            rrow.delveKey = key
-            rrow.niceName = niceName
-
-            local hasNote = run.note and run.note ~= ""
-            if rrow.noteBtn then
-                NoteBtn_SetState(rrow.noteBtn, hasNote)
-            end
-
-            rrow.bountFS:SetText(run.wasBountiful
-                and (E.CC.gold .. "B" .. E.CC.close) or "")
-            rrow.tierFS:SetText(E:GetTierCC(run.tier or 0)
-                .. "T" .. (run.tier or 0) .. E.CC.close)
-            rrow.durFS:SetText(E.CC.body .. FormatDuration(run.duration) .. E.CC.close)
-            rrow.deathsFS:SetText(
-                E.CC.muted .. L["Deaths:"] .. " " .. E.CC.close
-                .. E.CC.body .. string_format("%d", run.deaths or 0) .. E.CC.close)
-            rrow.keyFS:SetText(run.keyUsed
-                and (E.CC.gold .. L["Key"] .. E.CC.close) or "")
-
-            local storyTxt = ResolveRunStory(run, key)
-            rrow.storyFS:SetText(storyTxt
-                and (E.CC.body .. storyTxt .. E.CC.close)
-                or  (E.CC.muted .. "--" .. E.CC.close))
-
-            -- Map legacy live encounter names (e.g. "Spinshroom" -> "Gyrospore").
-            local bossName = run.boss and E:NormalizeLiveBoss(key, run.boss)
-            rrow.bossFS:SetText(bossName
-                and (E.CC.body .. bossName .. E.CC.close) or "")
-
-            rrow.dateFS:SetText(E.CC.muted .. FormatDateTime(run.timestamp) .. E.CC.close)
-
-            PlaceRow(rrow, X_CHILD, RUN_ROW_HEIGHT + 1)
-
-            if hasNote then
-                nUsed = nUsed + 1
-                local nl = AcquireNoteLine(nUsed)
-                nl:SetParent(sc)
-                local w = math_max(120, (sc:GetWidth() or 420) - 48)
-                nl:SetWidth(w)
-                nl:SetText(E.CC.muted .. "\226\128\156" .. run.note
-                    .. "\226\128\157" .. E.CC.close)
-                local h = (nl:GetStringHeight() or 12) + 6
-                PlaceAt(nl, X_CHILD + 8, h)
-            end
-        end
-
-        -- Section: Seasonal Nemesis
-        PlaceAt(nemesisHeader, X_PARENT, 20)
-
-        if #nemesisKeys == 0 then
-            PlaceAt(nemesisEmptyFS, X_PARENT, 16)
-        else
-            for _, key in ipairs(nemesisKeys) do
-                hUsed = hUsed + 1
-                local row = AcquireHeaderRow(hUsed)
-                row:SetParent(sc)
-                row.delveKey = key
-
-                local entry   = history[key]
-                local life    = entry.lifetime
-                local expanded = expandedByKey[key] and true or false
-                local arrow    = expanded and "|cFFFFD700v|r" or "|cFFFFD700>|r"
-                row.arrowFS:SetText(arrow)
-
-                local nem = E.NemesisDelve
-                local bossName = (E.NemesisBossByDelve and E.NemesisBossByDelve[key])
-                    or (nem and nem.boss)
-                local niceName = key
-                if bossName then
-                    niceName = key .. " (" .. bossName .. ")"
-                end
-                row.nameFS:SetText(E.CC.gold .. niceName .. E.CC.close)
-
-                SetHeaderStats(row, life, entry.recentRuns and entry.recentRuns[1])
-
-                PlaceRow(row, X_PARENT, HEADER_ROW_HEIGHT + 2)
-
-                if expanded then
-                    local recent = entry.recentRuns
-                    if recent then
-                        for _, run in ipairs(recent) do
-                            EmitRun(run, key, niceName)
-                        end
+            local life = entry and entry.lifetime
+            if life then
+                runs = runs + (life.totalRuns or 0)
+                deaths = deaths + (life.totalDeaths or 0)
+                dur = dur + (life.totalDuration or 0)
+                if (life.totalRuns or 0) > 0 then
+                    local kind = nameMap and nameMap[name]
+                    if kind == "nemesis" then
+                        table_insert(v.nemesisKeys, name)
+                    elseif kind == "regular" then
+                        table_insert(v.midnightKeys, name)
                     end
                 end
             end
         end
+    end
+    table_sort(v.nemesisKeys)
+    table_sort(v.midnightKeys)
+    -- Its colors arrive as arguments, so empty ones leave the plain text
+    v.summary = L["%sTotal Runs:%s %s%d%s   %s||%s   %sTotal Deaths:%s %s%d%s   %s||%s   %sTotal Time:%s %s%s%s"]
+        :format("", "", "", runs, "", "", "", "", "", "", deaths, "", "", "", "", "", "", FormatDuration(dur), "")
+end
 
-        -- Section: Midnight Delves
-        yCur = yCur + 32
+local function NiceName(key, nemesis)
+    if not nemesis then return key end
+    local nem = E.NemesisDelve
+    local boss = (E.NemesisBossByDelve and E.NemesisBossByDelve[key]) or (nem and nem.boss)
+    return boss and (key .. " (" .. boss .. ")") or key
+end
 
-        nemesisDivider:ClearAllPoints()
-        nemesisDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   8, -yCur)
-        nemesisDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -8, -yCur)
-        nemesisDivider:SetHeight(1)
-        nemesisDivider:Show()
-        yCur = yCur + 32
+local function MouseIcon(ui, parent, title, body)
+    local f = CreateFrame("Frame", nil, parent)
+    f:SetSize(ICON, ICON)
+    f.tex = f:CreateTexture(nil, "ARTWORK")
+    f.tex:SetAllPoints()
+    f:EnableMouse(true)
+    f:SetScript("OnEnter", function(self) ui:ShowTooltip(self, title, body) end)
+    f:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return f
+end
 
-        PlaceAt(midnightHeader, X_PARENT, 24)
+local function BuildIntro(ui, content, v)
+    local b = ui:CreateTextBlock(content)
+    v.summaryLine = b:AddLine("", "label")
+    b:AddLine(L["Note: Closing the WoW client during a delve will reset that run's timer. /reload is fine."], "hint",
+        { gap = HINT_GAP })
+    v.intro = b
+end
 
-        midnightDivider:ClearAllPoints()
-        midnightDivider:SetPoint("TOPLEFT",  sc, "TOPLEFT",   8, -yCur + 4)
-        midnightDivider:SetPoint("TOPRIGHT", sc, "TOPRIGHT", -8, -yCur + 4)
-        midnightDivider:SetHeight(1)
-        midnightDivider:Show()
-        yCur = yCur + 8
+local function NewSection(ui, content, label, emptyText, nemesis)
+    local card = ui:CreateGroup(content, label)
+    local t = CreateFrame("Frame", nil, content)
+    t.nemesis = nemesis
+    t.head = CreateFrame("Frame", nil, t)
+    t.head:SetHeight(HEAD)
+    t.head.name = ui:CreateText(t.head, L["Delve Name"], "groupLabel")
+    t.head.name:SetPoint("LEFT", t.head, "LEFT", NAME_X, 0)
+    t.head.cells = {}
+    for _, s in ipairs(STATS) do
+        local fs = ui:CreateText(t.head, NoColon(s.label), "groupLabel")
+        fs:SetWordWrap(false)
+        fs:SetJustifyH("RIGHT")
+        t.head.cells[s.key] = fs
+    end
+    t.empty = ui:CreateText(t, emptyText, "label")
+    t.empty:SetTextColor(ui:Color("muted"))
+    t.empty:SetWordWrap(false)
+    t.rows, t.runs, t.notes = {}, {}, {}
+    card:Add(t, { height = EMPTY_ROW, fill = true })
+    t.card = card
+    return t
+end
 
-        if #midnightKeys == 0 then
-            PlaceAt(midnightEmptyFS, X_PARENT, 16)
+local function NewDelveRow(ui, t, v)
+    local r = CreateFrame("Button", nil, t)
+    r:SetHeight(DELVE_ROW)
+    r:RegisterForClicks("LeftButtonUp")
+    local hl = r:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(ui:Color("hover"))
+    ui:Paint(r, nil, "divider", "T")
+    r.chevron = r:CreateTexture(nil, "ARTWORK")
+    r.chevron:SetSize(CHEVRON, CHEVRON)
+    r.chevron:SetPoint("LEFT", r, "LEFT", INSET, 0)
+    r.chevron:SetVertexColor(ui:Color("muted"))
+    r.name = ui:CreateText(r, "", "value")
+    r.name:SetWordWrap(false)
+    r.cells = {}
+    for _, s in ipairs(STATS) do
+        local fs = ui:CreateText(r, "", "label")
+        fs:SetWordWrap(false)
+        fs:SetJustifyH("RIGHT")
+        r.cells[s.key] = fs
+    end
+    r:SetScript("OnClick", function(self)
+        v.open[self.key] = not v.open[self.key]
+        v.relayout()
+    end)
+    r:SetScript("OnEnter", function(self) ui:ShowTooltip(self, self.nice, self.tip) end)
+    r:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return r
+end
+
+local function NewRunRow(ui, t, v)
+    local r = CreateFrame("Frame", nil, t)
+    r:SetHeight(RUN_ROW)
+    ui:Paint(r, "input", "divider", "T")
+
+    r.bount = MouseIcon(ui, r, L["Bountiful"], L["This run was in a Bountiful Delve."])
+    if r.bount.tex.SetAtlas then r.bount.tex:SetAtlas(BOUNTIFUL_ATLAS) end
+    r.bount:SetPoint("LEFT", r, "LEFT", NAME_X, 0)
+    local x = NAME_X + ICON + RUN_GAP
+    local function cell(w)
+        local fs = ui:CreateText(r, "", "label")
+        fs:SetWordWrap(false)
+        fs:SetPoint("LEFT", r, "LEFT", x, 0)
+        fs:SetWidth(w)
+        x = x + w + RUN_GAP
+        return fs
+    end
+    r.tier = cell(TIER_W)
+    r.time = cell(TIME_W)
+    r.deaths = cell(DEATHS_W)
+    r.key = MouseIcon(ui, r, L["Key"], nil)
+    r.key.tex:SetTexture(ED_TEXTURES .. "icon-key")
+    r.key.tex:SetVertexColor(ui:Color("label"))
+    r.key:SetPoint("LEFT", r, "LEFT", x, 0)
+    x = x + ICON + RUN_GAP
+
+    r.del = ui:CreateIconButton(r, "close", BUTTON)
+    r.del:SetPoint("RIGHT", r, "RIGHT", -INSET, 0)
+    r.note = E.DelveList.IconButton(r, ED_TEXTURES .. "icon-note")
+    r.note:SetPoint("RIGHT", r.del, "LEFT", -RUN_GAP, 0)
+    r.date = ui:CreateText(r, "", "label")
+    r.date:SetTextColor(ui:Color("muted"))
+    r.date:SetWordWrap(false)
+    r.date:SetWidth(DATE_W)
+    r.date:SetPoint("RIGHT", r.note, "LEFT", -RUN_GAP, 0)
+    r.boss = ui:CreateText(r, "", "label")
+    r.boss:SetWordWrap(false)
+    r.boss:SetWidth(BOSS_W)
+    r.boss:SetPoint("RIGHT", r.date, "LEFT", -RUN_GAP, 0)
+    r.story = ui:CreateText(r, "", "label")
+    r.story:SetWordWrap(false)
+    r.story:SetPoint("LEFT", r, "LEFT", x, 0)
+    r.story:SetPoint("RIGHT", r.boss, "LEFT", -RUN_GAP, 0)
+
+    r.note:SetScript("OnClick", function(self)
+        local row = self:GetParent()
+        if row.run then v.openNote(row.delveKey, row.run, row.nice) end
+    end)
+    r.note:SetScript("OnEnter", function(self)
+        local note = self:GetParent().run and self:GetParent().run.note
+        if note and note ~= "" then
+            ui:ShowTooltip(self, L["Run Note"], note)
         else
-            for _, key in ipairs(midnightKeys) do
-                hUsed = hUsed + 1
-                local row = AcquireHeaderRow(hUsed)
-                row:SetParent(sc)
-                row.delveKey = key
+            ui:ShowTooltip(self, L["Add a Note"], L["Click to attach a free-form note to this run."])
+        end
+    end)
+    r.note:SetScript("OnLeave", function() ui:HideTooltip() end)
+    r.del:SetScript("OnClick", function(self) v.deleteRun(self:GetParent()) end)
+    r.del:SetScript("OnEnter", function(self)
+        ui:ShowTooltip(self, L["Delete Run"], L["Permanently remove this run and its\ncontribution to lifetime stats."])
+    end)
+    r.del:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return r
+end
 
-                local entry   = history[key]
-                local life    = entry.lifetime
-                local expanded = expandedByKey[key] and true or false
-                local arrow    = expanded and "|cFFFF4444v|r" or "|cFFFF4444>|r"
-                row.arrowFS:SetText(arrow)
-                row.nameFS:SetText(E.CC.white .. key .. E.CC.close)
+-- A note can be typed in any alphabet, so it is drawn in the client's own font
+local function NewNoteLine(ui, t)
+    local f = CreateFrame("Frame", nil, t)
+    ui:Paint(f, "input")
+    f.text = f:CreateFontString(nil, "OVERLAY")
+    f.text:SetFontObject(GameFontHighlight)
+    f.text:SetTextColor(ui:Color("muted"))
+    f.text:SetJustifyH("LEFT")
+    f.text:SetWordWrap(true)
+    f.text:SetPoint("TOPLEFT", f, "TOPLEFT", NOTE_X, 0)
+    return f
+end
 
-                SetHeaderStats(row, life, entry.recentRuns and entry.recentRuns[1])
+local function Acquire(pool, i, make)
+    local item = pool[i]
+    if not item then
+        item = make()
+        pool[i] = item
+    end
+    item:ClearAllPoints()
+    item:Show()
+    return item
+end
 
-                PlaceRow(row, X_PARENT, HEADER_ROW_HEIGHT + 2)
+-- Spans the whole card, past the card's own inset, so each row's tint and divider reach both edges
+local function Place(item, t, y)
+    item:SetPoint("TOPLEFT", t, "TOPLEFT", -INSET, -y)
+    item:SetPoint("TOPRIGHT", t, "TOPRIGHT", INSET, -y)
+end
 
-                if expanded then
-                    local recent = entry.recentRuns
-                    if recent then
-                        for _, run in ipairs(recent) do
-                            EmitRun(run, key, key)
-                        end
+local function PlaceStats(row, cells, widths)
+    local right = INSET
+    for i, s in ipairs(STATS) do
+        local fs = cells[s.key]
+        fs:ClearAllPoints()
+        fs:SetPoint("RIGHT", row, "RIGHT", -right, 0)
+        fs:SetWidth(widths[i])
+        right = right + widths[i] + GAP
+    end
+    return right
+end
+
+local function FillRun(ui, r, run, key)
+    r.run, r.delveKey = run, key
+    r.bount:SetShown(run.wasBountiful and true or false)
+    r.tier:SetText("T" .. (run.tier or 0))
+    r.time:SetText(FormatDuration(run.duration))
+    r.deaths:SetText(E.DelveList.cc("muted") .. L["Deaths:"] .. "|r " .. string_format("%d", run.deaths or 0))
+    r.key:SetShown(run.keyUsed and true or false)
+    local story = ResolveRunStory(run, key)
+    r.story:SetText(story or "--")
+    r.story:SetTextColor(ui:Color(story and "label" or "muted"))
+    -- Map legacy live encounter names (e.g. "Spinshroom" -> "Gyrospore").
+    local boss = run.boss and E:NormalizeLiveBoss(key, run.boss)
+    r.boss:SetText(boss or "")
+    r.date:SetText(FormatStamp(run.timestamp))
+    local hasNote = run.note ~= nil and run.note ~= ""
+    r.note:GetNormalTexture():SetVertexColor(ui:Color(hasNote and "text" or "navText"))
+end
+
+local function LayoutSection(ui, v, t, keys, widths, cardW)
+    for _, pool in ipairs({ t.rows, t.runs, t.notes }) do
+        for _, item in ipairs(pool) do item:Hide() end
+    end
+    t.head:SetShown(#keys > 0)
+    t.empty:SetShown(#keys == 0)
+    local y
+    if #keys == 0 then
+        t.empty:ClearAllPoints()
+        t.empty:SetPoint("LEFT", t, "TOPLEFT", 0, -EMPTY_ROW / 2)
+        y = EMPTY_ROW
+    else
+        t.head:ClearAllPoints()
+        Place(t.head, t, 0)
+        local used = PlaceStats(t.head, t.head.cells, widths)
+        y = HEAD
+        local nRows, nRuns, nNotes = 0, 0, 0
+        for _, key in ipairs(keys) do
+            local entry = v.history[key]
+            local life = entry.lifetime
+            nRows = nRows + 1
+            local r = Acquire(t.rows, nRows, function() return NewDelveRow(ui, t, v) end)
+            Place(r, t, y)
+            r.key, r.nice = key, NiceName(key, t.nemesis)
+            local open = v.open[key] == true
+            r.chevron:SetTexture(ui:Texture(open and "chevron-down" or "chevron-right"))
+            r.name:SetText(r.nice)
+            r.name:ClearAllPoints()
+            r.name:SetPoint("LEFT", r, "LEFT", NAME_X, 0)
+            r.name:SetPoint("RIGHT", r, "RIGHT", -used, 0)
+            local stats = Stats(life)
+            PlaceStats(r, r.cells, widths)
+            for _, s in ipairs(STATS) do r.cells[s.key]:SetText(stats[s.key]) end
+            local latest = entry.recentRuns and entry.recentRuns[1]
+            local tip = latest and L["Latest: %s on %s"]:format(FormatDuration(latest.duration), FormatDay(latest.timestamp)) or ""
+            if (life.totalKeysUsed or 0) > 0 then
+                tip = tip .. (tip ~= "" and "\n" or "") .. L["Keys used:"] .. " " .. string_format("%d", life.totalKeysUsed)
+            end
+            r.tip = tip
+            y = y + DELVE_ROW
+            if open then
+                for _, run in ipairs(entry.recentRuns or {}) do
+                    nRuns = nRuns + 1
+                    local rr = Acquire(t.runs, nRuns, function() return NewRunRow(ui, t, v) end)
+                    Place(rr, t, y)
+                    rr.nice = r.nice
+                    FillRun(ui, rr, run, key)
+                    y = y + RUN_ROW
+                    if run.note and run.note ~= "" then
+                        nNotes = nNotes + 1
+                        local nl = Acquire(t.notes, nNotes, function() return NewNoteLine(ui, t) end)
+                        Place(nl, t, y)
+                        local h = E.DelveList.WrapHeight(nl.text, QUOTE_OPEN .. run.note .. QUOTE_CLOSE,
+                            math_max(40, cardW - NOTE_X - INSET), NOTE_SIZE) + NOTE_PAD
+                        nl:SetHeight(h)
+                        y = y + h
                     end
                 end
             end
         end
+    end
+    t:SetHeight(y)
+    t._euiRow:SetHeight(y)
+end
 
-        sc:SetHeight(yCur + 20)
-        UpdateScrollRange()
+local function BuildEditor(ui, v)
+    local f = ui:CreateWindow({ name = "EverythingDelvesRunNote", title = L["Run Note"], width = EDITOR_W, height = EDITOR_H })
+    f.context = ui:CreateText(f.body, "", "hint")
+    f.context:SetPoint("TOPLEFT", f.body, "TOPLEFT", EDITOR_PAD, -16)
+    f.field = ui:CreateMultilineField(f.body)
+    f.field:SetPoint("TOPLEFT", f.body, "TOPLEFT", EDITOR_PAD, -40)
+    f.field:SetPoint("TOPRIGHT", f.body, "TOPRIGHT", -EDITOR_PAD, -40)
+    f.field:SetHeight(FIELD_H)
+    f.field.box:SetMaxLetters(NOTE_MAX)
+    f.count = ui:CreateText(f.body, "", "hint")
+    f.count:SetPoint("TOPRIGHT", f.field, "BOTTOMRIGHT", 0, -6)
+    f.field.box:HookScript("OnTextChanged", function(box) f.count:SetText(box:GetNumLetters() .. " / " .. NOTE_MAX) end)
+    -- The box holds the keyboard, so Escape there would only let go of it. It cancels the note instead
+    f.field.box:HookScript("OnEscapePressed", function() f:Hide() end)
+
+    local footer = CreateFrame("Frame", nil, f.body)
+    footer:SetPoint("BOTTOMLEFT")
+    footer:SetPoint("BOTTOMRIGHT")
+    footer:SetHeight(FOOTER_H)
+    footer._controls = {}
+    ui:Paint(footer, "chrome", "divider", "T")
+
+    local function save(text)
+        if f.delveKey and f.timestamp then E:SetRunNote(f.delveKey, f.timestamp, text) end
+        f:Hide()
+        v.relayout()
+    end
+    f.delete = ui:CreateButton(footer, L["Delete Note"], nil, function() save("") end, L["Removes this run's note."], "danger")
+    f.delete:SetPoint("LEFT", footer, "LEFT", EDITOR_PAD, 0)
+    f.save = ui:CreateButton(footer, L["Save"], nil, function() save(f.field:GetText()) end, nil, "primary")
+    f.save:SetPoint("RIGHT", footer, "RIGHT", -EDITOR_PAD, 0)
+    f.cancel = ui:CreateButton(footer, L["Cancel"], nil, function() f:Hide() end)
+    f.cancel:SetPoint("RIGHT", f.save, "LEFT", -ui:Spacing("buttonGap"), 0)
+    v.editor = f
+    return f
+end
+
+local function OpenNoteEditor(ui, v, delveKey, run, nice)
+    if not (delveKey and run) then return end
+    local f = v.editor or BuildEditor(ui, v)
+    f.delveKey, f.timestamp = delveKey, run.timestamp
+    f:SetSection(nice or delveKey)
+    f.context:SetText("T" .. (run.tier or 0) .. "  " .. BULLET .. "  " .. FormatStamp(run.timestamp))
+    f.delete:SetShown(run.note ~= nil and run.note ~= "")
+    f:Show()
+    f:Raise()
+    for _, b in ipairs({ f.delete, f.save, f.cancel }) do b:Fit() end
+    f.field:SetText(run.note or "")
+    f.field.box:SetCursorPosition(#(run.note or ""))
+    f.field.box:SetFocus()
+end
+
+local function CloseOrphanEditor(v)
+    local f = v.editor
+    if not (f and f:IsShown()) then return end
+    local entry = E.db and E.db.delveHistory and E.db.delveHistory[f.delveKey]
+    for _, run in ipairs(entry and entry.recentRuns or {}) do
+        if run.timestamp == f.timestamp then return end
+    end
+    f:Hide()
+end
+
+local function ConfirmDeleteRun(v, row)
+    local run = row and row.run
+    if not (run and run.timestamp) then return end
+    local key, timestamp = row.delveKey, run.timestamp
+    E:ShowDialog({
+        text = L["Delete this %s run?\n\n%s\n\nIts time, deaths, and key usage are removed from the delve's lifetime stats. This cannot be undone."]
+            :format(row.nice or key, "T" .. (run.tier or 0) .. "  -  " .. FormatStamp(timestamp)),
+        button1 = L["Delete"], button2 = L["Cancel"], danger = true,
+        onAccept = function()
+            if E:DeleteRun(key, timestamp) then
+                CloseOrphanEditor(v)
+                v.relayout()
+            end
+        end,
+    })
+end
+
+E:RegisterModule(function()
+    local ui = E.ui
+    local frame = CreateFrame("Frame", "EverythingDelvesTabHistoryContent")
+    local area = ui:CreateScrollArea(frame, { clearGrip = true })
+    area:SetAllPoints(frame)
+    local content = area.content
+
+    local v = { open = {} }
+    BuildIntro(ui, content, v)
+    local nemesis = NewSection(ui, content, L["Seasonal Nemesis"], L["No nemesis delve runs recorded yet."], true)
+    local midnight = NewSection(ui, content, L["Midnight Delves"],
+        L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"], false)
+    local cards = { nemesis.card, midnight.card }
+
+    local lastWidth = 0
+    local function ViewWidth()
+        local w = area.scroll:GetWidth() or 0
+        if w <= 0 then w = (frame:GetWidth() or 0) - 10 end
+        return math_max(1, w)
     end
 
-    -- Called by the delve logger when a run is recorded, or when history is cleared.
-    function E:RefreshDelveHistoryTab()
-        if frame:IsVisible() then
-            Refresh()
+    local function Render()
+        Collect(v)
+        local view = ViewWidth()
+        lastWidth = view
+        v.summaryLine:SetText(v.summary)
+
+        local widths, used = {}, 0
+        for i, s in ipairs(STATS) do
+            local fs = nemesis.head.cells[s.key]
+            fs:SetWidth(0)
+            widths[i] = math_max(s.width, math_ceil(fs:GetStringWidth() or 0) + 1)
+            used = used + widths[i] + GAP
         end
+        -- A run row needs its fixed columns and some story. Narrower than that, the page scrolls sideways
+        local runNeed = NAME_X + ICON + TIER_W + TIME_W + DEATHS_W + ICON + RUN_GAP * 5 + STORY_MIN
+            + RUN_GAP * 4 + BOSS_W + DATE_W + BUTTON * 2 + INSET
+        local delveNeed = NAME_X + NAME_MIN + used + INSET
+        local width = math_max(view, math_max(runNeed, delveNeed) + PAD_LEFT + PAD_RIGHT)
+        content:SetWidth(width)
+        local cardW = width - PAD_LEFT - PAD_RIGHT
+
+        LayoutSection(ui, v, nemesis, v.nemesisKeys, widths, cardW)
+        LayoutSection(ui, v, midnight, v.midnightKeys, widths, cardW)
+
+        local y = PAD_TOP
+        v.intro:ClearAllPoints()
+        v.intro:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+        v.intro:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+        y = y + v.intro:Measure() + INTRO_GAP
+        for i, card in ipairs(cards) do
+            if i > 1 then y = y + GROUP_GAP end
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+            card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+            card:Layout()
+            y = y + card:GetHeight()
+        end
+        area:SetContentSize(width, y + PAD_BOTTOM)
+    end
+    v.relayout = Render
+    v.openNote = function(key, run, nice) OpenNoteEditor(ui, v, key, run, nice) end
+    v.deleteRun = function(row) ConfirmDeleteRun(v, row) end
+
+    -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
+    local pending = false
+    local function RenderSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0, function()
+            pending = false
+            if frame:IsVisible() then Render() end
+        end)
+    end
+
+    area.scroll:HookScript("OnSizeChanged", function(_, w)
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then
+            Render()
+            RenderSoon()
+        end
+    end)
+
+    function E.RefreshDelveHistoryTab()
+        CloseOrphanEditor(v)
+        if frame:IsVisible() then Render() end
     end
 
     frame:SetScript("OnShow", function()
-        Refresh()
-        scrollFrame:SetVerticalScroll(0)
-        tabScrollBar:SetValue(0)
-        if frame.SyncHistoryCap then frame.SyncHistoryCap() end
+        Render()
+        area:ScrollTo(0, 0)
+        RenderSoon()
     end)
 
     E:RegisterTab(6, frame)

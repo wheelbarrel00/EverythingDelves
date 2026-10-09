@@ -508,7 +508,7 @@ function E:DebugPrintDepths()
     end
 end
 
--- /ed ach — dump per-delve status to chat for live ID sanity checks.
+-- /ed ach - dump per-delve status to chat for live ID sanity checks.
 function E:DebugPrintAchievements()
     print(E.CC.header .. "Everything Delves" .. E.CC.close
         .. ": delve achievement status")

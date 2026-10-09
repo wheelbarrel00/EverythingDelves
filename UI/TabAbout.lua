@@ -1,8 +1,9 @@
 local E = EverythingDelves
 local L = E.L
 
-local ipairs = ipairs
-local math_max, math_min = math.max, math.min
+local CURSEFORGE_URL = "https://www.curseforge.com/wow/addons/everything-delves"
+local GITHUB_URL     = "https://github.com/wheelbarrel00/EverythingDelves"
+local BUG_URL        = "https://github.com/wheelbarrel00/EverythingDelves/issues"
 
 local COMMANDS = {
     { cmd = "/ed",          desc = L["Open or close the main window"] },
@@ -13,17 +14,17 @@ local COMMANDS = {
     { cmd = "/ed reset",    desc = L["Reset all settings to defaults"] },
 }
 
-local CURSEFORGE_URL = "https://www.curseforge.com/wow/addons/everything-delves"
-local GITHUB_URL     = "https://github.com/wheelbarrel00/EverythingDelves"
-local BUG_URL        = "https://github.com/wheelbarrel00/EverythingDelves/issues"
-
+-- Names are drawn raw, not through L[], so a row costs no locale key
 local OTHER_ADDONS = {
-    { name = "Cooldown Master",
-      cf   = "https://www.curseforge.com/wow/addons/cooldown-master",
-      gh   = "https://github.com/wheelbarrel00/CooldownMaster" },
     { name = "Everything Quests",
       cf   = "https://www.curseforge.com/wow/addons/everything-quests",
       gh   = "https://github.com/wheelbarrel00/EverythingQuests" },
+    { name = "EQ Objective Tracker",
+      cf   = "https://www.curseforge.com/wow/addons/eq-objective-tracker",
+      gh   = "https://github.com/wheelbarrel00/EQObjectiveTracker" },
+    { name = "Cooldown Master",
+      cf   = "https://www.curseforge.com/wow/addons/cooldown-master",
+      gh   = "https://github.com/wheelbarrel00/CooldownMaster" },
     { name = "Loot Pro",
       cf   = "https://www.curseforge.com/wow/addons/loot-pro",
       gh   = "https://github.com/wheelbarrel00/LootPro" },
@@ -42,262 +43,125 @@ local TRANSLATORS = {
     { name = "Stonetwist", line = L["Special thanks to %s for the many hours spent translating Everything Delves into German."] },
 }
 
-E:RegisterModule(function()
-    local frame = CreateFrame("Frame", "EverythingDelvesTab10Content")
+local function colorCode(ui, name)
+    local r, g, b = ui:Color(name)
+    return ("|cff%02x%02x%02x"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
+                                       math.floor(b * 255 + 0.5))
+end
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame)
-    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -18, 0)
-    scrollFrame:EnableMouseWheel(true)
+local function introCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, nil))
 
-    local sc = CreateFrame("Frame")
-    sc:SetSize(1, 1)
-    scrollFrame:SetScrollChild(sc)
-    scrollFrame:SetScript("OnSizeChanged", function(_, w)
-        sc:SetWidth(w)
-    end)
-    sc:SetHeight(1)
-
-    local tabScrollBar = CreateFrame("Slider", nil, scrollFrame, "BackdropTemplate")
-    tabScrollBar:SetWidth(14)
-    tabScrollBar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", 16, 0)
-    tabScrollBar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", 16, 0)
-    tabScrollBar:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    tabScrollBar:SetBackdropColor(0.08, 0.08, 0.08, 0.90)
-    tabScrollBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 0.50)
-    local sbThumb = tabScrollBar:CreateTexture(nil, "OVERLAY")
-    sbThumb:SetSize(12, 40)
-    E:StyleAccentThumb(sbThumb)
-    tabScrollBar:SetThumbTexture(sbThumb)
-    tabScrollBar:SetOrientation("VERTICAL")
-    tabScrollBar:SetMinMaxValues(0, 1)
-    tabScrollBar:SetValue(0)
-    tabScrollBar:SetValueStep(1)
-    tabScrollBar:SetObeyStepOnDrag(true)
-    tabScrollBar:SetScript("OnValueChanged", function(_, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local maxScroll = math_max(0, sc:GetHeight() - self:GetHeight())
-        local newVal = math_max(0, math_min(
-            self:GetVerticalScroll() - delta * 30, maxScroll))
-        self:SetVerticalScroll(newVal)
-        tabScrollBar:SetValue(newVal)
-    end)
-    local function UpdateScrollRange()
-        local maxScroll = math_max(0, sc:GetHeight() - scrollFrame:GetHeight())
-        tabScrollBar:SetMinMaxValues(0, maxScroll)
-        if maxScroll <= 0 then tabScrollBar:Hide() else tabScrollBar:Show() end
-    end
-    scrollFrame:SetScript("OnShow", UpdateScrollRange)
-
-    local LEFT = 10
-    local WRAP = 540          -- fixed wrap width (sc width isn't resolved at init)
-    local Y    = -8
-
-    local function header(text)
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-        fs:SetFont(fs:GetFont(), E.HEADER_FONT_SIZE, "OUTLINE")
-        E:StyleAccentHeader(fs, text)
-        local line = sc:CreateTexture(nil, "ARTWORK")
-        line:SetHeight(1)
-        line:SetPoint("TOPLEFT",  fs, "BOTTOMLEFT", 0,   -2)
-        line:SetPoint("TOPRIGHT", fs, "BOTTOMLEFT", 545, -2)
-        E:StyleGreyLine(line)
-        Y = Y - 24
+    local clientVer = "?"
+    if type(GetBuildInfo) == "function" then
+        local ok, v = pcall(GetBuildInfo)
+        if ok and type(v) == "string" and v ~= "" then clientVer = v end
     end
 
-    local function body(text, indent, size)
-        local sz    = size or 11
-        local avail = WRAP - (indent or 0)
-        local fs = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT + (indent or 0), Y)
-        fs:SetFont(fs:GetFont(), sz)
-        fs:SetJustifyH("LEFT")
-        fs:SetText(text)
-        -- GetStringHeight is unreliable until the frame is first drawn (the tab is
-        -- built hidden at login), so it can report one line for a wrapping item and
-        -- the next line then overlaps. Read the unwrapped width FIRST (glyph metrics,
-        -- layout-independent), derive the line count against the fixed wrap, and take
-        -- whichever height is larger.
-        local fullW = fs:GetStringWidth() or 0
-        fs:SetWidth(avail)
-        fs:SetWordWrap(true)
-        local lines = math_max(1, math.ceil(fullW / avail))
-        local h = math_max(fs:GetStringHeight() or 0, lines * (sz + 3))
-        Y = Y - h - 3
-    end
+    local blurb = self:CreateTextBlock(content)
+    blurb:AddLine((E.version or "?") .. "   " .. colorCode(self, "muted")
+        .. L["by Wheelbarrel00    -    for WoW Midnight (%s)"]:format(clientVer) .. "|r", "value")
+    blurb:AddLine(L["A complete Delves companion: track delve locations, bountiful status, coffer key shards, tiers, your run history, and more - all in one window."])
+    card:Add(blurb, { fitHeight = true })
 
-    local function gap(px) Y = Y - (px or 8) end
-
-    local function makeLink(label, onClick)
-        local b = CreateFrame("Button", nil, sc)
-        b:SetHeight(16)
-        local t = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        t:SetPoint("LEFT", b, "LEFT", 0, 0)
-        t:SetFont(t:GetFont(), 11)
-        t:SetText(label)
-        b.text = t
-        b:SetWidth((t:GetStringWidth() or 40) + 2)
-        b:SetScript("OnClick", onClick)
-        b:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
-        b:SetScript("OnLeave", function(self)
-            local ac = E:GetAccentColor()
-            self.text:SetTextColor(ac.r, ac.g, ac.b)
-        end)
-        local ac = E:GetAccentColor()
-        t:SetTextColor(ac.r, ac.g, ac.b)
-        E:RegisterThemed(function()
-            local a = E:GetAccentColor()
-            t:SetTextColor(a.r, a.g, a.b)
-        end)
-        return b
-    end
-
-    local function linkRow(links)
-        local prev
-        for i, lk in ipairs(links) do
-            local b = makeLink(lk.label, lk.onClick)
-            if i == 1 then
-                b:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-            else
-                local sep = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-                sep:SetFont(sep:GetFont(), 11)
-                sep:SetText(E.CC.muted .. "  |  " .. E.CC.close)
-                sep:SetPoint("LEFT", prev, "RIGHT", 2, 0)
-                b:SetPoint("LEFT", sep, "RIGHT", 2, 0)
-            end
-            prev = b
-        end
-        Y = Y - 24
-    end
-
-    local title = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-    title:SetFont(title:GetFont(), 22, "OUTLINE")
-    E:StyleAccentHeader(title, "Everything Delves")
-    Y = Y - 26
-
-    local sub = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    sub:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-    sub:SetFont(sub:GetFont(), 11)
-    sub:SetText(
-        E.CC.gold .. "v" .. (E.version or "?") .. E.CC.close
-        .. E.CC.muted .. "    "
-        .. L["by Wheelbarrel00    -    for WoW Midnight (%s)"]:format("12.1.0")
-        .. E.CC.close)
-    Y = Y - 22
-
-    body(E.CC.body
-        .. L["A complete Delves companion: track delve locations, bountiful status, coffer key shards, tiers, your run history, and more - all in one window."]
-        .. E.CC.close)
-    gap(10)
-
-    linkRow({
+    local links = CreateFrame("Frame", nil, content)
+    links:SetHeight(self:Spacing("buttonHeight"))
+    local list = {
         { label = L["Join our Discord"], onClick = function() E:ShowDiscord() end },
         { label = "CurseForge",          onClick = function() E:ShowURL(CURSEFORGE_URL) end },
         { label = "GitHub",              onClick = function() E:ShowURL(GITHUB_URL) end },
         { label = L["Report a Bug"],     onClick = function() E:ShowURL(BUG_URL) end },
         { label = L["What's New"],       onClick = function() if E.ShowWhatsNew then E:ShowWhatsNew() end end },
-    })
-    gap(8)
-
-    header(L["Commands"])
-    gap(2)
-    for _, c in ipairs(COMMANDS) do
-        local cmd = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        cmd:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-        cmd:SetFont(cmd:GetFont(), 11)
-        cmd:SetText(E.CC.gold .. c.cmd .. E.CC.close)
-        local d = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        d:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT + 110, Y)
-        d:SetFont(d:GetFont(), 11)
-        d:SetText(E.CC.body .. c.desc .. E.CC.close)
-        Y = Y - 18
-    end
-    gap(2)
-    body(E.CC.muted
-        .. L["Tip: right-click the minimap button to jump to Options. For support, the author may ask you to run a debug command."]
-        .. E.CC.close, 0, 10)
-    gap(10)
-
-    header(L["Tutorials"])
-    gap(2)
-    body(E.CC.muted .. L["Video tutorials are coming soon - watch this space."]
-        .. E.CC.close)
-    gap(10)
-
-    header(L["More Add-ons by Wheelbarrel00"])
-    gap(2)
-    for _, a in ipairs(OTHER_ADDONS) do
-        local n = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        n:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-        n:SetFont(n:GetFont(), 11)
-        n:SetText(E.CC.body .. a.name .. E.CC.close)
-        local cfLink = makeLink("CurseForge", function() E:ShowURL(a.cf) end)
-        cfLink:SetPoint("LEFT", n, "LEFT", 160, 0)
-        local sep = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        sep:SetFont(sep:GetFont(), 11)
-        sep:SetText(E.CC.muted .. "  |  " .. E.CC.close)
-        sep:SetPoint("LEFT", cfLink, "RIGHT", 2, 0)
-        local ghLink = makeLink("GitHub", function() E:ShowURL(a.gh) end)
-        ghLink:SetPoint("LEFT", sep, "RIGHT", 2, 0)
-        Y = Y - 20
-    end
-    gap(10)
-
-    header(L["Thanks"])
-    gap(2)
-    body(E.CC.body
-        .. L["Built with feedback, reports, and ideas from the community - especially %s. Thank you!"]
-            :format(E.CC.gold .. COMMUNITY .. E.CC.close .. E.CC.body)
-        .. E.CC.close)
-    gap(6)
-    for _, t in ipairs(TRANSLATORS) do
-        -- body is re-opened after the name because |r resets to the font's own color
-        -- rather than popping back to the enclosing escape.
-        body(E.CC.body
-            .. t.line:format(E.CC.gold .. t.name .. E.CC.close .. E.CC.body)
-            .. E.CC.close)
-    end
-    gap(10)
-
-    header(L["Changelog"])
-    gap(2)
-    for _, entry in ipairs(E.Changelog or {}) do
-        local vh = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        vh:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-        vh:SetFont(vh:GetFont(), 12, "OUTLINE")
-        vh:SetText(E.CC.gold .. "v" .. entry.version .. E.CC.close
-            .. E.CC.muted .. "    " .. (entry.date or "") .. E.CC.close)
-        Y = Y - 18
-        for _, sec in ipairs(entry.sections or {}) do
-            local sh = sc:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            sh:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT + 8, Y)
-            sh:SetFont(sh:GetFont(), 10, "OUTLINE")
-            sh:SetText(E.CC.header .. sec.head .. E.CC.close)
-            Y = Y - 15
-            for _, item in ipairs(sec.items or {}) do
-                body(E.CC.body .. "- " .. item .. E.CC.close, 16, 10)
-            end
-            gap(2)
+    }
+    local prev
+    for _, lk in ipairs(list) do
+        local b = self:CreateButton(content, lk.label, nil, lk.onClick)
+        if prev then
+            b:SetPoint("LEFT", prev, "RIGHT", self:Spacing("buttonGap"), 0)
+        else
+            b:SetPoint("LEFT", links, "LEFT")
         end
-        gap(8)
+        prev = b
     end
+    card:Add(links, { fill = true })
+end
 
-    local older = makeLink(L["Older versions are on CurseForge"], function()
-        E:ShowURL(CURSEFORGE_URL)
-    end)
-    older:SetPoint("TOPLEFT", sc, "TOPLEFT", LEFT, Y)
-    Y = Y - 28
+local function commandsCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, L["Commands"]))
+    for _, c in ipairs(COMMANDS) do
+        local row = self:CreateTextRow(content, c.cmd, c.desc)
+        row.label:SetTextColor(self:Color("text"))
+        card:Add(row, { height = self:Spacing("listRowHeight") })
+    end
+    local tip = self:CreateTextBlock(content)
+    tip:AddLine(L["Tip: right-click the minimap button to open Options."], "hint")
+    card:Add(tip, { fitHeight = true })
+end
 
-    sc:SetHeight(math_max(1, -Y + 10))
-    UpdateScrollRange()
+local function tutorialsCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, L["Tutorials"]))
+    local note = self:CreateTextBlock(content)
+    note:AddLine(L["Video tutorials are coming soon - watch this space."], "hint")
+    card:Add(note, { fitHeight = true })
+end
 
-    E:RegisterTab(12, frame)
-end)
+local function addonsCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, L["More Add-ons by Wheelbarrel00"]))
+    for _, a in ipairs(OTHER_ADDONS) do
+        local row = self:CreateTextRow(content, a.name, "")
+        row.label:SetTextColor(self:Color("text"))
+        card:Add(row)
+        -- On the row's text column, which the card moves past its widest name
+        local cf = self:CreateButton(content, "CurseForge", nil, function() E:ShowURL(a.cf) end, nil, "ghost")
+        cf:SetPoint("LEFT", row.text, "LEFT", 0, 0)
+        local gh = self:CreateButton(content, "GitHub", nil, function() E:ShowURL(a.gh) end, nil, "ghost")
+        gh:SetPoint("LEFT", cf, "RIGHT", self:Spacing("buttonGap"), 0)
+    end
+end
+
+local function thanksCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, L["Thanks"]))
+    local bright = colorCode(self, "text")
+    -- |r falls back to the line's own color, so only the names need an escape
+    local block = self:CreateTextBlock(content)
+    block:AddLine(L["Built with feedback, reports, and ideas from the community - especially %s. Thank you!"]
+        :format(bright .. COMMUNITY .. "|r"))
+    for _, t in ipairs(TRANSLATORS) do
+        block:AddLine(t.line:format(bright .. t.name .. "|r"))
+    end
+    card:Add(block, { fitHeight = true })
+end
+
+local function changelogCard(self, content, stack)
+    local card = stack(self:CreateGroup(content, L["Changelog"]))
+    local muted = colorCode(self, "muted")
+    -- A raise here leaves the library's SelectTab with every tab hidden, so a version-less entry is skipped
+    for _, entry in ipairs(E.Changelog or {}) do
+        if entry.version then
+            local block = self:CreateTextBlock(content)
+            block:AddLine(entry.version .. "   " .. muted .. (entry.date or "") .. "|r", "value")
+            for _, sec in ipairs(entry.sections or {}) do
+                block:AddLine(sec.head or "", "groupLabel", { gap = 10 })
+                for _, item in ipairs(sec.items or {}) do
+                    block:AddLine(item, "label", { bullet = "-" })
+                end
+            end
+            card:Add(block, { fitHeight = true })
+        end
+    end
+    card:Add(self:CreateButton(content, L["Older versions are on CurseForge"], nil,
+        function() E:ShowURL(CURSEFORGE_URL) end))
+end
+
+E.ui:RegisterTab({
+    id = "about", title = L["About"], order = 50, icon = E.ui:Texture("icon-about"),
+    build = function(self, content)
+        local stack = E.CardStack(self)
+        introCard(self, content, stack)
+        commandsCard(self, content, stack)
+        tutorialsCard(self, content, stack)
+        addonsCard(self, content, stack)
+        thanksCard(self, content, stack)
+        changelogCard(self, content, stack)
+    end,
+})

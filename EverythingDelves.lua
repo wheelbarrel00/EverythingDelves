@@ -1,4 +1,4 @@
-﻿-- EverythingDelves.lua — addon bootstrap: namespace, SavedVariables, events, slash commands.
+﻿-- EverythingDelves.lua - addon bootstrap: namespace, SavedVariables, events, slash commands.
 local _, ns = ...
 
 EverythingDelves = {}
@@ -16,67 +16,21 @@ E.version = C_AddOns.GetAddOnMetadata("EverythingDelves", "Version") or "1.0.0"
 -- WoW can't open a browser, so external links are shown in a copyable popup.
 E.DISCORD_URL = "https://discord.gg/vm8K2WfQUE"
 
-StaticPopupDialogs["EVERYTHINGDELVES_DISCORD"] = {
-    text = L["Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):"],
-    button1 = L["Close"],
-    hasEditBox = true,
-    editBoxWidth = 220,
-    OnShow = function(self)
-        local eb = self.editBox or (self.EditBox)
-        if eb then
-            eb:SetText(E.DISCORD_URL)
-            eb:HighlightText()
-            eb:SetFocus()
-            eb:SetScript("OnEscapePressed", function(box) box:GetParent():Hide() end)
-            eb:SetScript("OnTextChanged", function(box)
-                if box:GetText() ~= E.DISCORD_URL then
-                    box:SetText(E.DISCORD_URL)
-                    box:HighlightText()
-                end
-            end)
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
-}
-
 function E:ShowDiscord()
-    StaticPopup_Show("EVERYTHINGDELVES_DISCORD")
+    self:ShowDialog({
+        text = L["Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):"],
+        button1 = L["Close"],
+        hasEditBox = true, editBoxText = E.DISCORD_URL, highlightEditBox = true,
+    })
 end
-
-StaticPopupDialogs["EVERYTHINGDELVES_URL"] = {
-    text = L["Copy the link below (it's pre-selected - just press Ctrl+C):"],
-    button1 = L["Close"],
-    hasEditBox = true,
-    editBoxWidth = 260,
-    OnShow = function(self)
-        local url = E._pendingURL or ""
-        local eb = self.editBox or self.EditBox
-        if eb then
-            eb:SetText(url)
-            eb:HighlightText()
-            eb:SetFocus()
-            eb:SetScript("OnEscapePressed", function(box) box:GetParent():Hide() end)
-            eb:SetScript("OnTextChanged", function(box)
-                if box:GetText() ~= url then
-                    box:SetText(url)
-                    box:HighlightText()
-                end
-            end)
-        end
-    end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
-}
 
 function E:ShowURL(url)
     if not url or url == "" then return end
-    E._pendingURL = url
-    StaticPopup_Show("EVERYTHINGDELVES_URL")
+    self:ShowDialog({
+        text = L["Copy the link below (it's pre-selected - just press Ctrl+C):"],
+        button1 = L["Close"],
+        hasEditBox = true, editBoxText = url, highlightEditBox = true,
+    })
 end
 
 -- Tab files queue init callbacks here; all run inside InitMainFrame().
@@ -95,7 +49,7 @@ local DEFAULTS = {
         show  = true,
         angle = 220,
     },
-    framePosition    = nil,
+    mainWindow       = {},        -- width, height, maximized, resizeHintSeen
     defaultTab       = 1,
     historyCap       = 20,
     uiScale          = 1.0,
@@ -121,7 +75,6 @@ local DEFAULTS = {
     delveObjectivesPos     = nil,
     seenWhatsNewVersion    = "",
     showWhatsNew           = true,
-    whatsNewPos            = nil,
 }
 
 -- Account-wide DATA, kept OUT of DEFAULTS so E:ResetDB (settings-only) can't
@@ -227,6 +180,11 @@ function E:InitDB()
         sv._achievementsTabMigrated = true
     end
 
+    -- Options, Profiles and About moved to the settings window, so only a delve page can open first.
+    if type(sv.defaultTab) == "number" and sv.defaultTab > E.NUM_PAGES then
+        sv.defaultTab = 1
+    end
+
     -- Learned boss names were keyed by the raw widget string, which carries a
     -- |cn escape. GetRecordedBoss indexes exactly, so a now-clean variant misses.
     if not sv._bossMapEscapeMigrated then
@@ -330,8 +288,8 @@ function E:ApplySettingsToUI()
     if self.ApplyAccentColor then
         self:ApplyAccentColor(self.db.accentColor)
     end
-    if self.MainFrame then
-        self.MainFrame:SetScale(self.db.uiScale or 1.0)
+    if self.ApplyUIScale then
+        self:ApplyUIScale()
     end
     if self.SetMinimapButtonVisible and self.db.minimapButton then
         self:SetMinimapButtonVisible(self.db.minimapButton.show)
@@ -622,16 +580,13 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
                 or "none"))
         end
     elseif msg == "about" then
-        E:ToggleMainFrame()
-        if E.MainFrame and E.MainFrame:IsShown() then
-            E:SelectTab(E.NUM_TABS)
-        end
+        E:ShowOptions("about")
     else
         E:ToggleMainFrame()
     end
 end
 
--- PLAYER_LOGIN fires once after addons load and the player object exists —
+-- PLAYER_LOGIN fires once after addons load and the player object exists -
 -- the first safe point to touch SavedVariables and build the UI.
 E:RegisterEvent("PLAYER_LOGIN", function(self)
     self:InitDB()
@@ -875,7 +830,7 @@ local function AutoDetectDelveTier()
 
     -- Scrape the ObjectiveTracker for tier text. Limitation: if a lives
     -- counter is the first standalone digit, a T11 can mis-record as a lower
-    -- tier — but recording something beats logging tier=0 everywhere.
+    -- tier - but recording something beats logging tier=0 everywhere.
     local tracker = _G["ObjectiveTrackerFrame"] or _G["ScenarioObjectiveTracker"]
     if tracker then
         local foundDelveHeader = false
@@ -1712,9 +1667,9 @@ local enteredViaLogin  = false
 
 -- Latches so a run's clock is stamped only at its own genuine entry, never
 -- inherited from a prior run ("each run used the previous run's start time").
---   entryArmed   — a genuine loading-screen entry (PEW that is NOT /reload or
+--   entryArmed   - a genuine loading-screen entry (PEW that is NOT /reload or
 --                  relog) armed the next detection to stamp a FRESH start.
---   runCompleted — a run was just logged for the instance we're still standing
+--   runCompleted - a run was just logged for the instance we're still standing
 --                  in; suppresses begin/resume through the post-completion loot
 --                  window. Cleared when the player leaves or on the next entry.
 -- Both reset on /reload + relog, correctly: those paths resume via E.db.activeRun.
@@ -1750,7 +1705,7 @@ local function TryBeginFromCurrentZone(source)
     -- Post-completion looting window. A stray SCENARIO_UPDATE/ZONE_CHANGED here
     -- would fire a phantom BeginDelveRun whose startTime leaks into the NEXT
     -- run's duration. The window INCLUDES the post-boss treasure room, which is
-    -- still difficulty 208 yet can read as "in progress" — so a scenario-
+    -- still difficulty 208 yet can read as "in progress" - so a scenario-
     -- freshness heuristic CANNOT release the latch (it would start a phantom run
     -- mid-loot and steal the coffer-key spend). Released only when the player
     -- leaves (isDelve false, above) or on the next loading-screen PEW.
@@ -1784,7 +1739,7 @@ local function TryBeginFromCurrentZone(source)
             -- so a "future" start means stale), and a recent wall-clock start
             -- (GetTime() alone can't catch a run saved in a prior session,
             -- since it survives a client restart). On a plain zone-in we start
-            -- fresh even if a stale activeRun for the same delve is saved —
+            -- fresh even if a stale activeRun for the same delve is saved -
             -- else its old start/tier restore onto the new run.
             local saved = E.db and E.db.activeRun
             if (enteredViaReload or enteredViaLogin)
@@ -1841,7 +1796,7 @@ local function TryBeginFromCurrentZone(source)
             end
         elseif runState.delveName ~= matchedName then
             -- Canonical name resolved on the SAME in-progress run: upgrade in
-            -- place and keep the existing startTime — never restart the clock.
+            -- place and keep the existing startTime - never restart the clock.
             runState.delveName = matchedName
             runState.delveKind = kind
             if E.db and E.db.activeRun then
@@ -1855,7 +1810,7 @@ local function TryBeginFromCurrentZone(source)
     else
         -- Name unresolved (cold POI cache): start a provisional run to still
         -- track timing/deaths, but only on a genuine entry or an untracked
-        -- recovery — a /reload/reconnect instead waits to resume the saved run.
+        -- recovery - a /reload/reconnect instead waits to resume the saved run.
         if (entryArmed or (not runState.inDelve
                 and not enteredViaReload and not enteredViaLogin)) and not continuing then
             entryArmed = false
