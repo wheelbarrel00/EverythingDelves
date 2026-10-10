@@ -47,6 +47,11 @@ local VARIANT_ALIASES = {
     ["looseloa"]            = "loosedloa",
     ["capturedwild"]        = "capturedwildlife",
     ["capturedwidlife"]     = "capturedwildlife",
+    ["whydidithavetobesnakes"]  = "whydithavetobesnakes",
+    ["anelementaryantidote"]    = "academicantitoxin",
+    ["basaliskblitz"]           = "basiliskblitz",
+    -- The live Shadow Enclave achievement names this story "Basilisk Blitz".
+    ["infiltrateandameliorate"] = "basiliskblitz",
 }
 
 local function Canon(s)

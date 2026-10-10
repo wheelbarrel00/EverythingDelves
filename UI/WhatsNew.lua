@@ -1,28 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "2.0.0"
+local WHATS_NEW_VERSION = "2.1.0"
 
 local ENTRIES = {
     {
-        title = "A whole new look",
-        desc  = "The nine pages sit in a sidebar, laid out in cards, in the same style as Everything Quests and EQ Objective Tracker. The window resizes from its corner, maximizes from its header and remembers its size.",
+        title = "A Leaderboard page",
+        desc  = "Every delve on one board: the fastest clear your characters have at the tier you pick, who set it, and where the character you are playing stands. Click a delve for the full ranking, and filter by class and spec. Thanks to MattBravehearts for the idea.",
     },
     {
-        title = "Settings have their own window",
-        desc  = "Options, Profiles and About open from the cog in the header, a right-click on the minimap button, or /ed about. Opening them closes the main window, and /ed brings it back. Every setting keeps its saved value.",
+        title = "A grade for every story",
+        desc  = "All 44 story grades, including the stories patch 12.1 added, now come from Moleman's Delve Compendium, which times the best clear of every story. Thanks to Moleman for the compendium.",
     },
     {
-        title = "Nothing else has changed",
-        desc  = "Only the windows are new. Delve logging, the delve HUD, the reminders and the map tooltips work exactly as before. If anything looks wrong, please tell me in the CurseForge comments, on Discord, or in a GitHub issue.",
+        title = "The Ring of Glory panel works",
+        desc  = "The delve information panel now recognizes every delve by the game's own ID, in every language. Thanks to NoNe10 for the report.",
     },
     {
-        title = "Some sections fill in a moment after login",
-        desc  = "A few figures come from the game shortly after you log in. The Delver's Journey needs the Journeys panel opened once, and world quests need each zone's map opened. The page says when it is waiting.",
-    },
-    {
-        title = "Coming next",
-        desc  = "A fix for the delve panel at The Ring of Glory (thanks to NoNe10), the Dundun reminder showing in delves that are not bountiful, and delve leaderboards (thanks to MattBravehearts).",
+        title = "The Dundun reminder is fixed",
+        desc  = "It now shows only in Bountiful Delves, and stays through combat and after the boss.",
     },
 }
 

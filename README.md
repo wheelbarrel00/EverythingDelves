@@ -58,6 +58,7 @@ Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests 
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Mistcrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
+- **Leaderboard** - your characters ranked on every delve by their fastest clear at the tier you pick: who holds each record, in which spec and on which story, where the character you are playing stands, and class and spec filters
 - **Achievements** — every delve's story variants, Sturdy Chest discoveries and Delver of the Depths tier goals in one list, headed by the Glory of the Midnight Delver rollup, plus which of today's story variants you still need and your own best tier per delve
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
 - **Bonus Spoils tracker** — an optional in-delve overlay that tracks the Nemesis Strongbox packs so you know you've cleared them all before pulling the boss; off by default
@@ -69,7 +70,7 @@ Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests 
 ## Features
 
 ### Delve Locations
-All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves carry the game's own bountiful icon. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked and already open.
+All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. Grades come from Moleman's Delve Compendium, which times the best clear of every story. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves carry the game's own bountiful icon. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked and already open.
 
 A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
@@ -120,6 +121,9 @@ Tracks the weekly World Tour quests across four states — **Available, In Progr
 
 ### Roster
 An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, weekly shard progress, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, whether the weekly delve quest is done, and whether this week's Trovehunter's Bounty is looted** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play. Remix/Timerunning characters are left off, since they have no Midnight delve data.
+
+### Leaderboard
+Every delve on one board, with the fastest clear your characters have at the tier you pick, who set it, in which spec and on which story, and where the character you are playing stands. Click a delve for the full ranking of your characters, and narrow the board by class and spec. Blizzard does not share other players' delve times with addons, so the board ranks the characters on your account. It reads your Delve History, so it covers the runs History keeps. Runs record your specialization from 2.1.0 on.
 
 ### Bonus Spoils
 An optional on-screen tracker for the **Nemesis Strongbox** (filled by clearing the Pactsworn groups). It shows at a glance when you've cleared them all so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default — turn it on in Options, then drag it wherever you like.
@@ -265,7 +269,8 @@ EverythingDelves/
 │   ├── Data.lua                  # Delve directory, boss tactics, story-variant bosses
 │   ├── Utils.lua                 # UI factories, waypoint + SuperTrack helpers, tooltips
 │   ├── SpeedRank.lua             # Per-delve clear-time estimates + pace baseline
-│   └── Achievements.lua          # Delve achievement IDs for map-pin tooltips
+│   ├── Achievements.lua          # Delve achievement IDs for map-pin tooltips
+│   └── Leaderboard.lua           # Leaderboard runs gathered from every profile
 ├── UI/
 │   ├── MainFrame.lua             # Window, tabs, minimap button, LibDataBroker (live text)
 │   ├── TabDelveLocations.lua     # Tab 1: sortable delve list + boss tactics
@@ -277,9 +282,10 @@ EverythingDelves/
 │   ├── TabDelversCall.lua        # Tab 7: weekly World Tour quest tracker
 │   ├── TabAchievements.lua      # Tab 8: per-delve achievement tracking
 │   ├── TabRoster.lua             # Tab 9: account-wide character dashboard
-│   ├── TabOptions.lua            # Tab 10: all user settings
-│   ├── TabProfiles.lua           # Tab 11: per-character profile management
-│   ├── TabAbout.lua              # Tab 12: info, commands, links, changelog
+│   ├── TabLeaderboard.lua        # Tab 10: your characters ranked on every delve
+│   ├── TabOptions.lua            # Settings: General, Display, Alerts & Tracking
+│   ├── TabProfiles.lua           # Settings: per-character profile management
+│   ├── TabAbout.lua              # Settings: info, commands, links, changelog
 │   ├── CurioReminder.lua         # Curio reminder popup
 │   ├── CompanionAudio.lua        # Optional Valeera / Dun-dun mute
 │   ├── TrovehunterReminder.lua   # Trovehunter's Bounty reminder
@@ -318,6 +324,7 @@ Please use the [GitHub Issues](https://github.com/wheelbarrel00/EverythingDelves
 ## Roadmap
 
 - [x] Account-wide character tracking (Roster tab)
+- [x] A leaderboard across your own characters (Leaderboard tab)
 - [ ] Per-spec curio recommendations
 - [ ] Run History grouped by weekly reset
 - [x] Localization (German, French, Russian, Korean, Simplified and Traditional Chinese)
@@ -336,6 +343,7 @@ This project is licensed under the [MIT License](LICENSE).
 - Packaged and deployed with **[BigWigsMods/packager](https://github.com/BigWigsMods/packager)**
 - Minimap button powered by **[LibDBIcon](https://www.curseforge.com/wow/addons/libdbicon-1-0)** and **[LibDataBroker](https://www.curseforge.com/wow/addons/libdatabroker-1-1)**
 - WoW API references from **[Warcraft Wiki](https://warcraft.wiki.gg)**
+- Story grades from **[Moleman's Delve Compendium](https://docs.google.com/spreadsheets/d/1hv8huds5AihQEuKsINplol7QNpDy1g6n)** - thank you, Moleman
 
 ---
 

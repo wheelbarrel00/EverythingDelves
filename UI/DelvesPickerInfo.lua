@@ -142,6 +142,13 @@ E:RegisterModule(function()
     local function ResolveEntranceDelve()
         local header = C_DelvesUI and C_DelvesUI.GetDelveEntranceHeaderString
             and C_DelvesUI.GetDelveEntranceHeaderString()
+        -- Instance ID first: the header can differ from the map pin's name, as German
+        -- "Der Ring des Ruhms" does from "Ring des Ruhms", and then no text match hits.
+        if C_DelvesUI and C_DelvesUI.GetDelveEntranceMapID then
+            local ok, mapID = pcall(C_DelvesUI.GetDelveEntranceMapID)
+            local byID = ok and mapID and E.DelveDataByInstanceID[mapID]
+            if byID then return byID, (type(header) == "string" and header ~= "") and header or nil end
+        end
         if type(header) ~= "string" or header == "" then return nil end
         for _, d in ipairs(E.DelveData or {}) do
             if d.name == header

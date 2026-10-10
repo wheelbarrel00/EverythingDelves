@@ -10,7 +10,8 @@ local DELVE_ICON_TRIM  = 0.15
 local FALLBACK_ICON    = "Interface\\Icons\\INV_Misc_Key_15"
 local ED_TEXTURES      = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
 
-local WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT = 1000, 660, 900, 520
+-- MIN_HEIGHT keeps all ten pages above the at-a-glance block in the sidebar
+local WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT = 1000, 660, 900, 540
 local GLANCE_TOP, GLANCE_SIDE, GLANCE_BOTTOM, GLANCE_ROW, GLANCE_GAP = 10, 12, 12, 22, 8
 local GLANCE_TICK = 60
 local HINT_GAP = 4
@@ -25,6 +26,7 @@ local PAGE_ICONS = {
     E.ui:Texture("icon-globe"),
     ED_TEXTURES .. "icon-trophy",
     ED_TEXTURES .. "icon-people",
+    ED_TEXTURES .. "icon-podium",
 }
 
 -- LibDBIcon needs a file, not an atlas; resolve + inset to trim the frame.

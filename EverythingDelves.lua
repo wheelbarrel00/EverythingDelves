@@ -104,6 +104,16 @@ local function CharKey()
 end
 E.CharKey = CharKey
 
+-- The ID, not the name: a spec's name is localized, so it is looked up when drawn.
+local function CurrentSpecID()
+    local api = C_SpecializationInfo
+    local getIndex = (api and api.GetSpecialization) or GetSpecialization
+    local getInfo = (api and api.GetSpecializationInfo) or GetSpecializationInfo
+    local index = getIndex and getIndex()
+    local id = index and getInfo and getInfo(index)
+    return (type(id) == "number" and id > 0) and id or nil
+end
+
 local function NormalizeProfile(p)
     p.delveHistory   = p.delveHistory   or {}
     return p
@@ -892,16 +902,13 @@ local function AutoDetectDelveTier()
     return nil
 end
 
+-- Instance ID first: zone and instance names are localized, and E.LoggableDelveNames is keyed in English.
 local function ResolveDelveName()
+    local byID = E.DelveNameByInstanceID[select(8, GetInstanceInfo())]
+    if byID then return byID end
     local zoneName = GetRealZoneText()
     if zoneName and zoneName ~= "" and E.LoggableDelveNames[zoneName] then
         return zoneName
-    end
-    if C_Map and C_Map.GetBestMapForUnit then
-        local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
-        if ok and mapID and E.DelveZoneIDs and E.DelveZoneIDs[mapID] then
-            return E.DelveZoneIDs[mapID]
-        end
     end
     local instName = GetInstanceInfo()
     return instName
@@ -1378,6 +1385,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         wasBountiful = wasBountiful and true or false,
         story        = (story and story ~= "") and story or nil,
         boss         = (boss and boss ~= "") and boss or nil,
+        spec         = CurrentSpecID(),
     })
     -- Clamp to [MIN, MAX] so a bad saved value can't shrink below the floor.
     local cap = MAX_RECENT_RUNS
@@ -2092,6 +2100,9 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             end
             if E.RefreshDelveHistoryTab then
                 E:RefreshDelveHistoryTab()
+            end
+            if E.RefreshLeaderboardTab then
+                E.RefreshLeaderboardTab()
             end
         end
 

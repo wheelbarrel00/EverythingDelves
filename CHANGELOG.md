@@ -5,6 +5,29 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-10-09
+
+Everything 2.0.0 listed under Coming Next is in this release, along with a grade for every story variant.
+
+### New Features
+
+- **A Leaderboard page** - every delve on one board, showing the fastest clear your characters have at the tier you pick, who set it, in which spec, on which story, and where the character you are playing stands. Click a delve for the full ranking of your characters, and narrow the board by class and spec. Blizzard does not share other players' delve times with addons, so the board ranks the characters on your account. Thanks to MattBravehearts for the idea.
+- **Every story variant has a grade** - 13 of the 14 stories patch 12.1 added had none. All 44 grades now come from one measured source, Moleman's Delve Compendium, which times the best clear of every story, so a grade means the same thing on every delve. 13 of the 30 older grades changed as a result, all by one step except Faculty of Fear, which moved two. Thanks to Moleman for the compendium.
+
+### Bug Fixes
+
+- **The delve information panel did not open at The Ring of Glory** - the panel recognized a delve by its name, and in some game languages the picker names that delve differently from the map (in German, "Der Ring des Ruhms" against "Ring des Ruhms"). The panel and delve logging now recognize every delve by the game's own ID, which is the same in every language. Thanks to NoNe10 for the report.
+- **The Dundun reminder showed in delves that were not bountiful, and disappeared in combat** - it was reading a buff that Valeera's Dundun's Favor curio also gives, so with that curio equipped it showed in every delve. It now follows whether the delve is bountiful, and stays through combat and after the boss.
+- **Twilight Crypt borrowed another story's grade on "Why Did it Have to Be Snakes?" days** - the game spells that story two ways, and the addon only knew one. Today's boss was missing on those days for the same reason.
+- **"Today counts" never showed for four stories** - on Collegiate Calamity, Twilight Crypt, Shadowguard Point and The Shadow Enclave, the map and the achievement name the same story differently (The Shadow Enclave's achievement even calls Infiltrate and Ameliorate "Basilisk Blitz"). They are matched up now.
+
+### Notes
+
+- **The Leaderboard reads your Delve History** - so it covers the runs History keeps: 20 per delve, or up to 100 if you raise it in General.
+- **Runs from this version on record your specialization** - older runs show "--" in the Spec column and count under All specs.
+- **Runs logged before version 1.5.0 are not on the Leaderboard** - back then Everything Delves kept one history for every character, so those runs cannot be credited to any one of them.
+- **The main window's smallest height is a little taller** - so the tenth page fits in the sidebar.
+
 ## [2.0.0] - 2026-10-08
 
 Everything Delves has a whole new look, in the same style as Everything Quests and EQ Objective Tracker. It is the biggest change the addon has had, so first: **only the windows changed.** Delve logging, the delve HUD, the curio and Trovehunter's Bounty reminders, the panel beside the difficulty picker and the map tooltips all work exactly as before, and every setting keeps its saved value. If anything looks wrong, or you miss something from the old layout, please tell me in the CurseForge comments, on Discord, or in a GitHub issue.

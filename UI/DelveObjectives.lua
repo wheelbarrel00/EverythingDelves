@@ -254,6 +254,7 @@ E:RegisterModule(function()
     local vigHoldUntil = 0   -- vignette reads distrusted for 10s after a loading screen
     local vigScanTrusted = false  -- a vignette scan has completed outside that window
     local lastInstanceID = nil    -- last instance seen, to arm the hold on a zone change
+    local visitBountiful = false
     local sawExit = false         -- player observed outside a delve since the last reset
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
@@ -477,8 +478,11 @@ E:RegisterModule(function()
         end
 
         -- A plain line, not EmitObjective: found/not-found is undetectable, so
-        -- counting it would stop objDone ever reaching objTotal.
-        if E.db and E.db.showDelveHUD and PlayerInDelve() and HasDundunFavor() then
+        -- counting it would stop objDone ever reaching objTotal. Gated on the visit, not
+        -- the favor aura (Valeera's Dundun's Favor curio carries it too) and not the run,
+        -- whose bountiful flag is cleared when the boss dies.
+        if rs and rs.wasBountiful then visitBountiful = true end
+        if E.db and E.db.showDelveHUD and PlayerInDelve() and visitBountiful then
             local jr = E.GetDelverJourneyRank()
             if jr and jr >= E.Dundun.journeyRank then
                 AddLine(E.CC.muted .. L["Dundun is hidden in this delve"] .. E.CC.close
@@ -559,6 +563,7 @@ E:RegisterModule(function()
         local instanceID = select(8, GetInstanceInfo())
         if instanceID ~= lastInstanceID then
             lastInstanceID = instanceID
+            visitBountiful = false
             vigHoldUntil = GetTime() + 10
             vigScanTrusted = false
         end

@@ -41,9 +41,10 @@ E.TAB_NAMES = {
     L["Delver's Call"],
     L["Achievements"],
     L["Roster"],
+    L["Leaderboard"],
 }
 E.NUM_TABS = #E.TAB_NAMES
-E.NUM_PAGES = 9
+E.NUM_PAGES = 10
 
 -- index == tier number (1-11). recGear is seeded from a live read of
 -- C_DelvesUI.GetDelveEntranceTiers().suggestedILvl and is re-read whenever the
@@ -322,7 +323,7 @@ E.SHARDS_PER_KEY      = 100
 -- Seasonal. npcID and favorAura were read live 2026-09-13.
 E.Dundun = {
     npcID       = 266751,
-    favorAura   = 1248935,  -- applied on entering ANY bountiful delve
+    favorAura   = 1248935,  -- also Valeera's Dundun's Favor curio buff, so not a bountiful signal
     journeyRank = 3,
     keysForBoth = 2,
 }

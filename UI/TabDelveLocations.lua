@@ -33,16 +33,18 @@ end
 local DLOC_TIER_ORDER = E.DelveList.GRADE_ORDER
 
 local DELVE_NOTES = {
-    ["Collegiate Calamity"] = { tier="S", story="Invasive Glow",      note=L["Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear."] },
-    ["The Gulf of Memory"]  = { tier="A", story="Sporasaur Special",   note=L["Glide or use a parasol toy to reach the boss platform quickly. Kite dinos and kick spores back to break their shields."] },
+    ["Collegiate Calamity"] = { tier="A", story="Invasive Glow",     note=L["Compact layout with easy boss access. NPC debuffs boost damage — the bomb DoT scales with tier and trivializes the clear."] },
+    ["The Gulf of Memory"]  = { tier="S", story="Sporasaur Special",  note=L["Glide or use a parasol toy to reach the boss platform quickly. Kite dinos and kick spores back to break their shields."] },
     ["The Darkway"]         = { tier="A", story="Ogre Powered",        note=L["Straightforward paths to the boss. Kill Unstable Aberrations before moving — they leash and give chase."] },
     ["Parhelion Plaza"]     = { tier="A", story="Holding the Line",    note=L["Take the staircase down for the fastest route. Kill enemies instead of healing allies for quicker progress."] },
     ["Sunkiller Sanctum"]   = { tier="B", story="Core of the Problem", note=L["Straight routes with easy kill objectives. Use portals in Core of the Problem to shortcut around the map."] },
     ["Twilight Crypt"]      = { tier="B", story="Party Crasher",       note=L["Pull levers to deactivate traps before advancing — limits large pulls. Party Crasher is the most direct variant."] },
-    ["Atal'Aman"]           = { tier="B", story="Toadly Unbecoming",   note=L["Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss."] },
+    ["Atal'Aman"]           = { tier="C", story="Toadly Unbecoming",  note=L["Open layout adds traverse time even when mounted. Toadly Unbecoming: decurse frogs to spawn the boss."] },
     ["The Shadow Enclave"]  = { tier="C", story="Traitor's Due",       note=L["Large unwalkable map — slow regardless of story. Use the Eye of Antenorian buff whenever it's available."] },
     ["The Grudge Pit"]      = { tier="D", story="Arena Champion",      note=L["Compact and mountable but long RP transitions and non-combat objectives in all three variants hurt efficiency."] },
-    ["Shadowguard Point"]   = { tier="D", story="Calamitous",          note=L["Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today."] },
+    ["The Ring of Glory"]   = { tier="A", story="Adopt-a-thon" },
+    ["Gnarldor Isle"]       = { tier="F", story="Speaking Their Language" },
+    ["Shadowguard Point"]   = { tier="C", story="Calamitous",        note=L["Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today."] },
 }
 
 -- Published for other tabs as a story fallback when a run captured no live story.

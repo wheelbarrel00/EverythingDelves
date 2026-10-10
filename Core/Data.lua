@@ -22,6 +22,7 @@ E.DelveData = {
         x     = 46.3,  y = 41.62,
         mapID = 2424,
         poiID = 8428,  normalPoiID = 8427,
+        instanceID = 2953,
     },
     {
         name  = "The Shadow Enclave",
@@ -29,6 +30,7 @@ E.DelveData = {
         x     = 45.4,  y = 86.0,
         mapID = 2395,
         poiID = 8438,  normalPoiID = 8437,
+        instanceID = 2952,
     },
     {
         name  = "Atal'Aman",
@@ -36,6 +38,7 @@ E.DelveData = {
         x     = 24.8,  y = 53.0,
         mapID = 2437,
         poiID = 8444,  normalPoiID = 8443,
+        instanceID = 2962,
     },
     {
         name  = "Twilight Crypt",
@@ -43,6 +46,7 @@ E.DelveData = {
         x     = 25.4,  y = 84.3,
         mapID = 2437,
         poiID = 8442,  normalPoiID = 8441,
+        instanceID = 2961,
     },
     {
         name  = "Shadowguard Point",
@@ -50,6 +54,7 @@ E.DelveData = {
         x     = 37.38, y = 47.7,
         mapID = 2405,
         poiID = 8432,  normalPoiID = 8431,
+        instanceID = 2979,
     },
     {
         name  = "Sunkiller Sanctum",
@@ -57,6 +62,7 @@ E.DelveData = {
         x     = 54.8,  y = 47.0,
         mapID = 2405,
         poiID = 8430,  normalPoiID = 8429,
+        instanceID = 2965,
     },
     {
         name  = "The Gulf of Memory",
@@ -64,6 +70,7 @@ E.DelveData = {
         x     = 36.3,  y = 49.2,
         mapID = 2413,
         poiID = 8436,  normalPoiID = 8435,
+        instanceID = 2964,
     },
     {
         name  = "The Grudge Pit",
@@ -71,6 +78,7 @@ E.DelveData = {
         x     = 70.5,  y = 64.92,
         mapID = 2413,
         poiID = 8434,  normalPoiID = 8433,
+        instanceID = 2963,
     },
     {
         name  = "Collegiate Calamity",
@@ -78,6 +86,7 @@ E.DelveData = {
         x     = 40.76, y = 54.06,
         mapID = 2393,
         poiID = 8426,  normalPoiID = 8425,
+        instanceID = 2933,
     },
     {
         name  = "The Darkway",
@@ -85,6 +94,7 @@ E.DelveData = {
         x     = 39.3,  y = 31.8,
         mapID = 2393,
         poiID = 8440,  normalPoiID = 8439,
+        instanceID = 3003,
     },
     -- The Coiled Isle pair inverts the pairing: bountiful is normal-1, not
     -- normal+1. Both IDs were read live off a bountiful day.
@@ -94,6 +104,7 @@ E.DelveData = {
         x     = 64.54, y = 77.58,
         mapID = 2512,
         poiID = 8760,  normalPoiID = 8761,
+        instanceID = 3038,
     },
     {
         name  = "The Ring of Glory",
@@ -101,6 +112,7 @@ E.DelveData = {
         x     = 71.35, y = 56.54,
         mapID = 2512,
         poiID = 8763,  normalPoiID = 8764,
+        instanceID = 3077,
     },
 }
 
@@ -158,23 +170,16 @@ for _, d in ipairs(E.DelveData) do
     E.DelveDataByName[d.name] = d
 end
 
--- Fallback name lookup when GetRealZoneText()/GetInstanceInfo() don't
--- return a recognizable delve name at SCENARIO_COMPLETED time.
-E.DelveZoneIDs = {
-    [2633] = "The Ring of Glory",
-    [2635] = "Gnarldor Isle",
-    [2933] = "Collegiate Calamity",
-    [2952] = "The Shadow Enclave",
-    [2953] = "Parhelion Plaza",
-    [2961] = "Twilight Crypts",
-    [2962] = "Atal'Aman",
-    [2963] = "The Grudge Pit",
-    [2964] = "The Gulf of Memory",
-    [2965] = "Sunkiller Sanctum",
+-- Instance map IDs: GetInstanceInfo()'s 8th return inside, C_DelvesUI.GetDelveEntranceMapID() at the entrance. Not localized.
+E.DelveNameByInstanceID = {
     [2966] = "Torment's Rise",
-    [2979] = "Shadowguard Point",
-    [3003] = "The Darkway",
+    [3079] = "Venomfall Deeps",
 }
+E.DelveDataByInstanceID = {}
+for _, d in ipairs(E.DelveData) do
+    E.DelveNameByInstanceID[d.instanceID] = d.name
+    E.DelveDataByInstanceID[d.instanceID] = d
+end
 
 -- `delve` MUST match the E.DelveData name exactly so rows line up with the
 -- Delve Locations tab (note: "Twilight Crypt", singular).
@@ -472,7 +477,7 @@ E.DelveBosses = {
     },
 }
 
--- Alternate spellings (e.g. plural "Twilight Crypts" from DelveZoneIDs)
+-- Alternate spellings (e.g. the plural "Twilight Crypts" the map POI uses)
 -- that must still resolve to the canonical boss list.
 local BOSS_NAME_ALIASES = {
     ["Twilight Crypts"] = "Twilight Crypt",
@@ -550,11 +555,12 @@ E.DelveBossByVariant = {
         ["Caustic Crush"]               = "Replicating Venomborne",
     },
     ["Twilight Crypt"] = {
-        ["Loosed Loa"]                  = "Blademaster Darza",
-        ["Loose Loa"]                   = "Blademaster Darza",
-        ["Party Crasher"]               = "Blademaster Darza",
-        ["Trapped"]                     = "Blademaster Darza",
-        ["Why'd It Have to Be Snakes?"] = "Replicating Venomborne",
+        ["Loosed Loa"]                    = "Blademaster Darza",
+        ["Loose Loa"]                     = "Blademaster Darza",
+        ["Party Crasher"]                 = "Blademaster Darza",
+        ["Trapped"]                       = "Blademaster Darza",
+        ["Why Did it Have to Be Snakes?"] = "Replicating Venomborne",
+        ["Why'd It Have to Be Snakes?"]   = "Replicating Venomborne",
     },
     ["The Darkway"] = {
         ["Focusers Under Pressure"] = "Infiltrator Gulkat",
