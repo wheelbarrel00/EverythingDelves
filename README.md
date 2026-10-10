@@ -196,7 +196,7 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 
 > **New in 12.1:** Gnarldor Isle and The Ring of Glory are fully covered — locations, waypoints, today's story, achievements, bountiful tracking, and boss tactics for all four of their bosses plus the Open Night arena gauntlet.
 >
-> Patch 12.1 also gave a **Children of Ula'tek story** to eight of the ten older delves — every one except The Gulf of Memory and Sunkiller Sanctum. All eight are covered, with their objectives and their bosses: Academic Antitoxin, Basilisk Blitz, Venomous Vapors, Fungal Pharmacon, Caustic Crush, Why'd It Have to Be Snakes?, Infiltrate and Ameliorate and Eggsplosive Growth. They bring three new bosses with them — **Replicating Venomborne**, **Disciple of Vash'nik** and **Abominable Blunder** — each with full role-by-role tactics, so six delves that used to end on a single boss now show both. Tier ratings for 12.1's stories and the Delver's Call quests for the two new delves are still to come.
+> Patch 12.1 also gave a **Children of Ula'tek story** to eight of the ten older delves — every one except The Gulf of Memory and Sunkiller Sanctum. All eight are covered, with their objectives and their bosses: Academic Antitoxin, Basilisk Blitz, Venomous Vapors, Fungal Pharmacon, Caustic Crush, Why'd It Have to Be Snakes?, Infiltrate and Ameliorate and Eggsplosive Growth. They bring three new bosses with them — **Replicating Venomborne**, **Disciple of Vash'nik** and **Abominable Blunder** — each with full role-by-role tactics, so six delves that used to end on a single boss now show both. Every 12.1 story has a tier rating now, from Moleman's Delve Compendium. The Delver's Call quests for the two new delves are still to come.
 
 ---
 
