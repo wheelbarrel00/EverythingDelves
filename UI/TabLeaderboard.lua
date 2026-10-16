@@ -47,12 +47,20 @@ local function ClassName(classFile)
     return (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[classFile]) or classFile
 end
 
+local LAB_MARKS = { 3, 6, 9, "kindo" }
+
+local function LabyrinthRowName(mark)
+    if mark == "kindo" then return L["Kindo'jan"] end
+    return L["%d chambers"]:format(mark)
+end
+
 local function Collect(v)
     v.runs = E.CollectLeaderboardRuns()
     local sv = EverythingDelvesDB
     v.roster = (sv and sv.roster) or {}
     v.me = E.CharKey()
     local has, tiers, nemesis, seenNem, classes, specs = {}, {}, {}, {}, {}, {}
+    v.anyLabyrinth = false
     for _, r in ipairs(v.runs) do
         if not has[r.tier] then
             has[r.tier] = true
@@ -62,9 +70,13 @@ local function Collect(v)
             seenNem[r.delve] = true
             nemesis[#nemesis + 1] = r.delve
         end
+        if r.kind == "labyrinth" then v.anyLabyrinth = true end
         if r.class then classes[r.class] = true end
         if r.spec then specs[r.spec] = true end
     end
+    -- A run with no ranked time has no board entry, but the card must not say there are no runs
+    local labHist = E.Labyrinth and E.db and E.db.delveHistory and E.db.delveHistory[E.Labyrinth.name]
+    if labHist and labHist.recentRuns and #labHist.recentRuns > 0 then v.anyLabyrinth = true end
     if v.cls ~= ALL_CLASSES and not classes[v.cls] then v.cls = ALL_CLASSES end
     if v.spec ~= ALL_SPECS and not specs[v.spec] then v.spec = ALL_SPECS end
     table_sort(tiers)
@@ -76,6 +88,12 @@ local function Collect(v)
     for _, d in ipairs(E.DelveData or {}) do midnight[#midnight + 1] = d.name end
     table_sort(midnight, function(a, b) return a:lower() < b:lower() end)
     v.midnightKeys = midnight
+    v.labyrinthKeys, v.labyrinthMarks = {}, {}
+    for _, mark in ipairs(LAB_MARKS) do
+        local key = E.LabyrinthBoardKey(mark)
+        v.labyrinthKeys[#v.labyrinthKeys + 1] = key
+        v.labyrinthMarks[key] = mark
+    end
 end
 
 local function Rank(v, delve)
@@ -275,6 +293,7 @@ local function FillSection(ui, v, t, keys, emptyWhen)
         local nice = key
         local boss = t.nemesis and E.NemesisBossByDelve and E.NemesisBossByDelve[key]
         if boss then nice = key .. " (" .. boss .. ")" end
+        if t.labyrinth then nice = LabyrinthRowName(v.labyrinthMarks[key]) end
         r.name:SetText(nice)
         if top then
             r.time:SetText(E:FormatClock(top.duration))
@@ -282,7 +301,7 @@ local function FillSection(ui, v, t, keys, emptyWhen)
             r.shown = E.ShowNamePair(ui, r.who, ShortName(v, top.char), E.ClassRGB(ui, ClassOf(v, top.char, top)))
             r.suffix:SetText(((top.char == v.me) and (L["(you)"] .. "  ") or "") .. (SpecName(top.spec) or "--"))
             local story = top.story and E.StripColorEscapes(top.story)
-            r.story:SetText(story or "--")
+            r.story:SetText(story or (t.labyrinth and "" or "--"))
             r.story:SetTextColor(ui:Color(story and "label" or "muted"))
             local place = YourPlace(v, list)
             r.place:SetText(place and L["#%d of %d"]:format(place, #list) or "--")
@@ -314,7 +333,7 @@ local function FillSection(ui, v, t, keys, emptyWhen)
                 rr.spec:SetText(SpecName(run.spec) or "--")
                 rr.time:SetText(E:FormatClock(run.duration))
                 local story = run.story and E.StripColorEscapes(run.story)
-                rr.story:SetText(story or "--")
+                rr.story:SetText(story or (t.labyrinth and "" or "--"))
                 rr.story:SetTextColor(ui:Color(story and "label" or "muted"))
                 rr.deaths:SetText(tostring(run.deaths or 0))
                 rr.date:SetText(run.timestamp > 0 and date("%Y-%m-%d", run.timestamp) or "--")
@@ -506,9 +525,11 @@ E:RegisterModule(function()
 
     local nemesis = NewSection(ui, content, L["Seasonal Nemesis"], L["No nemesis delve runs recorded yet."])
     nemesis.nemesis = true
+    local labyrinth = NewSection(ui, content, E.LabyrinthDisplayName(), L["No Labyrinth runs recorded yet."])
+    labyrinth.labyrinth = true
     local midnight = NewSection(ui, content, L["Midnight Delves"],
         L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"])
-    local sections = { nemesis, midnight }
+    local sections = { nemesis, labyrinth, midnight }
 
     local lastWidth = 0
     local function ViewWidth()
@@ -527,7 +548,7 @@ E:RegisterModule(function()
         filters:SetShown(any)
 
         local held, total = 0, 0
-        for _, list in ipairs({ v.nemesisKeys, v.midnightKeys }) do
+        for _, list in ipairs({ v.nemesisKeys, v.labyrinthKeys, v.midnightKeys }) do
             for _, key in ipairs(list) do
                 local top = Rank(v, key)[1]
                 if top then
@@ -545,6 +566,7 @@ E:RegisterModule(function()
         end
 
         FillSection(ui, v, nemesis, v.nemesisKeys, #v.nemesisKeys == 0)
+        FillSection(ui, v, labyrinth, v.labyrinthKeys, not v.anyLabyrinth)
         FillSection(ui, v, midnight, v.midnightKeys, not any)
         local w = Measure(sections)
 

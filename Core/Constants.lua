@@ -35,7 +35,7 @@ E.TAB_NAMES = {
     L["Delve Locations"],
     L["Current Bountiful Delves"],
     L["Tier Guide"],
-    "Azta'rec",
+    L["Nemesis"],
     L["Shard Tracker"],
     L["Delve History"],
     L["Delver's Call"],

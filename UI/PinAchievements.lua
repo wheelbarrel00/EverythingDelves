@@ -14,8 +14,22 @@ for _, d in ipairs(E.DelveData or {}) do
     if d.poiID       then poiToDelve[d.poiID]       = d.name end
     if d.normalPoiID then poiToDelve[d.normalPoiID] = d.name end
 end
+local LAB = E.Labyrinth
+for _, id in ipairs({ LAB.poiID, LAB.normalPoiID, LAB.lockedPoiID }) do poiToDelve[id] = LAB.name end
 
 local HEADER_TEXT = L["Delve Achievements"]
+
+local function NoColon(s)
+    return (s:gsub("%s*:%s*$", ""):gsub("%s*\239\188\154%s*$", ""))
+end
+
+-- The pin's own name can differ from the map's (German drops the article), so both count as the Labyrinth's title
+local function IsLabyrinthTitle(title)
+    if not title then return false end
+    if title == E.LabyrinthDisplayName() then return true end
+    local info = C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo and C_AreaPoiInfo.GetAreaPOIInfo(LAB.mapID, LAB.poiID)
+    return type(info) == "table" and info.name == title
+end
 
 -- Hidden /ed achtip diagnostic: logs each detection and why it did/didn't append.
 local function DebugTip(msg)
@@ -118,12 +132,25 @@ local function AddDetailLines(status)
     end
 end
 
+local function AddLabyrinthLines(st)
+    if st.tiers then
+        AddAchHeader(NoColon(L["Tier goals:"]), st.tiersDone, #st.tiers)
+        for i, a in ipairs(st.tiers) do AddSubItem(L["Tier %d"]:format(i), a.done) end
+    end
+    if st.chests then AddAchHeader(L["Sturdy Chests"], st.chests.cur, st.chests.total) end
+    if st.chambers then AddAchHeader(st.chambers.name, st.chambers.cur, st.chambers.total) end
+end
+
+local function AddDetails(cur)
+    if cur.labyrinth then AddLabyrinthLines(cur.status) else AddDetailLines(cur.status) end
+end
+
 local function RenderSection(cur)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(E.CC.gold .. HEADER_TEXT .. E.CC.close)
 
     if cur.expanded then
-        AddDetailLines(cur.status)
+        AddDetails(cur)
     else
         GameTooltip:AddLine(
             E.CC.body .. L["%d to earn here"]:format(cur.status.summaryCount)
@@ -147,14 +174,20 @@ local function BuildSection(delveName, mode)
         return
     end
 
-    local status = E:GetDelveAchievementStatus(delveName)
+    local labyrinth = delveName == LAB.name
+    local status
+    if labyrinth then
+        status = E.LabyrinthAchievementStatus()
+    else
+        status = E:GetDelveAchievementStatus(delveName)
+    end
     -- Gate on summaryCount, not allDone: unknown depths clear allDone without
     -- adding anything to render, and an empty section is worse than none.
     if not status or status.summaryCount == 0 then
         DebugTip(status and "skip: nothing outstanding" or "skip: no achievement data")
         return
     end
-    local credit = E:GetTodaysStoryCredit(delveName, status)
+    local credit = not labyrinth and E:GetTodaysStoryCredit(delveName, status) or nil
 
     if expandedDelve and expandedDelve ~= delveName then
         expandedDelve = nil
@@ -167,10 +200,11 @@ local function BuildSection(delveName, mode)
     end
 
     current = {
-        delve    = delveName,
-        status   = status,
-        credit   = credit,
-        expanded = expanded,
+        delve     = delveName,
+        labyrinth = labyrinth,
+        status    = status,
+        credit    = credit,
+        expanded  = expanded,
     }
     DebugTip(("appending: %d group(s)%s, %s"):format(
         status.summaryCount, credit and ", today-credit" or "",
@@ -189,7 +223,9 @@ local function OnTooltipShow()
         -- Map-canvas-owned tooltips: identify the delve by title.
         if not IsWorldMapDescendant(owner) then return end
         local title = TooltipTitle()
-        if title and E.ResolveDelveByDisplayName then
+        if IsLabyrinthTitle(title) then
+            delveName = LAB.name
+        elseif title and E.ResolveDelveByDisplayName then
             delveName = E:ResolveDelveByDisplayName(title)
         end
         if not delveName then
@@ -222,10 +258,15 @@ local function TryReappend()
 
     -- The rebuild may have repurposed the tooltip (mousing pin -> bag item never hides it).
     local title = TooltipTitle()
-    local stillOurs = title and (
-        (E.DelveNamesMatch and E.DelveNamesMatch(title, cur.delve))
-        or (E.ResolveDelveByDisplayName
-            and E:ResolveDelveByDisplayName(title) == cur.delve))
+    local stillOurs
+    if cur.labyrinth then
+        stillOurs = IsLabyrinthTitle(title)
+    else
+        stillOurs = title and (
+            (E.DelveNamesMatch and E.DelveNamesMatch(title, cur.delve))
+            or (E.ResolveDelveByDisplayName
+                and E:ResolveDelveByDisplayName(title) == cur.delve))
+    end
     if not stillOurs then
         current, wiped = nil, false
         return
@@ -310,7 +351,7 @@ modWatcher:SetScript("OnEvent", function(_, _, key)
     expandedDelve = current.delve
     if AlreadyAppended() then
         DebugTip("shift: expanding in place")
-        local ok, err = pcall(AddDetailLines, current.status)
+        local ok, err = pcall(AddDetails, current)
         if ok then
             GameTooltip:Show()
         else

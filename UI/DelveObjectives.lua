@@ -127,8 +127,14 @@ end
 -- Difficulty 208 = Delves. Live, authoritative test that flips the moment the
 -- player zones out; deliberately ignores runState.inDelve (can be left stale on
 -- some exit paths). Spans the whole run plus the post-completion looting window.
+-- The open world keeps reporting the delve difficulty after the Labyrinth's seamless exit, until the next loading
+-- screen, so the instance has to be one as well
 local function PlayerInDelve()
-    return select(3, GetInstanceInfo()) == 208
+    return select(3, GetInstanceInfo()) == 208 and select(2, IsInInstance()) ~= "none"
+end
+
+local function InLabyrinth()
+    return E.Labyrinth ~= nil and select(8, GetInstanceInfo()) == E.Labyrinth.instanceID
 end
 
 E:RegisterModule(function()
@@ -306,6 +312,45 @@ E:RegisterModule(function()
         yOff = yOff - math.max(13, (fs:GetStringHeight() or 11) + 4)
     end
 
+    -- Green when it matches or beats the best, the same rule as the stopped clock
+    local function LabTimeLine(label, seconds, best)
+        local cc = (not best or seconds <= best) and E.CC.green or E.CC.red
+        local text = E.CC.muted .. label .. E.CC.close .. " " .. cc .. E:FormatClock(seconds) .. E.CC.close
+        if best then
+            text = text .. " " .. E.CC.muted .. L["(best %s)"]:format(E:FormatClock(best)) .. E.CC.close
+        end
+        AddLine(text)
+    end
+
+    local function LabyrinthLines(lab, tier)
+        local LAB, R = E.Labyrinth, E.LabRun
+        local total = R.Total(lab)
+        local text = E.CC.muted .. L["Chambers:"] .. E.CC.close .. " " .. E.CC.body .. total .. " / " .. LAB.chambers .. E.CC.close
+        if total < LAB.chambers then
+            local nextMark = (math.floor(total / LAB.checkpointEvery) + 1) * LAB.checkpointEvery
+            text = text .. "   " .. E.CC.muted .. L["Next checkpoint:"] .. E.CC.close .. " " .. E.CC.body .. nextMark .. E.CC.close
+        end
+        AddLine(text)
+        local mark = math.floor(lab.ch / LAB.checkpointEvery) * LAB.checkpointEvery
+        if mark > 0 and not lab.prior and lab.at[mark] then
+            LabTimeLine(L["Checkpoint %d:"]:format(mark), lab.at[mark], E:GetLabyrinthBest(tier, mark))
+        end
+        if lab.kindo then
+            LabTimeLine(L["Kindo'jan:"], lab.kindo, E:GetLabyrinthBest(tier, "kindo"))
+        end
+        local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+            and C_CurrencyInfo.GetCurrencyInfo(E.CurrencyIDs.bountifulKeys)
+        local keys = info and info.quantity or 0
+        local coffers = R.Coffers(lab)
+        local short = coffers - keys
+        text = E.CC.muted .. L["Coffers:"] .. E.CC.close .. " " .. E.CC.body .. coffers .. E.CC.close .. "   "
+            .. E.CC.muted .. L["Keys:"] .. E.CC.close .. " " .. (short > 0 and E.CC.red or E.CC.body) .. keys .. E.CC.close
+        if short > 0 then
+            text = text .. " " .. E.CC.red .. L["(%d short)"]:format(short) .. E.CC.close
+        end
+        AddLine(text)
+    end
+
     -- Lazy: only written once the section has at least one line.
     local function SetSection(title)
         pendingHeader = title
@@ -412,8 +457,10 @@ E:RegisterModule(function()
             if ok then stepInfo = si end
         end
         local liveTier = ReadLiveTier(stepInfo)
+        local inLabyrinth = InLabyrinth()
 
         if E.db and E.db.showDelveHUD and rs and rs.inDelve then
+            if rs.lab then LabyrinthLines(rs.lab, liveTier or rs.tier or 0) end
             local variant = rs.story
             if (not variant or variant == "") and E.GetDelveStoryVariant then
                 variant = E:GetDelveStoryVariant(name)
@@ -436,16 +483,17 @@ E:RegisterModule(function()
             if E.GetRecommendedCurios then
                 combat, utility = E:GetRecommendedCurios(companion, role)
             end
+            local gap = rs.lab ~= nil
             local cl = CurioLine(L["Combat:"], combat)
             local ul = CurioLine(L["Utility:"], utility)
-            if cl then AddLine(cl) end
-            if ul then AddLine(ul) end
+            if cl then AddLine(cl, gap); gap = false end
+            if ul then AddLine(ul, gap); gap = false end
             local poison = E.GetRecommendedPoison and E:GetRecommendedPoison(companion)
             if poison then
                 AddLine(E.CC.muted .. L["Poison:"] .. E.CC.close .. " "
                     .. (E.GetPoisonIconMarkup
                         and E.GetPoisonIconMarkup(poison) or "")
-                    .. E.CC.body .. poison.name .. E.CC.close)
+                    .. E.CC.body .. poison.name .. E.CC.close, gap)
             end
             local knownTier = liveTier or (rs.tier or 0)
             local lives = ReadDelveLives(knownTier > 0 and knownTier or nil)
@@ -461,7 +509,7 @@ E:RegisterModule(function()
             AddLine(statLine)
         end
 
-        if E.db and E.db.showRunResult and rs and rs.inDelve
+        if E.db and E.db.showRunResult and rs and rs.inDelve and not inLabyrinth
                 and E.GetBestRunTime then
             local curTier = liveTier or (rs.tier or 0)
             local best, bestTier
@@ -481,7 +529,7 @@ E:RegisterModule(function()
         -- counting it would stop objDone ever reaching objTotal. Gated on the visit, not
         -- the favor aura (Valeera's Dundun's Favor curio carries it too) and not the run,
         -- whose bountiful flag is cleared when the boss dies.
-        if rs and rs.wasBountiful then visitBountiful = true end
+        if rs and rs.wasBountiful and not inLabyrinth then visitBountiful = true end
         if E.db and E.db.showDelveHUD and PlayerInDelve() and visitBountiful then
             local jr = E.GetDelverJourneyRank()
             if jr and jr >= E.Dundun.journeyRank then
@@ -493,7 +541,7 @@ E:RegisterModule(function()
         -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
         -- straight-to-boss fight with no Pactsworn packs / no strongbox.
         SetSection(nil)
-        if E.db and E.db.showDelveObjectives then
+        if E.db and E.db.showDelveObjectives and not inLabyrinth then
             local tierNow = liveTier or (rs and rs.tier) or 0
             -- The counters and rs.inDelve all read stale during the hold, so
             -- the all-clear waits it out. Tier 0 means not yet detected.
@@ -570,9 +618,9 @@ E:RegisterModule(function()
         -- The only place the exit is observable: SyncRunTracking is reached
         -- only from inside a delve. If the core misses an exit the run keeps
         -- its startTime, so the runKey matches and its reset never fires.
-        -- Uses the core's wider test rather than PlayerInDelve, which reads the
-        -- difficulty alone: a transient non-208 happens inside a delve, and
-        -- latching on one would zero the run's kill count for good.
+        -- Uses the core's wider test rather than PlayerInDelve, which needs the
+        -- difficulty: a transient non-208 happens inside a delve, and latching
+        -- on one would zero the run's kill count for good.
         local _, instanceType = IsInInstance()
         if select(3, GetInstanceInfo()) ~= 208 and instanceType ~= "scenario" then
             lastRunKey = nil

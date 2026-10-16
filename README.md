@@ -8,7 +8,7 @@
 </p>
 <p align="center">
   <a href="https://github.com/wheelbarrel00/EverythingDelves/releases"><img src="https://img.shields.io/github/v/release/wheelbarrel00/EverythingDelves?color=FF2222&label=Version" alt="Version" /></a>
-  <img src="https://img.shields.io/badge/WoW-Midnight%2012.1-8B0000?style=flat-square" alt="WoW Version" />
+  <img src="https://img.shields.io/badge/WoW-Midnight%2012.1.5-8B0000?style=flat-square" alt="WoW Version" />
   <img src="https://img.shields.io/badge/Interface-120100-333333?style=flat-square" alt="Interface" />
   <a href="LICENSE"><img src="https://img.shields.io/github/license/wheelbarrel00/EverythingDelves?style=flat-square&color=333333" alt="License" /></a>
   <img src="https://img.shields.io/badge/Memory-~600kb-333333?style=flat-square" alt="Memory" />
@@ -38,11 +38,13 @@
 
 ## Overview
 
-Everything Delves is a display-only companion addon for WoW: Midnight (12.1). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
+Everything Delves is a display-only companion addon for WoW: Midnight (12.1 and 12.1.5). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
 
 Open with **`/ed`** or the minimap button. Right-click the minimap button to open the settings.
 
 Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests and EQ Objective Tracker: the pages sit in a resizable window with a sidebar, and Options, Profiles and About have a settings window of their own. Only the windows changed - everything the addon tracks works exactly as before.
+
+Version 2.2.0 adds patch 12.1.5's **Labyrinth of Kindo'jan** across the addon: its runs on the delve HUD, in Delve History and on the Leaderboard, Kindo'jan on the Nemesis page, its achievements, and the Labyrinth on every page that lists delves.
 
 ---
 
@@ -54,7 +56,8 @@ Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests 
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat and Utility curios and Valeera's poison, each with its own icon, a live run timer, your remaining lives and deaths, and a standing reminder when Dundun is hiding in a Bountiful Delve
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status, a tier-by-tier reward table with your own gear tier highlighted, and a coffer key warning before a Bountiful Delve so Dundun's second chest doesn't catch you a key short
 - **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
-- **Azta'rec (Seasonal Nemesis)** — the Season 2 Nemesis delve, Venomfall Deeps on The Coiled Isle: boss mechanics, the Sermon of Ula'tek intermission, the Tier "?" and Tier "??" differences, companion and curio setup, and the full reward track
+- **The Labyrinth of Kindo'jan** - patch 12.1.5's nine-chamber Labyrinth: chambers and checkpoint times on the HUD, one History row per visit, Leaderboard rankings to 3, 6 and 9 chambers and for Kindo'jan, its achievements, Labyrinth Journey and Ascendant Venomstones, and the coffer keys its checkpoints need
+- **Nemesis** - a switch between Kindo'jan, the Labyrinth's final boss, and Azta'rec, the Season 2 Nemesis in Venomfall Deeps: how to reach each, boss mechanics phase by phase, companion and curio setup, and the full reward track
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Mistcrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
@@ -94,8 +97,13 @@ Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and 
 - **Gilded Stash** — 4× T11 Bountiful weekly reward progress
 - **Midnight Faction Renown** — Silvermoon Court, Amani Tribe, Hara'ti, The Singularity
 
-### Azta'rec (Seasonal Nemesis)
-A dedicated tab for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles. Venomfall Deeps only opens once Season 2 begins, and the tab says so until then.
+### The Labyrinth of Kindo'jan
+Patch 12.1.5's Labyrinth in Eversong Woods runs as nine chambers with a checkpoint every third, and Everything Delves follows it everywhere it follows delves. The **HUD** shows the chambers you have done, the chambers to your next checkpoint, your time to the last checkpoint against your best at that tier, and your coffer keys against the coffers your checkpoints open. **Delve History** keeps one row per visit (chambers, tier, time, deaths, keys used, each checkpoint's time and Kindo'jan's fight time, or "left early"), with every chamber in the row's tooltip. The **Leaderboard** ranks your characters by their time to 3, 6 and 9 chambers and by Kindo'jan's fight. The **Achievements** page and the Labyrinth's map pin show its tier goals and achievements. Delve Locations, Current Bountiful Delves, the difficulty picker panel, the Tier Guide (Labyrinth Journey, Ascendant Venomstones, Gilded Stash checkpoints) and the Roster (Wah'du's weekly quests) all include it.
+
+### Nemesis (Kindo'jan and Azta'rec)
+A switch at the top of the page moves between **Kindo'jan**, the First Hash'ey at the heart of the Labyrinth, and Azta'rec. Kindo'jan's side covers how to reach his chamber, Den'Zara first, each phase of the fight with the four loa of the intermission, Valeera's role, poison and curios, and his rewards with a check for each you have earned. Ability, item, achievement and place names come from the game in your language.
+
+A dedicated view for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles.
 
 ### Shard Tracker
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 7 known shard sources with live quest completion tracking. Also includes:
@@ -107,7 +115,7 @@ Your shard economy dashboard. Currency overview with progress bars for next key 
 - **Low Shard Warning** — configurable threshold alert
 
 ### Delve History
-Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis. Auto-detected — just play normally and runs are logged automatically. History from past seasons is kept and keeps its own boss name, so older Torment's Rise runs still read Nullaeus. Grouped by delve with collapsible detail rows:
+Lifetime stats and recent run history for every Midnight delve, including the Seasonal Nemesis and the Labyrinth of Kindo'jan. Auto-detected — just play normally and runs are logged automatically. History from past seasons is kept and keeps its own boss name, so older Torment's Rise runs still read Nullaeus. Grouped by delve with collapsible detail rows:
 - **Total runs, highest tier, average & fastest times, total deaths, and keys used** per delve
 - **Latest run** time and date shown on each delve's summary line
 - **Per-run detail** for your recent runs: tier, time, deaths, Coffer Key used, story variant, the **boss you faced**, and the date + time of day
@@ -187,7 +195,7 @@ You can also bind keys for the main window, curio recommendations, and the Delve
 | Zone | Delves |
 |---|---|
 | Isle of Quel'Danas | Parhelion Plaza |
-| Eversong Woods | The Shadow Enclave |
+| Eversong Woods | The Shadow Enclave, The Labyrinth of Kindo'jan (12.1.5) |
 | Zul'Aman | Atal'Aman, Twilight Crypt |
 | Voidstorm | Shadowguard Point, Sunkiller Sanctum |
 | Harandar | The Gulf of Memory, The Grudge Pit |
@@ -252,8 +260,8 @@ where to send it.
 | Metric | Value |
 |---|---|
 | Memory footprint | ~600 KB |
-| Lua files | 33 (26 authored, 7 generated locale files) |
-| Interface version | 120100 (Midnight 12.1) |
+| Lua files | 41 (34 authored, 7 generated locale files) |
+| Interface version | 120100, 120105 (Midnight 12.1 and 12.1.5) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 
@@ -267,16 +275,19 @@ EverythingDelves/
 │   ├── Constants.lua             # Colors, tier data, gear-track bands, shard sources, IDs
 │   ├── Changelog.lua             # In-addon changelog data (About tab)
 │   ├── Data.lua                  # Delve directory, boss tactics, story-variant bosses
+│   ├── Labyrinth.lua             # Labyrinth runs, unlock, Journey, achievements, Wah'du
 │   ├── Utils.lua                 # UI factories, waypoint + SuperTrack helpers, tooltips
 │   ├── SpeedRank.lua             # Per-delve clear-time estimates + pace baseline
 │   ├── Achievements.lua          # Delve achievement IDs for map-pin tooltips
-│   └── Leaderboard.lua           # Leaderboard runs gathered from every profile
+│   ├── Leaderboard.lua           # Leaderboard runs gathered from every profile
+│   └── LabLog.lua                # /ed lablog, a Labyrinth event log for debugging (off by default)
 ├── UI/
 │   ├── MainFrame.lua             # Window, tabs, minimap button, LibDataBroker (live text)
 │   ├── TabDelveLocations.lua     # Tab 1: sortable delve list + boss tactics
 │   ├── TabCurrentBountiful.lua   # Tab 2: live bountiful detection + currency dashboard
 │   ├── TabTierGuide.lua          # Tab 3: tier table, per-slot vault, journey, renown
-│   ├── TabNullaeus.lua           # Tab 4: seasonal nemesis boss delve
+│   ├── TabKindojan.lua           # Tab 4: Kindo'jan's view on the Nemesis page
+│   ├── TabNullaeus.lua           # Tab 4: the Nemesis page, its switch and Azta'rec's view
 │   ├── TabShardTracker.lua       # Tab 5: shard economy, session tracker, WQ scanner
 │   ├── TabDelveHistory.lua       # Tab 6: lifetime stats + run history, notes, bosses
 │   ├── TabDelversCall.lua        # Tab 7: weekly World Tour quest tracker

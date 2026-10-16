@@ -12,6 +12,7 @@ local HEAD, DELVE_ROW, RUN_ROW, EMPTY_ROW, HINT_GAP = 28, 32, 28, 44, 8
 local INSET, CHEVRON, GAP, RUN_GAP, ICON, BUTTON = 14, 12, 10, 8, 14, 24
 local NAME_X = INSET + CHEVRON + GAP
 local TIER_W, TIME_W, DEATHS_W, BOSS_W, DATE_W, STORY_MIN, NAME_MIN = 30, 60, 90, 140, 116, 100, 150
+local CHAMBERS_W, KEYS_W, KINDO_W, SPLITS_MIN = 30, 30, 72, 150
 local NOTE_X, NOTE_PAD, NOTE_SIZE = 50, 6, 12
 local NOTE_MAX = 280
 local EDITOR_W, EDITOR_H, EDITOR_PAD, FIELD_H, FOOTER_H = 440, 304, 20, 110, 56
@@ -25,6 +26,15 @@ local STATS = {
     { key = "avg",     label = L["Avg:"],          width = 64 },
     { key = "best",    label = L["Best Tier:"],    width = 76 },
     { key = "runs",    label = L["Runs:"],         width = 64 },
+}
+
+-- A Labyrinth run can stop at any chamber, so an average or fastest over all of them compares unlike runs
+local LAB_STATS = {
+    { key = "kindo",    label = L["Kindo'jan"],  width = 84 },
+    { key = "full",     label = L["Full clear"], width = 72 },
+    { key = "chambers", label = L["Chambers"],   width = 64 },
+    { key = "best",     label = L["Best Tier:"], width = 76 },
+    { key = "runs",     label = L["Runs:"],      width = 64 },
 }
 
 local function FormatDuration(sec)
@@ -75,10 +85,16 @@ local function Stats(life)
              fastest = FormatDuration(life.fastestTime), deaths = string_format("%d", life.totalDeaths or 0) }
 end
 
+local function LabStats(life)
+    return { runs = tostring(life.totalRuns or 0), best = "T" .. (life.highestTier or 0),
+             chambers = string_format("%d", life.chambers or 0), full = FormatDuration(life.fullClear),
+             kindo = string_format("%d", life.kindoKills or 0) }
+end
+
 local function Collect(v)
     local history = E.db and E.db.delveHistory or nil
     v.history = history
-    v.nemesisKeys, v.midnightKeys = {}, {}
+    v.nemesisKeys, v.labyrinthKeys, v.midnightKeys = {}, {}, {}
     local runs, deaths, dur = 0, 0, 0
     if history then
         local nameMap = E.LoggableDelveNames
@@ -92,6 +108,8 @@ local function Collect(v)
                     local kind = nameMap and nameMap[name]
                     if kind == "nemesis" then
                         table_insert(v.nemesisKeys, name)
+                    elseif kind == "labyrinth" then
+                        table_insert(v.labyrinthKeys, name)
                     elseif kind == "regular" then
                         table_insert(v.midnightKeys, name)
                     end
@@ -106,7 +124,8 @@ local function Collect(v)
         :format("", "", "", runs, "", "", "", "", "", "", deaths, "", "", "", "", "", "", FormatDuration(dur), "")
 end
 
-local function NiceName(key, nemesis)
+local function NiceName(key, nemesis, labyrinth)
+    if labyrinth then return E.LabyrinthDisplayName() end
     if not nemesis then return key end
     local nem = E.NemesisDelve
     local boss = (E.NemesisBossByDelve and E.NemesisBossByDelve[key]) or (nem and nem.boss)
@@ -132,16 +151,17 @@ local function BuildIntro(ui, content, v)
     v.intro = b
 end
 
-local function NewSection(ui, content, label, emptyText, nemesis)
+local function NewSection(ui, content, label, emptyText, kind)
     local card = ui:CreateGroup(content, label)
     local t = CreateFrame("Frame", nil, content)
-    t.nemesis = nemesis
+    t.nemesis, t.labyrinth = kind == "nemesis", kind == "labyrinth"
+    t.stats = t.labyrinth and LAB_STATS or STATS
     t.head = CreateFrame("Frame", nil, t)
     t.head:SetHeight(HEAD)
     t.head.name = ui:CreateText(t.head, L["Delve Name"], "groupLabel")
     t.head.name:SetPoint("LEFT", t.head, "LEFT", NAME_X, 0)
     t.head.cells = {}
-    for _, s in ipairs(STATS) do
+    for _, s in ipairs(t.stats) do
         local fs = ui:CreateText(t.head, NoColon(s.label), "groupLabel")
         fs:SetWordWrap(false)
         fs:SetJustifyH("RIGHT")
@@ -171,7 +191,7 @@ local function NewDelveRow(ui, t, v)
     r.name = ui:CreateText(r, "", "value")
     r.name:SetWordWrap(false)
     r.cells = {}
-    for _, s in ipairs(STATS) do
+    for _, s in ipairs(t.stats) do
         local fs = ui:CreateText(r, "", "label")
         fs:SetWordWrap(false)
         fs:SetJustifyH("RIGHT")
@@ -184,6 +204,37 @@ local function NewDelveRow(ui, t, v)
     r:SetScript("OnEnter", function(self) ui:ShowTooltip(self, self.nice, self.tip) end)
     r:SetScript("OnLeave", function() ui:HideTooltip() end)
     return r
+end
+
+local function AddRunButtons(ui, r, v)
+    r.del = ui:CreateIconButton(r, "close", BUTTON)
+    r.del:SetPoint("RIGHT", r, "RIGHT", -INSET, 0)
+    r.note = E.DelveList.IconButton(r, ED_TEXTURES .. "icon-note")
+    r.note:SetPoint("RIGHT", r.del, "LEFT", -RUN_GAP, 0)
+    r.date = ui:CreateText(r, "", "label")
+    r.date:SetTextColor(ui:Color("muted"))
+    r.date:SetWordWrap(false)
+    r.date:SetWidth(DATE_W)
+    r.date:SetPoint("RIGHT", r.note, "LEFT", -RUN_GAP, 0)
+
+    r.note:SetScript("OnClick", function(self)
+        local row = self:GetParent()
+        if row.run then v.openNote(row.delveKey, row.run, row.nice) end
+    end)
+    r.note:SetScript("OnEnter", function(self)
+        local note = self:GetParent().run and self:GetParent().run.note
+        if note and note ~= "" then
+            ui:ShowTooltip(self, L["Run Note"], note)
+        else
+            ui:ShowTooltip(self, L["Add a Note"], L["Click to attach a free-form note to this run."])
+        end
+    end)
+    r.note:SetScript("OnLeave", function() ui:HideTooltip() end)
+    r.del:SetScript("OnClick", function(self) v.deleteRun(self:GetParent()) end)
+    r.del:SetScript("OnEnter", function(self)
+        ui:ShowTooltip(self, L["Delete Run"], L["Permanently remove this run and its\ncontribution to lifetime stats."])
+    end)
+    r.del:SetScript("OnLeave", function() ui:HideTooltip() end)
 end
 
 local function NewRunRow(ui, t, v)
@@ -212,15 +263,7 @@ local function NewRunRow(ui, t, v)
     r.key:SetPoint("LEFT", r, "LEFT", x, 0)
     x = x + ICON + RUN_GAP
 
-    r.del = ui:CreateIconButton(r, "close", BUTTON)
-    r.del:SetPoint("RIGHT", r, "RIGHT", -INSET, 0)
-    r.note = E.DelveList.IconButton(r, ED_TEXTURES .. "icon-note")
-    r.note:SetPoint("RIGHT", r.del, "LEFT", -RUN_GAP, 0)
-    r.date = ui:CreateText(r, "", "label")
-    r.date:SetTextColor(ui:Color("muted"))
-    r.date:SetWordWrap(false)
-    r.date:SetWidth(DATE_W)
-    r.date:SetPoint("RIGHT", r.note, "LEFT", -RUN_GAP, 0)
+    AddRunButtons(ui, r, v)
     r.boss = ui:CreateText(r, "", "label")
     r.boss:SetWordWrap(false)
     r.boss:SetWidth(BOSS_W)
@@ -229,25 +272,52 @@ local function NewRunRow(ui, t, v)
     r.story:SetWordWrap(false)
     r.story:SetPoint("LEFT", r, "LEFT", x, 0)
     r.story:SetPoint("RIGHT", r.boss, "LEFT", -RUN_GAP, 0)
+    return r
+end
 
-    r.note:SetScript("OnClick", function(self)
-        local row = self:GetParent()
-        if row.run then v.openNote(row.delveKey, row.run, row.nice) end
-    end)
-    r.note:SetScript("OnEnter", function(self)
-        local note = self:GetParent().run and self:GetParent().run.note
-        if note and note ~= "" then
-            ui:ShowTooltip(self, L["Run Note"], note)
-        else
-            ui:ShowTooltip(self, L["Add a Note"], L["Click to attach a free-form note to this run."])
-        end
-    end)
-    r.note:SetScript("OnLeave", function() ui:HideTooltip() end)
-    r.del:SetScript("OnClick", function(self) v.deleteRun(self:GetParent()) end)
-    r.del:SetScript("OnEnter", function(self)
-        ui:ShowTooltip(self, L["Delete Run"], L["Permanently remove this run and its\ncontribution to lifetime stats."])
-    end)
-    r.del:SetScript("OnLeave", function() ui:HideTooltip() end)
+local function NewLabRunRow(ui, t, v)
+    local r = CreateFrame("Frame", nil, t)
+    r:SetHeight(RUN_ROW)
+    ui:Paint(r, "input", "divider", "T")
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self) ui:ShowTooltip(self, self.tipTitle, self.tipBody) end)
+    r:SetScript("OnLeave", function() ui:HideTooltip() end)
+    local x = NAME_X
+    local function cell(w)
+        local fs = ui:CreateText(r, "", "label")
+        fs:SetWordWrap(false)
+        fs:SetPoint("LEFT", r, "LEFT", x, 0)
+        fs:SetWidth(w)
+        x = x + w + RUN_GAP
+        return fs
+    end
+    r.chambers = cell(CHAMBERS_W)
+    r.tier = cell(TIER_W)
+    r.time = cell(TIME_W)
+    r.deaths = cell(DEATHS_W)
+    r.key = MouseIcon(ui, r, L["Key"], nil)
+    r.key.tex:SetTexture(ED_TEXTURES .. "icon-key")
+    r.key.tex:SetVertexColor(ui:Color("label"))
+    r.key:SetPoint("LEFT", r, "LEFT", x, 0)
+    r.keys = ui:CreateText(r, "", "label")
+    r.keys:SetPoint("LEFT", r.key, "RIGHT", 2, 0)
+    x = x + KEYS_W + RUN_GAP
+
+    AddRunButtons(ui, r, v)
+    r.kindoCell = CreateFrame("Frame", nil, r)
+    r.kindoCell:SetSize(KINDO_W, RUN_ROW)
+    r.kindoCell:SetPoint("RIGHT", r.date, "LEFT", -RUN_GAP, 0)
+    r.kindoIcon = r.kindoCell:CreateTexture(nil, "ARTWORK")
+    r.kindoIcon:SetSize(ICON, ICON)
+    r.kindoIcon:SetPoint("LEFT", r.kindoCell, "LEFT", 0, 0)
+    r.kindoIcon:SetTexture(ED_TEXTURES .. "icon-nemesis")
+    r.kindoIcon:SetVertexColor(ui:Color("muted"))
+    r.kindo = ui:CreateText(r.kindoCell, "", "label")
+    r.kindo:SetWordWrap(false)
+    r.splits = ui:CreateText(r, "", "label")
+    r.splits:SetWordWrap(false)
+    r.splits:SetPoint("LEFT", r, "LEFT", x, 0)
+    r.splits:SetPoint("RIGHT", r.kindoCell, "LEFT", -RUN_GAP, 0)
     return r
 end
 
@@ -281,9 +351,9 @@ local function Place(item, t, y)
     item:SetPoint("TOPRIGHT", t, "TOPRIGHT", INSET, -y)
 end
 
-local function PlaceStats(row, cells, widths)
+local function PlaceStats(row, cells, widths, stats)
     local right = INSET
-    for i, s in ipairs(STATS) do
+    for i, s in ipairs(stats) do
         local fs = cells[s.key]
         fs:ClearAllPoints()
         fs:SetPoint("RIGHT", row, "RIGHT", -right, 0)
@@ -291,6 +361,12 @@ local function PlaceStats(row, cells, widths)
         right = right + widths[i] + GAP
     end
     return right
+end
+
+local function FillDateAndNote(ui, r, run)
+    r.date:SetText(FormatStamp(run.timestamp))
+    local hasNote = run.note ~= nil and run.note ~= ""
+    r.note:GetNormalTexture():SetVertexColor(ui:Color(hasNote and "text" or "navText"))
 end
 
 local function FillRun(ui, r, run, key)
@@ -306,9 +382,68 @@ local function FillRun(ui, r, run, key)
     -- Map legacy live encounter names (e.g. "Spinshroom" -> "Gyrospore").
     local boss = run.boss and E:NormalizeLiveBoss(key, run.boss)
     r.boss:SetText(boss or "")
-    r.date:SetText(FormatStamp(run.timestamp))
-    local hasNote = run.note ~= nil and run.note ~= ""
-    r.note:GetNormalTexture():SetVertexColor(ui:Color(hasNote and "text" or "navText"))
+    FillDateAndNote(ui, r, run)
+end
+
+-- Times are a run's clock at each checkpoint, so a run that began partway has none that compare
+local function LabSplits(run)
+    if run.prior or type(run.at) ~= "table" then return nil end
+    local parts = {}
+    for mark = E.Labyrinth.checkpointEvery, E.Labyrinth.chambers, E.Labyrinth.checkpointEvery do
+        if run.at[mark] then
+            parts[#parts + 1] = E.DelveList.cc("muted") .. mark .. "|r " .. E:FormatClock(run.at[mark])
+        end
+    end
+    return #parts > 0 and table.concat(parts, "   ") or nil
+end
+
+local function LabTip(run)
+    local lines = {}
+    for i, room in ipairs(run.rooms or {}) do
+        lines[#lines + 1] = i .. ".  " .. (room.t or "--") .. (room.b and ("  (" .. room.b .. ")") or "") .. "   " .. FormatDuration(room.d)
+    end
+    local keys = run.keys or (run.keyUsed and 1 or 0)
+    local extra = {}
+    if run.kindo then extra[#extra + 1] = L["Kindo'jan:"] .. " " .. FormatDuration(run.kindo) end
+    if run.left then extra[#extra + 1] = L["left early"] end
+    if keys > 0 then extra[#extra + 1] = L["Keys used:"] .. " " .. string_format("%d", keys) end
+    if #extra > 0 then
+        if #lines > 0 then lines[#lines + 1] = " " end
+        for _, line in ipairs(extra) do lines[#lines + 1] = line end
+    end
+    return "T" .. (run.tier or 0) .. "  " .. BULLET .. "  " .. FormatStamp(run.timestamp), table.concat(lines, "\n")
+end
+
+local function FillLabRun(ui, r, run, key)
+    r.run, r.delveKey = run, key
+    local total = (run.ch or 0) + (run.prior or 0)
+    r.chambers:SetText(string_format("%d/%d", total, E.Labyrinth.chambers))
+    r.chambers:SetTextColor(ui:Color(total >= E.Labyrinth.chambers and "text" or "label"))
+    r.tier:SetText("T" .. (run.tier or 0))
+    r.time:SetText(FormatDuration(run.duration))
+    r.deaths:SetText(E.DelveList.cc("muted") .. L["Deaths:"] .. "|r " .. string_format("%d", run.deaths or 0))
+    local keys = run.keys or (run.keyUsed and 1 or 0)
+    r.key:SetShown(keys > 0)
+    r.keys:SetText(keys > 0 and string_format("%d", keys) or "")
+    local splits = LabSplits(run)
+    r.splits:SetText(splits or "--")
+    r.splits:SetTextColor(ui:Color(splits and "label" or "muted"))
+    r.kindo:ClearAllPoints()
+    r.kindoIcon:SetShown(run.kindo ~= nil)
+    if run.kindo then
+        r.kindo:SetPoint("LEFT", r.kindoIcon, "RIGHT", 4, 0)
+        r.kindo:SetText(FormatDuration(run.kindo))
+        r.kindo:SetTextColor(ui:Color("label"))
+        r.kindoCell:SetWidth(KINDO_W)
+    else
+        r.kindo:SetPoint("LEFT", r.kindoCell, "LEFT", 0, 0)
+        r.kindo:SetText(run.left and L["left early"] or "")
+        r.kindo:SetTextColor(ui:Color("muted"))
+        -- A longer translation widens the cell into the checkpoint times rather than over the date
+        r.kindoCell:SetWidth(math_max(KINDO_W, math_ceil(r.kindo:GetStringWidth() or 0)))
+    end
+    FillDateAndNote(ui, r, run)
+    r.tipTitle, r.tipBody = LabTip(run)
 end
 
 local function LayoutSection(ui, v, t, keys, widths, cardW)
@@ -325,25 +460,27 @@ local function LayoutSection(ui, v, t, keys, widths, cardW)
     else
         t.head:ClearAllPoints()
         Place(t.head, t, 0)
-        local used = PlaceStats(t.head, t.head.cells, widths)
+        local used = PlaceStats(t.head, t.head.cells, widths, t.stats)
         y = HEAD
         local nRows, nRuns, nNotes = 0, 0, 0
+        local makeRun = t.labyrinth and NewLabRunRow or NewRunRow
+        local fillRun = t.labyrinth and FillLabRun or FillRun
         for _, key in ipairs(keys) do
             local entry = v.history[key]
             local life = entry.lifetime
             nRows = nRows + 1
             local r = Acquire(t.rows, nRows, function() return NewDelveRow(ui, t, v) end)
             Place(r, t, y)
-            r.key, r.nice = key, NiceName(key, t.nemesis)
+            r.key, r.nice = key, NiceName(key, t.nemesis, t.labyrinth)
             local open = v.open[key] == true
             r.chevron:SetTexture(ui:Texture(open and "chevron-down" or "chevron-right"))
             r.name:SetText(r.nice)
             r.name:ClearAllPoints()
             r.name:SetPoint("LEFT", r, "LEFT", NAME_X, 0)
             r.name:SetPoint("RIGHT", r, "RIGHT", -used, 0)
-            local stats = Stats(life)
-            PlaceStats(r, r.cells, widths)
-            for _, s in ipairs(STATS) do r.cells[s.key]:SetText(stats[s.key]) end
+            local stats = (t.labyrinth and LabStats or Stats)(life)
+            PlaceStats(r, r.cells, widths, t.stats)
+            for _, s in ipairs(t.stats) do r.cells[s.key]:SetText(stats[s.key]) end
             local latest = entry.recentRuns and entry.recentRuns[1]
             local tip = latest and L["Latest: %s on %s"]:format(FormatDuration(latest.duration), FormatDay(latest.timestamp)) or ""
             if (life.totalKeysUsed or 0) > 0 then
@@ -354,10 +491,10 @@ local function LayoutSection(ui, v, t, keys, widths, cardW)
             if open then
                 for _, run in ipairs(entry.recentRuns or {}) do
                     nRuns = nRuns + 1
-                    local rr = Acquire(t.runs, nRuns, function() return NewRunRow(ui, t, v) end)
+                    local rr = Acquire(t.runs, nRuns, function() return makeRun(ui, t, v) end)
                     Place(rr, t, y)
                     rr.nice = r.nice
-                    FillRun(ui, rr, run, key)
+                    fillRun(ui, rr, run, key)
                     y = y + RUN_ROW
                     if run.note and run.note ~= "" then
                         nNotes = nNotes + 1
@@ -464,10 +601,11 @@ E:RegisterModule(function()
 
     local v = { open = {} }
     BuildIntro(ui, content, v)
-    local nemesis = NewSection(ui, content, L["Seasonal Nemesis"], L["No nemesis delve runs recorded yet."], true)
+    local nemesis = NewSection(ui, content, L["Seasonal Nemesis"], L["No nemesis delve runs recorded yet."], "nemesis")
+    local labyrinth = NewSection(ui, content, E.LabyrinthDisplayName(), L["No Labyrinth runs recorded yet."], "labyrinth")
     local midnight = NewSection(ui, content, L["Midnight Delves"],
-        L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"], false)
-    local cards = { nemesis.card, midnight.card }
+        L["No Midnight delve runs recorded yet. Complete a delve to start tracking!"], "regular")
+    local cards = { nemesis.card, labyrinth.card, midnight.card }
 
     local lastWidth = 0
     local function ViewWidth()
@@ -482,22 +620,30 @@ E:RegisterModule(function()
         lastWidth = view
         v.summaryLine:SetText(v.summary)
 
-        local widths, used = {}, 0
-        for i, s in ipairs(STATS) do
-            local fs = nemesis.head.cells[s.key]
-            fs:SetWidth(0)
-            widths[i] = math_max(s.width, math_ceil(fs:GetStringWidth() or 0) + 1)
-            used = used + widths[i] + GAP
+        local function Measure(t)
+            local widths, used = {}, 0
+            for i, s in ipairs(t.stats) do
+                local fs = t.head.cells[s.key]
+                fs:SetWidth(0)
+                widths[i] = math_max(s.width, math_ceil(fs:GetStringWidth() or 0) + 1)
+                used = used + widths[i] + GAP
+            end
+            return widths, used
         end
+        local widths, used = Measure(nemesis)
+        local labWidths, labUsed = Measure(labyrinth)
         -- A run row needs its fixed columns and some story. Narrower than that, the page scrolls sideways
         local runNeed = NAME_X + ICON + TIER_W + TIME_W + DEATHS_W + ICON + RUN_GAP * 5 + STORY_MIN
             + RUN_GAP * 4 + BOSS_W + DATE_W + BUTTON * 2 + INSET
-        local delveNeed = NAME_X + NAME_MIN + used + INSET
-        local width = math_max(view, math_max(runNeed, delveNeed) + PAD_LEFT + PAD_RIGHT)
+        local labRunNeed = NAME_X + CHAMBERS_W + TIER_W + TIME_W + DEATHS_W + KEYS_W + RUN_GAP * 5 + SPLITS_MIN
+            + RUN_GAP * 4 + KINDO_W + DATE_W + BUTTON * 2 + INSET
+        local delveNeed = NAME_X + NAME_MIN + math_max(used, labUsed) + INSET
+        local width = math_max(view, math_max(runNeed, labRunNeed, delveNeed) + PAD_LEFT + PAD_RIGHT)
         content:SetWidth(width)
         local cardW = width - PAD_LEFT - PAD_RIGHT
 
         LayoutSection(ui, v, nemesis, v.nemesisKeys, widths, cardW)
+        LayoutSection(ui, v, labyrinth, v.labyrinthKeys, labWidths, cardW)
         LayoutSection(ui, v, midnight, v.midnightKeys, widths, cardW)
 
         local y = PAD_TOP

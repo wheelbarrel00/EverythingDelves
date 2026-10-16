@@ -562,6 +562,13 @@ local function BuildModels(list)
             tip = { delve.name, TipBody(delve, bossName, list.expanded[delve.name]) },
         }
     end
+    local lab = E.DelveList.Labyrinth()
+    models[#models + 1] = {
+        key = lab.key, delve = lab.entrance, name = lab.name, bountiful = lab.open or nil,
+        line2 = { text = lab.locked or (L["Always bountiful"] .. SEP .. lab.coffers) },
+        cells = { zone = { text = lab.zone } },
+        tip = lab.tip,
+    }
     return models
 end
 
@@ -696,7 +703,7 @@ E:RegisterModule(function()
     local message = ui:CreateEmptyState(content, "")
 
     local list = E.DelveList.New(content, {
-        columns = COLUMNS, nameLabel = L["Delve Name"], twoLine = true,
+        columns = COLUMNS, nameLabel = L["Delve Name"],
         onChange = function() Render() end,
     })
     local card = NewCard(content)
@@ -761,12 +768,13 @@ E:RegisterModule(function()
         y = y + HINT_H + HINT_GAP
 
         if #bountifulList == 0 then
-            list:Hide()
             -- A cold POI cache returns nil for delves that really are bountiful, so
             -- an empty list only means "none today" once one has resolved.
             y = PlaceMessage(y, sawLivePOI
                 and L["No bountiful delves are active right now.\nThey rotate daily - check back after reset."]
                 or  L["Loading bountiful delve data...\nClick Refresh if this does not clear."])
+            -- The Labyrinth needs no map pin to be bountiful, so it is listed either way
+            y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT)
         else
             y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT)
         end

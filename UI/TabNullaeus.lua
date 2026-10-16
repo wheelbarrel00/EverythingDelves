@@ -135,6 +135,33 @@ local function MeasureHeaded(row)
     return h
 end
 
+local KIT = {
+    Row = Row, Check = Check, Lead = Lead, Bullet = Bullet, HeadedRow = HeadedRow, MeasureHeaded = MeasureHeaded,
+    rgb = rgb, PORTRAIT = PORTRAIT, PORTRAIT_MASK = PORTRAIT_MASK, ED_TEXTURES = ED_TEXTURES, ROW = ROW,
+    HERO_PAD = HERO_PAD, BUTTON_GAP = BUTTON_GAP, ITEM_GAP = ITEM_GAP, PARA_GAP = PARA_GAP, TAG_GAP = TAG_GAP,
+    REWARD_ICON = REWARD_ICON, REWARD_GAP = REWARD_GAP, BULLET = BULLET, DIM = DIM,
+}
+
+local VIEWS = { { id = "kindo", label = L["Kindo'jan"] }, { id = "azta", label = L["Azta'rec"] } }
+
+local function CurrentView()
+    return (E.db and E.db.nemesisView == "azta") and "azta" or "kindo"
+end
+
+-- A button's style is set when it is made, so each view gets a primary and a plain one and shows the right one
+local function BuildSwitch(ui, content, onPick)
+    local sw = {}
+    for i, view in ipairs(VIEWS) do
+        local function pick() onPick(view.id) end
+        sw[i] = {
+            id = view.id,
+            on = ui:CreateButton(content, view.label, nil, pick, nil, "primary"),
+            off = ui:CreateButton(content, view.label, nil, pick),
+        }
+    end
+    return sw
+end
+
 local function BuildHero(ui, content, v)
     local card = ui:CreateGroup(content, nil)
     local hero = Row(content)
@@ -151,7 +178,7 @@ local function BuildHero(ui, content, v)
     hero.pin = E.DelveList.IconButton(hero, ui:Texture("icon-map"))
     hero.pin:SetPoint("RIGHT", hero.tt, "LEFT", -BUTTON_GAP, 0)
 
-    hero.name = ui:CreateText(hero, "Azta'rec", "title")
+    hero.name = ui:CreateText(hero, L["Azta'rec"], "title")
     hero.name:SetPoint("TOPLEFT", portrait, "TOPRIGHT", ITEM_GAP, -2)
     hero.place = ui:CreateText(hero, "- The Coiled Isle - Venomfall Deeps", "label")
     hero.place:SetTextColor(ui:Color("muted"))
@@ -396,12 +423,21 @@ E:RegisterModule(function()
     area:SetAllPoints(frame)
     local content = area.content
 
+    -- A card does not own its rows, so each boss's cards and rows go in a frame of their own that hides them together
+    local function Holder()
+        local f = CreateFrame("Frame", nil, content)
+        f:SetAllPoints(content)
+        return f
+    end
+    local aztaHolder, kindoHolder = Holder(), Holder()
+
     local v = {}
-    local cards = {
-        BuildHero(ui, content, v), BuildOverview(ui, content), BuildBeacon(ui, content, v),
-        BuildMechanics(ui, content), BuildIntermissions(ui, content), BuildCompanion(ui, content),
-        BuildRewards(ui, content, v),
+    v.cards = {
+        BuildHero(ui, aztaHolder, v), BuildOverview(ui, aztaHolder), BuildBeacon(ui, aztaHolder, v),
+        BuildMechanics(ui, aztaHolder), BuildIntermissions(ui, aztaHolder), BuildCompanion(ui, aztaHolder),
+        BuildRewards(ui, aztaHolder, v),
     }
+    local kindo = E.BuildKindojanView(ui, kindoHolder, KIT)
 
     local lastWidth = 0
     local function ViewWidth()
@@ -411,6 +447,10 @@ E:RegisterModule(function()
     end
 
     local function Refresh()
+        if CurrentView() == "kindo" then
+            kindo.Refresh()
+            return
+        end
         RenderBeacon(ui, v, lastWidth - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2)
         RenderQuest(ui, v)
         v.hero.tt:SetAlpha(E:IsTomTomLoaded() and 1 or DIM)
@@ -418,13 +458,40 @@ E:RegisterModule(function()
         for _, tag in ipairs(v.rewardTags) do tag:Fit() end
     end
 
-    local function Render()
+    local Render, RenderSoon
+    local switch = BuildSwitch(ui, content, function(id)
+        if E.db then E.db.nemesisView = id end
+        Render()
+        area:ScrollTo(0, 0)
+        RenderSoon()
+    end)
+
+    local function PlaceSwitch(view)
+        local x = PAD_LEFT
+        for _, s in ipairs(switch) do
+            local selected = s.id == view
+            s.on:SetShown(selected)
+            s.off:SetShown(not selected)
+            for _, b in ipairs({ s.on, s.off }) do
+                b:Fit()
+                b:ClearAllPoints()
+                b:SetPoint("TOPLEFT", content, "TOPLEFT", x, -PAD_TOP)
+            end
+            x = x + s.on:GetWidth() + BUTTON_GAP
+        end
+        return PAD_TOP + switch[1].on:GetHeight() + GROUP_GAP
+    end
+
+    function Render()
         local width = ViewWidth()
         lastWidth = width
         content:SetWidth(width)
+        local view = CurrentView()
+        kindoHolder:SetShown(view == "kindo")
+        aztaHolder:SetShown(view ~= "kindo")
         Refresh()
-        local y = PAD_TOP
-        for i, card in ipairs(cards) do
+        local y = PlaceSwitch(view)
+        for i, card in ipairs(view == "kindo" and kindo.cards or v.cards) do
             if i > 1 then y = y + GROUP_GAP end
             card:ClearAllPoints()
             card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
@@ -437,7 +504,7 @@ E:RegisterModule(function()
 
     -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
     local pending = false
-    local function RenderSoon()
+    function RenderSoon()
         if pending then return end
         pending = true
         C_Timer.After(0, function()
@@ -453,18 +520,34 @@ E:RegisterModule(function()
         end
     end)
 
+    -- Item names and spell text that reach the client later change how lines wrap, so they redraw the whole page
+    local LATE_DATA = { "GET_ITEM_INFO_RECEIVED", "SPELL_DATA_LOAD_RESULT" }
+    local dataWatch = CreateFrame("Frame")
+    dataWatch:SetScript("OnEvent", function(_, event, id, success)
+        if success == false or CurrentView() ~= "kindo" then return end
+        local watched = (event == "SPELL_DATA_LOAD_RESULT") and kindo.spells or kindo.items
+        if watched[id] then RenderSoon() end
+    end)
+
     frame:SetScript("OnShow", function()
+        for _, event in ipairs(LATE_DATA) do dataWatch:RegisterEvent(event) end
         Render()
         area:ScrollTo(0, 0)
         RenderSoon()
     end)
+    frame:SetScript("OnHide", function()
+        for _, event in ipairs(LATE_DATA) do dataWatch:UnregisterEvent(event) end
+    end)
 
+    -- Kindo'jan's lines can change length as the game's text arrives, so his view is laid out again
     local function RefreshIfShown()
-        if frame:IsVisible() then Refresh() end
+        if not frame:IsVisible() then return end
+        if CurrentView() == "kindo" then RenderSoon() else Refresh() end
     end
     E:RegisterCallback("QuestLogUpdate", RefreshIfShown)
     E:RegisterCallback("BagUpdate", RefreshIfShown)
     E:RegisterCallback("CurrencyUpdate", RefreshIfShown)
+    E:RegisterCallback("AchievementUpdate", RefreshIfShown)
 
     E:RegisterTab(4, frame)
 end)

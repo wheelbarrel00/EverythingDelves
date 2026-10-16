@@ -10,7 +10,7 @@ local GRID_ROW, GRID_LABEL, GRID_SIDE = 32, 150, 14
 local ROW, HINT_ROW, ITEM_GAP, BAR_MIN = 44, 36, 12, 80
 local VAULT_LABEL, VAULT_SUMMARY, SLOT_H, SLOT_GAP, CHECK = 160, 120, 40, 8, 14
 local MILE, MILE_GAP, MILE_POOL, MILE_ROW, MILE_TOP, LOCKED_ALPHA = 32, 14, 12, 93, 33, 0.3
-local PORTRAIT, TROVE_ROW, TROVE_ICON_SIZE = 32, 52, 32
+local PORTRAIT, TROVE_ROW, TROVE_ICON_SIZE, VENOM_ICON = 32, 52, 32, 28
 local RENOWN_NAME, RENOWN_STATUS = 150, 110
 local FACTION_RENOWN_MAX = 20
 local GILDED_MAX = 4   -- 4x T11 Bountiful Delves per week
@@ -229,6 +229,14 @@ local function TroveText()
     return status, detail, done
 end
 
+-- One stash per three chambers. Assumed paid in the treasure room with the coffers, so a run left before it counts none.
+local function StashesFor(name, run)
+    local LAB = E.Labyrinth
+    if not (LAB and name == LAB.name) then return 1 end
+    if run.left then return 0 end
+    return math_floor(((run.ch or 0) + (run.prior or 0)) / LAB.checkpointEvery)
+end
+
 local function GildedState()
     local liveCol, liveTot
     if E.GetLiveGildedStash then
@@ -255,14 +263,14 @@ local function GildedState()
     -- Runs logged before the char stamp count for whoever is logged in.
     local charKey = E.CharKey and E.CharKey()
     if haveReset and history then
-        for _, entry in pairs(history) do
+        for name, entry in pairs(history) do
             if entry.recentRuns then
                 for _, run in ipairs(entry.recentRuns) do
                     if (run.tier or 0) >= 11
                             and run.wasBountiful
                             and (run.timestamp or 0) >= lastReset
                             and (run.char == nil or run.char == charKey) then
-                        estimate = estimate + 1
+                        estimate = estimate + StashesFor(name, run)
                     end
                 end
             end
@@ -365,8 +373,35 @@ local function BuildGrid(ui, content, v)
         c.hit:SetScript("OnLeave", function() ui:HideTooltip() end)
         v.cells[i] = c
     end
-    v.grid, v.gridCard = grid, card
+    local venom = Row(content, ROW)
+    venom.icon = venom:CreateTexture(nil, "ARTWORK")
+    venom.icon:SetSize(VENOM_ICON, VENOM_ICON)
+    venom.icon:SetPoint("LEFT")
+    venom.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    venom.name = ui:CreateText(venom, "", "value")
+    venom.name:SetPoint("LEFT", venom.icon, "RIGHT", ITEM_GAP, 0)
+    venom.count = ui:CreateText(venom, "", "value")
+    venom.count:SetPoint("RIGHT")
+    venom:EnableMouse(true)
+    venom:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(E.Labyrinth.venomstoneItem)
+        GameTooltip:Show()
+    end)
+    venom:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    card:Add(venom, { height = ROW, fill = true })
+    v.grid, v.gridCard, v.venom = grid, card, venom
     return card
+end
+
+-- The item's description is the game's own tooltip, so the row reads only its name and count
+local function RenderVenomstone(v)
+    local id = E.Labyrinth.venomstoneItem
+    local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+    if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
+    v.venom.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id))
+    v.venom.name:SetText(name or "Ascendant Venomstone")
+    v.venom.count:SetText(tostring(C_Item and C_Item.GetItemCount and C_Item.GetItemCount(id, true) or 0))
 end
 
 -- Opening a delve entrance can move recGear, so the grid is filled on every render
@@ -437,6 +472,10 @@ local function BuildVault(ui, content, v)
         card:Add(row, { height = ROW, fill = true })
         v.vaultRows[i] = row
     end
+    v.vaultLab = ui:CreateText(content,
+        L["In the Labyrinth, every third chamber counts here, and so does your first Kindo'jan kill each week on Tier 8 or higher."], "hint")
+    v.vaultLab:SetWordWrap(true)
+    card:Add(v.vaultLab, { height = HINT_ROW, fill = true })
     v.vaultNote = ui:CreateText(content, "", "hint")
     v.vaultNote:SetWordWrap(true)
     card:Add(v.vaultNote, { height = HINT_ROW, fill = true })
@@ -482,6 +521,7 @@ local function RenderVault(ui, v, width)
     local state = VaultState(v.gvRows)
     v.vaultMissing:SetShown(state == nil)
     v.vaultNote:SetShown(state ~= nil)
+    v.vaultLab:SetShown(state ~= nil and E.IsLabyrinthUnlocked())
     local slotsW = width - ui:Spacing("rowPadding") * 2 - VAULT_LABEL - VAULT_SUMMARY - ITEM_GAP * 2
     local slotW = math_max(20, (slotsW - SLOT_GAP * 2) / 3)
     for i, row in ipairs(v.vaultRows) do
@@ -510,24 +550,7 @@ local function RenderVault(ui, v, width)
     v.vaultCard:Layout()
 end
 
-local function BuildJourney(ui, content, v)
-    local card = ui:CreateGroup(content, L["Delver's Journey"])
-    ui:AttachTooltip(card.label, L["Delver's Journey"], L["Your progress through this season's Delves track."])
-
-    local level = Row(content, ROW)
-    level.text = ui:CreateText(level, "", "value")
-    level.text:SetPoint("LEFT")
-    level.value = ui:CreateText(level, "", "value")
-    level.value:SetPoint("RIGHT")
-    level.bar = Bar(ui, level, level.text, level.value)
-    card:Add(level, { height = ROW, fill = true })
-    v.journeyLevel = level
-
-    v.journeyMissing = ui:CreateText(content,
-        L["Delver's Journey data not available yet - open the Journeys panel once to sync."], "hint")
-    v.journeyMissing:SetWordWrap(true)
-    card:Add(v.journeyMissing, { height = HINT_ROW, fill = true })
-
+local function BuildMiles(ui, content)
     local miles = Row(content, MILE_ROW)
     miles.hint = ui:CreateText(miles, L["Each level unlocks a milestone reward - hover an icon to see it."], "hint")
     miles.hint:SetPoint("TOPLEFT", 0, -10)
@@ -554,6 +577,28 @@ local function BuildJourney(ui, content, v)
         n:SetScript("OnLeave", function() ui:HideTooltip() end)
         miles.nodes[i] = n
     end
+    return miles
+end
+
+local function BuildJourney(ui, content, v)
+    local card = ui:CreateGroup(content, L["Delver's Journey"])
+    ui:AttachTooltip(card.label, L["Delver's Journey"], L["Your progress through this season's Delves track."])
+
+    local level = Row(content, ROW)
+    level.text = ui:CreateText(level, "", "value")
+    level.text:SetPoint("LEFT")
+    level.value = ui:CreateText(level, "", "value")
+    level.value:SetPoint("RIGHT")
+    level.bar = Bar(ui, level, level.text, level.value)
+    card:Add(level, { height = ROW, fill = true })
+    v.journeyLevel = level
+
+    v.journeyMissing = ui:CreateText(content,
+        L["Delver's Journey data not available yet - open the Journeys panel once to sync."], "hint")
+    v.journeyMissing:SetWordWrap(true)
+    card:Add(v.journeyMissing, { height = HINT_ROW, fill = true })
+
+    local miles = BuildMiles(ui, content)
     card:Add(miles, { height = MILE_ROW, fill = true })
     v.journeyMiles = miles
 
@@ -659,6 +704,45 @@ local function RenderJourney(ui, v)
     v.journeyCard:Layout()
 end
 
+local function BuildLabJourney(ui, content, v)
+    local card = ui:CreateGroup(content, " ")
+    local level = Row(content, ROW)
+    level.text = ui:CreateText(level, "", "value")
+    level.text:SetPoint("LEFT")
+    level.value = ui:CreateText(level, "", "value")
+    level.value:SetPoint("RIGHT")
+    level.bar = Bar(ui, level, level.text, level.value)
+    card:Add(level, { height = ROW, fill = true })
+    local miles = BuildMiles(ui, content)
+    card:Add(miles, { height = MILE_ROW, fill = true })
+    v.labLevel, v.labMiles, v.labCard = level, miles, card
+    return card
+end
+
+-- A card does not own its rows, so they are hidden by hand
+local function RenderLabJourney(ui, v)
+    local j = E.IsLabyrinthUnlocked() and E.GetLabyrinthJourney()
+    local shown = j and true or false
+    v.labCard:SetShown(shown)
+    v.labLevel:SetShown(shown)
+    if not j then
+        v.labMiles:Hide()
+        return
+    end
+    v.labCard.label:SetText(E.LabyrinthJourneyName())
+    local maxed = IsJourneyMaxed(j.factionID)
+    v.labLevel.text:SetText(L["Level %d"]:format(j.level))
+    if maxed then
+        v.labLevel.value:SetText(L["Complete - all milestones earned!"])
+        v.labLevel.bar:SetProgress(1)
+    else
+        v.labLevel.value:SetText(j.cur .. " / " .. j.threshold)
+        v.labLevel.bar:SetProgress(j.threshold > 0 and j.cur / j.threshold or 0)
+    end
+    v.labMiles:SetShown(RenderMilestones(ui, v.labMiles, j.factionID, j.level, maxed) > 0)
+    v.labCard:Layout()
+end
+
 local function BuildTrove(ui, content, v)
     local card = ui:CreateGroup(content, L["Trovehunter's Bounty"])
     local row = Row(content, TROVE_ROW)
@@ -717,6 +801,9 @@ local function BuildGilded(ui, content, v)
     v.gildedNote = ui:CreateText(content, "", "hint")
     v.gildedNote:SetWordWrap(true)
     card:Add(v.gildedNote, { height = HINT_ROW, fill = true })
+    v.gildedLab = ui:CreateText(content, L["A Tier 11 Labyrinth run counts once for every third chamber."], "hint")
+    v.gildedLab:SetWordWrap(true)
+    card:Add(v.gildedLab, { height = HINT_ROW, fill = true })
     v.gilded, v.gildedCard = row, card
     return card
 end
@@ -735,6 +822,7 @@ local function RenderGilded(ui, v, width)
     FitText(row.status, status, room)
     row.bar:SetProgress(maxCount > 0 and progress / maxCount or 0)
     v.gildedNote:SetText(note)
+    v.gildedLab:SetShown(E.IsLabyrinthUnlocked())
     v.gildedCard:Layout()
 end
 
@@ -796,7 +884,8 @@ E:RegisterModule(function()
     hint:SetWordWrap(false)
     v.cards = {
         BuildGrid(ui, content, v), BuildVault(ui, content, v), BuildJourney(ui, content, v),
-        BuildTrove(ui, content, v), BuildGilded(ui, content, v), BuildRenown(ui, content, v),
+        BuildLabJourney(ui, content, v), BuildTrove(ui, content, v), BuildGilded(ui, content, v),
+        BuildRenown(ui, content, v),
     }
 
     local lastWidth = 0
@@ -826,17 +915,23 @@ E:RegisterModule(function()
         y = y + HINT_H + CARDS_GAP
 
         RenderGrid(ui, v, inner, recTier)
+        RenderVenomstone(v)
         RenderVault(ui, v, inner)
         RenderJourney(ui, v)
+        RenderLabJourney(ui, v)
         RenderTrove(ui, v)
         RenderGilded(ui, v, inner)
         RenderRenown(ui, v)
-        for i, card in ipairs(v.cards) do
-            if i > 1 then y = y + GROUP_GAP end
-            card:ClearAllPoints()
-            card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
-            card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
-            y = y + card:GetHeight()
+        local first = true
+        for _, card in ipairs(v.cards) do
+            if card:IsShown() then
+                if not first then y = y + GROUP_GAP end
+                first = false
+                card:ClearAllPoints()
+                card:SetPoint("TOPLEFT", content, "TOPLEFT", PAD_LEFT, -y)
+                card:SetPoint("TOPRIGHT", content, "TOPRIGHT", -PAD_RIGHT, -y)
+                y = y + card:GetHeight()
+            end
         end
         area:SetContentSize(width, y + PAD_BOTTOM)
     end
@@ -849,12 +944,21 @@ E:RegisterModule(function()
         if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then Render() end
     end)
 
+    -- The Venomstone's name can reach the client after the page is drawn
+    local itemWatch = CreateFrame("Frame")
+    itemWatch:SetScript("OnEvent", function(_, _, itemID, success)
+        if success ~= false and E.Labyrinth and itemID == E.Labyrinth.venomstoneItem then RenderIfShown() end
+    end)
+
     frame:SetScript("OnShow", function()
+        itemWatch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
         Render()
         area:ScrollTo(0, 0)
     end)
+    frame:SetScript("OnHide", function() itemWatch:UnregisterEvent("GET_ITEM_INFO_RECEIVED") end)
 
     E:RegisterCallback("InventoryChanged", RenderIfShown)
+    E:RegisterCallback("BagUpdate", RenderIfShown)
     E:RegisterCallback("TierDataChanged", RenderIfShown)
     -- Companion XP and Journey renown both tick up during delves.
     E:RegisterCallback("QuestLogUpdate", RenderIfShown)

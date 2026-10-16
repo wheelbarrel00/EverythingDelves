@@ -46,7 +46,8 @@ local selectiveOK       = nil   -- nil=untested, true=works, false=unsupported o
 -- global chatBubbles CVar so it is never forced off in an unrelated scenario.
 local function ConfirmedDelve()
     local _, instType, diffID = GetInstanceInfo()
-    if diffID == 208 then return true end
+    -- The open world keeps the delve difficulty after the Labyrinth's seamless exit, until the next loading screen
+    if diffID == 208 and instType ~= "none" then return true end
     if instType == "scenario" and C_ScenarioInfo
             and C_ScenarioInfo.GetScenarioInfo then
         local ok, info = pcall(C_ScenarioInfo.GetScenarioInfo)

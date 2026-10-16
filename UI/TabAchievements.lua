@@ -9,7 +9,9 @@ local ROW, LIST_ROW, HINT_GAP, COL_GAP, ITEM_GAP = 44, 28, 8, 10, 8
 local CHEVRON, CHECK, CELL_CHECK, STAR, CHECK_GAP = 12, 14, 12, 14, 6
 local NAME_MIN, REWARD_LINE, PILLAR_LINE, STORY_HEAD, STORY_LINE = 150, 20, 24, 18, 22
 local CRIT_HEAD, CRIT_LINE, CRIT_GAP, CRIT_INDENT = 20, 22, 6, CHEVRON + ITEM_GAP
+local TIER_BOX, TIER_GAP, TIER_CHECK, TIER_LABEL, TIER_VALUE, ACH_ROW, FEAT_HEAD = 28, 4, 10, 110, 56, 42, 30
 local STAR_ICON = "Interface\\Common\\FavoritesIcon"
+local FEATS_CATEGORY = 81
 
 local COLUMNS = {
     { key = "today",   label = L["Today's Story"], width = 150 },
@@ -22,6 +24,10 @@ local COLUMNS = {
 
 local function StripCodes(s)
     return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+local function NoColon(s)
+    return (s:gsub("%s*:%s*$", ""):gsub("%s*\239\188\154%s*$", ""))
 end
 
 local function CountDone(criteria)
@@ -94,6 +100,7 @@ local function Collect()
     end
     data.totals = StripCodes(L["Still to earn: %s%d|r story variants, %s%d|r Sturdy Chests, %s%d|r tier goals"]
         :format("", stories, "", chests, "", depths))
+    data.lab = E.LabyrinthAchievementStatus and E.LabyrinthAchievementStatus()
     return data
 end
 
@@ -489,6 +496,136 @@ local function FillRow(ui, v, row, st)
     end
 end
 
+local function TipOnHover(ui, f)
+    f:EnableMouse(true)
+    f:SetScript("OnEnter", function(self)
+        if self.tipTitle then ui:ShowTooltip(self, self.tipTitle, self.tipBody) end
+    end)
+    f:SetScript("OnLeave", function() ui:HideTooltip() end)
+end
+
+local function AchRow(ui, content)
+    local row = Row(content, ACH_ROW)
+    row.check = Check(ui, row, CHECK)
+    row.check:SetPoint("LEFT")
+    row.name = ui:CreateText(row, "", "value")
+    row.name:SetWordWrap(false)
+    row.reward = Muted(ui, ui:CreateText(row, "", "hint"))
+    row.reward:SetWordWrap(false)
+    row.prog = ui:CreateText(row, "", "label")
+    row.prog:SetWordWrap(false)
+    row.prog:SetPoint("RIGHT")
+    TipOnHover(ui, row)
+    return row
+end
+
+local function BuildLabyrinth(ui, content, v)
+    local LAB = E.Labyrinth
+    local card = ui:CreateGroup(content, " ")
+    local strip = Row(content, ROW)
+    strip.label = ui:CreateText(strip, NoColon(L["Tier goals:"]), "label")
+    strip.label:SetWordWrap(false)
+    strip.label:SetPoint("LEFT")
+    strip.value = ui:CreateText(strip, "", "value")
+    strip.value:SetWordWrap(false)
+    strip.value:SetPoint("RIGHT")
+    strip.boxes = {}
+    for i = 1, #LAB.tierAchievements do
+        local box = CreateFrame("Frame", nil, strip)
+        box:SetHeight(TIER_BOX)
+        ui:Paint(box, "input", "inputBorder")
+        box.check = Check(ui, box, TIER_CHECK)
+        box.text = ui:CreateText(box, "T" .. i, "hint")
+        TipOnHover(ui, box)
+        strip.boxes[i] = box
+    end
+    card:Add(strip, { height = ROW, fill = true })
+
+    v.labRows = {}
+    for i = 1, #LAB.achievementList do
+        v.labRows[i] = AchRow(ui, content)
+        card:Add(v.labRows[i], { height = ACH_ROW, fill = true })
+    end
+    local head = Row(content, FEAT_HEAD)
+    head.text = Muted(ui, ui:CreateText(head, "", "groupLabel"))
+    head.text:SetWordWrap(false)
+    head.text:SetPoint("LEFT")
+    card:Add(head, { height = FEAT_HEAD, fill = true })
+    v.featRows = {}
+    for i = 1, #LAB.featAchievements do
+        v.featRows[i] = AchRow(ui, content)
+        card:Add(v.featRows[i], { height = ACH_ROW, fill = true })
+    end
+
+    v.labNone = Muted(ui, ui:CreateText(content, L["Achievement data unavailable"], "label"))
+    card:Add(v.labNone, { height = ROW, fill = true })
+    v.labCard, v.labStrip, v.featHead = card, strip, head
+    return card
+end
+
+local function RenderStrip(ui, strip, tiers, done, rowW)
+    strip.value:SetText(done .. " / " .. #tiers)
+    strip.label:SetWidth(0)
+    local labelW = math_max(TIER_LABEL, math_ceil(strip.label:GetStringWidth() or 0) + ITEM_GAP)
+    local valueW = math_max(TIER_VALUE, math_ceil(strip.value:GetStringWidth() or 0) + ITEM_GAP)
+    local boxW = math_max(16, (rowW - labelW - valueW - TIER_GAP * (#tiers - 1)) / #tiers)
+    for i, box in ipairs(strip.boxes) do
+        local a = tiers[i]
+        box:ClearAllPoints()
+        box:SetPoint("LEFT", strip, "LEFT", labelW + (i - 1) * (boxW + TIER_GAP), 0)
+        box:SetWidth(boxW)
+        box.tipTitle, box.tipBody = a.name, a.description
+        box.check:SetShown(a.done)
+        box.text:SetTextColor(ui:Color(a.done and "text" or "muted"))
+        box.text:ClearAllPoints()
+        if a.done then
+            box.text:SetPoint("CENTER", box, "CENTER", (TIER_CHECK + 3) / 2, 0)
+            box.check:ClearAllPoints()
+            box.check:SetPoint("RIGHT", box.text, "LEFT", -3, 0)
+        else
+            box.text:SetPoint("CENTER")
+        end
+    end
+end
+
+local function FillAch(ui, row, a)
+    row:SetShown(a ~= nil)
+    if not a then return end
+    row.tipTitle, row.tipBody = a.name, a.description
+    row.check:SetShown(a.done)
+    row.name:SetText(a.name)
+    row.name:SetTextColor(ui:Color(a.done and "muted" or "text"))
+    row.prog:SetText((not a.done and a.total > 1) and (a.cur .. "/" .. a.total) or "")
+    row.reward:SetShown(a.reward ~= nil)
+    row.reward:SetText(a.reward or "")
+    local x, right = CHECK + ITEM_GAP, math_ceil(row.prog:GetStringWidth() or 0) + ITEM_GAP
+    row.name:ClearAllPoints()
+    row.reward:ClearAllPoints()
+    if a.reward then
+        row.name:SetPoint("BOTTOMLEFT", row, "LEFT", x, 1)
+        row.name:SetPoint("BOTTOMRIGHT", row, "RIGHT", -right, 1)
+        row.reward:SetPoint("TOPLEFT", row, "LEFT", x, -1)
+        row.reward:SetPoint("TOPRIGHT", row, "RIGHT", -right, -1)
+    else
+        row.name:SetPoint("LEFT", row, "LEFT", x, 0)
+        row.name:SetPoint("RIGHT", row, "RIGHT", -right, 0)
+    end
+end
+
+local function RenderLabyrinth(ui, v, st, inner)
+    v.labCard.label:SetText(E.LabyrinthDisplayName())
+    v.labNone:SetShown(st == nil)
+    local tiers = st and st.tiers
+    v.labStrip:SetShown(tiers ~= nil)
+    if tiers then RenderStrip(ui, v.labStrip, tiers, st.tiersDone, inner - ui:Spacing("rowPadding") * 2) end
+    for i, row in ipairs(v.labRows) do FillAch(ui, row, st and st.list[i]) end
+    local feats = st and st.feats or {}
+    local title = GetCategoryInfo and GetCategoryInfo(FEATS_CATEGORY)
+    v.featHead.text:SetText(type(title) == "string" and title or "Feats of Strength")
+    v.featHead:SetShown(#feats > 0)
+    for i, row in ipairs(v.featRows) do FillAch(ui, row, feats[i]) end
+end
+
 E:RegisterModule(function()
     local ui = E.ui
     local frame = CreateFrame("Frame", "EverythingDelvesTabAchievementsContent")
@@ -498,7 +635,8 @@ E:RegisterModule(function()
 
     local v = { open = {} }
     BuildIntro(ui, content, v)
-    local cards = { BuildGlory(ui, content, v), BuildToday(ui, content, v), BuildTable(ui, content, v) }
+    local cards = { BuildGlory(ui, content, v), BuildLabyrinth(ui, content, v), BuildToday(ui, content, v),
+        BuildTable(ui, content, v) }
 
     local lastWidth = 0
     local function ViewWidth()
@@ -529,6 +667,7 @@ E:RegisterModule(function()
         local minWidth = nameX + NAME_MIN + used + ui:Spacing("rowPadding") * 2 + PAD_LEFT + PAD_RIGHT
         local width = math_max(view, minWidth)
         content:SetWidth(width)
+        RenderLabyrinth(ui, v, data.lab, width - PAD_LEFT - PAD_RIGHT)
         local nameW = width - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2 - nameX - used
         PlaceCells(v.head, widths, used, nameX)
 

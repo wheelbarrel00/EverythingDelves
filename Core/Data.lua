@@ -126,6 +126,54 @@ E.NemesisDelve = {
     tiers = { 8, 11 },
 }
 
+-- 12.1.5 IDs from DB2 build 12.1.5.70391, the instance, chamber widget and scenarios 3342 / 3721 / 3424 seen in game.
+-- Every chamber event is a scenario of its own.
+E.Labyrinth = {
+    name              = "The Labyrinth of Kindo'jan",
+    instanceID        = 3043,
+    uiMapID           = 2647,
+    chambers          = 9,
+    checkpointEvery   = 3,
+    chamberWidgetID   = 8401,
+    kindojanEncounter = 3548,
+    heartScenario     = 3444,
+    treasureScenario  = 3424,
+    betweenScenarios  = { [3342] = true, [3721] = true, [3678] = true, [3706] = true },
+    -- The entrance in Eversong Woods. Coords are percentages, as E.DelveData's.
+    mapID             = 2395,
+    x                 = 63.0,
+    y                 = 72.2,
+    poiID             = 9035,
+    normalPoiID       = 9037,
+    -- The grey pin shown while the Labyrinth is locked
+    lockedPoiID       = 9036,
+    -- The intro chain's first quest. The probe entered with it alone done (account-wide).
+    introQuest        = 98831,
+    journeyFaction    = 2836,
+    journeyKit        = "labyrinth",
+    journeyCurrency   = 3537,
+    tierAchievements  = { 63863, 63864, 63865, 63846, 63847, 63848, 63849, 63850, 63851, 63852, 63853 },
+    chestAchievement  = 63717,
+    chamberAchievement = 63723,
+    -- The Achievements card's order. A pair is a chain shown at its first step not yet earned.
+    achievementList   = { 63724, 63721, 63722, 63723, 63717, { 63718, 63719 }, 63720, { 63727, 63728 }, 63716 },
+    featAchievements  = { 63715, 64039, 64118 },
+    wahduQuestLine    = 6385,
+    wahduQuests       = { 98951, 98963, 98962, 98961, 98960, 98959 },
+    wahduSpell        = 1319741,
+    venomstoneItem    = 280562,
+    -- His kills count from Tier 8 only, in the statistic and the first-kill achievement alike
+    kindojanStatistic = 63731,
+    kindojanAchievement = 63716,
+    kindojanSoloAchievement = 63715,
+    kindojanArmyAchievement = 64118,
+    kindojanFabledAchievement = 64039,
+    kindojanToy       = 280820,
+    kindojanMount     = 283363,
+    kindojanWeeklyItem = 285875,
+    kindojanWeeklySpell = 1314916,
+}
+
 -- Every season's nemesis, so old history keeps its own boss label instead of
 -- inheriting the current season's.
 E.NemesisBossByDelve = {
@@ -164,6 +212,7 @@ end
 for nemesisName in pairs(E.NemesisBossByDelve) do
     E.LoggableDelveNames[nemesisName] = "nemesis"
 end
+E.LoggableDelveNames[E.Labyrinth.name] = "labyrinth"
 
 E.DelveDataByName = {}
 for _, d in ipairs(E.DelveData) do
@@ -174,6 +223,7 @@ end
 E.DelveNameByInstanceID = {
     [2966] = "Torment's Rise",
     [3079] = "Venomfall Deeps",
+    [E.Labyrinth.instanceID] = E.Labyrinth.name,
 }
 E.DelveDataByInstanceID = {}
 for _, d in ipairs(E.DelveData) do

@@ -3,6 +3,31 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.2.0", date = "2026-10-16",
+        sections = {
+            { head = "The Labyrinth of Kindo'jan", items = {
+                "Patch 12.1.5's Labyrinth of Kindo'jan, across the whole addon: the delve HUD, Delve History, the Leaderboard, Kindo'jan on the Nemesis page, its achievements and every page that lists delves.",
+            }},
+            { head = "New", items = {
+                "The Labyrinth on the delve HUD - chambers done out of nine, chambers to the next checkpoint, your time to the last checkpoint against your best at that tier, and your coffer keys against the coffers your checkpoints open, in red when you are short.",
+                "Labyrinth runs in Delve History - one row per visit with the chambers you cleared, the tier, the time, deaths, keys used, each checkpoint's time, and Kindo'jan's fight time, or \"left early\" when you left before the treasure room. Hover a run for each chamber. The Labyrinth has its own card between Seasonal Nemesis and Midnight Delves.",
+                "The Labyrinth on the Leaderboard - your characters ranked at each tier by their time to 3, 6 and 9 chambers, and by how fast they defeated Kindo'jan.",
+                "Kindo'jan on the Nemesis page - the Azta'rec page is now the Nemesis page, with a switch between Kindo'jan and Azta'rec. Kindo'jan's side covers how to reach him, each phase of the fight, the four loa of the intermission, Valeera's setup and his rewards, with checks for what you have earned. Ability, item, achievement and place names come from the game in your language.",
+                "Labyrinth achievements - a Labyrinth card on the Achievements page with its eleven tier goals, every Labyrinth achievement with its reward and your progress, and its Feats of Strength. The Labyrinth's map pin lists what you still have to earn there, as the delve pins do.",
+                "The Labyrinth on the other pages - Delve Locations lists it in its own row above the delves, with a waypoint (Set All Waypoints includes it). Current Bountiful Delves lists it last, without counting it toward your four bountiful delves. The panel beside its difficulty picker shows your coffer keys against its three checkpoint coffers, your Labyrinth Journey level, its tier goals, chests and My Labyrinth. The Tier Guide shows your Ascendant Venomstones and a Labyrinth Journey card, and counts Tier 11 Labyrinth checkpoints toward the Gilded Stash. The Roster has a column for Wah'du's weekly quests.",
+            }},
+            { head = "Fixed", items = {
+                "Two coffer keys in the Labyrinth hid the Dundun reminder for the week - the addon took any second key spent in one visit as Dundun's extra chest, and the Labyrinth's checkpoint coffers each take a key. After two of them it thought you had opened Dundun's chest this week and stopped reminding you to keep a key for it. Keys spent in the Labyrinth no longer count. A character already affected this week gets the reminder back at the weekly reset.",
+                "German and Traditional Chinese now use the game's word for Bountiful Delves - the game calls them \"Großzügige Tiefe\" and \"豐碩探究\" since patch 12.1.5, and the addon still said \"üppig\" and \"豐饒\".",
+            }},
+            { head = "Notes", items = {
+                "Kindo'jan's weekly reward shows once the game reports it - that happens after your first win against him on Tier 8 or higher, and the Nemesis page says so until then.",
+                "Labyrinth runs are logged from this version on.",
+                "All the new text is translated into German, French, Russian, Korean and both Chinese.",
+            }},
+        },
+    },
+    {
         version = "2.1.0", date = "2026-10-09",
         sections = {
             { head = "Coming next, delivered", items = {

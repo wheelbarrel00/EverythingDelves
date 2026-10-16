@@ -210,6 +210,16 @@ local function BuildModels(list)
     return models
 end
 
+local function LabyrinthModels()
+    local lab = E.DelveList.Labyrinth()
+    return { {
+        key = lab.key, delve = lab.entrance, name = lab.name, bountiful = lab.open or nil, runs = lab.runs,
+        line2 = lab.locked and { text = lab.locked } or nil,
+        cells = { zone = { text = lab.zone }, story = { text = L["Always bountiful"], muted = true } },
+        tip = lab.tip,
+    } }
+end
+
 local function SummaryText()
     local quickName, quickSecs, quickSrc
     local bestName, bestScore, bestSecs, bestTier, bestSrc
@@ -246,7 +256,9 @@ local function SetAllWaypoints()
     for _, delve in ipairs(filteredData) do
         E:AddTomTomWaypoint(delve.mapID, delve.x, delve.y, delve.name)
     end
-    print(E.CC.header .. "Everything Delves|r: " .. L["Added %d TomTom waypoints."]:format(#filteredData))
+    local lab = E.LabyrinthEntrance()
+    E:AddTomTomWaypoint(lab.mapID, lab.x, lab.y, lab.name)
+    print(E.CC.header .. "Everything Delves|r: " .. L["Added %d TomTom waypoints."]:format(#filteredData + 1))
 end
 
 E:RegisterModule(function()
@@ -296,7 +308,7 @@ E:RegisterModule(function()
         hint:SetPoint("RIGHT", content, "RIGHT", -PAD_RIGHT, 0)
         y = y + HINT_H + HINT_GAP
 
-        y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT)
+        y = list:Layout(y, BuildModels(list), PAD_LEFT, PAD_RIGHT, LabyrinthModels())
         area:SetContentSize(width, y + PAD_BOTTOM)
     end
 

@@ -17,8 +17,29 @@ local function ClassOfSpec(specID)
     return (select(6, GetSpecializationInfoByID(specID)))
 end
 
+local LAB_MARKS = { 3, 6, 9 }
+
 local function RunKey(delve, r, dur)
     return delve .. "\0" .. tostring(r.timestamp) .. "\0" .. dur
+end
+
+-- A Labyrinth run is ranked by its checkpoint times and Kindo'jan's fight, never by its whole length.
+-- A run that began partway through (prior chambers) has no comparable checkpoint times.
+local function LabyrinthEntry(out, base, mark, duration, extra)
+    local e = {}
+    for k, v in pairs(base) do e[k] = v end
+    e.delve, e.mark, e.duration, e.extra = E.LabyrinthBoardKey(mark), mark, duration, extra
+    out[#out + 1] = e
+end
+
+local function LabyrinthEntries(out, base, r)
+    if r.prior or type(r.at) ~= "table" then return end
+    for i, mark in ipairs(LAB_MARKS) do
+        local t = tonumber(r.at[mark])
+        if t and t > 0 then LabyrinthEntry(out, base, mark, t, i > 1 or nil) end
+    end
+    local kindo = tonumber(r.kindo)
+    if kindo and kindo > 0 then LabyrinthEntry(out, base, "kindo", kindo, true) end
 end
 
 -- Worked out from run history each time rather than stored, so nothing is migrated at login
@@ -63,12 +84,17 @@ function E.CollectLeaderboardRuns()
                     if not seen[key] then
                         seen[key] = true
                         local rec = roster[char]
-                        out[#out + 1] = {
+                        local item = {
                             delve = delve, kind = kind, char = char, tier = tier, duration = dur,
                             story = r.story, deaths = tonumber(r.deaths) or 0,
                             timestamp = tonumber(r.timestamp) or 0, spec = r.spec,
                             class = ClassOfSpec(r.spec) or (rec and rec.class),
                         }
+                        if kind == "labyrinth" then
+                            LabyrinthEntries(out, item, r)
+                        else
+                            out[#out + 1] = item
+                        end
                     end
                 end
             end
@@ -103,7 +129,7 @@ end
 function E.MostRunTier(runs)
     local count, best = {}, nil
     for _, r in ipairs(runs) do
-        count[r.tier] = (count[r.tier] or 0) + 1
+        if not r.extra then count[r.tier] = (count[r.tier] or 0) + 1 end
     end
     for tier, n in pairs(count) do
         if not best or n > count[best] or (n == count[best] and tier > best) then

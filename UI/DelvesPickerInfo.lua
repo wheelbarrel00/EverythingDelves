@@ -45,6 +45,14 @@ E:RegisterModule(function()
     keyFS:SetFont(keyFS:GetFont(), 10)
     keyFS:Hide()
 
+    local journeyFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    journeyFS:SetPoint("TOPLEFT", keyFS, "BOTTOMLEFT", 0, -2)
+    journeyFS:SetPoint("RIGHT", panel, "RIGHT", -8, 0)
+    journeyFS:SetJustifyH("LEFT")
+    journeyFS:SetWordWrap(true)
+    journeyFS:SetFont(journeyFS:GetFont(), 10)
+    journeyFS:Hide()
+
     local achHeader = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     achHeader:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -32)
     achHeader:SetFont(achHeader:GetFont(), 10, "OUTLINE")
@@ -146,6 +154,10 @@ E:RegisterModule(function()
         -- "Der Ring des Ruhms" does from "Ring des Ruhms", and then no text match hits.
         if C_DelvesUI and C_DelvesUI.GetDelveEntranceMapID then
             local ok, mapID = pcall(C_DelvesUI.GetDelveEntranceMapID)
+            if ok and E.Labyrinth and mapID == E.Labyrinth.instanceID then
+                return { name = E.Labyrinth.name, labyrinth = true },
+                    (type(header) == "string" and header ~= "") and header or E.LabyrinthDisplayName()
+            end
             local byID = ok and mapID and E.DelveDataByInstanceID[mapID]
             if byID then return byID, (type(header) == "string" and header ~= "") and header or nil end
         end
@@ -167,24 +179,40 @@ E:RegisterModule(function()
 
     local function PlaceAchHeader(hasKeyLine)
         achHeader:ClearAllPoints()
-        if hasKeyLine then
+        if journeyFS:IsShown() then
+            achHeader:SetPoint("TOPLEFT", journeyFS, "BOTTOMLEFT", 0, -6)
+        elseif hasKeyLine then
             achHeader:SetPoint("TOPLEFT", keyFS, "BOTTOMLEFT", 0, -6)
         else
             achHeader:SetPoint("TOPLEFT", panel, "TOPLEFT", 8, -32)
         end
     end
 
+    -- Delve entry auto-converts shards into keys, so count what will be available inside
+    local function KeysInside(keys)
+        local shards = E.GetCurrencyQuantity(E.CurrencyIDs.cofferKeyShards) or 0
+        return keys + math_floor(shards / E.SHARDS_PER_KEY)
+    end
+
     -- Silent whenever an input is unreadable: a wrong key count is worse than none.
     local function RefreshKeyLine(delve)
         local text
         local keys = E:GetCofferKeyCount()
-        if keys and E:IsDelveBountifulByName(delve.name, delve.canonicalName) then
+        if keys and delve.labyrinth then
+            keys = KeysInside(keys)
+            local LAB = E.Labyrinth
+            local coffers = math_floor(LAB.chambers / LAB.checkpointEvery)
+            if keys <= 0 then
+                text = E.CC.red .. L["Coffer keys: none. The checkpoint coffers will stay locked."] .. E.CC.close
+            elseif keys < coffers then
+                text = E.CC.yellow .. L["Coffer keys: %d. A full run opens %d coffers."]:format(keys, coffers) .. E.CC.close
+            else
+                text = E.CC.green .. L["Coffer keys: %d. Enough for every checkpoint coffer."]:format(keys) .. E.CC.close
+            end
+        elseif keys and E:IsDelveBountifulByName(delve.name, delve.canonicalName) then
             local rank = E.GetDelverJourneyRank()
             local dd   = E.Dundun
-            -- Delve entry auto-converts shards into keys, so count what will be
-            -- available inside rather than what is held at the picker.
-            local shards = E.GetCurrencyQuantity(E.CurrencyIDs.cofferKeyShards) or 0
-            keys = keys + math_floor(shards / E.SHARDS_PER_KEY)
+            keys = KeysInside(keys)
             if keys <= 0 then
                 text = E.CC.red
                     .. L["Coffer keys: none. The bountiful chest will stay locked."]
@@ -217,57 +245,89 @@ E:RegisterModule(function()
         PlaceAchHeader(text ~= nil)
     end
 
+    local function LabelLine(fs, label, value)
+        fs:SetText(E.CC.muted .. label .. " " .. E.CC.close .. value)
+    end
+
+    local function RefreshLabyrinth()
+        local j = E.GetLabyrinthJourney()
+        journeyFS:SetShown(j ~= nil)
+        if j then LabelLine(journeyFS, L["%s:"]:format(E.LabyrinthJourneyName()), E.CC.body .. L["Level %d"]:format(j.level) .. E.CC.close) end
+
+        local left = E.LabyrinthTiersLeft()
+        if left == nil then
+            storyFS:SetText(E.CC.muted .. L["Achievement data unavailable"] .. E.CC.close)
+        elseif left == 0 then
+            LabelLine(storyFS, L["Tier goals:"], E.CC.green .. L["Done"] .. E.CC.close)
+        else
+            LabelLine(storyFS, L["Tier goals:"], E.CC.red .. L["%d to go"]:format(left) .. E.CC.close)
+        end
+        for _, pair in ipairs({ { chestFS, E.Labyrinth.chestAchievement, L["Chests:"] },
+                                { depthFS, E.Labyrinth.chamberAchievement } }) do
+            local a = E.LabyrinthAchievement(pair[2])
+            if a then
+                LabelLine(pair[1], pair[3] or L["%s:"]:format(a.name), (a.done and E.CC.green or E.CC.body) .. a.cur .. "/" .. a.total .. E.CC.close)
+            else
+                pair[1]:SetText("")
+            end
+        end
+    end
+
     local function Refresh(delve, displayName)
         -- Strip escapes: displayName is a raw game string and an embedded |r
         -- would end the title's coloring early.
         local title = E.StripColorEscapes(displayName or delve.name)
         titleFS:SetText(E.CC.gold .. title .. E.CC.close)
 
+        journeyFS:Hide()
+        if delve.labyrinth then RefreshLabyrinth() end
         RefreshKeyLine(delve)
 
-        local st = E:GetDelveAchievementStatus(delve.name)
-        if not st then
-            storyFS:SetText(E.CC.muted .. L["Achievement data unavailable"] .. E.CC.close)
-            chestFS:SetText("")
-            depthFS:SetText("")
-        elseif st.allDone then
-            storyFS:SetText(E.CC.green .. L["All achievements complete"] .. E.CC.close)
-            chestFS:SetText("")
-            depthFS:SetText("")
-        else
-            if st.stories then
-                local base = st.stories.done
-                    and (E.CC.green .. L["Complete"] .. E.CC.close)
-                    or  (E.CC.red .. L["Incomplete"] .. E.CC.close)
-                local credit = (not st.stories.done)
-                    and E:GetTodaysStoryCredit(delve.name, st)
-                local extra = credit
-                    and (E.CC.gold .. "  " .. L["(today counts!)"] .. E.CC.close) or ""
-                storyFS:SetText(E.CC.muted .. L["Story:"] .. " " .. E.CC.close .. base .. extra)
-            else
-                storyFS:SetText("")
-            end
-
-            if st.discoveries then
-                local d = st.discoveries
-                local cc = d.done and E.CC.green or E.CC.body
-                chestFS:SetText(E.CC.muted .. L["Chests:"] .. " " .. E.CC.close
-                    .. cc .. d.found .. "/" .. d.total .. E.CC.close)
-            else
+        if not delve.labyrinth then
+            local st = E:GetDelveAchievementStatus(delve.name)
+            if not st then
+                storyFS:SetText(E.CC.muted .. L["Achievement data unavailable"] .. E.CC.close)
                 chestFS:SetText("")
-            end
-
-            if st.depths and #st.depths > 0 then
-                local miss = #(st.depthsMissing or {})
-                if miss == 0 then
-                    depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
-                        .. E.CC.green .. L["Done"] .. E.CC.close)
-                else
-                    depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
-                        .. E.CC.red .. L["%d to go"]:format(miss) .. E.CC.close)
-                end
-            else
                 depthFS:SetText("")
+            elseif st.allDone then
+                storyFS:SetText(E.CC.green .. L["All achievements complete"] .. E.CC.close)
+                chestFS:SetText("")
+                depthFS:SetText("")
+            else
+                if st.stories then
+                    local base = st.stories.done
+                        and (E.CC.green .. L["Complete"] .. E.CC.close)
+                        or  (E.CC.red .. L["Incomplete"] .. E.CC.close)
+                    local credit = (not st.stories.done)
+                        and E:GetTodaysStoryCredit(delve.name, st)
+                    local extra = credit
+                        and (E.CC.gold .. "  " .. L["(today counts!)"] .. E.CC.close) or ""
+                    storyFS:SetText(E.CC.muted .. L["Story:"] .. " " .. E.CC.close .. base .. extra)
+                else
+                    storyFS:SetText("")
+                end
+
+                if st.discoveries then
+                    local d = st.discoveries
+                    local cc = d.done and E.CC.green or E.CC.body
+                    chestFS:SetText(E.CC.muted .. L["Chests:"] .. " " .. E.CC.close
+                        .. cc .. d.found .. "/" .. d.total .. E.CC.close)
+                else
+                    chestFS:SetText("")
+                end
+
+                if st.depths and #st.depths > 0 then
+                    local miss = #(st.depthsMissing or {})
+                    if miss == 0 then
+                        depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
+                            .. E.CC.green .. L["Done"] .. E.CC.close)
+                    else
+                        depthFS:SetText(E.CC.muted .. L["Tier goals:"] .. " " .. E.CC.close
+                            .. E.CC.red .. L["%d to go"]:format(miss) .. E.CC.close)
+                    end
+                else
+                    depthFS:SetText("")
+                end
             end
         end
 

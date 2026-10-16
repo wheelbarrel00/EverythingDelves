@@ -11,7 +11,7 @@ local BOUNTIFUL_ATLAS = "delves-bountiful"
 
 local SIDE, GAP, CHEVRON, BUTTON, BUTTON_GAP = 8, 10, 12, 24, 10
 local MARK, MARK_GAP, SORT_ICON, SORT_GAP = 14, 6, 10, 4
-local ROW, TWO_ROW, HEAD = 28, 44, 28
+local ROW, TWO_ROW, HEAD, PINNED_GAP = 28, 44, 28, 10
 local LINE1_Y, LINE2_Y = -14, -31
 local BOSS_LEFT, BOSS_RIGHT, BOSS_TOP, BOSS_BOTTOM = 30, 16, 4, 8
 local BOSS_PAD, BOSS_TEXT, NAME_LINE, NOTE_GAP, LINE_EXTRA = 6, 20, 17, 6, 4
@@ -306,9 +306,10 @@ end
 local function fillRow(t, r, m)
     local ui = E.ui
     r.model = m
-    local h = t.opts.twoLine and TWO_ROW or ROW
+    local two = m.line2 ~= nil
+    local h = two and TWO_ROW or ROW
     r:SetHeight(h)
-    local top = t.opts.twoLine and LINE1_Y or -(ROW / 2)
+    local top = two and LINE1_Y or -(ROW / 2)
     local hasBosses = E:GetDelveBosses(m.bossName) ~= nil
     r.chevron:SetShown(hasBosses)
     r.chevron:SetTexture(ui:Texture(t.expanded[m.key] and "chevron-down" or "chevron-right"))
@@ -437,17 +438,13 @@ local function layoutBosses(t, m, y, left, right, width, used)
     return y + by
 end
 
-local function layout(t, y, models, left, right)
+-- Pinned rows sit above the headings, so a sort never moves them
+local function layout(t, y, models, left, right, pinned)
     local width = math_max(1, (t.content:GetWidth() or 0) - left - right)
     placeColumns(t, width)
     paintHeader(t)
-    t.header:ClearAllPoints()
-    t.header:SetPoint("TOPLEFT", t.content, "TOPLEFT", left, -y)
-    t.header:SetPoint("TOPRIGHT", t.content, "TOPRIGHT", -right, -y)
-    t.header:Show()
-    y = y + HEAD
     local used = { rows = 0, blocks = 0 }
-    for _, m in ipairs(models) do
+    local function place(m)
         used.rows = used.rows + 1
         local r = acquire(t.rows, used.rows, function() return newRow(t) end)
         r:SetPoint("TOPLEFT", t.content, "TOPLEFT", left, -y)
@@ -456,6 +453,16 @@ local function layout(t, y, models, left, right)
         y = y + r:GetHeight()
         y = layoutBosses(t, m, y, left, right, width, used)
     end
+    if pinned and #pinned > 0 then
+        for _, m in ipairs(pinned) do place(m) end
+        y = y + PINNED_GAP
+    end
+    t.header:ClearAllPoints()
+    t.header:SetPoint("TOPLEFT", t.content, "TOPLEFT", left, -y)
+    t.header:SetPoint("TOPRIGHT", t.content, "TOPRIGHT", -right, -y)
+    t.header:Show()
+    y = y + HEAD
+    for _, m in ipairs(models) do place(m) end
     for i = used.rows + 1, #t.rows do
         t.rows[i]:Hide()
         t.rows[i].model = nil
@@ -493,5 +500,20 @@ function DL.GradeCell(letter, muted)
     if not letter then return { text = "--", muted = true } end
     if muted then return { text = letter, muted = true } end
     return { text = letter, color = E.GRADE_COLORS[letter] }
+end
+
+function DL.Labyrinth()
+    local LAB = E.Labyrinth
+    local open = E.IsLabyrinthUnlocked()
+    local hist = E:GetDelveHistory(LAB.name)
+    local runs = hist and hist.lifetime and hist.lifetime.totalRuns
+    local v = {
+        key = LAB.name, name = E.LabyrinthDisplayName(), zone = E.LabyrinthZoneName(), open = open,
+        entrance = E.LabyrinthEntrance(), runs = (runs and runs > 0) and runs or nil,
+        coffers = L["A full run opens %d coffers."]:format(math_floor(LAB.chambers / LAB.checkpointEvery)),
+    }
+    if not open then v.locked = L["Unlocks with the quest \"%s\"."]:format(E.LabyrinthIntroQuestTitle()) end
+    v.tip = { v.name, L["Zone:"] .. " " .. v.zone .. "\n\n" .. (v.locked or (L["Always bountiful"] .. "\n" .. v.coffers)) }
+    return v
 end
 

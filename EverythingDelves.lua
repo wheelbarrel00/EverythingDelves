@@ -542,6 +542,8 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             print("|cFFFF2222Everything Delves|r: objectives module"
                 .. " not loaded.")
         end
+    elseif msg == "lablog" or msg:sub(1, 7) == "lablog " then
+        if E.LabLogCommand then E:LabLogCommand(msg:sub(8)) end
     elseif msg == "gilded" then
         if not (C_UIWidgetManager
                 and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
@@ -1193,6 +1195,8 @@ function E:CaptureRosterSnapshot()
 
     rec.gildedCollected, rec.gildedTotal = self:GetLiveGildedStash()
 
+    if E.WahduSteps then rec.wahdu, rec.wahduTotal = E.WahduSteps() end
+
     local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
         and C_DateAndTime.GetSecondsUntilWeeklyReset()
     if secs and secs > 0 then rec.weekEnd = time() + secs end
@@ -1221,7 +1225,8 @@ local function BeginDelveRun(name, kind)
     visitKeysSpent         = 0
     keyWatch               = nil  -- a new run supersedes any pending key watch
     runState.tier          = 0
-    runState.wasBountiful  = false
+    runState.lab           = (kind == "labyrinth") and E.LabRun.New() or nil
+    runState.wasBountiful  = runState.lab ~= nil
     runState.story         = E:GetDelveStoryVariant(name)
     runState.boss          = nil
     runState.lastResult    = nil
@@ -1240,9 +1245,10 @@ local function BeginDelveRun(name, kind)
             startKeyItems = runState.startKeyItems,
             keyUsed       = false,
             tier          = 0,
-            wasBountiful  = false,
+            wasBountiful  = runState.wasBountiful,
             story         = runState.story,
             trovehunterPopupShown = false,
+            lab           = runState.lab,
         }
     end
     RefreshBountifulSnapshot()
@@ -1297,6 +1303,7 @@ local function EndDelveRun()
     runState.wasBountiful  = false
     runState.story         = nil
     runState.boss          = nil
+    runState.lab           = nil
     runState.trovehunterPopupShown = false
     runState.roleNudgeShown = false
     if E._popupHeartbeat then
@@ -1328,7 +1335,7 @@ function E:MaybeWarnCompanionRoleUnset()
         .. L["Your Delve companion has no role assigned - open the companion panel to set one."])
 end
 
-function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story, boss)
+function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, story, boss, lab)
     if not name or not self.db then
         return
     end
@@ -1358,9 +1365,17 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
     life.totalRuns     = (life.totalRuns or 0) + 1
     life.totalDeaths   = (life.totalDeaths or 0) + (deaths or 0)
     life.totalDuration = (life.totalDuration or 0) + (duration or 0)
-    life.totalKeysUsed = (life.totalKeysUsed or 0) + (keyUsed and 1 or 0)
+    life.totalKeysUsed = (life.totalKeysUsed or 0) + (lab and lab.keys or (keyUsed and 1 or 0))
     if tier and tier > (life.highestTier or 0) then
         life.highestTier = tier
+    end
+    if lab then
+        life.chambers = (life.chambers or 0) + (lab.ch or 0)
+        if lab.kindo then life.kindoKills = (life.kindoKills or 0) + 1 end
+        local nine = not lab.prior and lab.at and lab.at[9]
+        if nine and (not life.fullClear or life.fullClear == 0 or nine < life.fullClear) then
+            life.fullClear = nine
+        end
     end
     if duration and duration > 0 then
         life.timedRuns = life.timedRuns + 1
@@ -1375,7 +1390,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
     life.lastRun = now
 
     local recent = entry.recentRuns
-    table.insert(recent, 1, {
+    local run = {
         tier         = tier or 0,
         duration     = duration or 0,
         deaths       = deaths or 0,
@@ -1386,7 +1401,12 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         story        = (story and story ~= "") and story or nil,
         boss         = (boss and boss ~= "") and boss or nil,
         spec         = CurrentSpecID(),
-    })
+    }
+    if lab then
+        run.ch, run.at, run.rooms, run.kindo = lab.ch, lab.at, lab.rooms, lab.kindo
+        run.keys, run.left, run.prior = lab.keys, lab.left, lab.prior
+    end
+    table.insert(recent, 1, run)
     -- Clamp to [MIN, MAX] so a bad saved value can't shrink below the floor.
     local cap = MAX_RECENT_RUNS
     local hc  = E.db and E.db.historyCap
@@ -1463,8 +1483,10 @@ function E:DeleteRun(delveName, timestamp)
             life.timedRuns = math.max(0, life.timedRuns - 1)
         end
         if run.keyUsed then
-            life.totalKeysUsed = math.max(0, (life.totalKeysUsed or 0) - 1)
+            life.totalKeysUsed = math.max(0, (life.totalKeysUsed or 0) - (run.keys or 1))
         end
+        if run.ch then life.chambers = math.max(0, (life.chambers or 0) - run.ch) end
+        if run.kindo then life.kindoKills = math.max(0, (life.kindoKills or 0) - 1) end
         -- Only lower these records when recent holds the WHOLE history: a
         -- record can live in a run trimmed past the cap, which recent can't see.
         local wholeHistory = (life.totalRuns or 0) <= #recent
@@ -1485,6 +1507,15 @@ function E:DeleteRun(delveName, timestamp)
                 end
             end
             life.fastestTime = fastest
+        end
+        local nine = run.at and run.at[9]
+        if wholeHistory and nine and nine == life.fullClear then
+            local fastest = 0
+            for _, r in ipairs(recent) do
+                local t = not r.prior and r.at and r.at[9]
+                if t and t > 0 and (fastest == 0 or t < fastest) then fastest = t end
+            end
+            life.fullClear = fastest
         end
     end
 
@@ -1663,6 +1694,7 @@ delveFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 delveFrame:RegisterEvent("SCENARIO_UPDATE")
 delveFrame:RegisterEvent("SCENARIO_COMPLETED")
 delveFrame:RegisterEvent("PLAYER_DEAD")
+delveFrame:RegisterEvent("ENCOUNTER_START")
 delveFrame:RegisterEvent("ENCOUNTER_END")
 delveFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 
@@ -1683,6 +1715,91 @@ local enteredViaLogin  = false
 -- Both reset on /reload + relog, correctly: those paths resume via E.db.activeRun.
 local entryArmed   = false
 local runCompleted = false
+-- Leaving the Labyrinth shows no loading screen, and the open world keeps reporting the delve difficulty until the
+-- next one. So the visit is held until that loading screen, and any update outside the Labyrinth before it counts as
+-- having left, never as a delve.
+local labVisit     = false
+
+local IsSecret = issecretvalue
+
+local function RecaptureGildedStash()
+    if E._gildedRecapture then E._gildedRecapture:Cancel() end
+    local gildedTicks = 0
+    E._gildedRecapture = C_Timer.NewTicker(3, function(ticker)
+        gildedTicks = gildedTicks + 1
+        E:CaptureGildedStash()
+        local _, _, diffID = GetInstanceInfo()
+        if diffID ~= 208 or gildedTicks >= 20 then
+            ticker:Cancel()
+            E._gildedRecapture = nil
+        end
+    end)
+end
+
+local function ReadChamberWidget()
+    local W = C_UIWidgetManager
+    if not (W and W.GetSpellDisplayVisualizationInfo) then return nil end
+    local ok, info = pcall(W.GetSpellDisplayVisualizationInfo, E.Labyrinth.chamberWidgetID)
+    local n = ok and type(info) == "table" and info.spellInfo and info.spellInfo.stackDisplay
+    return type(n) == "number" and n or nil
+end
+
+local function ReconcileLabyrinth()
+    if runState.inDelve and runState.lab then
+        E.LabRun.Reconcile(runState.lab, ReadChamberWidget())
+    end
+end
+
+-- Logged at the treasure room, or as left early when the player walks out first.
+local function FinishLabyrinthRun(left)
+    local lab = runState.lab
+    if not (runState.inDelve and lab) then return end
+    local name = runState.delveName
+    -- Kindo'jan can fall with no chamber counted in this visit, when every chamber came before it began
+    if (lab.ch > 0 or lab.kindo) and name then
+        local tier = runState.tier or 0
+        if not left then
+            local live = AutoDetectDelveTier()
+            if live and live > 0 then tier = live end
+        end
+        local reached = lab.at[lab.ch]
+        local priorBest = not lab.prior and E:GetLabyrinthBest(tier, lab.ch) or nil
+        E:LogDelveRun(name, tier, E.LabRun.Duration(lab), runState.deaths, lab.keys > 0, true, nil, nil,
+            E.LabRun.Record(lab, left))
+        if not left and reached then
+            runState.lastResult = { duration = E.LabRun.Duration(lab), beat = (not priorBest) or reached <= priorBest }
+        end
+        local hist = E.db and E.db.delveHistory and E.db.delveHistory[name]
+        local loggedRun = hist and hist.recentRuns and hist.recentRuns[1]
+        keyWatch = (loggedRun and not left) and { run = loggedRun, name = name, lab = true } or nil
+        if not left and E.sessionData then
+            E.sessionData.bountifulCompleted = (E.sessionData.bountifulCompleted or 0) + 1
+        end
+        if E.RefreshDelveHistoryTab then E:RefreshDelveHistoryTab() end
+        if E.RefreshLeaderboardTab then E.RefreshLeaderboardTab() end
+    end
+    EndDelveRun()
+    if not left then
+        runCompleted = true
+        RecaptureGildedStash()
+    end
+end
+
+local function LabScenarioTick()
+    local lab = runState.lab
+    local SI = C_ScenarioInfo
+    if not (runState.inDelve and lab and SI and SI.GetScenarioInfo) then return end
+    local ok, info = pcall(SI.GetScenarioInfo)
+    local id = ok and type(info) == "table" and info.scenarioID or nil
+    if id == E.Labyrinth.treasureScenario then
+        FinishLabyrinthRun(false)
+        return
+    end
+    local okStep, step = pcall(SI.GetScenarioStepInfo)
+    local title = okStep and type(step) == "table" and step.title or nil
+    if IsSecret and IsSecret(title) then title = nil end
+    E.LabRun.OnScenario(lab, id, title, GetTime() - runState.startTime)
+end
 
 local function TryBeginFromCurrentZone(source)
     local _, _, instanceType = IsInInstance(), nil, select(2, IsInInstance())
@@ -1691,10 +1808,19 @@ local function TryBeginFromCurrentZone(source)
     -- Delve difficulty (208) or any scenario instance.
     local inScenario = (instanceType == "scenario")
     local isDelve    = (diffID == 208) or inScenario
+    local inLabyrinth = select(8, GetInstanceInfo()) == E.Labyrinth.instanceID
+    if inLabyrinth then labVisit = true end
+    local leftLabyrinth = labVisit and not inLabyrinth and instanceType == "none"
 
-    if not isDelve then
+    if not isDelve or leftLabyrinth then
+        -- Still in the Labyrinth's instance: a passing misread, not a departure
+        if inLabyrinth then return end
         if runState.inDelve then
-            EndDelveRun()
+            if runState.lab then
+                FinishLabyrinthRun(true)
+            else
+                EndDelveRun()
+            end
         end
         runCompleted   = false
         keyWatch       = nil
@@ -1773,6 +1899,9 @@ local function TryBeginFromCurrentZone(source)
                 runState.story         = saved.story
                 runState.lastResult    = nil
                 runState.trovehunterPopupShown = saved.trovehunterPopupShown or false
+                runState.lab           = (saved.kind == "labyrinth") and (saved.lab or E.LabRun.New()) or nil
+                saved.lab              = runState.lab
+                if runState.lab then C_Timer.After(2, ReconcileLabyrinth) end
                 TryCaptureTier("restored")
                 -- TryCaptureTier short-circuits if tier was already captured;
                 -- run the reminder check explicitly so a never-shown popup fires.
@@ -1905,13 +2034,16 @@ local function CheckKeySpend(currencyType, quantityChange, destroyReason)
     if runState.inDelve or runCompleted or keyWatch then
         visitKeysSpent = visitKeysSpent - quantityChange
         local need = (E.Dundun and E.Dundun.keysForBoth) or 2
-        if visitKeysSpent >= need then
+        -- The Labyrinth's checkpoint coffers take up to three keys a visit, none of them Dundun's.
+        local inLabyrinth = E.Labyrinth and select(8, GetInstanceInfo()) == E.Labyrinth.instanceID
+        if visitKeysSpent >= need and not inLabyrinth then
             E:MarkAbundantRunTaken()
         end
     end
 
     -- A key was spent. Attribute to the live run, else the just-completed one.
     if runState.inDelve then
+        if runState.lab then runState.lab.keys = runState.lab.keys - quantityChange end
         if not runState.keyUsed then
             runState.keyUsed = true
             if E.db and E.db.activeRun then E.db.activeRun.keyUsed = true end
@@ -1920,6 +2052,20 @@ local function CheckKeySpend(currencyType, quantityChange, destroyReason)
         end
     elseif keyWatch then
         local r = keyWatch.run
+        -- A Labyrinth run opens up to three coffers, so its watch stays armed and counts each key.
+        if keyWatch.lab then
+            if r then
+                local spent = -quantityChange
+                r.keys = (r.keys or 0) + spent
+                r.keyUsed = true
+                local hist = E.db and E.db.delveHistory and E.db.delveHistory[keyWatch.name]
+                if hist and hist.lifetime then
+                    hist.lifetime.totalKeysUsed = (hist.lifetime.totalKeysUsed or 0) + spent
+                end
+                if E.RefreshDelveHistoryTab then E:RefreshDelveHistoryTab() end
+            end
+            return
+        end
         if r and not r.keyUsed then
             r.keyUsed = true
             local hist = E.db and E.db.delveHistory
@@ -1953,6 +2099,7 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         -- against (SCENARIO_UPDATE/ZONE_CHANGED during looting) never carry a
         -- PEW, so suppression is preserved.
         runCompleted = false
+        labVisit = false
         -- Only a GENUINE new world-entry (NOT a /reload or relog/reconnect) arms
         -- the next delve detection to stamp a FRESH run start. /reload and relog
         -- are deliberately NOT armed so the resume path restores the saved run's
@@ -1975,9 +2122,10 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             if E.MaybeShowTrovehunterReminder then
                 E:MaybeShowTrovehunterReminder()
             end
-            return
+        else
+            TryBeginFromCurrentZone(event)
         end
-        TryBeginFromCurrentZone(event)
+        LabScenarioTick()
 
     elseif event == "PLAYER_DEAD" then
         if runState.inDelve then
@@ -1989,21 +2137,40 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             end
         end
 
+    elseif event == "ENCOUNTER_START" then
+        if runState.inDelve and runState.lab then
+            local encounterID = ...
+            E.LabRun.OnEncounterStart(runState.lab, encounterID, GetTime() - runState.startTime)
+        end
+
     elseif event == "ENCOUNTER_END" then
         -- If more than one encounter fires, the last (the end boss) wins.
         if runState.inDelve then
-            local _, encounterName = ...
+            local encounterID, encounterName, _, _, success = ...
+            if IsSecret and IsSecret(encounterName) then encounterName = nil end
             if encounterName and encounterName ~= "" then
                 runState.boss = encounterName
+            end
+            if runState.lab then
+                E.LabRun.OnEncounterEnd(runState.lab, encounterID, encounterName, success,
+                    GetTime() - runState.startTime)
             end
         end
 
     elseif event == "SCENARIO_COMPLETED" then
+        if runState.inDelve and runState.lab then
+            if E.LabRun.OnCompleted(runState.lab, GetTime() - runState.startTime) then
+                C_Timer.After(1.5, ReconcileLabyrinth)
+            end
+            return
+        end
         local candidate = ResolveDelveName()
         if not candidate or candidate == "" then
             candidate = runState.delveName
         end
-        local matchedName = MatchDelveName(candidate or "")
+        local matchedName, matchedKind = MatchDelveName(candidate or "")
+        -- Every Labyrinth chamber completes a scenario, so an untracked one must not latch out the rest of the visit.
+        if matchedKind == "labyrinth" then return end
 
         -- Recover the start when the live tracker lost it (e.g. a cold-cache /
         -- reconnect entry that never re-stamped runState): fall back to the
@@ -2124,17 +2291,6 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         -- begin/resume until the player leaves so a trailing event can't spawn
         -- a phantom run.
         runCompleted = true
-
-        if E._gildedRecapture then E._gildedRecapture:Cancel() end
-        local gildedTicks = 0
-        E._gildedRecapture = C_Timer.NewTicker(3, function(ticker)
-            gildedTicks = gildedTicks + 1
-            E:CaptureGildedStash()
-            local _, _, diffID = GetInstanceInfo()
-            if diffID ~= 208 or gildedTicks >= 20 then
-                ticker:Cancel()
-                E._gildedRecapture = nil
-            end
-        end)
+        RecaptureGildedStash()
     end
 end)

@@ -19,6 +19,8 @@ local COLUMNS = {
     { key = "gilded",   label = L["Gilded"] },
     { key = "weekly",   label = L["Weekly"], check = true },
     { key = "trove",    label = L["Trove"],  check = true },
+    -- A count until every step is done, then the check
+    { key = "wahdu",    label = E.WahduName(), check = true, text = true },
 }
 
 local function FormatAgo(secs)
@@ -46,7 +48,15 @@ local function SortVal(e, key)
     if key == "gilded"   then return e.valid and (rec.gildedCollected or 0) or -1 end
     if key == "weekly"   then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
     if key == "trove"    then return e.valid and (rec.bountyLooted and 1 or 0) or -1 end
+    if key == "wahdu"    then return rec.wahdu or -1 end
     return rec.updated or 0
+end
+
+local function WahduValue(rec)
+    if not rec.wahdu then return nil end
+    local total = rec.wahduTotal or 0
+    if total > 0 and rec.wahdu >= total then return true end
+    return rec.wahdu .. "/" .. total
 end
 
 local function Values(e)
@@ -61,6 +71,7 @@ local function Values(e)
         gilded   = (valid and rec.gildedTotal) and ((rec.gildedCollected or 0) .. "/" .. rec.gildedTotal) or nil,
         weekly   = (valid and rec.weeklyQuestDone) and true or nil,
         trove    = (valid and rec.bountyLooted) and true or nil,
+        wahdu    = WahduValue(rec),
     }
 end
 
@@ -185,7 +196,7 @@ local function FillRow(ui, r, e, isCur, now)
         local fs = r.cells[col.key]
         if col.check then
             r.checks[col.key]:SetShown(val == true)
-            fs:SetText(val and "" or "--")
+            fs:SetText((val == true and "") or val or "--")
         else
             fs:SetText(val or "--")
         end
@@ -201,7 +212,8 @@ local function ColumnWidths(t, rows, used, v)
         for r = 1, used do
             local fs = rows[r].cells[col.key]
             fs:SetWidth(0)
-            w = math_max(w, col.check and CHECK or math_ceil(fs:GetStringWidth() or 0))
+            local text = math_ceil(fs:GetStringWidth() or 0)
+            w = math_max(w, (col.check and not col.text) and CHECK or (col.check and math_max(CHECK, text) or text))
         end
         widths[i] = w + CELL_PAD
     end
@@ -311,6 +323,9 @@ E:RegisterModule(function()
             FillRow(ui, t.rows[i], e, e.key == curKey, now)
         end
         for i = #list + 1, #t.rows do t.rows[i]:Hide() end
+        for i, col in ipairs(COLUMNS) do
+            if col.key == "wahdu" then t.heads[i + 1].text:SetText(E.WahduName()) end
+        end
 
         local widths = ColumnWidths(t, t.rows, #list, v)
         local view = ViewWidth()

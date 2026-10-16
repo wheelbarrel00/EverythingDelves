@@ -1,24 +1,28 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "2.1.0"
+local WHATS_NEW_VERSION = "2.2.0"
 
 local ENTRIES = {
     {
-        title = "A Leaderboard page",
-        desc  = "Every delve on one board: the fastest clear your characters have at the tier you pick, who set it, and where the character you are playing stands. Click a delve for the full ranking, and filter by class and spec. Thanks to MattBravehearts for the idea.",
+        title = "The Labyrinth of Kindo'jan",
+        desc  = "Every Labyrinth run is logged: chambers, checkpoint times and Kindo'jan's fight time on the delve HUD, in Delve History and on the Leaderboard.",
     },
     {
-        title = "A grade for every story",
-        desc  = "All 44 story grades, including the stories patch 12.1 added, now come from Moleman's Delve Compendium, which times the best clear of every story. Thanks to Moleman for the compendium.",
+        title = "Kindo'jan on the Nemesis page",
+        desc  = "A switch between Kindo'jan and Azta'rec. Kindo'jan's side covers how to reach him, each phase of the fight, Valeera's setup and his rewards.",
     },
     {
-        title = "The Ring of Glory panel works",
-        desc  = "The delve information panel now recognizes every delve by the game's own ID, in every language. Thanks to NoNe10 for the report.",
+        title = "Labyrinth achievements",
+        desc  = "Its tier goals, every Labyrinth achievement with your progress, and its Feats of Strength, on the Achievements page and the Labyrinth's map pin.",
     },
     {
-        title = "The Dundun reminder is fixed",
-        desc  = "It now shows only in Bountiful Delves, and stays through combat and after the boss.",
+        title = "The Labyrinth everywhere else",
+        desc  = "Delve Locations, Current Bountiful Delves, the difficulty picker panel, the Tier Guide and the Roster all include it now.",
+    },
+    {
+        title = "A Dundun reminder fix",
+        desc  = "Coffer keys spent in the Labyrinth no longer stop the reminder to keep a key for Dundun's extra chest.",
     },
 }
 
