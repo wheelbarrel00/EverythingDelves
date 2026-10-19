@@ -202,7 +202,7 @@ end
 local function newRow(t)
     local ui = E.ui
     local r = CreateFrame("Button", nil, t.content)
-    r:RegisterForClicks("LeftButtonUp")
+    r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     local hl = r:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(ui:Color("hover"))
@@ -241,8 +241,12 @@ local function newRow(t)
     r.pin = newPin(r)
     r.pin:SetPoint("RIGHT", r.tt, "LEFT", -BUTTON_GAP, 0)
 
-    r:SetScript("OnClick", function(self)
+    r:SetScript("OnClick", function(self, button)
         local m = self.model
+        if button == "RightButton" then
+            if m and m.storyID then DL.GradeMenu(m.storyID, self) end
+            return
+        end
         if not (m and E:GetDelveBosses(m.bossName)) then return end
         t.expanded[m.key] = not t.expanded[m.key]
         if t.opts.onChange then t.opts.onChange() end
@@ -272,7 +276,7 @@ local function fillName(t, r, m, top)
     for _, mk in ipairs(marks) do extra = extra + MARK_GAP + mk[2] end
     r.name:SetWidth(0)
     r.name:SetText(m.name)
-    r.name:SetTextColor(ui:Color(m.done and "muted" or "text"))
+    r.name:SetTextColor(ui:Color((m.done or m.muted) and "muted" or "text"))
     local natural = math_ceil(r.name:GetStringWidth() or 0) + 1
     r.name:SetWidth(math_max(1, math_min(natural, t.nameWidth - extra)))
     r.name:ClearAllPoints()
@@ -496,10 +500,39 @@ end
 
 DL.GRADE_ORDER = { S = 1, A = 2, B = 3, C = 4, D = 5, F = 6 }
 
-function DL.GradeCell(letter, muted)
+local function texEscape(path, size, token, x)
+    local r, g, b = E.ui:Color(token)
+    return string_format("|T%s:%d:%d:%d:0:16:16:0:16:0:16:%d:%d:%d|t", path, size, size, x,
+        math_floor(r * 255 + 0.5), math_floor(g * 255 + 0.5), math_floor(b * 255 + 0.5))
+end
+
+function DL.Mark()
+    return " " .. texEscape("Interface\\Buttons\\WHITE8x8", 4, "accentHi", 0)
+end
+
+function DL.WontIcon()
+    return texEscape(ED_TEXTURES .. "icon-wont", 14, "muted", 0)
+end
+
+function DL.GradeCell(letter, muted, mine)
+    if mine == "x" then return { text = DL.WontIcon() } end
     if not letter then return { text = "--", muted = true } end
-    if muted then return { text = letter, muted = true } end
-    return { text = letter, color = E.GRADE_COLORS[letter] }
+    local text = letter .. (mine and DL.Mark() or "")
+    if muted then return { text = text, muted = true } end
+    return { text = text, color = E.GRADE_COLORS[letter] }
+end
+
+function DL.GradeMenu(id, owner)
+    if not (id and E.Stories[id]) then return end
+    local _, comp = E:StoryGrade(id)
+    local items = { { kind = "title", text = E:StoryName(id) } }
+    for _, g in ipairs({ "S", "A", "B", "C", "D", "F" }) do
+        items[#items + 1] = { text = E:GetGradeCC(g) .. g .. "|r", onClick = function() E:SetStoryGrade(id, g) end }
+    end
+    items[#items + 1] = { text = L["Won't run"], onClick = function() E:SetStoryGrade(id, "x") end }
+    items[#items + 1] = { kind = "divider" }
+    items[#items + 1] = { text = L["Use the compendium grade (%s)"]:format(comp or "--"), onClick = function() E:SetStoryGrade(id, nil) end }
+    E.ui:ShowMenu(items, owner)
 end
 
 function DL.Labyrinth()

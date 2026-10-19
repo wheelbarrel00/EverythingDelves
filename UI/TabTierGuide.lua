@@ -16,7 +16,6 @@ local FACTION_RENOWN_MAX = 20
 local GILDED_MAX = 4   -- 4x T11 Bountiful Delves per week
 
 local TROVE_QUEST_ID = 86371   -- weekly loot-check quest
-local TROVE_USED_ID  = 92887   -- bounty-consumed quest
 local TROVE_ICON     = 1064187
 local VALEERA_ICON   = "Interface\\Icons\\Achievement_Character_BloodElf_Female"
 local PORTRAIT_MASK  = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
@@ -199,19 +198,17 @@ local function VaultState(rows)
 end
 
 local function TroveText()
-    local weeklyDone, bountyUsed = false, false
+    local weeklyDone = false
     if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
         weeklyDone = C_QuestLog.IsQuestFlaggedCompleted(TROVE_QUEST_ID)
-        bountyUsed = C_QuestLog.IsQuestFlaggedCompleted(TROVE_USED_ID)
     end
+    local bountyUsed = E:TrovehunterUsedThisWeek()
     local inBag = E:GetTrovehunterMapCount()
     local auraActive = E:GetTrovehunterAura() ~= nil
 
     local status, done
     if weeklyDone then
-        -- The "used" flag (92887) is unreliable (reads used with a map still
-        -- in the bag), so bag presence wins: done only when inBag <= 0.
-        if bountyUsed and inBag <= 0 then
+        if bountyUsed then
             status, done = L["Bounty looted and used this week."], true
         else
             status = L["Bounty looted - not yet used this week."]
@@ -221,10 +218,12 @@ local function TroveText()
     end
 
     local detail
-    if inBag > 0 and not auraActive then
-        detail = L["You have a Trovehunter's Bounty in your bag - don't forget to use it!"]
+    if inBag > 0 and bountyUsed then
+        detail = L["You already used a bounty this week - keep this one for next week."]
     elseif auraActive then
         detail = L["Your Trovehunter's Bounty is active. Happy looting!"]
+    elseif inBag > 0 then
+        detail = L["You have a Trovehunter's Bounty in your bag - don't forget to use it!"]
     end
     return status, detail, done
 end

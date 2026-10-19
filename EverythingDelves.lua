@@ -89,6 +89,7 @@ local DATA_DEFAULTS = {
     abundantByChar         = {},  -- [charKey] = { weekEnd = epoch }
     roster                 = {},
     tierCache              = {},  -- { season, build, recGear = { [tier] = ilvl } }
+    storyGrades            = {},  -- [story widget ID] = grade letter, or "x" for won't run
 }
 
 -- Profile-scoped keys: the E.db proxy redirects these to the active profile.
@@ -489,6 +490,8 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.DebugPrintStoryMatch then
             E:DebugPrintStoryMatch()
         end
+    elseif msg == "stories" then
+        E:DumpStories()
     elseif msg == "companion" then
         if E.DumpCompanionState then
             E:DumpCompanionState()
@@ -1023,8 +1026,7 @@ local function RefreshBountifulSnapshot()
     end
 end
 
--- The story sits at orderIndex 0 of the POI tooltip's TextWithState widget
--- set; present for normal (non-bountiful) POIs too and readable from inside.
+-- The story is the POI tooltip's TextWithState widget at orderIndex 0. Normal POIs carry it too, and it reads from inside.
 local function ReadPOIStoryText(mapID, poiID)
     if not (mapID and poiID and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then
         return nil
@@ -1042,7 +1044,7 @@ local function ReadPOIStoryText(mapID, poiID)
             local viz = C_UIWidgetManager
                 .GetTextWithStateWidgetVisualizationInfo(info.widgetID)
             if viz and viz.orderIndex == 0 and viz.text and viz.text ~= "" then
-                return viz.text
+                return viz.text, info.widgetID
             end
         end
     end
@@ -1057,8 +1059,6 @@ local function CleanStoryName(s)
     return name
 end
 
--- Reads the delve's POI tooltip, trying the bountiful POI then the normal one
--- (only one is active at a time). Returns nil for delves with no POI story.
 function E:GetDelveStoryVariant(delveName)
     if not (delveName and self.DelveData) then return nil end
     local entry
@@ -1066,9 +1066,9 @@ function E:GetDelveStoryVariant(delveName)
         if d.name == delveName then entry = d; break end
     end
     if not entry then return nil end
-    local raw = ReadPOIStoryText(entry.mapID, entry.poiID)
-             or ReadPOIStoryText(entry.mapID, entry.normalPoiID)
-    return CleanStoryName(raw)
+    local raw, widget = ReadPOIStoryText(entry.mapID, entry.poiID)
+    if not raw then raw, widget = ReadPOIStoryText(entry.mapID, entry.normalPoiID) end
+    return CleanStoryName(raw), widget
 end
 
 -- The in-delve scenario UI exposes the weekly Gilded Stash counter as

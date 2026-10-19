@@ -184,6 +184,14 @@ function E:GetTrovehunterMapCount()
     return total
 end
 
+-- Flagged when a bounty is used, until the weekly reset. The buff cannot tell: it drops once the next Tier 4+ Delve ends.
+E.TROVE_USED_QUEST_ID = 92887
+
+function E:TrovehunterUsedThisWeek()
+    if not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then return false end
+    return C_QuestLog.IsQuestFlaggedCompleted(self.TROVE_USED_QUEST_ID) == true
+end
+
 function E:StyleAccentDivider(tex)
     if not tex or not tex.SetColorTexture then return end
     local d = self.Colors.divider

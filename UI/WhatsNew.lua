@@ -1,28 +1,24 @@
 local E = EverythingDelves
 local L = E.L
 
-local WHATS_NEW_VERSION = "2.2.0"
+local WHATS_NEW_VERSION = "2.3.0"
 
 local ENTRIES = {
     {
-        title = "The Labyrinth of Kindo'jan",
-        desc  = "Every Labyrinth run is logged: chambers, checkpoint times and Kindo'jan's fight time on the delve HUD, in Delve History and on the Leaderboard.",
+        title = "Your own story grades",
+        desc  = "A Story Grades tab in the settings: give any story your own grade, or mark one you won't run. Best Pick, the delve lists and the HUD follow your grades. Thanks to user_vsza93iuemi45toc for the request.",
     },
     {
-        title = "Kindo'jan on the Nemesis page",
-        desc  = "A switch between Kindo'jan and Azta'rec. Kindo'jan's side covers how to reach him, each phase of the fight, Valeera's setup and his rewards.",
+        title = "Grade today's story with a right-click",
+        desc  = "Right-click a delve on Delve Locations or Current Bountiful Delves to grade the story it has today.",
     },
     {
-        title = "Labyrinth achievements",
-        desc  = "Its tier goals, every Labyrinth achievement with your progress, and its Feats of Strength, on the Achievements page and the Labyrinth's map pin.",
+        title = "Story grades in every language",
+        desc  = "Grades now show on German, French, Russian, Korean and Chinese clients, with the story names in your language.",
     },
     {
-        title = "The Labyrinth everywhere else",
-        desc  = "Delve Locations, Current Bountiful Delves, the difficulty picker panel, the Tier Guide and the Roster all include it now.",
-    },
-    {
-        title = "A Dundun reminder fix",
-        desc  = "Coffer keys spent in the Labyrinth no longer stop the reminder to keep a key for Dundun's extra chest.",
+        title = "A Trovehunter's Bounty fix",
+        desc  = "No more reminder to use a second bounty in the same week. The Tier Guide and the bounty's tooltip tell you to keep it for next week.",
     },
 }
 

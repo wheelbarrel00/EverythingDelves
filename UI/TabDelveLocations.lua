@@ -7,7 +7,10 @@ local table_insert, table_sort, table_concat = table.insert, table.sort, table.c
 local filteredData   = {}
 
 local todayStoryByName = {}
+local todayStoryIDByName = {}
 local todayTierByName  = {}
+local todayMeasuredByName = {}
+local todayMineByName  = {}
 local todaySpeedByName  = {}
 local todaySpeedSrcByName = {}
 
@@ -66,32 +69,37 @@ local function RefreshFilteredData(sortField, sortAscending)
     end
 
     wipe(todayStoryByName)
+    wipe(todayStoryIDByName)
     wipe(todayTierByName)
+    wipe(todayMeasuredByName)
+    wipe(todayMineByName)
     wipe(todaySpeedByName)
     wipe(todaySpeedSrcByName)
     for _, delve in ipairs(E.DelveData) do
-        local story = E.GetDelveStoryVariant and E:GetDelveStoryVariant(delve.name) or nil
-        todayStoryByName[delve.name] = story
-        local tier, known
-        if story and story ~= "" and E.GetStoryTier then
-            local si = E:GetStoryTier(story)
-            if si then tier, known = si.tier, true end
-        end
-        -- Known but unrated stays blank rather than borrow another story's tier.
-        if not known then
+        local story, widget = E:GetDelveStoryVariant(delve.name)
+        local id = E:StoryID(widget, story)
+        todayStoryIDByName[delve.name] = id
+        todayStoryByName[delve.name] = id and E:StoryName(id) or story
+        local tier, measured, mine
+        if id then
+            tier, measured, mine = E:StoryGrade(id)
+        else
             local dn = DELVE_NOTES[delve.name]
             tier = dn and dn.tier
+            measured = tier
         end
         todayTierByName[delve.name] = tier
+        todayMeasuredByName[delve.name] = measured
+        todayMineByName[delve.name] = mine
 
-        if E.GetDelveSpeed then
-            local secs, src = E:GetDelveSpeed(delve.name, tier)
-            todaySpeedByName[delve.name]    = secs
-            todaySpeedSrcByName[delve.name] = src
-        end
+        local secs, src = E:GetDelveSpeed(delve.name, measured)
+        todaySpeedByName[delve.name]    = secs
+        todaySpeedSrcByName[delve.name] = src
     end
 
     table_sort(filteredData, function(a, b)
+        local wa, wb = todayMineByName[a.name] == "x", todayMineByName[b.name] == "x"
+        if wa ~= wb then return wb end
         if sortField == "tier" then
             local oa = DLOC_TIER_ORDER[todayTierByName[a.name] or ""] or 7
             local ob = DLOC_TIER_ORDER[todayTierByName[b.name] or ""] or 7
@@ -151,15 +159,21 @@ local function TipBody(delve, isBountiful, expanded)
     lines[#lines + 1] = L["Zone:"] .. " " .. delve.zone
 
     local story = todayStoryByName[delve.name]
+    local id = todayStoryIDByName[delve.name]
     if story and story ~= "" then
-        local si = E.GetStoryTier and E:GetStoryTier(story)
+        local mine = todayMineByName[delve.name]
         lines[#lines + 1] = ""
-        if si and si.tier then
-            lines[#lines + 1] = L["Today's Story:"] .. " " .. story .. "  (" .. L["%s Tier"]:format(si.tier) .. ")"
+        if id and mine ~= "x" and todayTierByName[delve.name] then
+            lines[#lines + 1] = L["Today's Story:"] .. " " .. story .. "  (" .. L["%s Tier"]:format(todayTierByName[delve.name]) .. ")"
         else
             lines[#lines + 1] = L["Today's Story:"] .. " " .. story
         end
-        if si and si.note then lines[#lines + 1] = si.note end
+        if mine == "x" then
+            lines[#lines + 1] = L["You marked this story as one you won't run."]
+        elseif mine then
+            lines[#lines + 1] = L["Your grade (compendium: %s)"]:format(todayMeasuredByName[delve.name] or "--")
+        end
+        if id then lines[#lines + 1] = E.Stories[id].note end
     end
 
     local secs = todaySpeedByName[delve.name]
@@ -174,10 +188,11 @@ local function TipBody(delve, isBountiful, expanded)
         end
     end
 
+    if E:GetDelveBosses(delve.name) or id then lines[#lines + 1] = "" end
     if E:GetDelveBosses(delve.name) then
-        lines[#lines + 1] = ""
         lines[#lines + 1] = expanded and L["Click to hide boss tactics"] or L["Click to show boss tactics"]
     end
+    if id then lines[#lines + 1] = L["Right-click to set your own grade"] end
     return table_concat(lines, "\n")
 end
 
@@ -188,20 +203,22 @@ local function BuildModels(list)
         local hist = E:GetDelveHistory(name)
         local runs = hist and hist.lifetime and hist.lifetime.totalRuns
         local tier = todayTierByName[name]
+        local mine = todayMineByName[name]
+        local wont = mine == "x" or nil
         local story = todayStoryByName[name]
         local secs = todaySpeedByName[name]
         local estimate = todaySpeedSrcByName[name] == "estimate"
         local bountiful = IsBountiful(delve)
         models[i] = {
             key = name, delve = delve, bossName = name, name = name,
-            bountiful = bountiful,
+            bountiful = bountiful, storyID = todayStoryIDByName[name], muted = wont,
             runs = (runs and runs > 0) and runs or nil,
             call = (E.db and E.db.showDelversCallDone and E:IsDelversCallComplete(name)) or nil,
             cells = {
-                zone  = { text = delve.zone },
-                tier  = E.DelveList.GradeCell(tier),
-                story = (story and story ~= "") and { text = story } or { text = "--", muted = true },
-                speed = secs and { text = E:FormatClock(secs) .. (estimate and "*" or ""), muted = estimate }
+                zone  = { text = delve.zone, muted = wont },
+                tier  = E.DelveList.GradeCell(tier, nil, mine),
+                story = (story and story ~= "") and { text = story, muted = wont } or { text = "--", muted = true },
+                speed = secs and { text = E:FormatClock(secs) .. (estimate and "*" or ""), muted = estimate or wont }
                     or { text = "--", muted = true },
             },
             tip = { name, TipBody(delve, bountiful, list.expanded[name]) },
@@ -222,16 +239,18 @@ end
 
 local function SummaryText()
     local quickName, quickSecs, quickSrc
-    local bestName, bestScore, bestSecs, bestTier, bestSrc
+    local bestName, bestScore, bestSecs, bestTier, bestSrc, bestMine
     for _, delve in ipairs(filteredData) do
-        local secs = todaySpeedByName[delve.name]
-        if secs and (not quickSecs or secs < quickSecs) then
-            quickSecs, quickName, quickSrc = secs, delve.name, todaySpeedSrcByName[delve.name]
-        end
-        if E.GetDelveValue then
-            local score, vsecs, vtier, vsrc = E:GetDelveValue(delve.name, todayTierByName[delve.name])
+        local name = delve.name
+        local mine = todayMineByName[name]
+        if mine ~= "x" then
+            local secs = todaySpeedByName[name]
+            if secs and (not quickSecs or secs < quickSecs) then
+                quickSecs, quickName, quickSrc = secs, name, todaySpeedSrcByName[name]
+            end
+            local score, vsecs, vtier, vsrc = E:GetDelveValue(name, todayMeasuredByName[name], todayTierByName[name])
             if score and (not bestScore or score > bestScore) then
-                bestScore, bestName, bestSecs, bestTier, bestSrc = score, delve.name, vsecs, vtier, vsrc
+                bestScore, bestName, bestSecs, bestTier, bestSrc, bestMine = score, name, vsecs, vtier, vsrc, mine
             end
         end
     end
@@ -242,7 +261,8 @@ local function SummaryText()
         .. (quickSrc == "estimate" and (muted .. "*|r") or "")
     if bestName then
         text = text .. muted .. SEP .. L["Best value:"] .. "|r " .. label .. bestName .. "|r "
-            .. E:GetGradeCC(bestTier) .. (bestTier or "?") .. "|r " .. label .. E:FormatClock(bestSecs) .. "|r"
+            .. E:GetGradeCC(bestTier) .. (bestTier or "?") .. "|r" .. (bestMine and E.DelveList.Mark() or "")
+            .. " " .. label .. E:FormatClock(bestSecs) .. "|r"
             .. (bestSrc == "estimate" and (muted .. "*|r") or "")
     end
     return text
@@ -326,6 +346,9 @@ E:RegisterModule(function()
     end
 
     E:RegisterCallback("AreaPoisUpdated", function()
+        if frame:IsVisible() then Render() end
+    end)
+    E:RegisterCallback("StoryGradesChanged", function()
         if frame:IsVisible() then Render() end
     end)
 

@@ -48,15 +48,12 @@ function E:FormatClock(sec)
     return string.format("%d:%02d", m, s)
 end
 
--- Today's live story-variant tier wins. A known but unrated variant returns nil
--- on purpose - the signature tier was earned by a different story.
+-- The compendium grade, never the player's own: a time estimate is about speed.
 function E:GetDelveTierLetter(delveName, tierOverride)
     if tierOverride then return tierOverride end
-    local story = self.GetDelveStoryVariant and self:GetDelveStoryVariant(delveName)
-    if story and story ~= "" and self.GetStoryTier then
-        local si = self:GetStoryTier(story)
-        if si then return si.tier end
-    end
+    local story, widget = self:GetDelveStoryVariant(delveName)
+    local id = self:StoryID(widget, story)
+    if id then return self.Stories[id].grade end
     local sig = self.DelveSignatureTier and self.DelveSignatureTier[delveName]
     return sig
 end
@@ -136,9 +133,11 @@ function E:GetSpeedGrade(seconds)
 end
 
 -- Value-per-minute: rewardWeight(tier) / minutes, x1.5 if bountiful today.
+-- weightTier, the player's own grade, weighs the reward while the time keeps the measured one.
 -- Returns score, seconds, tierLetter, source. nil if unrankable.
-function E:GetDelveValue(delveName, tierOverride)
-    local seconds, source, tier = self:GetDelveSpeed(delveName, tierOverride)
+function E:GetDelveValue(delveName, tierOverride, weightTier)
+    local seconds, source, measured = self:GetDelveSpeed(delveName, tierOverride)
+    local tier = weightTier or measured
     if not (seconds and seconds > 0 and tier) then return nil end
     local weight = TIER_REWARD_WEIGHT[tier]
     if not weight then return nil end

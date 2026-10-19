@@ -3,6 +3,27 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.3.0", date = "2026-10-19",
+        sections = {
+            { head = "Your own story grades", items = {
+                "Grade the delve stories yourself, story grades in every language, and a Trovehunter's Bounty fix.",
+            }},
+            { head = "New", items = {
+                "Your own story grades - a new Story Grades tab in the settings lists every story of every delve, with the grade from Moleman's Delve Compendium beside it. Give any story your own grade from S to F, or mark it as one you won't run, and Best Pick, Delve Locations, Current Bountiful Delves and the delve HUD use your grades on every character. A story you won't run stays in the lists, greyed out at the bottom, and is never suggested as Best Pick, Best value or Quickest. A small square marks the grades that are yours. Clear times and speed estimates still use the compendium's grade, since your grade says how much you like a story, not how fast it is. Thanks to user_vsza93iuemi45toc for the request.",
+                "Grade today's story with a right-click - right-click a delve on Delve Locations or Current Bountiful Delves to grade the story it has today.",
+            }},
+            { head = "Fixed", items = {
+                "Story grades now show in every language - grades were looked up by the story's English name, so on German, French, Russian, Korean and Chinese clients Delve Locations fell back to each delve's usual grade, Current Bountiful Delves showed no grade and Best Pick stayed empty. Stories are now recognized by the game's own ID, and their names show in your language.",
+                "The Trovehunter's Bounty reminder asked you to use a second bounty in the same week - only one Hidden Trove can be looted each week, but the reminder only checked whether a bounty was active right now, and a bounty stops being active once its Hidden Trove has dropped. Holding a new bounty after using one that week, you still got the reminder, and the Tier Guide and the bounty's tooltip told you to use it. They now know a bounty was used this week, and the Tier Guide and the tooltip say to keep the new one for next week.",
+                "The bounty's tooltip said to use it inside a Bountiful Delve - its Hidden Trove comes at the end of the next delve on Tier 4 or higher that you complete, bountiful or not, and the tooltip now says so.",
+            }},
+            { head = "Notes", items = {
+                "/ed stories prints each delve's story today and what it was recognized as, for bug reports.",
+                "All the new text is translated into German, French, Russian, Korean and both Chinese.",
+            }},
+        },
+    },
+    {
         version = "2.2.0", date = "2026-10-16",
         sections = {
             { head = "The Labyrinth of Kindo'jan", items = {

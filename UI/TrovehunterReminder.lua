@@ -51,8 +51,8 @@ local function CreateReminderFrame()
                 self:Hide()
             elseif wantShow then
                 local rs = E.delveRunState
-                local auraUp = E:GetTrovehunterAura()
-                if rs and rs.inDelve and not rs.trovehunterPopupShown and not auraUp then
+                local spent = E:GetTrovehunterAura() or E:TrovehunterUsedThisWeek()
+                if rs and rs.inDelve and not rs.trovehunterPopupShown and not spent then
                     E:PointUseButtonAtHeldBounty()
                     self:Show()
                     LatchShown()
@@ -223,7 +223,7 @@ function E:MaybeShowTrovehunterReminder()
     local count = E:GetTrovehunterMapCount()
     if not count or count <= 0 then return end
 
-    if E:GetTrovehunterAura() then return end
+    if E:GetTrovehunterAura() or E:TrovehunterUsedThisWeek() then return end
 
     -- Latch only when the frame actually shows, so an in-combat defer keeps retrying.
     if E._trovehunterDeferPending then return end
@@ -238,7 +238,7 @@ function E:MaybeShowTrovehunterReminder()
         local _, instanceType = IsInInstance()
         local _, _, diffID = GetInstanceInfo()
         if instanceType ~= "scenario" and diffID ~= 208 then return end
-        if E:GetTrovehunterAura() then return end
+        if E:GetTrovehunterAura() or E:TrovehunterUsedThisWeek() then return end
         E:ShowTrovehunterReminder()
     end)
 end
@@ -304,9 +304,9 @@ function E:DumpTrovehunterState()
     end
 
     if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-        DiagLine("quest 86371 looted=%s  quest 92887 used=%s",
+        DiagLine("quest 86371 looted=%s  quest %d used=%s (blocks the popup)",
             tostring(C_QuestLog.IsQuestFlaggedCompleted(86371)),
-            tostring(C_QuestLog.IsQuestFlaggedCompleted(92887)))
+            self.TROVE_USED_QUEST_ID, tostring(self:TrovehunterUsedThisWeek()))
     end
 
     local rs = self.delveRunState
@@ -335,18 +335,19 @@ local function AddBountyTooltipLine(tooltip, data)
     for _, mapID in ipairs(E.TROVE_MAP_ITEM_IDS) do
         if data.id == mapID then match = true break end
     end
-    if not match then return end
+    if not match or E:GetTrovehunterMapCount() <= 0 then return end
 
-    local auraActive = E:GetTrovehunterAura() ~= nil
+    local line
+    if E:TrovehunterUsedThisWeek() then
+        line = E.CC.body .. L["You already used a bounty this week - keep this one for next week."]
+    elseif E:GetTrovehunterAura() then
+        line = E.CC.green .. L["Bounty active this week - happy looting!"]
+    else
+        line = E.CC.yellow .. L["Not used yet - use it before you finish a Delve on Tier 4 or higher."]
+    end
 
     tooltip:AddLine(" ")
-    if auraActive then
-        tooltip:AddLine(E.CC.green
-            .. L["Bounty active this week - happy looting!"] .. E.CC.close)
-    else
-        tooltip:AddLine(E.CC.yellow
-            .. L["Not used yet - use it inside a Bountiful Delve."] .. E.CC.close)
-    end
+    tooltip:AddLine(line .. E.CC.close)
 end
 
 if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall

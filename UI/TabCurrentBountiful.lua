@@ -19,87 +19,13 @@ end
 
 local TIER_ORDER = E.DelveList.GRADE_ORDER
 
-local STORY_TIERS = {
-    -- Grades from Moleman's Delve Compendium (Midnight S2), best Tier 1 times:
-    -- S under 1:00, then one grade per 15 seconds, F over 2:00.
-    ["Sporasaur Special"]             = { tier="S", note=L["Kite dinos and kick spores back to break their shields for bonus damage."] },
-    ["Sporasaurus Surprise"]          = { tier="S", note=L["Kite dinos and kick spores back to break their shields for bonus damage."] },
-    ["Ogre Powered"]                  = { tier="A", note=L["Straight shot to boss. Kill Unstable Aberrations before moving on."] },
-    ["Adopt-a-thon"]                  = { tier="A", note=L["Rescue the small animals caught in the middle of the gladiator fights."] },
-    ["Holding the Line"]              = { tier="A", note=L["Head down the staircase; kill enemies (not heal allies) for the fastest route."] },
-    ["Invasive Glow"]                 = { tier="A", note=L["Bomb DoT scales with tier — keep it rolling and the clear is trivial."] },
-    ["Party Crasher"]                 = { tier="B", note=L["Hit levers to disable traps while defeating 4 Twilight Summoners."] },
-    ["Eggsplosive Growth"]            = { tier="B", note=L["Destroy the Children of Ula'tek eggs nesting in the tunnels using the Venom-Clogged Leyline pylons."] },
-    ["Academy Under Siege"]           = { tier="B", note=L["Scattered powerful items help, but it can't match Invasive Glow."] },
-    ["Core of the Problem"]           = { tier="B", note=L["Use portals to shortcut around the map. Kill enemies and collect orbs."] },
-    ["Toadly Unbecoming"]             = { tier="C", note=L["Decurse frogs to spawn the boss. Open layout adds traverse time even when mounted."] },
-    ["Traitor's Due"]                 = { tier="C", note=L["Large unwalkable map. Defeat void foci and elites with the Eye of Antenorian buff."] },
-    ["Game Day"]                      = { tier="C", note=L["Ghostly Headball - collect skulls from your kills and kick them at the pillars to score."] },
-    ["Open Night"]                    = { tier="C", note=L["An arena gauntlet - clear the floor, then the champions, then Drakta."] },
-    ["Trapped"]                       = { tier="C", note=L["Teleported inside — must rescue hostages on the way back to the entrance."] },
-    ["Focusers Under Pressure"]       = { tier="C", note=L["Large crystal collection loop adds time compared to Ogre Powered."] },
-    ["Calamitous"]                    = { tier="C", note=L["Enormous mountable map with required secondary objectives in all three variants."] },
-    ["Venomous Vapors"]               = { tier="D", note=L["Escort Marla and clear the Children of Ula'tek poison contamination. Ends on Disciple of Vash'nik."] },
-    ["Totem Annihilation"]            = { tier="D", note=L["Take the bird north. Avoid the captured loa's lightning — it hits hard."] },
-    ["Arena Champion"]                = { tier="D", note=L["Defeat two named enemies then collect mold samples from Moldering Fighters."] },
-    ["Faculty of Fear"]               = { tier="D", note=L["Revelation mechanic requires revealing many NPCs, adding significant time."] },
-    ["Not What I Expected"]           = { tier="D", note=L["Click Lightbloom crates and activate security. Displacement Portal clones help in combat."] },
-    ["Alnmoth Munchies"]              = { tier="D", note=L["Same quick route as Sporasaur Special but extra objectives slow it down."] },
-    ["Academic Antitoxin"]            = { tier="D", note=L["Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss."] },
-    ["An Elementary Antidote"]        = { tier="D", note=L["Brew an antidote with Sir Finley - cleanse poison patches and heal students. No final boss."] },
-    ["Ritual Interrupted"]            = { tier="D", note=L["Navigate south freeing furbolgs. Haunted weapons deal decent bonus damage."] },
-    ["Basilisk Blitz"]                = { tier="D", note=L["Divert the shields, then kill the basilisks channeling energy to the boss."] },
-    ["Basalisk Blitz"]                = { tier="D", note=L["Divert the shields, then kill the basilisks channeling energy to the boss."] },
-    ["Loosed Loa"]                    = { tier="D", note=L["Use Evasive Elixir before the patrolling loa attacks to avoid a big stun."] },
-    ["Loose Loa"]                     = { tier="D", note=L["Use Evasive Elixir before the patrolling loa attacks to avoid a big stun."] },
-    ["Mirror Shine"]                  = { tier="F", note=L["Repositioning mirrors to reflect light is tedious. Mind positioning to avoid debuffs."] },
-    ["Leyline Technician"]            = { tier="F", note=L["Inspecting every leyline adds a lot of time."] },
-    ["Caustic Crush"]                 = { tier="F", note=L["Stop the Children of Ula'tek summoning slimes, using Fungal Pharmacon and dodging the caustic waves."] },
-    ["Shadowy Supplies"]              = { tier="F", note=L["Collecting 30 supplies from enemies and the floor is very slow."] },
-    ["Why Did it Have to Be Snakes?"] = { tier="F", note=L["Hunt snake relics through the crypts, clearing poison patches with Fungal Pharmacon."] },
-    ["Why'd It Have to Be Snakes?"]   = { tier="F", note=L["Hunt snake relics through the crypts, clearing poison patches with Fungal Pharmacon."] },
-    ["Descent of the Haranir"]        = { tier="F", note=L["Same quick pathing as Sporasaur but extra objectives add considerable time."] },
-    ["Captured Wildlife"]             = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
-    ["Captured Wild"]                 = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
-    ["Captured Widlife"]              = { tier="F", note=L["Free caged wildlife; use worm bait on Void Researchers to spawn the boss."] },
-    ["Dastardly Rotstalk"]            = { tier="F", note=L["Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed."] },
-    ["Dastardly Rootstalks"]          = { tier="F", note=L["Taunt the crowd, click dirt piles, defeat spawns carefully to avoid being overwhelmed."] },
-    ["Speaking Their Language"]       = { tier="F", note=L["Rescue the turtles and the supplies the Djaradin stole, then send the siege-trained turtles in as tanks."] },
-    ["Lightbloom Invasion"]           = { tier="F", note=L["Free fighters and defend barricades against Thornmaws using nearby barrels."] },
-    ["The Gravitational Effect"]      = { tier="F", note=L["Flying to collect Singularity Coils breaks the route significantly."] },
-    ["Olds and Ends"]                 = { tier="F", note=L["Ally with the Tortollan Tormunda to rescue the elders the Djaradin captured, and recover their relics."] },
-    ["Infiltrate and Ameliorate"]     = { tier="F", note=L["Sabotage the summoning - kick summoners into the abyss and spike the cauldrons with the wrong ingredients."] },
-    ["Minchi's Osseous Adventure"]    = { tier="F", note=L["Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation."] },
-    ["Minchi's Osseous Adventurer"]   = { tier="F", note=L["Search the bone piles and take hearts from the Gnarldor Djaradin to summon the Osseous Amalgamation."] },
-    ["March of the Arcane Brigade"]   = { tier="F", note=L["Activating sentinels is slow with no direct path to the boss."] },
-    ["March of the Arcane Parade"]    = { tier="F", note=L["Activating sentinels is slow with no direct path to the boss."] },
-    ["Bombing Run"]                   = { tier="F", note=L["Destroying void portals makes for one of the slowest clears."] },
-    ["Stolen Mana"]                   = { tier="F", note=L["Use the Galvanic Rifle on mana barrels and free 8 prisoners from Mana Siphoners."] },
-    ["Fungal Pharmacon"]              = { tier="F", note=L["Loot Fungal Pharmacon from around the pit and break the four pillars the Children of Ula'tek burrow through."] },
-}
-
-local function StripStoryPrefix(s)
-    if not s or s == "" then return "" end
-    local plain = E.StripColorEscapes(s)
-    return plain:match("[Vv]ariant:%s*(.-)%s*$") or plain:match("^%s*(.-)%s*$") or plain
+local function Grade(delve)
+    return E:StoryGrade(delve.storyID)
 end
 
-local function GetStoryTier(storyVariant)
-    if not storyVariant or storyVariant == "" then return nil end
-    if STORY_TIERS[storyVariant] then return STORY_TIERS[storyVariant] end
-    local plain = E.StripColorEscapes(storyVariant)
-    if STORY_TIERS[plain] then return STORY_TIERS[plain] end
-    local name = plain:match("[Vv]ariant:%s*(.-)%s*$")
-    if name and STORY_TIERS[name] then return STORY_TIERS[name] end
-    local lower = plain:lower()
-    for key, data in pairs(STORY_TIERS) do
-        if lower:find(key:lower(), 1, true) then return data end
-    end
-    return nil
-end
-
-function E:GetStoryTier(storyVariant)
-    return GetStoryTier(storyVariant)
+local function StoryText(delve)
+    if delve.storyID then return E:StoryName(delve.storyID) end
+    return E.CleanStoryText(delve.storyVariant)
 end
 
 local bountifulList  = {}
@@ -174,7 +100,7 @@ local function PopulateBountifulDelvesLive(out)
                     end
                 end
 
-                local storyVariant = ""
+                local storyVariant, storyWidget = "", nil
                 if poi.tooltipWidgetSet then
                     local tWidgets = GetCachedWidgetsBySetID(poi.tooltipWidgetSet)
                     if tWidgets then
@@ -185,6 +111,7 @@ local function PopulateBountifulDelvesLive(out)
                                         info.widgetID)
                                 if viz and viz.orderIndex == 0 then
                                     storyVariant = E.StripColorEscapes(viz.text or "")
+                                    storyWidget = info.widgetID
                                     break
                                 end
                             end
@@ -205,6 +132,7 @@ local function PopulateBountifulDelvesLive(out)
                 entry.poiID        = delve.poiID
                 entry.normalPoiID  = delve.normalPoiID
                 entry.storyVariant = storyVariant
+                entry.storyID      = E:StoryID(storyWidget, storyVariant)
                 entry.overcharged  = isOvercharged
                 entry.completed    = false
                 table_insert(out, entry)
@@ -277,16 +205,16 @@ local function GetJourneyProgress()
     return 0, 0, 1
 end
 
--- Incomplete first, then by tier, then alphabetical.
 local function SortBountifulList()
     table_sort(bountifulList, function(a, b)
         if a.completed ~= b.completed then
             return not a.completed
         end
-        local ta = GetStoryTier(a.storyVariant)
-        local tb = GetStoryTier(b.storyVariant)
-        local oa = ta and (TIER_ORDER[ta.tier] or 7) or 7
-        local ob = tb and (TIER_ORDER[tb.tier] or 7) or 7
+        local ga, _, ma = Grade(a)
+        local gb, _, mb = Grade(b)
+        if (ma == "x") ~= (mb == "x") then return mb == "x" end
+        local oa = TIER_ORDER[ga] or 7
+        local ob = TIER_ORDER[gb] or 7
         if oa ~= ob then return oa < ob end
         return a.name:lower() < b.name:lower()
     end)
@@ -333,12 +261,8 @@ local function RefreshBountifulData(force)
     end
     if not E.currentBountifulNames     then E.currentBountifulNames     = {} end
     if not E.currentBountifulPOIs      then E.currentBountifulPOIs      = {} end
-    if not E.currentBountifulStory     then E.currentBountifulStory     = {} end
-    if not E.currentBountifulStoryTier then E.currentBountifulStoryTier = {} end
     wipe(E.currentBountifulNames)
     wipe(E.currentBountifulPOIs)
-    wipe(E.currentBountifulStory)
-    wipe(E.currentBountifulStoryTier)
     E.currentBountifulCount = #bountifulList
     for _, delve in ipairs(bountifulList) do
         E.currentBountifulNames[delve.name] = true
@@ -354,9 +278,6 @@ local function RefreshBountifulData(force)
         if delve.poiID then
             E.currentBountifulPOIs[delve.poiID] = true
         end
-        local si = GetStoryTier(delve.storyVariant)
-        E.currentBountifulStory[delve.name]     = StripStoryPrefix(delve.storyVariant)
-        E.currentBountifulStoryTier[delve.name] = si and si.tier or nil
     end
 
     -- Completing a bountiful delve removes its "delves-bountiful" atlas, so it
@@ -397,6 +318,7 @@ local function RefreshBountifulData(force)
                         entry.poiID        = meta.poiID
                         entry.normalPoiID  = meta.normalPoiID
                         entry.storyVariant = E.StripColorEscapes(runStory)
+                        entry.storyID      = E:StoryFor(runStory)
                         entry.overcharged  = false
                         entry.completed    = true
                         table_insert(bountifulList, entry)
@@ -527,18 +449,25 @@ end
 
 local function TipBody(delve, bossName, expanded)
     local lines = {}
-    local si = GetStoryTier(delve.storyVariant)
-    if si then
-        if si.tier then lines[#lines + 1] = L["%s Tier"]:format(si.tier) end
-        if si.note then lines[#lines + 1] = si.note end
+    if delve.storyID then
+        local grade, comp, mine = Grade(delve)
+        if mine == "x" then
+            lines[#lines + 1] = L["You marked this story as one you won't run."]
+        elseif grade then
+            lines[#lines + 1] = L["%s Tier"]:format(grade)
+            if mine then lines[#lines + 1] = L["Your grade (compendium: %s)"]:format(comp or "--") end
+        end
+        lines[#lines + 1] = E.Stories[delve.storyID].note
         lines[#lines + 1] = ""
     end
     if delve.overcharged then lines[#lines + 1] = L["Overcharged"] end
     lines[#lines + 1] = delve.storyVariant or ""
-    if E:GetDelveBosses(bossName) then
-        lines[#lines + 1] = ""
+    local bosses = E:GetDelveBosses(bossName)
+    if bosses or delve.storyID then lines[#lines + 1] = "" end
+    if bosses then
         lines[#lines + 1] = expanded and L["Click to hide boss tactics"] or L["Click to show boss tactics"]
     end
+    if delve.storyID then lines[#lines + 1] = L["Right-click to set your own grade"] end
     return table.concat(lines, "\n")
 end
 
@@ -546,18 +475,20 @@ local function BuildModels(list)
     local models = {}
     for i, delve in ipairs(bountifulList) do
         local done = delve.completed and true or nil
-        local si = GetStoryTier(delve.storyVariant)
-        local story = StripStoryPrefix(delve.storyVariant)
+        local grade, _, mine = Grade(delve)
+        local wont = mine == "x" or nil
+        local story = StoryText(delve)
         if NormalAvailable(delve) then
             story = (story ~= "" and (story .. "  ") or "") .. L["(Normal version available)"]
         end
         local bossName = delve.canonicalName or delve.name
         models[i] = {
             key = delve.name, delve = delve, bossName = bossName, name = delve.name, done = done,
+            muted = wont, storyID = delve.storyID,
             line2 = { tag = delve.overcharged and L["Overcharged"] or nil, text = story },
             cells = {
-                zone = { text = delve.zone, muted = done },
-                tier = E.DelveList.GradeCell(si and si.tier, done),
+                zone = { text = delve.zone, muted = done or wont },
+                tier = E.DelveList.GradeCell(grade, done, mine),
             },
             tip = { delve.name, TipBody(delve, bossName, list.expanded[delve.name]) },
         }
@@ -575,20 +506,22 @@ end
 local function BestPickText()
     local best, bestOrder = nil, 8
     for _, d in ipairs(bountifulList) do
-        if not d.completed then
-            local si = GetStoryTier(d.storyVariant)
-            local order = si and (TIER_ORDER[si.tier] or 7) or 7
+        local grade, _, mine = Grade(d)
+        if not d.completed and mine ~= "x" then
+            local order = TIER_ORDER[grade] or 7
             if order < bestOrder then
                 bestOrder, best = order, d
             end
         end
     end
-    local si = best and GetStoryTier(best.storyVariant)
-    if not (si and si.tier) then return "" end
+    if not best then return "" end
+    local grade, _, mine = Grade(best)
+    if not grade then return "" end
     local muted, label = E.DelveList.cc("muted"), E.DelveList.cc("label")
     return muted .. L["Best Pick:"] .. "|r " .. label .. best.name .. "|r"
-        .. muted .. SEP .. "|r" .. label .. StripStoryPrefix(best.storyVariant) .. "|r"
-        .. muted .. SEP .. "|r" .. E:GetGradeCC(si.tier) .. L["%s Tier"]:format(si.tier) .. "|r"
+        .. muted .. SEP .. "|r" .. label .. StoryText(best) .. "|r"
+        .. muted .. SEP .. "|r" .. E:GetGradeCC(grade) .. L["%s Tier"]:format(grade) .. "|r"
+        .. (mine and E.DelveList.Mark() or "")
 end
 
 local function NewCard(content)
@@ -827,6 +760,10 @@ E:RegisterModule(function()
         -- Refresh regardless of which tab is open, so E.currentBountifulNames
         -- stays current for other systems (Gilded Stash, Delve Locations).
         RefreshBountifulData()
+        if frame:IsVisible() then Render() end
+    end)
+    E:RegisterCallback("StoryGradesChanged", function()
+        SortBountifulList()
         if frame:IsVisible() then Render() end
     end)
 

@@ -466,14 +466,19 @@ E:RegisterModule(function()
                 variant = E:GetDelveStoryVariant(name)
             end
             if variant and variant ~= "" then
-                local si = E.GetStoryTier and E:GetStoryTier(variant)
+                local id = E:StoryFor(variant)
+                if not id then
+                    local live, widget = E:GetDelveStoryVariant(name)
+                    if live == variant then id = E:StoryID(widget) end
+                end
+                local tier = E:StoryGrade(id)
                 local grade = ""
-                if si and si.tier then
-                    grade = "  " .. E:GetGradeCC(si.tier)
-                        .. "(" .. si.tier .. ")" .. E.CC.close
+                if tier then
+                    grade = "  " .. E:GetGradeCC(tier)
+                        .. "(" .. tier .. ")" .. E.CC.close
                 end
                 AddLine(E.CC.muted .. L["Variant:"] .. E.CC.close .. " "
-                    .. E.CC.body .. E.StripColorEscapes(variant)
+                    .. E.CC.body .. (E:StoryName(id) or E.CleanStoryText(variant))
                     .. E.CC.close .. grade)
             end
             local role = (E.GetCompanionAssignedRole and E:GetCompanionAssignedRole())
