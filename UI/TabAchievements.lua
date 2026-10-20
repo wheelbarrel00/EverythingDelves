@@ -282,6 +282,7 @@ local function NewDelveRow(ui, content, v, delve)
     row:SetScript("OnClick", function(self)
         v.open[self.delve.name] = not v.open[self.delve.name]
         v.relayout()
+        if GameTooltip:IsShown() and GameTooltip:IsOwned(self) then self:GetScript("OnEnter")(self) end
     end)
     row:SetScript("OnEnter", function(self)
         local body = v.open[self.delve.name] and L["Click to hide what's left here."] or L["Click to see what's left here."]

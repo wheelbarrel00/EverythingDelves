@@ -7,7 +7,7 @@ local CURIO_DATA = {
         { role = "Healer", combat = { name = "Nether Overlay Matrix", id = 239580 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
         { role = "Damage", combat = { name = "Quizzical Device",      id = 239578 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
     },
-    -- Season 2 and Season 1 curio IDs interleave, so never infer one from a neighbour.
+    -- Season 1 and Season 2 curio IDs interleave, so never infer one from a neighbor.
     Valeera = {
         { role = "Tank",   combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
         { role = "Healer", combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
@@ -145,18 +145,8 @@ end
 -- fast path for the session.
 local learnedByTreeID = {}
 
--- Read live, per character. E:GetCompanionFactionID caches account-wide, so a
--- Brann-only alt would answer for a Midnight character.
 local function ResolveByFaction()
-    local G = C_GossipInfo
-    if not (G and G.GetFriendshipReputation) then return nil end
-    for _, c in ipairs(E.CompanionFactions) do
-        local ok, d = pcall(G.GetFriendshipReputation, c.id)
-        if ok and d and (d.friendshipFactionID or 0) > 0 then
-            return c.companion
-        end
-    end
-    return nil
+    return select(2, E:GetCompanionFactionID())
 end
 
 -- Ordered most authoritative first. The panel text outranks the faction because

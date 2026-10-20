@@ -472,6 +472,11 @@ local function layout(t, y, models, left, right, pinned)
         t.rows[i].model = nil
     end
     for i = used.blocks + 1, #t.blocks do t.blocks[i]:Hide() end
+    -- A redraw under the cursor refills the hovered row in place, so its tooltip is drawn again from the new model
+    for i = 1, used.rows do
+        local r = t.rows[i]
+        if GameTooltip:IsShown() and GameTooltip:IsOwned(r) then r:GetScript("OnEnter")(r) end
+    end
     return y
 end
 

@@ -16,7 +16,7 @@ local NEMESIS_MAP, NEMESIS_X, NEMESIS_Y = 2512, 51.22, 30.27
 local NEMESIS_QUEST = 97482
 local NEMESIS_ICON  = "Interface\\Icons\\Ability_Creature_Poison_06"
 local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-local BEACON_ITEM_ID, UNDERCOIN_ID, BEACON_PRICE = 253342, 2803, 5000
+local BEACON_ITEM_ID, UNDERCOIN_ID, BEACON_PRICE = 253342, E.CurrencyIDs.undercoins, 5000
 
 local MECHANICS = {
     { name = "Soul Extinction", tag = L["Interrupt - Top Priority"], color = "FF3333",

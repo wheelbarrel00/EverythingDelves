@@ -113,10 +113,15 @@ local function generalCard(self, content, stack)
         L["Weekly Shards in Tooltip"],
         L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."])
 
-    get, set = settingOnByDefault("showWhatsNew")
-    addCheckbox(self, content, card, L["Show What's New after an update"], get, set,
-        L["What's New Popup"],
-        L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."])
+    card:Add(self:CreateRadioGroup(content, L["After an update"], {
+            { value = "popup", label = L["Popup window"] },
+            { value = "chat",  label = L["Chat link"] },
+            { value = "none",  label = L["Off"] },
+        },
+        function() return (E.db and E.db.whatsNewMode) or "popup" end,
+        function(v) E:SetWhatsNewMode(v) end,
+        nil, nil, L["What's New"],
+        L["How Everything Delves tells you about a version that brings new features: a Popup window, a quiet clickable Chat link in your chat, or Off. Releases with only fixes stay quiet, and the next feature release shows them too. Reopen the notes any time from the About tab or with /ed whatsnew."]))
 
     get, set = settingOnByDefault("showTrovehunterReminder")
     local trove = self:CreateCheckbox(content, L["Show Trovehunter's Bounty reminder on Delve entry"], get, set, nil,

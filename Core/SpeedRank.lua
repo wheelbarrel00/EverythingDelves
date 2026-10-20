@@ -67,13 +67,12 @@ function E:GetPersonalPaceBaseline()
         local life = entry.lifetime
         local timed = life and (life.timedRuns or life.totalRuns or 0) or 0
         if timed > 0 and (life.totalDuration or 0) > 0 then
-            local avg = life.totalDuration / timed
             -- Signature tier is stable, unlike the daily-rotating variant tier.
             local tier = self.DelveSignatureTier and self.DelveSignatureTier[name]
             local factor = tier and TIER_TIME_FACTOR[tier]
-            if factor and avg > 0 then
-                sum = sum + (avg / factor)
-                n = n + 1
+            if factor then
+                sum = sum + (life.totalDuration / factor)
+                n = n + timed
             end
         end
     end

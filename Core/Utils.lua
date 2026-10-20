@@ -77,7 +77,7 @@ function E:SetWaypoint(mapID, x, y)
             end
         end)
         if not ok then
-            print("|cFFFF2222[Everything Delves]|r "
+            print(E.CC.header .. "[Everything Delves]|r "
                 .. string_format(L["Could not set waypoint: %s"], tostring(err)))
         end
         return ok
@@ -88,8 +88,7 @@ end
 
 local AREA_POI_PIN = Enum.SuperTrackingMapPinType and Enum.SuperTrackingMapPinType.AreaPOI
 
--- Bountiful and normal entrances are separate map POIs; only the one live this
--- week resolves, so prefer the bountiful icon and fall back to the normal one.
+-- Bountiful and normal entrances are separate map POIs, and only the one live today resolves
 function E:GetActiveDelvePOI(delve)
     if not (delve and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIInfo) then return nil end
     local function live(id)
@@ -157,8 +156,8 @@ E.TROVE_AURA_IDS = { 1293799, 1254631 }
 function E:GetTrovehunterAura()
     if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then return nil end
     for _, id in ipairs(self.TROVE_AURA_IDS) do
-        local aura = C_UnitAuras.GetPlayerAuraBySpellID(id)
-        if aura then return aura, id end
+        local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, id)
+        if ok and aura then return aura, id end
     end
     return nil
 end
@@ -186,6 +185,7 @@ end
 
 -- Flagged when a bounty is used, until the weekly reset. The buff cannot tell: it drops once the next Tier 4+ Delve ends.
 E.TROVE_USED_QUEST_ID = 92887
+E.TROVE_LOOTED_QUEST_ID = 86371
 
 function E:TrovehunterUsedThisWeek()
     if not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then return false end
@@ -210,42 +210,15 @@ function E:StyleGreyLine(tex)
     tex:SetColorTexture(g.r, g.g, g.b, g.a)
 end
 
--- The companion is a friendship reputation with a numeric rank. Scan the
--- faction ID range and cache (invalidated on expansion change) rather than
--- hardcoding a per-expansion ID. A digit in the localized reaction is the
--- locale-independent tell (numeric rank vs named friendship tiers).
-
--- Scan descending so the newest expansion's companion wins.
-local COMPANION_SCAN_FROM = 3100
-local COMPANION_SCAN_TO   = 2600
-
-local function ScanForCompanionFaction()
-    if not (C_GossipInfo and C_GossipInfo.GetFriendshipReputation) then
-        return nil
-    end
-    for id = COMPANION_SCAN_FROM, COMPANION_SCAN_TO, -1 do
-        local ok, d = pcall(C_GossipInfo.GetFriendshipReputation, id)
-        if ok and d and d.friendshipFactionID and d.friendshipFactionID > 0
-                and type(d.reaction) == "string"
-                and d.reaction:find("%d") then
-            return id
-        end
+-- Read live per character, newest companion first
+function E:GetCompanionFactionID()
+    local G = C_GossipInfo
+    if not (G and G.GetFriendshipReputation) then return nil end
+    for _, c in ipairs(self.CompanionFactions) do
+        local ok, d = pcall(G.GetFriendshipReputation, c.id)
+        if ok and d and (d.friendshipFactionID or 0) > 0 then return c.id, c.companion end
     end
     return nil
-end
-
-function E:GetCompanionFactionID()
-    local xpac = GetAccountExpansionLevel and GetAccountExpansionLevel() or 0
-    local db = self.db
-    if db and db.companionFactionID and db.companionFactionXpac == xpac then
-        return db.companionFactionID
-    end
-    local id = ScanForCompanionFaction()
-    if id and db then
-        db.companionFactionID   = id
-        db.companionFactionXpac = xpac
-    end
-    return id
 end
 
 function E:GetCompanionData()
@@ -278,10 +251,6 @@ function E:GetCompanionData()
         xpMax      = ceil and math.max(1, ceil - floor) or 0,
         isMaxLevel = (ceil == nil),
     }
-end
-
-function E.CompareAlpha(a, b)
-    return (a or ""):lower() < (b or ""):lower()
 end
 
 function E:GetDelveHistory(delveName)

@@ -108,6 +108,7 @@ L["Only the group leader can list."] = true
 L["Overcharged"] = true
 L["(Normal version available)"] = true
 L["Best Pick:"] = true
+L["No clear pick today"] = true
 L["Bountiful Delves Completed"] = true
 L["Journey:"] = true
 L["Bountiful Reset:"] = true
@@ -453,9 +454,12 @@ L["Show Minimap / Broker Button"] = true
 L["Show weekly earnable shards in button tooltip"] = true
 L["Weekly Shards in Tooltip"] = true
 L["On the minimap / broker button tooltip, shows your Coffer Key Shards as owned / still-earnable-this-week instead of just the owned count."] = true
-L["Show What's New after an update"] = true
-L["What's New Popup"] = true
-L["Shows the What's New window once after each update. You can always reopen it from the About tab or with /ed whatsnew."] = true
+L["After an update"] = true
+L["Popup window"] = true
+L["Chat link"] = true
+L["Off"] = true
+L["What's New"] = true
+L["How Everything Delves tells you about a version that brings new features: a Popup window, a quiet clickable Chat link in your chat, or Off. Releases with only fixes stay quiet, and the next feature release shows them too. Reopen the notes any time from the About tab or with /ed whatsnew."] = true
 L["Show Trovehunter's Bounty reminder on Delve entry"] = true
 L["Companion Audio"] = true
 L["Mute Valeera voice lines"] = true
@@ -475,7 +479,6 @@ L["Colors the delve HUD, the curio and Trovehunter's Bounty reminders, and the p
 L["Delve Achievements on Map Tooltips"] = true
 L["Summary line — hold Shift for details (default)"] = true
 L["Always show full details"] = true
-L["Off"] = true
 L["Show Tier & Achievement Panel at Delve Entrance"] = true
 L["Tier & Achievement Panel"] = true
 L["When you open a delve's difficulty picker at its entrance, shows a panel with the loot and Great Vault item levels for every tier, plus your story, chest, and tier-goal achievement progress for that delve."] = true
@@ -540,7 +543,6 @@ L["Special thanks to %s for the many hours spent translating Everything Delves i
 L["by Wheelbarrel00    -    for WoW Midnight (%s)"] = true
 L["A complete Delves companion: track delve locations, bountiful status, coffer key shards, tiers, your run history, and more - all in one window."] = true
 L["Report a Bug"] = true
-L["What's New"] = true
 L["Commands"] = true
 L["Tip: right-click the minimap button to open Options."] = true
 L["Tutorials"] = true
@@ -961,8 +963,10 @@ L["Bounty active this week - happy looting!"] = true
 L["Not used yet - use it before you finish a Delve on Tier 4 or higher."] = true
 
 -- UI/WhatsNew.lua
-L["Don't show this again"] = true
+L["Don't show these again"] = true
 L["Got it"] = true
+L["[See what's new]"] = true
+L["%1$s updated to %2$s - %3$s"] = true
 
 -- Convert the `true` sentinels to their key (the self-keyed English default).
 for k, v in pairs(L) do if v == true then L[k] = k end end

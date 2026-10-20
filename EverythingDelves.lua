@@ -40,8 +40,8 @@ function E:RegisterModule(callback)
     table.insert(self.modules, callback)
 end
 
--- Account-wide settings only. Per-character gameplay data (delveHistory,
--- activeRun) lives in profiles instead, reached through the E.db proxy. The
+-- Account-wide settings only. Run history (delveHistory) lives in profiles and the run in
+-- progress (activeRun) per character instead, both reached through the E.db proxy. The
 -- *ByChar / roster / boss-map tables stay account-wide because their data is
 -- region-wide (and an alt's quest log can't be read remotely).
 local DEFAULTS = {
@@ -73,8 +73,9 @@ local DEFAULTS = {
     showDelversCallDone    = false,
     achHideCompleted       = false,
     delveObjectivesPos     = nil,
-    seenWhatsNewVersion    = "",
-    showWhatsNew           = true,
+    whatsNewMode           = "popup",  -- "popup" | "chat" | "none"
+    debugTier              = false,
+    debugAchTip            = false,
 }
 
 -- Account-wide DATA, kept OUT of DEFAULTS so E:ResetDB (settings-only) can't
@@ -82,6 +83,7 @@ local DEFAULTS = {
 local DATA_DEFAULTS = {
     lastKnownBountifulIDs  = {},
     lastKnownBountifulEpoch = 0,
+    lastBountifulAlertEpoch = 0,
     saStateByChar          = {},  -- [charKey] = { active = {questIDs}, recorded = bool }
     delversCallRoster      = {},
     delveBossMap           = {},
@@ -90,12 +92,19 @@ local DATA_DEFAULTS = {
     roster                 = {},
     tierCache              = {},  -- { season, build, recGear = { [tier] = ilvl } }
     storyGrades            = {},  -- [story widget ID] = grade letter, or "x" for won't run
+    activeRunByChar        = {},  -- [charKey] = the run in progress
+    seenWhatsNewVersion    = "",
+    whatsNewAnnounced      = "",
 }
 
 -- Profile-scoped keys: the E.db proxy redirects these to the active profile.
 local PROFILE_KEYS = {
     delveHistory   = true,
-    activeRun      = true,
+}
+
+-- A run in progress belongs to one character in one instance, so a profile shared by two characters must not share it
+local CHAR_KEYS = {
+    activeRun      = "activeRunByChar",
 }
 
 local function CharKey()
@@ -122,17 +131,25 @@ end
 
 -- Reads E.profile dynamically so a runtime profile switch is reflected
 -- immediately with no re-proxy.
-local function BuildDBProxy(sv)
+local function BuildDBProxy(sv, charKey)
     E.db = setmetatable({}, {
         __index = function(_, k)
             if PROFILE_KEYS[k] then
                 return E.profile and E.profile[k]
             end
+            local byChar = CHAR_KEYS[k]
+            if byChar then
+                return sv[byChar] and sv[byChar][charKey]
+            end
             return sv[k]
         end,
         __newindex = function(_, k, val)
+            local byChar = CHAR_KEYS[k]
             if PROFILE_KEYS[k] then
                 if E.profile then E.profile[k] = val end
+            elseif byChar then
+                sv[byChar] = sv[byChar] or {}
+                sv[byChar][charKey] = val
             else
                 sv[k] = val
             end
@@ -143,6 +160,7 @@ end
 function E:InitDB()
     if not EverythingDelvesDB then
         EverythingDelvesDB = {}
+        E.firstInstall = true
     end
     local sv = EverythingDelvesDB
 
@@ -171,6 +189,15 @@ function E:InitDB()
     end
     seed(DEFAULTS)
     seed(DATA_DEFAULTS)
+
+    -- The old account-wide companion cache, no longer read
+    sv.companionFactionID, sv.companionFactionXpac = nil, nil
+
+    -- The What's New switch became a mode, so a player who had switched it off stays off
+    if sv.showWhatsNew ~= nil then
+        if sv.showWhatsNew == false then sv.whatsNewMode = "none" end
+        sv.showWhatsNew = nil
+    end
 
     sv.profiles    = sv.profiles    or {}
     sv.profileKeys = sv.profileKeys or {}
@@ -259,7 +286,18 @@ function E:InitDB()
     E.activeProfileName = profName
     E.profile = NormalizeProfile(sv.profiles[profName])
 
-    BuildDBProxy(sv)
+    -- The run used to be saved in the profile, which kept no owner, so on a shared profile it can reach the wrong
+    -- character, once
+    local legacy = E.profile.activeRun
+    if legacy ~= nil then
+        local mine = sv.activeRunByChar[charKey]
+        if mine == nil or (legacy.startedAt or 0) > (mine.startedAt or 0) then
+            sv.activeRunByChar[charKey] = legacy
+        end
+        E.profile.activeRun = nil
+    end
+
+    BuildDBProxy(sv, charKey)
 end
 
 -- Settings only: DATA_DEFAULTS and profiles are deliberately not iterated, so a
@@ -313,6 +351,9 @@ function E:ApplySettingsToUI()
     end
     if self.RefreshOptionsWidgets then
         self:RefreshOptionsWidgets()
+    end
+    if self.RefreshWhatsNew then
+        self:RefreshWhatsNew()
     end
 end
 
@@ -420,7 +461,7 @@ function EverythingDelves_ToggleHUD()
     E.db.showDelveHUD = (E.db.showDelveHUD == false)
     if E.UpdateDelveObjectivesWindow then E:UpdateDelveObjectivesWindow() end
     if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
-    print("|cFFFF2222Everything Delves|r: "
+    print(E.CC.header .. "Everything Delves|r: "
         .. (E.db.showDelveHUD and L["Delve HUD enabled."] or L["Delve HUD disabled."]))
 end
 
@@ -431,7 +472,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     msg = strtrim(msg):lower()
     if msg == "reset" then
         E:ResetDB()
-        print("|cFFFF2222Everything Delves|r: " .. L["Settings reset to defaults."])
+        print(E.CC.header .. "Everything Delves|r: " .. L["Settings reset to defaults."])
     elseif msg == "curios" or msg:sub(1, 7) == "curios " then
         local arg = msg:sub(8)
         if E.ToggleCurioPopup then
@@ -443,10 +484,10 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         end
     elseif msg == "crest" then
         if not (C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then
-            print("|cFFFF2222Everything Delves|r: currency API unavailable.")
+            print(E.CC.header .. "Everything Delves|r: currency API unavailable.")
             return
         end
-        print("|cFFFF2222Everything Delves|r: crest currency fields")
+        print(E.CC.header .. "Everything Delves|r: crest currency fields")
         for _, crest in ipairs(E.Crests or {}) do
             local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, crest.id)
             if ok and info then
@@ -469,7 +510,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     elseif msg == "achtip" then
         if E.db then
             E.db.debugAchTip = not E.db.debugAchTip
-            print("|cFFFF2222Everything Delves|r: achievement-tooltip debug "
+            print(E.CC.header .. "Everything Delves|r: achievement-tooltip debug "
                 .. (E.db.debugAchTip and "|cFF22FF22ON|r" or "|cFFFF2222OFF|r")
                 .. ". Hover delve map pins and send me every"
                 .. " |cFFFFD700[ED achtip]|r line.")
@@ -496,18 +537,18 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.DumpCompanionState then
             E:DumpCompanionState()
         else
-            print("|cFFFF2222Everything Delves|r: curio module not loaded.")
+            print(E.CC.header .. "Everything Delves|r: curio module not loaded.")
         end
     elseif msg == "poison" then
         if E.DumpPoisonState then
             E:DumpPoisonState()
         else
-            print("|cFFFF2222Everything Delves|r: curio module not loaded.")
+            print(E.CC.header .. "Everything Delves|r: curio module not loaded.")
         end
     elseif msg == "debug" then
         if E.db then
             E.db.debugTier = not E.db.debugTier
-            print("|cFFFF2222Everything Delves|r: tier debug "
+            print(E.CC.header .. "Everything Delves|r: tier debug "
                 .. (E.db.debugTier and "|cFF22FF22ON|r" or "|cFFFF2222OFF|r")
                 .. ". Run two delves back-to-back, then send me every line"
                 .. " that starts with |cFFFFD700[ED tier]|r.")
@@ -519,7 +560,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
                 E:UpdateDelveObjectivesWindow()
             end
             if E.RefreshOptionsWidgets then E:RefreshOptionsWidgets() end
-            print("|cFFFF2222Everything Delves|r: "
+            print(E.CC.header .. "Everything Delves|r: "
                 .. (E.db.showDelveObjectives
                     and L["Bonus Spoils tracker |cFF22FF22ON|r - it appears while you're inside a delve."]
                     or L["Bonus Spoils tracker |cFFFF2222OFF|r"]))
@@ -528,21 +569,21 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if E.DumpTrovehunterState then
             E:DumpTrovehunterState()
         else
-            print("|cFFFF2222Everything Delves|r: trovehunter module"
+            print(E.CC.header .. "Everything Delves|r: trovehunter module"
                 .. " not loaded.")
         end
     elseif msg == "objdump" then
         if E.DumpDelveObjectiveData then
             E:DumpDelveObjectiveData()
         else
-            print("|cFFFF2222Everything Delves|r: objectives module"
+            print(E.CC.header .. "Everything Delves|r: objectives module"
                 .. " not loaded.")
         end
     elseif msg == "dundun" or msg == "dundun reset" then
         if E.DumpDundunData then
             E:DumpDundunData(msg == "dundun reset")
         else
-            print("|cFFFF2222Everything Delves|r: objectives module"
+            print(E.CC.header .. "Everything Delves|r: objectives module"
                 .. " not loaded.")
         end
     elseif msg == "lablog" or msg:sub(1, 7) == "lablog " then
@@ -550,11 +591,11 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     elseif msg == "gilded" then
         if not (C_UIWidgetManager
                 and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
-            print("|cFFFF2222Everything Delves|r: widget API unavailable"
+            print(E.CC.header .. "Everything Delves|r: widget API unavailable"
                 .. " on this client.")
             return
         end
-        local GILDED_WIDGET = 7591
+        local GILDED_WIDGET = E.GILDED_WIDGET_ID
         local function ReadWidget(id)
             local ok, info = pcall(
                 C_UIWidgetManager.GetSpellDisplayVisualizationInfo, id)
@@ -565,12 +606,12 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
         if info then
             ---@diagnostic disable-next-line: undefined-field
             print(string.format(
-                "|cFFFF2222Everything Delves|r: widget %d shownState=%s",
+                E.CC.header .. "Everything Delves|r: widget %d shownState=%s",
                 GILDED_WIDGET, tostring(info.shownState)))
             print("  tooltip: " .. tostring(tip))
         else
             print(string.format(
-                "|cFFFF2222Everything Delves|r: widget %d returned nil.",
+                E.CC.header .. "Everything Delves|r: widget %d returned nil.",
                 GILDED_WIDGET))
         end
         -- Sweep nearby widgets for a fraction tooltip in case the ID moved in a patch.
@@ -586,7 +627,7 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
             end
         end
         print(string.format(
-            "|cFFFF2222Everything Delves|r: sweep done - %d candidate(s)"
+            E.CC.header .. "Everything Delves|r: sweep done - %d candidate(s)"
             .. " in 7400-7800. Screenshot/paste me the output.", hits))
         if E.GetLiveGildedStash then
             local col, tot = E:GetLiveGildedStash()
@@ -617,7 +658,8 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         self:InitMainFrame()
     end
 
-    -- Pre-create out of combat so the secure Use button's protected setup never runs mid-combat.
+    -- Built at login so the secure Use button exists before any delve. A /reload in combat builds it in combat,
+    -- which shows a known, cosmetic taint popup.
     if self.InitTrovehunterReminder then
         self:InitTrovehunterReminder()
     end
@@ -653,7 +695,7 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         end
     end)
 
-    print("|cFFFF2222Everything Delves|r "
+    print(E.CC.header .. "Everything Delves|r "
         .. string.format(L["v%s loaded. Type |cFFFFD700/ed|r to open."], self.version))
 end)
 
@@ -710,7 +752,6 @@ local fireQuestLog       = Debounce(0.25, "QuestLogUpdate")
 local fireAreaPois       = Debounce(0.25, "AreaPoisUpdated")
 local fireBagUpdate      = Debounce(0.25, "BagUpdate")
 local fireInventory      = Debounce(0.25, "InventoryChanged")
-local fireWorldQuestDone = Debounce(0.25, "WorldQuestCompleted")
 -- CRITERIA_UPDATE fires on unrelated achievements too, so this coalesces harder
 -- than the rest: a full achievement pass is 12 delves of criteria reads.
 local fireAchievement    = Debounce(1.0, "AchievementUpdate")
@@ -728,20 +769,12 @@ E:RegisterEvent("UNIT_INVENTORY_CHANGED", function(_, _, unit)
     if unit == "player" then fireInventory() end
 end)
 
--- pcall-wrapped in case the event is renamed in a future patch.
-pcall(function()
-    E:RegisterEvent("WORLD_QUEST_COMPLETED", fireWorldQuestDone)
-end)
-
 -- DELVE HISTORY TRACKER. Uses its own frame so it doesn't conflict with the
 -- single-handler-per-event dispatcher above.
 
 -- Restored Coffer Key currency. Must match E.CurrencyIDs.bountifulKeys (3028)
 -- in Core/Constants.lua; repeated as a literal because this file loads first.
 local COFFER_KEY_CURRENCY = 3028
--- On some builds the key is a bag ITEM, not a currency, so key-usage detection
--- watches both 3028 and this item (matches E.ItemIcons.cofferKey).
-local COFFER_KEY_ITEM     = 224172
 E.HISTORY_CAP_MIN = 20
 E.HISTORY_CAP_MAX = 100
 local MAX_RECENT_RUNS     = E.HISTORY_CAP_MIN
@@ -756,8 +789,6 @@ E.delveRunState = {
     delveKind      = nil,   -- "regular" | "nemesis"
     startTime      = 0,
     deaths         = 0,
-    startKeyCount  = 0,
-    startKeyItems  = 0,
     keyUsed        = false,
     tier           = 0,
     wasBountiful   = false,
@@ -790,14 +821,6 @@ local function GetCurrencyQty(id)
     return 0
 end
 
-local function GetKeyItemCount()
-    if C_Item and C_Item.GetItemCount then
-        local ok, n = pcall(C_Item.GetItemCount, COFFER_KEY_ITEM)
-        if ok and type(n) == "number" then return n end
-    end
-    return 0
-end
-
 -- Verbose tier-tracker logging, toggled by "/ed debug"; no-op when off.
 local function DebugTier(fmt, ...)
     if not (E.db and E.db.debugTier) then return end
@@ -808,8 +831,29 @@ local function DebugTier(fmt, ...)
     end
 end
 
--- Auto-detect the current delve tier (1-11), or nil. Tries difficulty name,
--- then scenario/step name, then scraping the ObjectiveTracker UI.
+-- The delve header widget carries the tier as a bare number, so unlike the tracker text it reads in every language
+function E.ReadHeaderTier(stepInfo)
+    if not stepInfo and C_ScenarioInfo and C_ScenarioInfo.GetScenarioStepInfo then
+        local ok, si = pcall(C_ScenarioInfo.GetScenarioStepInfo)
+        if ok then stepInfo = si end
+    end
+    if not (stepInfo and stepInfo.widgetSetID and C_UIWidgetManager
+            and C_UIWidgetManager.GetAllWidgetsBySetID) then return nil end
+    local VT = Enum and Enum.UIWidgetVisualizationType
+    local getter = C_UIWidgetManager.GetScenarioHeaderDelvesWidgetVisualizationInfo
+    if not (VT and VT.ScenarioHeaderDelves and getter) then return nil end
+    local ok, widgets = pcall(C_UIWidgetManager.GetAllWidgetsBySetID, stepInfo.widgetSetID)
+    if not ok or type(widgets) ~= "table" then return nil end
+    for _, w in ipairs(widgets) do
+        if w.widgetType == VT.ScenarioHeaderDelves then
+            local ok2, hv = pcall(getter, w.widgetID)
+            local tt = ok2 and hv and tonumber(hv.tierText)
+            if tt then return tt end
+        end
+    end
+    return nil
+end
+
 local function AutoDetectDelveTier()
     local _, _, _, difficultyName = GetInstanceInfo()
     if difficultyName and difficultyName ~= "" then
@@ -841,6 +885,12 @@ local function AutoDetectDelveTier()
     if m2 then
         DebugTier("m2 scenario/step -> %d", m2)
         return m2
+    end
+
+    local m3 = E.ReadHeaderTier()
+    if m3 and m3 >= 1 and m3 <= 11 then
+        DebugTier("m3 header widget -> %d", m3)
+        return m3
     end
 
     -- Scrape the ObjectiveTracker for tier text. Limitation: if a lives
@@ -898,7 +948,7 @@ local function AutoDetectDelveTier()
 
         pcall(SearchForTier, tracker)
         if foundTier then
-            DebugTier("m3 scrape -> %d (via %s)", foundTier, tostring(foundVia))
+            DebugTier("m4 scrape -> %d (via %s)", foundTier, tostring(foundVia))
             return foundTier
         end
     end
@@ -1071,20 +1121,15 @@ function E:GetDelveStoryVariant(delveName)
     return CleanStoryName(raw), widget
 end
 
--- The in-delve scenario UI exposes the weekly Gilded Stash counter as
--- spell-display widget 7591 (tooltip ends "Gilded Stash looted: x/4").
--- Confirmed in-game 2026-06-10: data inside a delve, nil outside. Each read
--- is persisted per CharKey and expires at the weekly reset.
-local GILDED_WIDGET_ID = 7591
-
--- Returns collected, total from the widget, or nil outside a delve.
+-- The Gilded Stash widget's tooltip ends "Gilded Stash looted: x/4". It is an entrance widget, shown with the
+-- difficulty picker and gone once inside the delve.
 local function ReadGildedWidget()
     if not (C_UIWidgetManager
             and C_UIWidgetManager.GetSpellDisplayVisualizationInfo) then
         return nil
     end
     local ok, info = pcall(
-        C_UIWidgetManager.GetSpellDisplayVisualizationInfo, GILDED_WIDGET_ID)
+        C_UIWidgetManager.GetSpellDisplayVisualizationInfo, E.GILDED_WIDGET_ID)
     if not ok or not info or not info.spellInfo then return nil end
     local tip = info.spellInfo.tooltip
     if type(tip) ~= "string" then return nil end
@@ -1093,7 +1138,6 @@ local function ReadGildedWidget()
     return tonumber(col), tonumber(tot)
 end
 
--- Safe to call any time; silently no-ops outside a delve.
 function E:CaptureGildedStash()
     local col, tot = ReadGildedWidget()
     if not col then return end
@@ -1122,9 +1166,6 @@ function E:GetLiveGildedStash()
     if not entry.validUntil or time() >= entry.validUntil then return nil end
     return entry.collected, entry.total
 end
-
-local ROSTER_WEEKLY_QUEST = 93909
-local TROVE_LOOT_QUEST    = 86371
 
 function E:CaptureRosterSnapshot()
     local sv = EverythingDelvesDB
@@ -1168,10 +1209,10 @@ function E:CaptureRosterSnapshot()
     rec.bountyMaps = self:GetTrovehunterMapCount()
 
     rec.weeklyQuestDone = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-        and C_QuestLog.IsQuestFlaggedCompleted(ROSTER_WEEKLY_QUEST)) or false
+        and C_QuestLog.IsQuestFlaggedCompleted(E.WEEKLY_DELVE_QUEST_ID)) or false
 
     rec.bountyLooted = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
-        and C_QuestLog.IsQuestFlaggedCompleted(TROVE_LOOT_QUEST)) or false
+        and C_QuestLog.IsQuestFlaggedCompleted(E.TROVE_LOOTED_QUEST_ID)) or false
 
     local prog, total, slots = 0, 0, 0
     local ok, acts = pcall(function()
@@ -1207,7 +1248,7 @@ end
 
 -- widgetID guard keeps this cheap despite UPDATE_UI_WIDGET's high fire rate.
 E:RegisterEvent("UPDATE_UI_WIDGET", function(self, _, widgetInfo)
-    if widgetInfo and widgetInfo.widgetID == GILDED_WIDGET_ID then
+    if widgetInfo and widgetInfo.widgetID == E.GILDED_WIDGET_ID then
         self:CaptureGildedStash()
     end
 end)
@@ -1219,8 +1260,6 @@ local function BeginDelveRun(name, kind)
     runState.startTime     = GetTime()
     runState.popupWindowStart = GetTime()
     runState.deaths        = 0
-    runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
-    runState.startKeyItems = GetKeyItemCount()
     runState.keyUsed       = false
     visitKeysSpent         = 0
     keyWatch               = nil  -- a new run supersedes any pending key watch
@@ -1241,8 +1280,6 @@ local function BeginDelveRun(name, kind)
             startTime     = runState.startTime,
             startedAt     = time(),
             deaths        = 0,
-            startKeyCount = runState.startKeyCount,
-            startKeyItems = runState.startKeyItems,
             keyUsed       = false,
             tier          = 0,
             wasBountiful  = runState.wasBountiful,
@@ -1296,8 +1333,6 @@ local function EndDelveRun()
     runState.delveKind     = nil
     runState.startTime     = 0
     runState.deaths        = 0
-    runState.startKeyCount = 0
-    runState.startKeyItems = 0
     runState.keyUsed       = false
     runState.tier          = 0
     runState.wasBountiful  = false
@@ -1331,7 +1366,7 @@ function E:MaybeWarnCompanionRoleUnset()
     if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then
         PlaySound(SOUNDKIT.RAID_WARNING)
     end
-    print("|cFFFF2222Everything Delves|r: "
+    print(E.CC.header .. "Everything Delves|r: "
         .. L["Your Delve companion has no role assigned - open the companion panel to set one."])
 end
 
@@ -1560,13 +1595,19 @@ function E:GetTodaysBossName(delveName)
     if #bosses == 1 then
         return bosses[1].name
     end
-    local variant = self.GetDelveStoryVariant and self:GetDelveStoryVariant(delveName)
+    local variant, widget = self:GetDelveStoryVariant(delveName)
     if not variant or variant == "" then return nil end
-    -- Live-learned mapping wins (auto-corrects the static table); fall back to
-    -- the static variant->boss table for day-one coverage.
+    -- A learned name wins only if it is one of this delve's bosses: a translated client learns the encounter's
+    -- name in its own language, which matches none of them
     local live = self:GetRecordedBoss(delveName, variant)
-    if live then return live end
-    return self.GetStaticBoss and self:GetStaticBoss(delveName, variant) or nil
+    if live then
+        for _, boss in ipairs(bosses) do
+            if boss.name == live then return live end
+        end
+    end
+    -- The static table is keyed by English story names, found on a translated client by the story's widget ID
+    local id = self:StoryID(widget, variant)
+    return self:GetStaticBoss(delveName, id and self.Stories[id].name or variant)
 end
 
 -- Cleanup for the old GetTime() staleness bug: any run longer than
@@ -1712,7 +1753,8 @@ local enteredViaLogin  = false
 --   runCompleted - a run was just logged for the instance we're still standing
 --                  in; suppresses begin/resume through the post-completion loot
 --                  window. Cleared when the player leaves or on the next entry.
--- Both reset on /reload + relog, correctly: those paths resume via E.db.activeRun.
+-- Both reset on /reload and relog, which resume from E.db.activeRun or, when its start reads in the future after a
+-- reboot, start a fresh clock.
 local entryArmed   = false
 local runCompleted = false
 -- Leaving the Labyrinth shows no loading screen, and the open world keeps reporting the delve difficulty until the
@@ -1891,12 +1933,11 @@ local function TryBeginFromCurrentZone(source)
                 -- the reminder after a mid-run reload (GetTime() is continuous).
                 runState.popupWindowStart = GetTime()
                 runState.deaths        = saved.deaths or 0
-                runState.startKeyCount = saved.startKeyCount or 0
-                runState.startKeyItems = saved.startKeyItems or 0
                 runState.keyUsed       = saved.keyUsed or false
                 runState.tier          = saved.tier or 0
                 runState.wasBountiful  = saved.wasBountiful or false
                 runState.story         = saved.story
+                runState.boss          = saved.boss
                 runState.lastResult    = nil
                 runState.trovehunterPopupShown = saved.trovehunterPopupShown or false
                 runState.lab           = (saved.kind == "labyrinth") and (saved.lab or E.LabRun.New()) or nil
@@ -1912,17 +1953,14 @@ local function TryBeginFromCurrentZone(source)
                 -- settle it against the live tracker.
                 SettleTier()
             elseif not (enteredViaReload or enteredViaLogin) then
-                -- A /reload or relog is NOT a new entry, so it NEVER begins a
-                -- fresh run here -- it can only resume above. If nothing resumed,
-                -- the run already ended (e.g. reloading while looting after the
-                -- boss clears activeRun); beginning would show a phantom 0:00 run.
-                -- Only a genuine entry (entryArmed) or untracked recovery begins.
+                -- A /reload or relog never begins a run here: it resumes above or, after a reboot, below. With
+                -- neither, its run already ended and beginning would show a phantom 0:00 run.
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)
             elseif saved and saved.name == matchedName
                     and saved.startedAt
                     and (time() - saved.startedAt) < MAX_RESUME_AGE then
-                -- Couldn't resume above (typically a client restart reset GetTime()
+                -- Couldn't resume above (typically a machine reboot reset GetTime(),
                 -- so saved.startTime now reads in the future), but a saved activeRun
                 -- proves a genuine, wall-clock-recent run was in progress -- begin a
                 -- fresh clock so the HUD/timer/objectives aren't left dead instead of
@@ -1957,8 +1995,6 @@ local function TryBeginFromCurrentZone(source)
             runState.startTime     = GetTime()
             runState.popupWindowStart = GetTime()
             runState.deaths        = 0
-            runState.startKeyCount = GetCurrencyQty(COFFER_KEY_CURRENCY)
-            runState.startKeyItems = GetKeyItemCount()
             runState.keyUsed       = false
             runState.tier          = 0
             runState.wasBountiful  = false
@@ -1973,8 +2009,6 @@ local function TryBeginFromCurrentZone(source)
                     startTime     = runState.startTime,
                     startedAt     = time(),
                     deaths        = 0,
-                    startKeyCount = runState.startKeyCount,
-                    startKeyItems = runState.startKeyItems,
                     keyUsed       = false,
                     tier          = 0,
                     wasBountiful  = false,
@@ -2094,10 +2128,9 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         local isInitialLogin, isReloadingUi = ...
         enteredViaReload = isReloadingUi and true or false
         enteredViaLogin  = isInitialLogin and true or false
-        -- A real loading screen is a transition OUT of the just-completed
-        -- instance, so always release the latch. The stray events it guards
-        -- against (SCENARIO_UPDATE/ZONE_CHANGED during looting) never carry a
-        -- PEW, so suppression is preserved.
+        -- The stray events the latch guards against (SCENARIO_UPDATE and ZONE_CHANGED while looting) never
+        -- carry a loading screen, and a /reload while looting cannot restart the run because the completed run
+        -- already cleared activeRun.
         runCompleted = false
         labVisit = false
         -- Only a GENUINE new world-entry (NOT a /reload or relog/reconnect) arms
@@ -2150,6 +2183,8 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             if IsSecret and IsSecret(encounterName) then encounterName = nil end
             if encounterName and encounterName ~= "" then
                 runState.boss = encounterName
+                -- A /reload between the kill and SCENARIO_COMPLETED would otherwise lose it
+                if E.db and E.db.activeRun then E.db.activeRun.boss = encounterName end
             end
             if runState.lab then
                 E.LabRun.OnEncounterEnd(runState.lab, encounterID, encounterName, success,
@@ -2191,8 +2226,7 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             runState.keyUsed       = saved.keyUsed or runState.keyUsed or false
             runState.wasBountiful  = saved.wasBountiful or runState.wasBountiful or false
             runState.story         = runState.story or saved.story
-            runState.startKeyCount = saved.startKeyCount or runState.startKeyCount or 0
-            runState.startKeyItems = saved.startKeyItems or runState.startKeyItems or 0
+            runState.boss          = runState.boss or saved.boss
             DebugTier("completion: recovered start from activeRun (start=%.0f)",
                 saved.startTime)
         end

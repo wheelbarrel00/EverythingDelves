@@ -220,7 +220,6 @@ E:RegisterModule(function()
                 or event == "ZONE_CHANGED_NEW_AREA"
                 or event == "SCENARIO_UPDATE"
                 or event == "SCENARIO_CRITERIA_UPDATE" then
-            isInDelve = CheckInDelve()
             RefreshBubbleState()
         elseif event == "CVAR_UPDATE" then
             local cvar = string.lower(tostring(arg1 or ""))

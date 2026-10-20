@@ -168,7 +168,7 @@ end
 
 -- Deliberately English: a bug-report dump, not UI.
 function E:DumpStories()
-    print("|cFFFF2222Everything Delves|r: today's stories")
+    print(E.CC.header .. "Everything Delves|r: today's stories")
     for _, d in ipairs(self.DelveData or {}) do
         local text, widget = self:GetDelveStoryVariant(d.name)
         local id = self:StoryID(widget, text)

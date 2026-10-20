@@ -15,7 +15,7 @@ local WQ_ZONE, WQ_SHARDS = 150, 70
 local ED_TEXTURES = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
 
 local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424, 2512 }
-local WQ_CURRENCY = 3310
+local WQ_CURRENCY = E.CurrencyIDs.cofferKeyShards
 local MAX_WQ_ROWS = 12
 
 -- The titles are English fallbacks for QuestTitle
@@ -32,7 +32,7 @@ local SPECIAL_ASSIGNMENTS = {
 local SA_WEEKLY_MAX = 3
 
 local WEEKLY_DELVE_QUESTS = {
-    { questID = 93909, title = "Midnight: Delves" },
+    { questID = E.WEEKLY_DELVE_QUEST_ID, title = "Midnight: Delves" },
 }
 
 local function GetCurrency(currencyID)
@@ -105,10 +105,12 @@ local saLookupBuf  = nil
 local function SourceProgress(src)
     local done, total = 0, 0
     if src.questLineID and C_QuestLine and C_QuestLine.GetQuestLineQuests then
-        if not questLineCache[src.questLineID] then
-            questLineCache[src.questLineID] = C_QuestLine.GetQuestLineQuests(src.questLineID) or {}
-        end
         local quests = questLineCache[src.questLineID]
+        if not quests then
+            quests = C_QuestLine.GetQuestLineQuests(src.questLineID) or {}
+            -- A cold read comes back empty, so only a filled list is kept
+            if #quests > 0 then questLineCache[src.questLineID] = quests end
+        end
         total = #quests
         for _, qid in ipairs(quests) do
             if Done(qid) then done = done + 1 end
@@ -669,7 +671,7 @@ E:RegisterModule(function()
     local WQ_CACHE_TTL = 60    -- seconds before cache is considered stale
     local wqRetryPending = false
     local wqRetriesUsed  = 0
-    local WQ_MAX_RETRIES = 1   -- one retry, then stop forever (see below)
+    local WQ_MAX_RETRIES = 1
     local mapsPrimed   = {}
     local zoneNameCache = {}
     local seenQuestIDs = {}
@@ -952,7 +954,7 @@ E:RegisterModule(function()
         end
 
         if hasNew then
-            print("|cFFFF2222[Everything Delves]|r "
+            print(E.CC.header .. "[Everything Delves]|r "
                 .. L["A Special Assignment is now available! Check the Shard Tracker tab."])
         end
         saState.recorded = true

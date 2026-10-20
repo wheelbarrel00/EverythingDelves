@@ -15,7 +15,7 @@ local RENOWN_NAME, RENOWN_STATUS = 150, 110
 local FACTION_RENOWN_MAX = 20
 local GILDED_MAX = 4   -- 4x T11 Bountiful Delves per week
 
-local TROVE_QUEST_ID = 86371   -- weekly loot-check quest
+local TROVE_QUEST_ID = E.TROVE_LOOTED_QUEST_ID
 local TROVE_ICON     = 1064187
 local VALEERA_ICON   = "Interface\\Icons\\Achievement_Character_BloodElf_Female"
 local PORTRAIT_MASK  = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
@@ -50,9 +50,8 @@ local function WeeklyResetIn()
     if not (C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset) then return nil end
     local secs = C_DateAndTime.GetSecondsUntilWeeklyReset()
     if not secs or secs <= 0 then return nil end
-    return math_floor(secs / 86400) .. "d "
-        .. math_floor((secs % 86400) / 3600) .. "h "
-        .. math_floor((secs % 3600) / 60) .. "m"
+    return L["%dd %dh %dm"]:format(math_floor(secs / 86400), math_floor((secs % 86400) / 3600),
+        math_floor((secs % 3600) / 60))
 end
 
 -- Delver's Journey is the season Delves faction's renown under the hood:
@@ -850,17 +849,28 @@ local function BuildRenown(ui, content, v)
     return card
 end
 
+local renownCaps = {}
+
+local function RenownCap(factionID)
+    local cap = renownCaps[factionID] or GetJourneyMaxLevel(factionID)
+    if cap then renownCaps[factionID] = cap end
+    return cap or FACTION_RENOWN_MAX
+end
+
 local function RenderRenown(ui, v)
     for i, fac in ipairs(MIDNIGHT_FACTIONS) do
         local row = v.renownRows[i]
         local name, renown = FactionRenown(fac)
+        local cap = RenownCap(fac.id)
+        -- The game's maxed flag wins, as the level list may hold levels not open yet
+        if renown > 0 and IsJourneyMaxed(fac.id) then cap = renown end
         row.name:SetText(name)
-        row.bar:SetProgress(renown / FACTION_RENOWN_MAX)
-        local maxed = renown >= FACTION_RENOWN_MAX
+        row.bar:SetProgress(math_min(1, renown / cap))
+        local maxed = renown >= cap
         if maxed then
-            row.status:SetText(L["Max (%d / %d)"]:format(renown, FACTION_RENOWN_MAX))
+            row.status:SetText(L["Max (%d / %d)"]:format(renown, cap))
         else
-            row.status:SetText(renown .. " / " .. FACTION_RENOWN_MAX)
+            row.status:SetText(renown .. " / " .. cap)
         end
         row.status:SetTextColor(ui:Color(renown > 0 and "text" or "muted"))
         row.check:SetShown(maxed)
@@ -949,12 +959,28 @@ E:RegisterModule(function()
         if success ~= false and E.Labyrinth and itemID == E.Labyrinth.venomstoneItem then RenderIfShown() end
     end)
 
+    -- UNIT_AURA fires constantly in combat, so only a change in the buff redraws
+    local troveUp
+    local auraWatch = CreateFrame("Frame")
+    auraWatch:SetScript("OnEvent", function()
+        local up = E:GetTrovehunterAura() ~= nil
+        if up ~= troveUp then
+            troveUp = up
+            RenderIfShown()
+        end
+    end)
+
     frame:SetScript("OnShow", function()
         itemWatch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        troveUp = E:GetTrovehunterAura() ~= nil
+        auraWatch:RegisterUnitEvent("UNIT_AURA", "player")
         Render()
         area:ScrollTo(0, 0)
     end)
-    frame:SetScript("OnHide", function() itemWatch:UnregisterEvent("GET_ITEM_INFO_RECEIVED") end)
+    frame:SetScript("OnHide", function()
+        itemWatch:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
+        auraWatch:UnregisterEvent("UNIT_AURA")
+    end)
 
     E:RegisterCallback("InventoryChanged", RenderIfShown)
     E:RegisterCallback("BagUpdate", RenderIfShown)

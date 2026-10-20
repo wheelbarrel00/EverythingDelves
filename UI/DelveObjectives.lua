@@ -1,6 +1,3 @@
--- "Bonus Spoils" tracker: optional, off-by-default window that tracks the
--- Nemesis Strongbox packs a player clears before the delve boss. Detection is
--- lockdown-safe (no combat log / no enemy nameplates) and pcall-guarded.
 local E = EverythingDelves
 local L = E.L
 
@@ -11,7 +8,7 @@ local MAX_CRIT   = 25   -- criteria iteration cap per step (safety)
 local MAX_BONUS  = 15
 
 -- Already captured by the core file; skipped in the generic widget pass.
-local GILDED_WIDGET_ID = 7591
+local GILDED_WIDGET_ID = E.GILDED_WIDGET_ID
 
 -- Nemesis Strongbox affix (Tier 4+): no in-delve progress widget (the Nemesis
 -- spell-display widgets live ONLY on the entrance picker), so in-delve progress
@@ -387,28 +384,6 @@ E:RegisterModule(function()
         AddLine(text)
     end
 
-    -- ScenarioHeaderDelves tierText is more reliable than runState.tier (the
-    -- core's entry latch can hold the previous delve's tier until completion).
-    local function ReadLiveTier(stepInfo)
-        if not (stepInfo and stepInfo.widgetSetID and C_UIWidgetManager
-                and C_UIWidgetManager.GetAllWidgetsBySetID) then return nil end
-        local VT = Enum and Enum.UIWidgetVisualizationType
-        local getter = C_UIWidgetManager
-            .GetScenarioHeaderDelvesWidgetVisualizationInfo
-        if not (VT and VT.ScenarioHeaderDelves and getter) then return nil end
-        local ok, widgets = pcall(
-            C_UIWidgetManager.GetAllWidgetsBySetID, stepInfo.widgetSetID)
-        if not ok or type(widgets) ~= "table" then return nil end
-        for _, w in ipairs(widgets) do
-            if w.widgetType == VT.ScenarioHeaderDelves then
-                local ok2, hv = pcall(getter, w.widgetID)
-                local tt = ok2 and hv and tonumber(hv.tierText)
-                if tt then return tt end
-            end
-        end
-        return nil
-    end
-
     -- Shared with the vignette scan, which runs on its own events even while the
     -- window is hidden. A reset that lived only in RefreshContent let a re-entry
     -- pile new packs onto the previous run's tally, a doubled and reload-persistent
@@ -456,7 +431,8 @@ E:RegisterModule(function()
             local ok, si = pcall(C_ScenarioInfo.GetScenarioStepInfo)
             if ok then stepInfo = si end
         end
-        local liveTier = ReadLiveTier(stepInfo)
+        -- The header's tier is more reliable than runState.tier, whose entry latch can hold the previous delve's tier
+        local liveTier = E.ReadHeaderTier(stepInfo)
         local inLabyrinth = InLabyrinth()
 
         if E.db and E.db.showDelveHUD and rs and rs.inDelve then
@@ -583,7 +559,6 @@ E:RegisterModule(function()
             end
         end
 
-        -- Rendered last so the live widget tier can win.
         local tier = liveTier or (rs and rs.tier) or 0
         local title = E.CC.header .. name .. E.CC.close
         if tier > 0 then

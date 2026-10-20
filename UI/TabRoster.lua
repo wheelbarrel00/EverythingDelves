@@ -278,6 +278,8 @@ E:RegisterModule(function()
             onAccept = function()
                 local saved = EverythingDelvesDB
                 if saved and saved.roster then saved.roster[delKey] = nil end
+                -- The Delver's Call roll-up lists from its own table
+                if saved and saved.delversCallRoster then saved.delversCallRoster[delKey] = nil end
                 v.relayout()
             end,
         })

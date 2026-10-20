@@ -43,7 +43,9 @@ local function CreateReminderFrame()
         end
     end
     f:SetScript("OnEvent", function(self, event)
-        if event == "PLAYER_REGEN_ENABLED" then
+        if event == "UNIT_AURA" then
+            if E:GetTrovehunterAura() or E:TrovehunterUsedThisWeek() then RequestHide() end
+        elseif event == "PLAYER_REGEN_ENABLED" then
             self:UnregisterEvent("PLAYER_REGEN_ENABLED")
             local wantHide, wantShow = self._pendingHide, self._pendingShow
             self._pendingHide, self._pendingShow = nil, nil
@@ -144,7 +146,10 @@ local function CreateReminderFrame()
     end)
     f:SetScript("OnShow", function(self)
         if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+        -- A bounty used from the bags never clicks Use, so its buff is what closes the popup
+        self:RegisterUnitEvent("UNIT_AURA", "player")
     end)
+    f:SetScript("OnHide", function(self) self:UnregisterEvent("UNIT_AURA") end)
 
     f:Hide()
 
@@ -249,7 +254,7 @@ end
 
 -- Deliberately English: this is a bug-report dump, not UI.
 function E:DumpTrovehunterState()
-    print("|cFFFF2222Everything Delves|r: Trovehunter reminder state")
+    print(E.CC.header .. "Everything Delves|r: Trovehunter reminder state")
 
     local setting = not (self.db and self.db.showTrovehunterReminder == false)
     DiagLine("setting enabled: %s", tostring(setting))
@@ -304,8 +309,8 @@ function E:DumpTrovehunterState()
     end
 
     if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-        DiagLine("quest 86371 looted=%s  quest %d used=%s (blocks the popup)",
-            tostring(C_QuestLog.IsQuestFlaggedCompleted(86371)),
+        DiagLine("quest %d looted=%s  quest %d used=%s (blocks the popup)",
+            self.TROVE_LOOTED_QUEST_ID, tostring(C_QuestLog.IsQuestFlaggedCompleted(self.TROVE_LOOTED_QUEST_ID)),
             self.TROVE_USED_QUEST_ID, tostring(self:TrovehunterUsedThisWeek()))
     end
 

@@ -12,9 +12,10 @@ E.Zones = {
     { name = "The Coiled Isle",       mapID = 2512 },
 }
 
--- Coordinates are percentages (45.4 = 0.454). SetWaypoint conversion happens
--- at the call site. Every poiID here has been read off a live POI except where
--- an entry says otherwise.
+E.WEEKLY_DELVE_QUEST_ID = 93909   -- "Midnight: Delves"
+E.GILDED_WIDGET_ID      = 7591    -- the weekly Gilded Stash count
+
+-- Coordinates are percentages (45.4 = 0.454). Every poiID here was read off a live POI.
 E.DelveData = {
     {
         name  = "Parhelion Plaza",
@@ -115,8 +116,6 @@ E.DelveData = {
         instanceID = 3077,
     },
 }
-
-E.TOTAL_DELVES = #E.DelveData
 
 -- Seasonal Nemesis delve. Kept out of E.DelveData so location/bountiful
 -- iterators are unaffected.
@@ -266,8 +265,6 @@ E.BossRoleMeta = {
     tank      = { label = L["Tank"],      rgb = { 0.40, 0.65, 0.95 } },
     healer    = { label = L["Healer"],    rgb = { 0.45, 0.85, 0.55 } },
 }
--- Unlisted roles fall to the end.
-E.BossRoleOrder = { "interrupt", "dps", "general", "tank", "healer" }
 
 local VENOMBORNE = {
     name  = "Replicating Venomborne",

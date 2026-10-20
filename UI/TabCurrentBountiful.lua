@@ -7,8 +7,7 @@ local string_format = string.format
 local table_insert, table_sort, wipe = table.insert, table.sort, wipe
 local strtrim = strtrim
 
--- Several Blizzard UI frames live in load-on-demand addons not in memory
--- until first opened; ElvUI preloads them, masking the issue. Force-load here.
+-- Load-on-demand: not in memory until first opened, unless another addon loaded it first
 local function EnsureBlizzardAddon(addonName)
     ---@diagnostic disable-next-line: undefined-global
     local loader = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
@@ -331,7 +330,7 @@ local function RefreshBountifulData(force)
 
     -- Must run AFTER the re-add above: a completed delve drops off the POI list,
     -- and comparing without it reads as a rotation change.
-    if #bountifulList > 0 and E.db and E.db.alertNewBountiful then
+    if #bountifulList > 0 and E.db and E.db.alertNewBountiful and dailyResetEpoch > 0 then
         if not E._bountifulIDBuf then E._bountifulIDBuf = {} end
         local currentIDs = E._bountifulIDBuf
         wipe(currentIDs)
@@ -344,7 +343,8 @@ local function RefreshBountifulData(force)
         local storedEpoch = E.db.lastKnownBountifulEpoch or 0
 
         -- A shorter list on the same day means POI data is incomplete, not a new rotation.
-        if #currentIDs >= #storedIDs or dailyResetEpoch > storedEpoch then
+        -- dailyResetEpoch adds two clocks that can disagree by a second, so a new day is one at least an hour later
+        if #currentIDs >= #storedIDs or dailyResetEpoch - storedEpoch > 3600 then
             local changed = (#currentIDs ~= #storedIDs)
             if not changed then
                 for i, id in ipairs(currentIDs) do
@@ -355,10 +355,22 @@ local function RefreshBountifulData(force)
                 end
             end
 
+            local grew = true
+            for _, old in ipairs(storedIDs) do
+                local kept = false
+                for _, id in ipairs(currentIDs) do
+                    if id == old then kept = true break end
+                end
+                if not kept then grew = false break end
+            end
+
             -- storedEpoch 0 = a pre-upgrade baseline that may be missing completions.
-            if changed and #storedIDs > 0 and storedEpoch > 0 then
-                print("|cFFFF2222[Everything Delves]|r "
+            -- The map's list fills in over several reads, so a list that only grew alerts once a day.
+            if changed and #storedIDs > 0 and storedEpoch > 0
+                    and (not grew or dailyResetEpoch - (E.db.lastBountifulAlertEpoch or 0) > 3600) then
+                print(E.CC.header .. "[Everything Delves]|r "
                     .. L["New Bountiful Delves are available today! Open Everything Delves to see them."])
+                E.db.lastBountifulAlertEpoch = dailyResetEpoch
             end
             if not E.db.lastKnownBountifulIDs then E.db.lastKnownBountifulIDs = {} end
             wipe(E.db.lastKnownBountifulIDs)
@@ -516,8 +528,9 @@ local function BestPickText()
     end
     if not best then return "" end
     local grade, _, mine = Grade(best)
-    if not grade then return "" end
     local muted, label = E.DelveList.cc("muted"), E.DelveList.cc("label")
+    -- Every story left is one the addon cannot grade: a cold map cache, or a story with no grade yet
+    if not grade then return muted .. L["Best Pick:"] .. "|r " .. label .. L["No clear pick today"] .. "|r" end
     return muted .. L["Best Pick:"] .. "|r " .. label .. best.name .. "|r"
         .. muted .. SEP .. "|r" .. label .. StoryText(best) .. "|r"
         .. muted .. SEP .. "|r" .. E:GetGradeCC(grade) .. L["%s Tier"]:format(grade) .. "|r"

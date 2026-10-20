@@ -183,16 +183,6 @@ function E:RestoreCachedTierData()
     return ok
 end
 
-function E:GetTierColor(tier)
-    if tier <= 4 then
-        return self.Colors.green
-    elseif tier <= 8 then
-        return self.Colors.yellow
-    else
-        return self.Colors.red
-    end
-end
-
 function E:GetTierCC(tier)
     if tier <= 4 then
         return self.CC.green
@@ -335,8 +325,8 @@ E.ItemIcons = {
 
 -- Resolved once at load to avoid per-refresh API calls.
 E.CachedIcons = {
-    cofferKey   = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(224172) or nil,
-    cofferShard = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(236096) or nil,
+    cofferKey   = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(E.ItemIcons.cofferKey) or nil,
+    cofferShard = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(E.ItemIcons.cofferShard) or nil,
 }
 
 E.AccentColors = {

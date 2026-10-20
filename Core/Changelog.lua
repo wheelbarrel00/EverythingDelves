@@ -3,6 +3,42 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.4.0", date = "2026-10-19",
+        sections = {
+            { head = "What's New catches you up", items = {
+                "What's New catches you up on every release you missed, or tells you with a chat link instead, plus today's boss in every language and a long list of fixes.",
+            }},
+            { head = "New", items = {
+                "What's New catches you up - after an update with new features, What's New lists every release you missed since you last read it, each under its version and date. An update with only fixes stays quiet and is listed with the next one. A fresh install opens nothing.",
+                "What's New as a chat link - the settings window's General tab has a new After an update choice: Popup window, Chat link or Off. Chat link posts a quiet line in your chat a few seconds after login, and clicking it opens the notes. If you had What's New switched off, it stays off.",
+            }},
+            { head = "Improved", items = {
+                "Chat messages in your accent color - every Everything Delves line in chat now uses the accent color you picked. Some were always red.",
+                "Faction renown reads each faction's real cap - the Tier Guide's Midnight faction renown takes each faction's last level from the game, and shows Max when the game says the track is done, instead of assuming 20.",
+                "Steadier clear-time estimates - the estimate for a delve you have not run yet now weighs every one of your runs the same, so a single slow clear of a rarely run delve no longer skews it.",
+            }},
+            { head = "Fixed", items = {
+                "The Trovehunter's Bounty reminder stayed open after you used the bounty from your bags - it now closes on its own, after combat if you are fighting.",
+                "Today's boss was never marked on translated clients - on German, French, Russian, Korean and Chinese clients, delves with two bosses never marked today's boss. Stories are now matched by the game's own ID. A boss name learned from a kill also counts only when it is one of that delve's bosses.",
+                "A run could be logged at tier 0 on translated clients - when the game's usual tier readouts were missing, the last resort only understood English. The tier is now read from the delve's own header first.",
+                "Two characters sharing a profile could overwrite each other's run in progress - or one could pick up the other's start time. The run in progress is now saved per character.",
+                "The optional New Bountiful Delves alert could print several times a day - as the map filled in after login. It now prints once a day while the list is only filling in, and still prints for a new set of delves.",
+                "Two Shard Tracker sources could read \"Trackable\" until a /reload - when the game had not loaded their quest line yet. They now pick it up once it has.",
+                "Tooltips kept their old text after a click or a grade change - on Delve Locations, Current Bountiful Delves and Achievements, until you moved the mouse.",
+                "Removing a character on the Roster left it in the Delver's Call roll-up.",
+                "The Tier Guide's Trovehunter's Bounty line did not change when the bounty's buff started or ended, and its Great Vault countdown showed English units on translated clients.",
+                "A /reload between a boss kill and the end of the delve could lose the boss in Delve History.",
+                "The Best Pick line was blank when no remaining story could be graded - it now says \"No clear pick today\".",
+                "The Tier Guide's companion row could show a companion picked up by another of your characters - it now reads your own character's companion every time.",
+            }},
+            { head = "Notes", items = {
+                "The What's New setting is now After an update, and the What's New window's box reads \"Don't show these again\", since it stops the chat link too.",
+                "/ed reset now also clears the debug switches, and no longer makes What's New forget what it has shown you.",
+                "All the new text is translated into German, French, Russian, Korean and both Chinese.",
+            }},
+        },
+    },
+    {
         version = "2.3.0", date = "2026-10-19",
         sections = {
             { head = "Your own story grades", items = {

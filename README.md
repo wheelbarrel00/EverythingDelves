@@ -46,12 +46,17 @@ Version 2.0.0 gives Everything Delves a new look, shared with Everything Quests 
 
 Version 2.2.0 adds patch 12.1.5's **Labyrinth of Kindo'jan** across the addon: its runs on the delve HUD, in Delve History and on the Leaderboard, Kindo'jan on the Nemesis page, its achievements, and the Labyrinth on every page that lists delves.
 
+Version 2.3.0 lets you grade the delve stories yourself: give any story your own grade, or mark one you won't run, and Best Pick, the delve lists and the HUD follow your grades. Story grades now show in every language, with the story names in yours.
+
+Version 2.4.0 catches you up: after an update with new features, What's New lists every release you missed, or posts a quiet chat link instead if you prefer.
+
 ---
 
 ## Everything in One Window
 
 - **Delve Locations** — all 12 Midnight delves across 7 zones, with S–F tier ratings for today's story variant, one-click waypoints (the Pin button steers the on-screen arrow to the real entrance; TomTom single or all at once), and click-to-expand boss tactics that highlight today's boss — including 12.1's Children of Ula'tek stories and their three new bosses
 - **Quickest Delve & Best Value** — every delve shows an expected clear time (your own average once you've run it, or a pace-calibrated estimate), a sortable Speed column to line up your fastest runs first, and a summary line calling out today's Quickest delve and the Best value pick
+- **Your own story grades** - a Story Grades tab in the settings window, or a right-click on a delve: give any story your own grade from S to F, or mark one you won't run, and Best Pick, Delve Locations, Current Bountiful Delves and the HUD follow your grades
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat and Utility curios and Valeera's poison, each with its own icon, a live run timer, your remaining lives and deaths, and a standing reminder when Dundun is hiding in a Bountiful Delve
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status, a tier-by-tier reward table with your own gear tier highlighted, and a coffer key warning before a Bountiful Delve so Dundun's second chest doesn't catch you a key short
@@ -73,12 +78,12 @@ Version 2.2.0 adds patch 12.1.5's **Labyrinth of Kindo'jan** across the addon: i
 ## Features
 
 ### Delve Locations
-All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. Grades come from Moleman's Delve Compendium, which times the best clear of every story. The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves carry the game's own bountiful icon. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked and already open.
+All 12 Midnight delves across 7 zones in a sortable list — sort by name, zone, or tier rating by clicking the column headers. Each delve shows its **tier rating (S–F)** for today's story variant, today's story, and a per-delve run count. A story nobody has rated yet shows no grade rather than borrowing one from a different story, so a rating you see is always the one that belongs to today's run. Grades come from Moleman's Delve Compendium, which times the best clear of every story, and story names and grades show in your language. **Right-click a delve** to give today's story your own grade, or mark it as one you won't run (see Story Grades below). The **Pin** button steers the game's own on-screen navigation arrow straight to the delve's real entrance — click to track, click again to stop, and it lights up while it's the one you're tracking — or set a TomTom waypoint, or drop waypoints for the whole list with "Set All Waypoints". Bountiful delves carry the game's own bountiful icon. **Click any delve to expand it for boss tactics** — every boss's mechanics with a one-line summary plus a full role-by-role breakdown, and today's boss marked and already open.
 
 A sortable **Speed** column shows each delve's expected clear time — your own average once you've run it, or a pace-calibrated estimate (marked with `*`) until then — and a summary line up top calls out today's **Quickest** delve and the **Best value** pick (the most reward for your time, weighing tier, your clear speed, and whether it's bountiful today). Hovering a delve's pin on the **world map** also lists its achievements right in the tooltip — a quick summary by default, or hold Shift for the full criteria and progress (configurable in Options).
 
 ### Current Bountiful Delves
-Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Delver's Journey stage, and a live **daily** reset countdown (bountiful delves and story variants rotate daily). Each delve shows its story variant, tier rating, and overcharged status, with a "Best Pick" suggestion for the highest-value bountiful. The checklist and progress bar fill in **automatically** from your completed runs. Quick-launch buttons for the Great Vault and Group Finder, and the **same expandable boss tactics** as the Delve Locations tab.
+Live bountiful detection via `C_AreaPoiInfo` — no manual data entry. At a glance, see your Bountiful Keys, Coffer Key Shards, Delver's Journey stage, and a live **daily** reset countdown (bountiful delves and story variants rotate daily). Each delve shows its story variant, tier rating, and overcharged status, with a "Best Pick" suggestion for the highest-value bountiful (never a story you've marked as one you won't run). Right-click a delve to grade its story. The checklist and progress bar fill in **automatically** from your completed runs. Quick-launch buttons for the Great Vault and Group Finder, and the **same expandable boss tactics** as the Delve Locations tab.
 
 ### In-Delve HUD & Run Timer
 An optional on-screen panel that appears while you're inside a delve. It shows the **story variant and its grade**, the **recommended Combat and Utility curios** for your companion's assigned role, a **live run timer**, and your **remaining lives and death count**. Drag it anywhere; toggle the full HUD and the standalone timer independently in Options (both default on).
@@ -137,7 +142,10 @@ Every delve on one board, with the fastest clear your characters have at the tie
 An optional on-screen tracker for the **Nemesis Strongbox** (filled by clearing the Pactsworn groups). It shows at a glance when you've cleared them all so you know it's safe to pull the boss, and hides itself when you leave the delve. Off by default — turn it on in Options, then drag it wherever you like.
 
 ### Options
-Options has its own settings window, split into General, Display, and Alerts & Tracking. UI scale, an accent color for the delve HUD, the curio and Trovehunter's Bounty reminders and the difficulty picker panel (gold / red / purple / green / dark blue / your class color), the page to open on, minimap button toggle, and map-tooltip achievement detail (summary / full / off). Toggles for the in-delve HUD, the run timer, the best-time run result, the Bonus Spoils tracker, the delve-entrance Tier & Achievement panel, weekly earnable shards in the button tooltip, and the Trovehunter's Bounty reminder. Alerts for bountiful rotation, Special Assignments, a low shard warning threshold, and a **companion-role warning** (when your delve companion has no role assigned). **Companion Audio** mutes Valeera's voice lines, her speech bubbles, and Dun-dun. `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
+Options has its own settings window, split into General, Display, and Alerts & Tracking. UI scale, an accent color for the delve HUD, the curio and Trovehunter's Bounty reminders and the difficulty picker panel (gold / red / purple / green / dark blue / your class color), the page to open on, minimap button toggle, map-tooltip achievement detail (summary / full / off), and how What's New reaches you after an update (popup window / chat link / off). Toggles for the in-delve HUD, the run timer, the best-time run result, the Bonus Spoils tracker, the delve-entrance Tier & Achievement panel, weekly earnable shards in the button tooltip, and the Trovehunter's Bounty reminder. Alerts for bountiful rotation, Special Assignments, a low shard warning threshold, and a **companion-role warning** (when your delve companion has no role assigned). **Companion Audio** mutes Valeera's voice lines, her speech bubbles, and Dun-dun. `/ed reset` resets **only** account-wide settings — your delve history and profiles are never touched.
+
+### Story Grades
+A tab of the settings window listing every story of every delve, with the grade from Moleman's Delve Compendium beside it. The compendium measures speed alone, so a story you enjoy can read F: give any story your own grade from S to F, or mark it as one you won't run, and Best Pick, Delve Locations, Current Bountiful Delves and the delve HUD follow your grades on every character. A small square marks the grades that are yours. A story you won't run stays in the lists, greyed out at the bottom, and is never suggested as Best Pick, Best value or Quickest. Clear times and speed estimates keep the compendium's grade, since your grade says how much you like a story, not how fast it is. One button sets every story back to the compendium.
 
 ### Profiles
 Your delve history is tracked **per character** through profiles, so each alt keeps its own runs and stats instead of every character sharing one history. The Profiles tab of the settings window lets you see the active profile, switch to another, create a fresh empty one, duplicate the current one, or delete an unused one. Switching never erases data — it only changes which history that character uses. Your existing history **migrates automatically and is never deleted**: log your main in first after updating and it keeps everything with zero clicks; every other character starts fresh with its own. UI settings (colors, scale, alerts) stay account-wide so you only set them once.
@@ -147,11 +155,11 @@ A one-stop info tab in the settings window: the addon version, a full slash-comm
 
 ### Quality of Life
 - **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot for your companion's assigned role, with hover help on its title and each bag-count number
-- **Trovehunter's Bounty reminder** — inside a bountiful delve, a reminder to use your bounty before you finish, with a one-click Use button
+- **Trovehunter's Bounty reminder** — inside a bountiful delve, a reminder to use your bounty before you finish, with a one-click Use button, and none once you've used a bounty this week
 - **Live broker text** — the minimap/broker button shows your Keys, weekly shards, and time to reset as live status text, so Titan Panel and ElvUI users can read it without opening the window
-- **Bounty Map tooltip** — hovering a Trovehunter's Bounty in your bags tells you whether it's still unused this week, or active right now
+- **Bounty Map tooltip** — hovering a Trovehunter's Bounty in your bags tells you whether it's still unused this week, active right now, or one to keep for next week because you already used a bounty this week
 - **Map achievement tooltips** — a delve pin's tooltip lists every related achievement (Stories, Discoveries, and Delver of the Depths) in a clean two-column layout, each criterion green when earned and red when still needed
-- **What's New** — a one-time popup highlighting each feature release
+- **What's New** - after an update that brings new features, a popup or a clickable chat link (your choice, or off) with the highlights of every feature release you missed; a fresh install stays quiet
 
 ---
 
@@ -260,8 +268,8 @@ where to send it.
 | Metric | Value |
 |---|---|
 | Memory footprint | ~600 KB |
-| Lua files | 41 (34 authored, 7 generated locale files) |
-| Interface version | 120100, 120105 (Midnight 12.1 and 12.1.5) |
+| Lua files | 44 (36 authored, 8 generated: the 7 locale files and the story names) |
+| Interface version | 120100, 120105, 120007 (Midnight 12.1, 12.1.5 and 12.0.7) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 
@@ -275,6 +283,8 @@ EverythingDelves/
 │   ├── Constants.lua             # Colors, tier data, gear-track bands, shard sources, IDs
 │   ├── Changelog.lua             # In-addon changelog data (About tab)
 │   ├── Data.lua                  # Delve directory, boss tactics, story-variant bosses
+│   ├── StoryNames.lua            # The game's story names in every language (generated)
+│   ├── Stories.lua               # Every story by its widget ID: delve, grade, names
 │   ├── Labyrinth.lua             # Labyrinth runs, unlock, Journey, achievements, Wah'du
 │   ├── Utils.lua                 # UI factories, waypoint + SuperTrack helpers, tooltips
 │   ├── SpeedRank.lua             # Per-delve clear-time estimates + pace baseline
@@ -282,7 +292,9 @@ EverythingDelves/
 │   ├── Leaderboard.lua           # Leaderboard runs gathered from every profile
 │   └── LabLog.lua                # /ed lablog, a Labyrinth event log for debugging (off by default)
 ├── UI/
+│   ├── Library.lua               # The EverythingUI window library and dialogs
 │   ├── MainFrame.lua             # Window, tabs, minimap button, LibDataBroker (live text)
+│   ├── DelveList.lua             # The delve table shared by the pages
 │   ├── TabDelveLocations.lua     # Tab 1: sortable delve list + boss tactics
 │   ├── TabCurrentBountiful.lua   # Tab 2: live bountiful detection + currency dashboard
 │   ├── TabTierGuide.lua          # Tab 3: tier table, per-slot vault, journey, renown
@@ -295,6 +307,7 @@ EverythingDelves/
 │   ├── TabRoster.lua             # Tab 9: account-wide character dashboard
 │   ├── TabLeaderboard.lua        # Tab 10: your characters ranked on every delve
 │   ├── TabOptions.lua            # Settings: General, Display, Alerts & Tracking
+│   ├── TabStoryGrades.lua        # Settings: your own story grades
 │   ├── TabProfiles.lua           # Settings: per-character profile management
 │   ├── TabAbout.lua              # Settings: info, commands, links, changelog
 │   ├── CurioReminder.lua         # Curio reminder popup
@@ -303,9 +316,10 @@ EverythingDelves/
 │   ├── DelveObjectives.lua       # In-delve HUD, run timer, Bonus Spoils tracker
 │   ├── PinAchievements.lua       # Delve achievements on world-map pin tooltips
 │   ├── DelvesPickerInfo.lua      # Info panel beside the delve difficulty picker
-│   └── WhatsNew.lua              # One-time feature-release popup
-├── Media/                        # Icons and audio
-└── Libs/                         # LibStub, LibDataBroker, LibDBIcon, CallbackHandler
+│   └── WhatsNew.lua              # What's New after a feature release, with every one you missed
+├── Locales/                      # The phrase list and six translations (generated)
+├── Media/                        # Icons
+└── Libs/                         # LibStub, LibDataBroker, LibDBIcon, CallbackHandler, EverythingUI
 ```
 
 Modules register via `E:RegisterModule(callback)` at load time. All callbacks execute inside `InitMainFrame()` after the main window is built on `PLAYER_LOGIN`. Data events propagate through a callback system (`E:RegisterCallback` / `FireCallbacks`) so multiple modules can safely listen to the same WoW event.
