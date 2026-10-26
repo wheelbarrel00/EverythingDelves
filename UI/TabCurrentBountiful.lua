@@ -53,12 +53,9 @@ local function ReleaseBountifulList(list)
     end
 end
 
--- A delve POI with atlasName "delves-bountiful" is bountiful today;
--- two icon widgets in its iconWidgetSet means "overcharged".
-
 -- GetAllWidgetsBySetID() allocates a fresh table per call, and AREA_POIS_UPDATED
 -- bursts during zone transitions (twice per POI: icon + tooltip set). Cache by TTL.
-local widgetSetCache = {}        -- [setID] = { widgets, expires }
+local widgetSetCache = {}
 local WIDGET_CACHE_TTL = 5
 
 local function GetCachedWidgetsBySetID(setID)
@@ -120,9 +117,8 @@ local function PopulateBountifulDelvesLive(out)
 
                 local entry        = AcquireBountifulEntry()
                 entry.name         = poi.name or delve.name
-                -- Live POI name can differ from the canonical DelveData name
-                -- (POI "Twilight Crypts" vs canonical "Twilight Crypt"); lookups
-                -- elsewhere use the canonical name, so keep both.
+                -- The POI name can differ from DelveData's ("Twilight Crypts" against "Twilight Crypt"),
+                -- and lookups elsewhere use DelveData's
                 entry.canonicalName = delve.name
                 entry.zone         = delve.zone
                 entry.x            = delve.x
@@ -227,8 +223,7 @@ local function RefreshBountifulData(force)
 
     PopulateBountifulDelvesLive(bountifulList)
 
-    -- Daily reset boundary (run.timestamp is time()-based; 0 if API unavailable).
-    -- Shared by the completion sweep and the dropped-off re-add below.
+    -- In the clock run.timestamp uses, time(). 0 when the reset time cannot be read
     local dailyResetEpoch = 0
     if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
         local secs = C_DateAndTime.GetSecondsUntilDailyReset()
@@ -241,8 +236,7 @@ local function RefreshBountifulData(force)
     if E.db and E.db.delveHistory and dailyResetEpoch > 0 then
         for _, delve in ipairs(bountifulList) do
             if not delve.completed then
-                -- Runs log under the canonical name; the POI name can differ
-                -- (e.g. "Twilight Crypts" vs "Twilight Crypt").
+                -- Runs log under DelveData's name, which the POI name can differ from
                 local hist = E.db.delveHistory[delve.name]
                     or (delve.canonicalName
                         and E.db.delveHistory[delve.canonicalName])
@@ -281,7 +275,7 @@ local function RefreshBountifulData(force)
 
     -- Completing a bountiful delve removes its "delves-bountiful" atlas, so it
     -- drops out of the live list and the progress bar would shrink its
-    -- denominator (0/4 -> 0/3) instead of counting it. Reconstruct the full
+    -- denominator (0/4 to 0/3) instead of counting it. Reconstruct the full
     -- daily set from delveHistory. Added to bountifulList ONLY (not
     -- E.currentBountifulNames) and AFTER the names build above, so a completed
     -- delve is not treated as still-bountiful by the wasBountiful stamp or
@@ -753,7 +747,7 @@ E:RegisterModule(function()
         if self:IsVisible() then RefreshLFGButton() end
     end)
 
-    -- OnUpdate fires every frame; throttle the reset-timer refresh to 1/s.
+    -- OnUpdate fires every frame, so the reset timer is redrawn once a second
     local elapsed = 0
     frame:SetScript("OnUpdate", function(self, dt)
         elapsed = elapsed + dt
@@ -785,16 +779,14 @@ E:RegisterModule(function()
     RefreshBountifulData(true)
 end)
 
--- Public hook for other modules (BeginDelveRun) to force the bountiful
--- lookup current at delve entry even if this tab was never opened.
+-- Called from outside the page (delve entry, login, the heartbeat), so the lookup is current even if the tab was never opened
 function E:RefreshBountifulData(force)
     RefreshBountifulData(force)
     -- Public callers get no view refresh otherwise, and rows left Shown still
     -- point at entry tables the rebuild recycled. Only when it is on screen: the
     -- delve heartbeat calls this once a second with the tab closed.
     if pageFrame and pageFrame:IsVisible() and RenderView then RenderView() end
-    -- Fire a PLAYER_LOGIN-flagged repair once the live names exist;
-    -- AutoRepair clears the flag and no-ops on later calls.
+    -- The repair flagged at PLAYER_LOGIN runs once the live names exist. It clears its own flag.
     if E._autoRepairPending and E.AutoRepairBountifulHistory then
         E:AutoRepairBountifulHistory()
     end

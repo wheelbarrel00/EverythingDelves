@@ -3,8 +3,8 @@ local L = E.L
 
 local math_floor, math_huge, math_min = math.floor, math.huge, math.min
 
--- Relative clear-time shape by reward tier; absolute scale comes from the
--- player's own pace (GetPersonalPaceBaseline). Normalised so B = 1.0.
+-- Relative clear-time shape by reward tier. The absolute scale comes from the
+-- player's own pace (GetPersonalPaceBaseline). Normalized so B = 1.0.
 local TIER_TIME_FACTOR = {
     S = 0.60,
     A = 0.80,
@@ -58,8 +58,8 @@ function E:GetDelveTierLetter(delveName, tierOverride)
     return sig
 end
 
--- Player's pace as a B-tier-equivalent clear time: average each run's
--- clear time normalised by its tier factor. nil if no usable history.
+-- Player's pace as a B-tier-equivalent clear time: each run's clear time
+-- normalized by its delve's tier factor, averaged over runs.
 function E:GetPersonalPaceBaseline()
     if not (self.db and self.db.delveHistory) then return nil end
     local sum, n = 0, 0
@@ -83,7 +83,7 @@ end
 -- Gear-scaled pre-history baseline: an undergeared character clears slower, so
 -- the estimate stretches below the reference tier's recGear. Never returns
 -- less than FALLBACK_BASELINE (low gear is never faster). GetSpeedGrade uses
--- the same value so the speed-colour ratio stays equal to the tier factor.
+-- the same value so the speed-color ratio stays equal to the tier factor.
 function E:GetFallbackBaseline()
     local equipped = GetAverageItemLevel and select(2, GetAverageItemLevel())
     local ilvl = math_floor(equipped or 0)
@@ -94,8 +94,6 @@ function E:GetFallbackBaseline()
     return math_floor(FALLBACK_BASELINE * mult)
 end
 
--- Returns seconds, source ("personal" logged average | "estimate"),
--- tierLetter. nil if no tier is known.
 function E:GetDelveSpeed(delveName, tierOverride)
     if not delveName then return nil end
 
@@ -133,7 +131,6 @@ end
 
 -- Value-per-minute: rewardWeight(tier) / minutes, x1.5 if bountiful today.
 -- weightTier, the player's own grade, weighs the reward while the time keeps the measured one.
--- Returns score, seconds, tierLetter, source. nil if unrankable.
 function E:GetDelveValue(delveName, tierOverride, weightTier)
     local seconds, source, measured = self:GetDelveSpeed(delveName, tierOverride)
     local tier = weightTier or measured

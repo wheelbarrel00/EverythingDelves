@@ -136,17 +136,6 @@ E:RegisterModule(function()
     legendFS:SetFont(legendFS:GetFont(), 9)
     legendFS:SetText(E.CC.muted .. L["Highlighted = your gear tier"] .. E.CC.close)
 
-    local function PlayerRecTier()
-        local overall, equipped
-        if GetAverageItemLevel then overall, equipped = GetAverageItemLevel() end
-        local ilvl = math_floor(equipped or overall or 0)
-        local rec = 1
-        for _, t in ipairs(E.TierData) do
-            if ilvl >= t.recGear then rec = t.tier end
-        end
-        return rec
-    end
-
     local function ResolveEntranceDelve()
         local header = C_DelvesUI and C_DelvesUI.GetDelveEntranceHeaderString
             and C_DelvesUI.GetDelveEntranceHeaderString()
@@ -331,7 +320,7 @@ E:RegisterModule(function()
             end
         end
 
-        local recTier = PlayerRecTier()
+        local recTier = E.RecommendedTier(E.PlayerItemLevel())
         lootHeader:SetText(E.CC.gold .. L["Rewards by Tier"] .. E.CC.close
             .. E.CC.muted .. "   " .. L["you: ~T%d"]:format(recTier) .. E.CC.close)
         for i, row in ipairs(rows) do
@@ -375,13 +364,13 @@ E:RegisterModule(function()
 
     -- An open picker is the only moment GetDelveEntranceTiers returns anything,
     -- so the tier read has to sit outside Show(), which bails on a cosmetic
-    -- option and on any entrance whose name we do not recognise.
+    -- option and on any entrance whose name we do not recognize.
     local function OnPickerShown()
         if E.RefreshTierDataFromGame then E:RefreshTierDataFromGame() end
         Show()
     end
 
-    -- Additive only: HookScript the secure picker; never modify or move it.
+    -- Additive only: HookScript the secure picker, never modify or move it.
     local hooked = false
     local function TryHookPicker()
         if hooked then return end

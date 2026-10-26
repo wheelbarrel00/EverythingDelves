@@ -1,6 +1,5 @@
 package-as: EverythingDelves
 
-# Replace with your actual CurseForge project ID after creating the project
 curse-id: 1519355
 
 enable-nolib-creation: no
@@ -21,7 +20,4 @@ ignore:
   - .vscode
   - screenshots
   - docs
-  - LICENSE
-  - claude.md
-  - .claude
   - .release_changelog.md

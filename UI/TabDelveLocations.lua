@@ -50,13 +50,14 @@ local DELVE_NOTES = {
     ["Shadowguard Point"]   = { tier="C", story="Calamitous",        note=L["Enormous mountable map with required secondary objectives. Avoid if faster options are bountiful today."] },
 }
 
--- Published for other tabs as a story fallback when a run captured no live story.
+-- The History page's story for a run that captured no live one
 E.DelveStories = E.DelveStories or {}
 for delveName, info in pairs(DELVE_NOTES) do
     E.DelveStories[delveName] = info.story
 end
 
--- Published for Core/SpeedRank.lua as a tier fallback for an unrecognized variant.
+-- Read by Core/SpeedRank.lua as the grade when today's story is unknown, and as the steady grade
+-- its pace baseline divides by
 E.DelveSignatureTier = E.DelveSignatureTier or {}
 for delveName, info in pairs(DELVE_NOTES) do
     E.DelveSignatureTier[delveName] = info.tier

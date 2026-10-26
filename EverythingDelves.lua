@@ -1,4 +1,3 @@
-﻿-- EverythingDelves.lua - addon bootstrap: namespace, SavedVariables, events, slash commands.
 local _, ns = ...
 
 EverythingDelves = {}
@@ -13,7 +12,6 @@ E.name = "EverythingDelves"
 
 E.version = C_AddOns.GetAddOnMetadata("EverythingDelves", "Version") or "1.0.0"
 
--- WoW can't open a browser, so external links are shown in a copyable popup.
 E.DISCORD_URL = "https://discord.gg/vm8K2WfQUE"
 
 function E:ShowDiscord()
@@ -33,7 +31,7 @@ function E:ShowURL(url)
     })
 end
 
--- Tab files queue init callbacks here; all run inside InitMainFrame().
+-- Tab files queue init callbacks here. All run inside InitMainFrame().
 E.modules = {}
 
 function E:RegisterModule(callback)
@@ -97,7 +95,6 @@ local DATA_DEFAULTS = {
     whatsNewAnnounced      = "",
 }
 
--- Profile-scoped keys: the E.db proxy redirects these to the active profile.
 local PROFILE_KEYS = {
     delveHistory   = true,
 }
@@ -164,8 +161,6 @@ function E:InitDB()
     end
     local sv = EverythingDelvesDB
 
-    -- Merge defaults without overwriting existing values (settings survive updates).
-    -- Also fills a key added to an existing sub-table, one level deep.
     local function seed(tbl)
         for k, v in pairs(tbl) do
             if sv[k] == nil then
@@ -253,9 +248,8 @@ function E:InitDB()
 
     local charKey = CharKey()
 
-    -- One-time migration (pre-1.5.0 → profiles): old account-wide gameplay
-    -- tables are moved into an "Original" profile claimed by the first
-    -- character to log in, so a main keeps its history; alts get a fresh one.
+    -- One-time migration from before 1.5.0: the old account-wide tables move into an "Original" profile
+    -- claimed by the first character to log in, so a main keeps its history and alts get a fresh one.
     if not sv._profileMigrated then
         local hadData =
             (type(sv.delveHistory)   == "table" and next(sv.delveHistory))
@@ -397,8 +391,7 @@ function E:CopyProfile(sourceName, newName)
     return E:SwitchProfile(newName)
 end
 
--- The active profile can't be deleted; characters that pointed at a deleted
--- profile fall back to a fresh per-character one on next login.
+-- Characters that pointed at a deleted profile fall back to a fresh per-character one on their next login.
 function E:DeleteProfile(name)
     local sv = EverythingDelvesDB
     if not sv or not sv.profiles[name] then return false, L["Profile missing."] end
@@ -642,8 +635,6 @@ SlashCmdList["EVERYTHINGDELVES"] = function(msg)
     end
 end
 
--- PLAYER_LOGIN fires once after addons load and the player object exists -
--- the first safe point to touch SavedVariables and build the UI.
 E:RegisterEvent("PLAYER_LOGIN", function(self)
     self:InitDB()
 
@@ -668,8 +659,8 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         self:ApplyAccentColor(self.db.accentColor)
     end
 
-    -- Pre-warm the AreaPOI cache so teleporting straight into a delve from an
-    -- unrelated zone doesn't get GetAreaPOIInfo nil → wasBountiful stamped false.
+    -- Pre-warm the AreaPOI cache, or teleporting straight into a delve from an unrelated zone reads
+    -- GetAreaPOIInfo as nil and stamps wasBountiful false.
     if C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIForMap and self.DelveData then
         local seenMaps = {}
         for _, delve in ipairs(self.DelveData) do
@@ -699,7 +690,6 @@ E:RegisterEvent("PLAYER_LOGIN", function(self)
         .. string.format(L["v%s loaded. Type |cFFFFD700/ed|r to open."], self.version))
 end)
 
--- Fires on login, reload, and every zone change; seeds session counters.
 E:RegisterEvent("PLAYER_ENTERING_WORLD", function(self, _, isLogin, isReload)
     if isLogin or isReload then
         self.sessionData = {
@@ -709,7 +699,6 @@ E:RegisterEvent("PLAYER_ENTERING_WORLD", function(self, _, isLogin, isReload)
     end
 end)
 
--- Callback list so multiple modules can register for the same logical event.
 E.eventCallbacks = {}
 
 function E:RegisterCallback(eventName, fn)
@@ -732,8 +721,8 @@ function E.FireCallback(_, eventName)
     FireCallbacks(eventName)
 end
 
--- QUEST_LOG_UPDATE / CURRENCY_DISPLAY_UPDATE can fire dozens of times per
--- second; coalesce on a trailing-edge timer to avoid a full refresh per fire.
+-- QUEST_LOG_UPDATE and CURRENCY_DISPLAY_UPDATE can fire dozens of times a second, so they coalesce on a
+-- trailing-edge timer.
 local function Debounce(delay, eventName)
     local pending = false
     local function tick()
@@ -762,18 +751,18 @@ pcall(function()
     E:RegisterEvent("ACHIEVEMENT_EARNED", fireAchievement)
 end)
 E:RegisterEvent("QUEST_LOG_UPDATE",        fireQuestLog)
-E:RegisterEvent("AREA_POIS_UPDATED",       fireAreaPois)
+local storyCache, STORY_CACHE_TTL = {}, 2
+E:RegisterEvent("AREA_POIS_UPDATED", function()
+    wipe(storyCache)
+    fireAreaPois()
+end)
 E:RegisterEvent("BAG_UPDATE_DELAYED",      fireBagUpdate)
 
 E:RegisterEvent("UNIT_INVENTORY_CHANGED", function(_, _, unit)
     if unit == "player" then fireInventory() end
 end)
 
--- DELVE HISTORY TRACKER. Uses its own frame so it doesn't conflict with the
--- single-handler-per-event dispatcher above.
-
--- Restored Coffer Key currency. Must match E.CurrencyIDs.bountifulKeys (3028)
--- in Core/Constants.lua; repeated as a literal because this file loads first.
+-- Must match E.CurrencyIDs.bountifulKeys. A literal because Core/Constants.lua loads after this file.
 local COFFER_KEY_CURRENCY = 3028
 E.HISTORY_CAP_MIN = 20
 E.HISTORY_CAP_MAX = 100
@@ -786,7 +775,7 @@ local MAX_RESUME_AGE      = 6 * 3600
 E.delveRunState = {
     inDelve        = false,
     delveName      = nil,
-    delveKind      = nil,   -- "regular" | "nemesis"
+    delveKind      = nil,   -- "regular" | "nemesis" | "labyrinth"
     startTime      = 0,
     deaths         = 0,
     keyUsed        = false,
@@ -821,7 +810,6 @@ local function GetCurrencyQty(id)
     return 0
 end
 
--- Verbose tier-tracker logging, toggled by "/ed debug"; no-op when off.
 local function DebugTier(fmt, ...)
     if not (E.db and E.db.debugTier) then return end
     -- pcall so a malformed debug line can't throw inside an event handler.
@@ -969,8 +957,7 @@ local function ResolveDelveName()
     return instName
 end
 
--- Returns (canonicalName, kind) on match, or nil. Tries exact, then
--- case-insensitive, then substring so "The Grudge Pit" ↔ "Grudge Pit" works.
+-- Substring last, so "The Grudge Pit" matches "Grudge Pit".
 local function MatchDelveName(scenarioName)
     if not scenarioName or scenarioName == "" then return nil end
     local nameMap = E.LoggableDelveNames
@@ -993,8 +980,7 @@ local function MatchDelveName(scenarioName)
     return nil
 end
 
--- No-op if already captured. Retried on every SCENARIO_UPDATE because the
--- ObjectiveTracker UI may not populate on the first fire.
+-- Retried on every SCENARIO_UPDATE because the ObjectiveTracker may not populate on the first fire.
 local function TryCaptureTier(source)
     if runState.tier and runState.tier > 0 then
         DebugTier("capture[%s]: skip, already latched=%d",
@@ -1006,7 +992,6 @@ local function TryCaptureTier(source)
         tostring(source), tostring(t), runState.startTime or 0, GetTime())
     if t and t > 0 then
         runState.tier = t
-        -- Persist so a /reload mid-delve doesn't lose the value.
         if E.db and E.db.activeRun then
             E.db.activeRun.tier = t
         end
@@ -1049,8 +1034,7 @@ local function SettleTier()
     end)
 end
 
--- Flips runState.wasBountiful to true (never back) if the current delve is on
--- the live bountiful list, letting a cold-cache entry recover on a later retry.
+-- Only ever sets wasBountiful, and is retried, so an entry made with a cold POI cache recovers later.
 local function RefreshBountifulSnapshot()
     if runState.wasBountiful then return end
     if not runState.inDelve or not runState.delveName then return end
@@ -1110,15 +1094,20 @@ local function CleanStoryName(s)
 end
 
 function E:GetDelveStoryVariant(delveName)
-    if not (delveName and self.DelveData) then return nil end
-    local entry
-    for _, d in ipairs(self.DelveData) do
-        if d.name == delveName then entry = d; break end
-    end
+    local entry = delveName and self.DelveDataByName and self.DelveDataByName[delveName]
     if not entry then return nil end
+    local now = GetTime()
+    local hit = storyCache[delveName]
+    if hit and hit.expires > now then return hit.story, hit.widget end
     local raw, widget = ReadPOIStoryText(entry.mapID, entry.poiID)
     if not raw then raw, widget = ReadPOIStoryText(entry.mapID, entry.normalPoiID) end
-    return CleanStoryName(raw), widget
+    local story = CleanStoryName(raw)
+    if story then
+        hit = hit or {}
+        hit.story, hit.widget, hit.expires = story, widget, now + STORY_CACHE_TTL
+        storyCache[delveName] = hit
+    end
+    return story, widget
 end
 
 -- The Gilded Stash widget's tooltip ends "Gilded Stash looted: x/4". It is an entrance widget, shown with the
@@ -1190,12 +1179,7 @@ function E:CaptureRosterSnapshot()
     local _, equipped = GetAverageItemLevel()
     if equipped and equipped > 0 then rec.ilvl = math.floor(equipped + 0.5) end
 
-    local function CurrencyQty(id)
-        local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
-            and C_CurrencyInfo.GetCurrencyInfo(id)
-        return (info and info.quantity) or 0
-    end
-    rec.keys = CurrencyQty(self.CurrencyIDs.bountifulKeys)
+    rec.keys = GetCurrencyQty(self.CurrencyIDs.bountifulKeys)
 
     local shardInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
         and C_CurrencyInfo.GetCurrencyInfo(self.CurrencyIDs.cofferKeyShards)
@@ -1215,10 +1199,10 @@ function E:CaptureRosterSnapshot()
         and C_QuestLog.IsQuestFlaggedCompleted(E.TROVE_LOOTED_QUEST_ID)) or false
 
     local prog, total, slots = 0, 0, 0
-    local ok, acts = pcall(function()
-        return C_WeeklyRewards and C_WeeklyRewards.GetActivities
-            and C_WeeklyRewards.GetActivities() or nil
-    end)
+    local ok, acts = false, nil
+    if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
+        ok, acts = pcall(C_WeeklyRewards.GetActivities)
+    end
     if ok and acts and Enum and Enum.WeeklyRewardChestThresholdType then
         for _, a in ipairs(acts) do
             if a.type == Enum.WeeklyRewardChestThresholdType.World then
@@ -1246,7 +1230,6 @@ function E:CaptureRosterSnapshot()
     sv.roster[key] = rec
 end
 
--- widgetID guard keeps this cheap despite UPDATE_UI_WIDGET's high fire rate.
 E:RegisterEvent("UPDATE_UI_WIDGET", function(self, _, widgetInfo)
     if widgetInfo and widgetInfo.widgetID == E.GILDED_WIDGET_ID then
         self:CaptureGildedStash()
@@ -1262,7 +1245,7 @@ local function BeginDelveRun(name, kind)
     runState.deaths        = 0
     runState.keyUsed       = false
     visitKeysSpent         = 0
-    keyWatch               = nil  -- a new run supersedes any pending key watch
+    keyWatch               = nil
     runState.tier          = 0
     runState.lab           = (kind == "labyrinth") and E.LabRun.New() or nil
     runState.wasBountiful  = runState.lab ~= nil
@@ -1271,8 +1254,8 @@ local function BeginDelveRun(name, kind)
     runState.lastResult    = nil
     runState.trovehunterPopupShown = false
     runState.roleNudgeShown = false
-    -- Persist run start so duration survives /reload (GetTime() is continuous
-    -- across /reload; startedAt is wall-clock for the staleness check).
+    -- GetTime() is continuous across a /reload, so the saved start survives one. startedAt is wall-clock
+    -- for the staleness check.
     if E.db then
         E.db.activeRun = {
             name          = name,
@@ -1310,8 +1293,6 @@ local function BeginDelveRun(name, kind)
             E._popupHeartbeat = nil
             return
         end
-        -- Cheap re-attempt of tier + bountiful in case the SCENARIO_UPDATE
-        -- driven retry never fires.
         TryCaptureTier("heartbeat")
         RefreshBountifulSnapshot()
         if E.MaybeShowTrovehunterReminder then
@@ -1442,7 +1423,6 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         run.keys, run.left, run.prior = lab.keys, lab.left, lab.prior
     end
     table.insert(recent, 1, run)
-    -- Clamp to [MIN, MAX] so a bad saved value can't shrink below the floor.
     local cap = MAX_RECENT_RUNS
     local hc  = E.db and E.db.historyCap
     if type(hc) == "number" then
@@ -1484,8 +1464,6 @@ function E:SetRunNote(delveName, timestamp, text)
     return false
 end
 
--- Removes a logged run and subtracts it from lifetime totals. Drops the delve
--- entry when nothing remains.
 function E:DeleteRun(delveName, timestamp)
     if not (delveName and timestamp and self.db and self.db.delveHistory) then
         return false
@@ -1507,8 +1485,8 @@ function E:DeleteRun(delveName, timestamp)
     local life = entry.lifetime
     if life then
         if life.timedRuns == nil then life.timedRuns = life.totalRuns or 0 end
-        -- totalRuns counts runs trimmed past the cap too, so keep it >= the
-        -- rows on display; the History tab hides a delve once totalRuns hits 0.
+        -- totalRuns also counts runs trimmed past the cap, so it never drops below the rows shown. The
+        -- History page hides a delve once it reaches 0.
         life.totalRuns     = math.max(#recent, (life.totalRuns or 1) - 1)
         life.totalDeaths   = math.max(0,
             (life.totalDeaths or 0) - (run.deaths or 0))
@@ -1583,8 +1561,6 @@ function E:GetRecordedBoss(delveName, variant)
     local map = self.db and self.db.delveBossMap
     local byVariant = map and map[delveName]
     local learned = byVariant and byVariant[variant] or nil
-    -- Correct a value learned under its live encounter name (e.g. "Spinshroom"
-    -- -> "Gyrospore") to the boss the player actually fights.
     return learned and self:NormalizeLiveBoss(delveName, learned) or nil
 end
 
@@ -1680,13 +1656,12 @@ end
 -- One-time auto-repair of stale wasBountiful flags (cold POI cache at entry).
 -- Only TODAY's runs are repaired: bountiful rotates on the DAILY reset, so a
 -- run from before today can't be validated against today's live list (doing so
--- would inflate the Gilded Stash counter). Triggered once per session via
--- _autoRepairPending, cleared by the next successful RefreshBountifulData.
+-- would inflate the Gilded Stash counter).
 function E:AutoRepairBountifulHistory()
     if not self._autoRepairPending then return end
     if not self.db or not self.db.delveHistory then return end
     if not self.currentBountifulNames then return end
-    -- Empty lookup means POI data hasn't loaded; wait rather than burn the pass.
+    -- Empty lookup means POI data hasn't loaded, so wait rather than burn the pass.
     if not next(self.currentBountifulNames) then return end
 
     -- Daily boundary, computed in the same time() base run.timestamp uses.
@@ -1742,7 +1717,7 @@ delveFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 -- Gate the activeRun restore so a stale saved run never resumes onto a new
 -- entry. A server disconnect fires PEW with isInitialLogin (not isReloadingUi),
 -- so resuming on enteredViaLogin too lets a run survive a mid-delve reconnect
--- instead of restarting the clock. Plain zone-in sets neither flag → fresh run.
+-- instead of restarting the clock. A plain zone-in sets neither flag, so it starts a fresh run.
 local enteredViaReload = false
 local enteredViaLogin  = false
 
@@ -1751,8 +1726,8 @@ local enteredViaLogin  = false
 --   entryArmed   - a genuine loading-screen entry (PEW that is NOT /reload or
 --                  relog) armed the next detection to stamp a FRESH start.
 --   runCompleted - a run was just logged for the instance we're still standing
---                  in; suppresses begin/resume through the post-completion loot
---                  window. Cleared when the player leaves or on the next entry.
+--                  in. It suppresses begin and resume through the post-completion
+--                  loot window, and clears when the player leaves or on the next entry.
 -- Both reset on /reload and relog, which resume from E.db.activeRun or, when its start reads in the future after a
 -- reboot, start a fresh clock.
 local entryArmed   = false
@@ -1844,10 +1819,9 @@ local function LabScenarioTick()
 end
 
 local function TryBeginFromCurrentZone(source)
-    local _, _, instanceType = IsInInstance(), nil, select(2, IsInInstance())
-    local _, zoneInstName, diffID = GetInstanceInfo()
+    local _, instanceType = IsInInstance()
+    local _, _, diffID = GetInstanceInfo()
 
-    -- Delve difficulty (208) or any scenario instance.
     local inScenario = (instanceType == "scenario")
     local isDelve    = (diffID == 208) or inScenario
     local inLabyrinth = select(8, GetInstanceInfo()) == E.Labyrinth.instanceID
@@ -1871,7 +1845,7 @@ local function TryBeginFromCurrentZone(source)
         -- entry can be a seamless transition that fires no fresh PEW, so a flag left
         -- latched from the session's first PEW would otherwise bleed onto that entry
         -- and dead-lock it: resume finds no saved run and a fresh begin is gated off
-        -- on login/reload, so the run never starts. Clearing here is safe -- a real
+        -- on login/reload, so the run never starts. Clearing here is safe because a
         -- logged-out-in-delve resume happens in-delve, where this branch never runs.
         enteredViaReload = false
         enteredViaLogin  = false
@@ -1889,8 +1863,7 @@ local function TryBeginFromCurrentZone(source)
         return
     end
 
-    local resolvedName = ResolveDelveName()
-    local candidate    = resolvedName or zoneInstName
+    local candidate = ResolveDelveName()
     local matchedName, kind = MatchDelveName(candidate or "")
 
     -- The clock is (re)stamped only on a genuine signal: a fresh entry
@@ -1906,7 +1879,7 @@ local function TryBeginFromCurrentZone(source)
 
     if matchedName then
         -- The "not inDelve" recovery leg covers a transient isDelve flicker
-        -- that cleared inDelve after entryArmed was consumed; without it the
+        -- that cleared inDelve after entryArmed was consumed. Without it the
         -- run could be dropped. Every path here either begins fresh or resumes.
         if (genuineStart or not runState.inDelve) and not continuing then
             entryArmed = false
@@ -1944,13 +1917,13 @@ local function TryBeginFromCurrentZone(source)
                 saved.lab              = runState.lab
                 if runState.lab then C_Timer.After(2, ReconcileLabyrinth) end
                 TryCaptureTier("restored")
-                -- TryCaptureTier short-circuits if tier was already captured;
-                -- run the reminder check explicitly so a never-shown popup fires.
+                -- TryCaptureTier skips a tier it already has, so a popup never shown is
+                -- checked for here.
                 if E.MaybeShowTrovehunterReminder then
                     E:MaybeShowTrovehunterReminder()
                 end
-                -- A resumed run has no heartbeat and a possibly-stale saved.tier;
-                -- settle it against the live tracker.
+                -- A resumed run has no heartbeat and its saved tier may be stale, so it is
+                -- settled against the live tracker.
                 SettleTier()
             elseif not (enteredViaReload or enteredViaLogin) then
                 -- A /reload or relog never begins a run here: it resumes above or, after a reboot, below. With
@@ -1960,11 +1933,10 @@ local function TryBeginFromCurrentZone(source)
             elseif saved and saved.name == matchedName
                     and saved.startedAt
                     and (time() - saved.startedAt) < MAX_RESUME_AGE then
-                -- Couldn't resume above (typically a machine reboot reset GetTime(),
-                -- so saved.startTime now reads in the future), but a saved activeRun
-                -- proves a genuine, wall-clock-recent run was in progress -- begin a
-                -- fresh clock so the HUD/timer/objectives aren't left dead instead of
-                -- dead-locking. A COMPLETED run clears activeRun, so requiring `saved`
+                -- Couldn't resume above (typically a machine reboot reset GetTime(), so
+                -- saved.startTime now reads in the future), but a saved activeRun proves a
+                -- genuine, recent run was in progress. A fresh clock keeps the HUD, timer and
+                -- objectives alive. A COMPLETED run clears activeRun, so requiring `saved`
                 -- here means this can never start a phantom in the post-boss window.
                 if E.db then E.db.activeRun = nil end
                 BeginDelveRun(matchedName, kind)
@@ -2075,7 +2047,6 @@ local function CheckKeySpend(currencyType, quantityChange, destroyReason)
         end
     end
 
-    -- A key was spent. Attribute to the live run, else the just-completed one.
     if runState.inDelve then
         if runState.lab then runState.lab.keys = runState.lab.keys - quantityChange end
         if not runState.keyUsed then
@@ -2233,8 +2204,8 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
 
         -- A completion with no tracked run and no recoverable start is a PHANTOM
         -- (stray/duplicate SCENARIO_COMPLETED, or a begin that was latch-
-        -- suppressed). Logging it appends a bogus 0-duration row. Don't log;
-        -- clean up and re-latch the post-loot window.
+        -- suppressed). Logging it would append a bogus 0-duration row, so it only
+        -- cleans up and re-latches the post-loot window.
         if not (matchedName and runState.inDelve
                 and runState.startTime and runState.startTime > 0) then
             DebugTier("completion ignored (no tracked run): matched=%s inDelve=%s start=%.0f",
@@ -2247,15 +2218,14 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
 
         local duration = math.max(0, math.floor(GetTime() - runState.startTime))
         -- No real run is longer than MAX_RESUME_AGE, so an absurd duration means
-        -- a stale start slipped the resume guard; log it as unknown (0).
+        -- a stale start slipped the resume guard. It is logged as unknown (0).
         if duration > MAX_RESUME_AGE then
             duration = 0
         end
 
-        -- Re-read the tier and prefer it. The value captured at ENTRY reads the
-        -- PREVIOUS run's tier (the tracker still shows the delve we left); by
-        -- completion the tracker reliably shows THIS run. Fall back to
-        -- runState.tier only if the re-read is empty (tracker torn down).
+        -- The value captured at ENTRY can read the PREVIOUS run's tier (the tracker
+        -- still shows the delve we left). By completion the tracker shows THIS run,
+        -- so the re-read wins unless it is empty (tracker torn down).
         local latched   = runState.tier or 0
         local confirmed = AutoDetectDelveTier()
         local tier      = (confirmed and confirmed > 0) and confirmed or latched
@@ -2269,13 +2239,10 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
         local keyUsed = runState.keyUsed or false
 
         if matchedName then
-            -- Re-read the story as a fallback if entry capture missed (cold cache).
             local story = runState.story
             if not story or story == "" then
                 story = E:GetDelveStoryVariant(matchedName)
             end
-            -- Correct the live boss name to the unit actually fought (e.g.
-            -- "Spinshroom" reports but "Gyrospore" is shown). Scoped in Data.lua.
             if runState.boss then
                 runState.boss = E:NormalizeLiveBoss(matchedName, runState.boss)
             end
@@ -2307,9 +2274,8 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             end
         end
 
-        -- Arm a key watch on every logged run whose key isn't already flagged;
-        -- CheckKeySpend flags it when the key drops during looting, else the
-        -- watch is cleared on delve exit.
+        -- CheckKeySpend flags the logged run when its key drops during looting.
+        -- Leaving the delve clears the watch.
         keyWatch = nil
         if matchedName and not keyUsed then
             local hist = E.db and E.db.delveHistory

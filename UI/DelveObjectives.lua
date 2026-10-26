@@ -4,24 +4,21 @@ local L = E.L
 local WIN_W      = 290
 local PAD        = 10
 local MAX_LINES  = 40
-local MAX_CRIT   = 25   -- criteria iteration cap per step (safety)
+local MAX_CRIT   = 25
 local MAX_BONUS  = 15
 
--- Already captured by the core file; skipped in the generic widget pass.
 local GILDED_WIDGET_ID = E.GILDED_WIDGET_ID
-
--- Nemesis Strongbox affix (Tier 4+): no in-delve progress widget (the Nemesis
--- spell-display widgets live ONLY on the entrance picker), so in-delve progress
--- is read by counting the seasonal pack vignettes (NEMESIS_PACK_VIGNETTES).
 
 -- Midnight lockdown (both confirmed live 2026-06-10): COMBAT_LOG_EVENT_UNFILTERED
 -- registration is forbidden, and UnitName() on delve enemies returns a SECRET
 -- string that errors on any string method. Neither can be used here.
 
--- Nemesis pack vignettes: one per REMAINING pack, gone when the pack dies. Each
--- season adds a NEW ID and the older delves still spawn theirs, so append, never
--- replace. The nemesis delve's own minions match too. Only its objective line is
--- suppressed there, by delveKind, not by ID.
+-- The Nemesis Strongbox (Tier 4+) has no progress widget inside a delve, only on
+-- the entrance picker, so its progress is counted from these pack vignettes: one
+-- per REMAINING pack, gone when the pack dies. Each season adds a NEW ID and the
+-- older delves still spawn theirs, so append, never replace. The nemesis delve's
+-- own minions match too. Only its objective line is suppressed there, by
+-- delveKind, not by ID.
 local NEMESIS_PACK_VIGNETTES = {
     7531,  -- S1 "Nullaeus' Minions"
     7869,  -- S2 "Ula'tek's Chosen" (confirmed live 2026-08-21)
@@ -33,8 +30,8 @@ local function IsNemesisPack(vignetteID)
     end
     return false
 end
--- Entrance-only header widgets (gone once inside a delve); kept solely for
--- the /ed objdump probe section.
+-- Entrance-only header widgets, gone once inside a delve. Kept only for the
+-- /ed objdump probe section.
 local DELVE_TRACKER_WIDGETS = { 7526, 7592, 7624, 7761, 7764, 7861 }
 
 -- Delve broadcast carriers, logged for the /ed objdump probe section only.
@@ -74,9 +71,12 @@ local function CurioLine(label, curio)
         .. iconStr .. E.CC.body .. curio.name .. E.CC.close
 end
 
--- Lives aren't in any widget/criterion (the header carries only the tier); they
--- render as a standalone digit right after the tier in the scenario tracker.
--- Anchor on the known tier and take the next digit; stop before Challenges/Wave.
+local function PackRegions(f) return { f:GetRegions() } end
+local function PackChildren(f) return { f:GetChildren() } end
+
+-- Lives are in no widget or criterion, as the header carries only the tier. They
+-- render as a standalone digit right after the tier in the scenario tracker, so
+-- take the digit after the known tier and stop before Challenges or Wave.
 local function ReadDelveLives(knownTier)
     local tracker = _G.ScenarioObjectiveTracker or _G.ObjectiveTrackerFrame
     if not tracker then return nil end
@@ -84,7 +84,7 @@ local function ReadDelveLives(knownTier)
     local function walk(f, depth)
         if stop or not f or depth > 8 then return end
         if f.IsForbidden and f:IsForbidden() then return end
-        local okR, regs = pcall(function() return { f:GetRegions() } end)
+        local okR, regs = pcall(PackRegions, f)
         if okR then
             for _, r in ipairs(regs) do
                 if r.GetObjectType and r:GetObjectType() == "FontString"
@@ -103,7 +103,7 @@ local function ReadDelveLives(knownTier)
                 end
             end
         end
-        local okC, kids = pcall(function() return { f:GetChildren() } end)
+        local okC, kids = pcall(PackChildren, f)
         if okC then
             for _, c in ipairs(kids) do
                 walk(c, depth + 1)
@@ -121,11 +121,11 @@ local function ReadDelveLives(knownTier)
     return nil
 end
 
--- Difficulty 208 = Delves. Live, authoritative test that flips the moment the
--- player zones out; deliberately ignores runState.inDelve (can be left stale on
--- some exit paths). Spans the whole run plus the post-completion looting window.
--- The open world keeps reporting the delve difficulty after the Labyrinth's seamless exit, until the next loading
--- screen, so the instance has to be one as well
+-- Difficulty 208 is a delve. A live test that flips the moment the player zones
+-- out, deliberately not runState.inDelve, which some exit paths leave stale. It
+-- spans the whole run and the looting after it. The open world keeps reporting
+-- the delve difficulty after the Labyrinth's seamless exit until the next loading
+-- screen, so the instance has to be one as well.
 local function PlayerInDelve()
     return select(3, GetInstanceInfo()) == 208 and select(2, IsInInstance()) ~= "none"
 end
@@ -232,7 +232,7 @@ E:RegisterModule(function()
             timerFS:Show()
         elseif timerOn and E.db.showRunResult and rs and rs.lastResult
                 and PlayerInDelve() then
-            -- Rebuild only on a new result; avoids per-second string churn.
+            -- Rebuilt only on a new result, to avoid per-second string churn.
             local lr = rs.lastResult
             if timerFS.frozenFor ~= lr then
                 local cc = lr.beat and E.CC.green or E.CC.red
@@ -255,31 +255,33 @@ E:RegisterModule(function()
     end)
 
     local vigHoldUntil = 0   -- vignette reads distrusted for 10s after a loading screen
-    local vigScanTrusted = false  -- a vignette scan has completed outside that window
+    local vigScanTrusted = false  -- set once a scan runs after that window
     local lastInstanceID = nil    -- last instance seen, to arm the hold on a zone change
     local visitBountiful = false
     local sawExit = false         -- player observed outside a delve since the last reset
     local lastRunKey  = nil
     local msgLog      = {}   -- rolling delve broadcast log (diagnostics)
     local stickyMsgs  = {}   -- keyword-matched messages, never rotated out
-    local ScanVignettes      -- forward local, RefreshContent closes over it
-    -- Packs can appear ONE AT A TIME, so the peak-seen-at-once count undercounts
-    -- kills. Instead accumulate distinct pack creature/object GUIDs ever seen this
-    -- run; killed = seenCount - remaining. Rendering waits for a pack to be seen to
-    -- avoid a false "done" before vignettes load / in delves without the affix.
+    local ScanVignettes
+    -- Packs can appear ONE AT A TIME, so the peak seen at once undercounts kills.
+    -- Instead count the distinct pack GUIDs seen this run: killed = seen minus
+    -- remaining. Rendering waits until a pack has been seen, to avoid a false
+    -- "done" before vignettes load or in a delve without the affix.
     local nemesisRemaining = nil
-    local nemesisSeen      = {}   -- objectGUID -> true (distinct packs seen this run)
+    local nemesisSeen      = {}
     local nemesisSeenCount = 0
     local nemesisKilledBase = 0   -- packs killed before a mid-run /reload (persisted)
-    local castLog = {}            -- recent player casts (newest last); objdump diag
+    local castLog = {}            -- recent player casts, newest last, for /ed objdump
 
-    -- FontStrings created once and reused; SetText only fires on change.
+    local function NemesisKilled(remaining)
+        return nemesisKilledBase + math.max(0, nemesisSeenCount - (remaining or 0))
+    end
+
     local linePool = {}
     local seen     = {}    -- dedupe across data sources, wiped per refresh
     local lineIdx  = 0
     local yOff     = 0
     local objDone, objTotal = 0, 0
-    local pendingHeader = nil
 
     local function AcquireLine(i)
         local fs = linePool[i]
@@ -348,17 +350,6 @@ E:RegisterModule(function()
         AddLine(text)
     end
 
-    -- Lazy: only written once the section has at least one line.
-    local function SetSection(title)
-        pendingHeader = title
-    end
-    local function FlushHeader()
-        if pendingHeader then
-            AddLine(E.CC.muted .. pendingHeader .. E.CC.close, true)
-            pendingHeader = nil
-        end
-    end
-
     local function EmitObjective(desc, done, failed, progress)
         desc = StripEscapes(desc)
         if not desc or desc == "" then return end
@@ -366,7 +357,6 @@ E:RegisterModule(function()
         if seen[key] then return end
         seen[key] = true
 
-        FlushHeader()
         objTotal = objTotal + 1
         if done then objDone = objDone + 1 end
 
@@ -417,7 +407,6 @@ E:RegisterModule(function()
         wipe(seen)
         lineIdx, yOff = 0, -32
         objDone, objTotal = 0, 0
-        pendingHeader = nil
 
         local rs = E.delveRunState
 
@@ -519,9 +508,6 @@ E:RegisterModule(function()
             end
         end
 
-        -- The seasonal Nullaeus delve (delveKind "nemesis") is excluded: it's a
-        -- straight-to-boss fight with no Pactsworn packs / no strongbox.
-        SetSection(nil)
         if E.db and E.db.showDelveObjectives and not inLabyrinth then
             local tierNow = liveTier or (rs and rs.tier) or 0
             -- The counters and rs.inDelve all read stale during the hold, so
@@ -534,6 +520,8 @@ E:RegisterModule(function()
                     and (tierNow == 0 or tierNow >= 4)
                     and nemesisSeenCount == 0 and nemesisKilledBase == 0
                     and not vigScanTrusted)
+            -- The seasonal nemesis delve is a straight-to-boss fight with no
+            -- strongbox, though its minions carry the pack vignette.
             if rs and rs.inDelve and rs.delveKind ~= "nemesis"
                     and (nemesisSeenCount > 0 or nemesisKilledBase > 0) then
                 local expected = 0
@@ -543,7 +531,7 @@ E:RegisterModule(function()
                 elseif tierNow >= 4  then expected = 1
                 end
                 local total  = math.max(expected, nemesisKilledBase + nemesisSeenCount)
-                local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - (nemesisRemaining or 0))
+                local killed = NemesisKilled(nemesisRemaining)
                 EmitObjective(
                     L["Nemesis Strongbox: %d/%d packs"]:format(killed, total),
                     killed >= total, false, nil)
@@ -572,7 +560,6 @@ E:RegisterModule(function()
         for i = lineIdx + 1, #linePool do
             linePool[i]:Hide()
         end
-        -- No content lines = timer-only mode: collapse to a compact title bar.
         if lineIdx == 0 then
             win:SetHeight(32)
         else
@@ -662,7 +649,7 @@ E:RegisterModule(function()
             local ok2, v = pcall(C_VignetteInfo.GetVignetteInfo, vguid)
             if ok2 and v and IsNemesisPack(v.vignetteID) then
                 packCount = packCount + 1
-                -- Key on the creature GUID; the vignette GUID regenerates and double-counts.
+                -- Keyed on the creature GUID. The vignette GUID regenerates and would double-count.
                 local key = v.objectGUID
                 if key and not nemesisSeen[key] then
                     nemesisSeen[key] = true
@@ -680,7 +667,7 @@ E:RegisterModule(function()
         -- guards against a scan that runs before the resume restores the base.
         local ar = E.db and E.db.activeRun
         if ar and GetTime() >= vigHoldUntil then
-            local killed = nemesisKilledBase + math.max(0, nemesisSeenCount - packCount)
+            local killed = NemesisKilled(packCount)
             ar.nemesisKilled = math.max(ar.nemesisKilled or 0, killed)
         end
     end
@@ -759,7 +746,7 @@ E:RegisterModule(function()
             pcall(HandleMessage, event, ...)
             return
         end
-        -- High-frequency world events fire constantly; only react while shown.
+        -- High-frequency world events fire constantly, so they redraw only a shown window.
         if (event == "UPDATE_UI_WIDGET"
                 or event == "VIGNETTE_MINIMAP_UPDATED"
                 or event == "VIGNETTES_UPDATED")
@@ -779,8 +766,6 @@ E:RegisterModule(function()
         DoRefresh()
     end
 
-    -- /ed objdump - raw dump of every objective-ish data source so unknown
-    -- counters can be located on the live client and wired in precisely.
     function E:DumpDelveObjectiveData()
         local function out(s) print("|cFFFFD700[ED obj]|r " .. s) end
         -- pcall the body: a dumped field can be a Midnight secret string that
@@ -915,7 +900,7 @@ E:RegisterModule(function()
         local function walkText(f, d)
             if not f or d > 8 or trkPrinted > 80 then return end
             if f.IsForbidden and f:IsForbidden() then return end
-            local okR, regs = pcall(function() return { f:GetRegions() } end)
+            local okR, regs = pcall(PackRegions, f)
             if okR then
                 for _, r in ipairs(regs) do
                     if r.GetObjectType and r:GetObjectType() == "FontString"
@@ -928,7 +913,7 @@ E:RegisterModule(function()
                     end
                 end
             end
-            local okC, kids = pcall(function() return { f:GetChildren() } end)
+            local okC, kids = pcall(PackChildren, f)
             if okC then for _, c in ipairs(kids) do walkText(c, d + 1) end end
         end
         for _, tn in ipairs({ "ObjectiveTrackerFrame", "ScenarioObjectiveTracker" }) do
@@ -1058,7 +1043,7 @@ E:RegisterModule(function()
         end
 
         -- The entrance picker's modifier tooltips state the authoritative nemesis
-        -- total ("Enemy groups affected: N"); dump with the entrance screen OPEN.
+        -- total ("Enemy groups affected: N"), so dump with the entrance screen OPEN.
         out("=== C_DelvesUI API + no-arg Get* returns ===")
         if C_DelvesUI then
             local duiNames = {}
@@ -1092,7 +1077,6 @@ E:RegisterModule(function()
         end
         if not pShown then
             picker = nil
-            -- Fallback: any shown frame named like the picker.
             for nm, f in pairs(_G) do
                 if type(nm) == "string" and nm:find("Delve", 1, true)
                         and nm:find("Picker", 1, true)
@@ -1108,7 +1092,7 @@ E:RegisterModule(function()
             local function walk(f, d)
                 if not f or d > 7 or nT > 150 then return end
                 if f.IsForbidden and f:IsForbidden() then return end
-                local okR, regs = pcall(function() return { f:GetRegions() } end)
+                local okR, regs = pcall(PackRegions, f)
                 if okR then
                     for _, r in ipairs(regs) do
                         if r.GetObjectType and r:GetObjectType() == "FontString" then
@@ -1121,7 +1105,7 @@ E:RegisterModule(function()
                         end
                     end
                 end
-                local okC, kids = pcall(function() return { f:GetChildren() } end)
+                local okC, kids = pcall(PackChildren, f)
                 if okC then for _, c in ipairs(kids) do walk(c, d + 1) end end
             end
             pcall(walk, picker, 0)

@@ -62,8 +62,8 @@ local function ConfirmedDelve()
     return false
 end
 
--- Looser: also treats any other scenario as a potential delve. Fine for the
--- selective (Valeera-only) bubble ticker, which does nothing outside a delve.
+-- Looser: any scenario counts. Only the bubble ticker reads it, so the ticker hides
+-- companion and follower bubbles at 5 Hz in any scenario, not just a delve.
 local function CheckInDelve()
     if ConfirmedDelve() then return true end
     return (select(2, GetInstanceInfo())) == "scenario"
@@ -126,7 +126,6 @@ local function ApplyBubbleCVar()
     return ok
 end
 
--- Run one selective-hide tick. Returns false if the API can't identify bubble owners.
 local function TickSelectiveBubbles()
     if not (C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles) then return false end
     local guid, token = GetCompanionIdentity()

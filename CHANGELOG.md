@@ -5,6 +5,25 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-10-25
+
+A Korean translation review, and less work in the background.
+
+### Improvements
+
+- **Korean reviewed** - the Korean text was reviewed throughout, and the delve notes now name each story exactly as the game's map does. Thanks to labrie75 for the Korean translation review.
+- **Less work in the background** - the Roster, the Tier Guide and the delve lists read the game less often, and the delve HUD makes less garbage for the game to clean up during a delve.
+
+### Notes
+
+- The download now includes the addon's license file.
+
+### Coming Next
+
+Planned for 2.5.0:
+
+- **Kindo'jan's weekly reward** - the Nemesis page's Kindo'jan view will show whether you have already earned this week's reward, and the Roster will show it for each of your characters.
+
 ## [2.4.0] - 2026-10-19
 
 What's New catches you up on every release you missed, or tells you with a chat link instead, plus today's boss in every language and a long list of fixes.
@@ -861,7 +880,7 @@ These are on the list and have not been forgotten:
 
 ### Internal
 
-- Removed stray `.claude/` Claude Code settings folder from packaged release. The folder is now ignored by both `.gitignore` and the BigWigsMods packager (`.pkgmeta`), so it will not appear in future release zips.
+- Removed a stray editor settings folder from the packaged release. It is now ignored, so it will not appear in future release zips.
 
 ## [1.4.4] - 2026-05-06
 

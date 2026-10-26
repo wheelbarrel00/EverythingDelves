@@ -3,6 +3,24 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.4.1", date = "2026-10-25",
+        sections = {
+            { head = "Korean reviewed", items = {
+                "A Korean translation review, and less work in the background.",
+            }},
+            { head = "Improved", items = {
+                "Korean reviewed - the Korean text was reviewed throughout, and the delve notes now name each story exactly as the game's map does. Thanks to labrie75 for the Korean translation review.",
+                "Less work in the background - the Roster, the Tier Guide and the delve lists read the game less often, and the delve HUD makes less garbage for the game to clean up during a delve.",
+            }},
+            { head = "Notes", items = {
+                "The download now includes the addon's license file.",
+            }},
+            { head = "Coming next", items = {
+                "Kindo'jan's weekly reward - planned for 2.5.0, the Nemesis page's Kindo'jan view will show whether you have already earned this week's reward, and the Roster will show it for each of your characters.",
+            }},
+        },
+    },
+    {
         version = "2.4.0", date = "2026-10-19",
         sections = {
             { head = "What's New catches you up", items = {

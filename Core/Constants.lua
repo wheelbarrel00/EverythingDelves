@@ -12,7 +12,6 @@ E.Colors = {
     buttonBg    = { r = 0.427, g = 0.020, b = 0.004, a = 1.00 },
     buttonHover = { r = 0.541, g = 0.024, b = 0.004, a = 1.00 },
 
-    -- Intentionally not themed by accent color.
     greyLine    = { r = 0.290, g = 0.290, b = 0.290, a = 1.00 },
 }
 
@@ -120,11 +119,11 @@ function E:ReadLiveTierData()
     return next(byTier) and byTier or nil
 end
 
--- Both recommended-tier scans keep the LAST row the player's ilvl clears, so a
+-- E.RecommendedTier keeps the LAST row the player's ilvl clears, so a
 -- non-ascending ladder silently recommends the wrong tier. A partial read merges
 -- into the shipped rows, so it is the MERGED result that has to ascend.
--- Returns ok, changed -- the two are separate because a rejected ladder and an
--- identical one are both "not changed" but only one may be cached.
+-- It returns ok and changed separately because a rejected ladder and an identical one
+-- are both "not changed", but only one may be cached.
 function E:ApplyTierData(byTier)
     if type(byTier) ~= "table" then return false, false end
 
@@ -232,6 +231,20 @@ function E:GetLootTrack(ilvl, track)
     return "Myth", TRACK_CC.Myth
 end
 
+-- Equipped iLvl is what matters inside a delve, not overall.
+function E.PlayerItemLevel()
+    local overall, equipped = GetAverageItemLevel()
+    return math.floor(equipped or overall or 0)
+end
+
+function E.RecommendedTier(ilvl)
+    local best = 1
+    for _, t in ipairs(E.TierData) do
+        if ilvl >= t.recGear then best = t.tier end
+    end
+    return best
+end
+
 -- trackable = true means completion is queryable via the quest API.
 E.ShardSources = {
     {
@@ -252,7 +265,7 @@ E.ShardSources = {
         questIDs    = { 93889 },
     },
     {
-        -- Repeatable with no per-source cap; bounded only by 600/wk.
+        -- Repeatable with no per-source cap, bounded only by 600/wk.
         name         = L["Prey Quests"],
         shardsEach   = 75,
         weeklyMax    = nil,
@@ -297,7 +310,7 @@ E.CurrencyIDs = {
 -- read the cap live (info.maxQuantity): a hotfix can drop it to 0 (uncapped).
 -- label is only a fallback, the display name comes from the currency API.
 -- Season 1 Dawncrests were 3383/3341/3343/3345/3347.
--- ⚠️ 3440 and 3441 also resolve, with the SAME display names as Hero and Myth
+-- 3440 and 3441 also resolve, with the SAME display names as Hero and Myth
 -- below, but maxQuantity 0 and discovered false. Five consecutive IDs from the
 -- first Mistcrest picks up those two decoys instead of the real currencies.
 E.Crests = {
@@ -343,40 +356,30 @@ E.AccentPresets = {
         divider     = { r = 0.55, g = 0.00, b = 0.00, a = 0.80 },
         header      = { r = 1.00, g = 0.13, b = 0.13, a = 1.00 },
         headerCC    = "|cFFFF2222",
-        buttonBg    = { r = 0.40, g = 0.00, b = 0.00, a = 1.00 },
-        buttonHover = { r = 0.55, g = 0.05, b = 0.05, a = 1.00 },
     },
     gold = {
         border      = { r = 1.00, g = 0.82, b = 0.00, a = 1.00 },
         divider     = { r = 1.00, g = 0.82, b = 0.00, a = 0.80 },
         header      = { r = 1.00, g = 0.84, b = 0.00, a = 1.00 },
         headerCC    = "|cFFFFD100",
-        buttonBg    = { r = 0.45, g = 0.36, b = 0.00, a = 1.00 },
-        buttonHover = { r = 0.78, g = 0.61, b = 0.04, a = 1.00 },
     },
     purple = {
         border      = { r = 0.42, g = 0.05, b = 0.68, a = 1.00 },
         divider     = { r = 0.42, g = 0.05, b = 0.68, a = 0.80 },
         header      = { r = 0.70, g = 0.50, b = 1.00, a = 1.00 },
         headerCC    = "|cFFB280FF",
-        buttonBg    = { r = 0.30, g = 0.04, b = 0.50, a = 1.00 },
-        buttonHover = { r = 0.50, g = 0.10, b = 0.75, a = 1.00 },
     },
     green = {
         border      = { r = 0.00, g = 0.39, b = 0.00, a = 1.00 },
         divider     = { r = 0.00, g = 0.39, b = 0.00, a = 0.80 },
         header      = { r = 0.30, g = 0.85, b = 0.30, a = 1.00 },
         headerCC    = "|cFF4CD94C",
-        buttonBg    = { r = 0.00, g = 0.30, b = 0.00, a = 1.00 },
-        buttonHover = { r = 0.05, g = 0.45, b = 0.05, a = 1.00 },
     },
     darkblue = {
         border      = { r = 0.00, g = 0.19, b = 0.56, a = 1.00 },
         divider     = { r = 0.00, g = 0.19, b = 0.56, a = 0.80 },
         header      = { r = 0.20, g = 0.55, b = 1.00, a = 1.00 },
         headerCC    = "|cFF3388FF",
-        buttonBg    = { r = 0.00, g = 0.15, b = 0.45, a = 1.00 },
-        buttonHover = { r = 0.00, g = 0.22, b = 0.60, a = 1.00 },
     },
 }
 
@@ -415,8 +418,6 @@ function E:EnsureClassAccent()
         divider     = ShadeClass(c, 0.80, 0.80),
         header      = ShadeClass(c, 1.00),
         headerCC    = "|cFF" .. hex,
-        buttonBg    = ShadeClass(c, 0.35),
-        buttonHover = ShadeClass(c, 0.55),
     }
     return true
 end
@@ -428,7 +429,6 @@ end
 
 E.ThemedWidgets = {}
 
--- Invoked immediately so the widget picks up the current theme.
 function E:RegisterThemed(fn)
     if type(fn) ~= "function" then return end
     self.ThemedWidgets[#self.ThemedWidgets + 1] = fn
@@ -460,7 +460,6 @@ function E:ApplyAccentColor(name)
     copy(self.Colors.border,      p.border)
     copy(self.Colors.divider,     p.divider)
     copy(self.Colors.header,      p.header)
-    -- Buttons are intentionally hardcoded, not copied from the accent preset.
     self.CC.header = p.headerCC
 
     local list = self.ThemedWidgets

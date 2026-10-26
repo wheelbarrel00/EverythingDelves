@@ -8,6 +8,7 @@ local table_sort, table_concat = table.sort, table.concat
 local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, INTRO_GAP, HINT_GAP = 20, 24, 14, 28, 16, 8
 local HEAD, ROW, EMPTY_ROW = 28, 28, 44
 local INSET, GAP, NAME_MIN, NAME_GAP, CHECK, BUTTON, SORT_ICON, SORT_GAP, CELL_PAD = 14, 10, 140, 6, 14, 24, 10, 4, 4
+local CAPTURE_GAP = 10
 
 local COLUMNS = {
     { key = "ilvl",     label = L["iLvl"] },
@@ -411,8 +412,30 @@ E:RegisterModule(function()
         RenderSoon()
     end)
 
+    local lastCapture, captureQueued = 0, false
+    local function Capture()
+        captureQueued = false
+        lastCapture = GetTime()
+        E:CaptureRosterSnapshot()
+    end
+    local function CaptureSoon()
+        if captureQueued then return end
+        local wait = lastCapture + CAPTURE_GAP - GetTime()
+        if wait <= 0 then
+            Capture()
+        else
+            captureQueued = true
+            C_Timer.After(wait, Capture)
+        end
+    end
+    local logout = CreateFrame("Frame")
+    logout:RegisterEvent("PLAYER_LOGOUT")
+    logout:SetScript("OnEvent", function()
+        if captureQueued then Capture() end
+    end)
+
     local function OnData()
-        if frame:IsVisible() then Render() else E:CaptureRosterSnapshot() end
+        if frame:IsVisible() then Render() else CaptureSoon() end
     end
     E:RegisterCallback("CurrencyUpdate",   OnData)
     E:RegisterCallback("QuestLogUpdate",   OnData)

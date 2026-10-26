@@ -1,9 +1,3 @@
--- Appends a delve's incomplete achievements to its world-map POI tooltip.
--- Hooks GameTooltip's OnShow, not a pin mixin: Blizzard derives pin types by
--- copying mixin functions at its own load, so a mixin hook installed at addon
--- load never reaches pins that copied earlier (confirmed live). A tooltip is
--- treated as a delve POI when its owner carries one of our areaPoiIDs, or it's
--- a WorldMapFrame descendant whose title is a delve name.
 local E = EverythingDelves
 local L = E.L
 
@@ -31,7 +25,6 @@ local function IsLabyrinthTitle(title)
     return type(info) == "table" and info.name == title
 end
 
--- Hidden /ed achtip diagnostic: logs each detection and why it did/didn't append.
 local function DebugTip(msg)
     if E.db and E.db.debugAchTip then
         print("|cFFFFD700[ED achtip]|r " .. msg)
@@ -77,17 +70,17 @@ local function AlreadyAppended()
     return false
 end
 
--- Current section state; cleared when the tooltip hides or is repurposed.
+-- Cleared when the tooltip hides or is repurposed.
 local current
 
 -- Kept outside `current` and detached from the tooltip lifecycle: modifier
 -- presses make the map hide/re-show tooltips and can briefly swap in a
 -- different POI's tooltip (confirmed live). Cleared only by the collapse
--- toggle, expanding a different delve, or closing the world map.
+-- toggle, a section built for another delve, or closing the world map.
 local expandedDelve
 
 -- Collapsing re-shows the tooltip while Shift is still held, which would
--- immediately re-expand; ignore the held key as an expand request for a beat.
+-- immediately re-expand, so the held key is ignored as an expand request for a beat.
 local suppressShiftUntil = 0
 
 local ICON_DONE = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12:0:0|t"
@@ -243,10 +236,10 @@ local function OnTooltipShow()
     end
 end
 
--- Re-append after the tooltip's own refresh rebuilds: timed POI countdowns do
--- ClearLines + re-add each tick without ever hiding (so OnShow doesn't re-fire).
--- Re-append from the Show post-hook (same frame as the rebuild); a C_Timer-
--- delayed re-append made the section blink at ~5 Hz each countdown tick.
+-- Re-append after the tooltip's own refresh rebuilds it: timed POI countdowns
+-- ClearLines and re-add each tick without ever hiding, so OnShow does not fire
+-- again. The re-append runs from the Show post-hook, in the same frame as the
+-- rebuild. A C_Timer-delayed one made the section blink at about 5 Hz.
 local wiped = false
 local rendering = false       -- inside RenderSection's own :Show()
 local pendingReappend = false
@@ -256,7 +249,7 @@ local function TryReappend()
     local cur = current
     if not (cur and wiped) then return end
 
-    -- The rebuild may have repurposed the tooltip (mousing pin -> bag item never hides it).
+    -- The rebuild may have repurposed the tooltip. Moving from a pin to a bag item never hides it.
     local title = TooltipTitle()
     local stillOurs
     if cur.labyrinth then
@@ -303,6 +296,8 @@ local function OnTooltipCleared()
     end
 end
 
+-- GameTooltip's OnShow, not a pin mixin: Blizzard copies mixin functions into pin types at its own load, so a
+-- mixin hook installed at addon load never reaches them (confirmed live).
 GameTooltip:HookScript("OnShow", OnTooltipShow)
 GameTooltip:HookScript("OnTooltipCleared", OnTooltipCleared)
 hooksecurefunc(GameTooltip, "Show", TryReappend)
@@ -321,17 +316,17 @@ if _G.WorldMapFrame then
     end)
 end
 
--- Shift toggles the cached expanded state; timed tooltips redraw on the next
--- refresh tick, static ones get details appended immediately.
+-- Shift toggles the cached expanded state. Timed tooltips redraw on the next
+-- refresh tick, static ones get the details appended at once.
 local modWatcher = CreateFrame("Frame")
 modWatcher:RegisterEvent("MODIFIER_STATE_CHANGED")
 local shiftWasDown = false
 modWatcher:SetScript("OnEvent", function(_, _, key)
-    -- Read live key state, not the event arg: key name and pressed/released format vary across client builds.
     if type(key) ~= "string" or not key:find("SHIFT", 1, true) then return end
-    -- A held shift delivers key-repeat echoes; only a real state edge may act.
+    -- The pressed state is read live, as the event arg's format varies across client
+    -- builds. A held Shift also delivers key-repeat echoes, so only a real edge acts.
     local down = IsShiftKeyDown()
-    if down == shiftWasDown then return end  -- repeat echo, not an edge
+    if down == shiftWasDown then return end
     shiftWasDown = down
     if not down then return end
     if not current then return end
@@ -340,7 +335,7 @@ modWatcher:SetScript("OnEvent", function(_, _, key)
         return
     end
     if current.expanded then
-        -- Toggle off; lines can't be removed in place, so static tooltips keep them until re-hovered.
+        -- Lines cannot be removed in place, so a static tooltip keeps its details until hovered again.
         current.expanded = false
         expandedDelve = nil
         suppressShiftUntil = GetTime() + 0.5

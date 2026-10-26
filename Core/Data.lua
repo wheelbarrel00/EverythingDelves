@@ -1,7 +1,7 @@
 local E = EverythingDelves
 local L = E.L
 
--- Map IDs confirmed from live Midnight 12.0 data.
+-- Map IDs confirmed from live Midnight data.
 E.Zones = {
     { name = "Eversong Woods",        mapID = 2395 },
     { name = "Harandar",              mapID = 2413 },
@@ -144,7 +144,7 @@ E.Labyrinth = {
     y                 = 72.2,
     poiID             = 9035,
     normalPoiID       = 9037,
-    -- The grey pin shown while the Labyrinth is locked
+    -- The gray pin shown while the Labyrinth is locked
     lockedPoiID       = 9036,
     -- The intro chain's first quest. The probe entered with it alone done (account-wide).
     introQuest        = 98831,
@@ -184,7 +184,6 @@ E.NemesisBossByDelve = {
 -- so matching it as text resolves nothing on a client that transliterates.
 -- Both come from the client's PlayerCompanionInfo, which carries one row per
 -- delve season.
---
 -- The trait tree ROTATES every season, so a new one has to be appended here or
 -- resolution falls through to the faction. The faction does NOT rotate: it is
 -- the companion's own "Trusty Delve Companion" reputation, one per companion
@@ -540,7 +539,7 @@ function E:GetDelveBosses(delveName)
     return nil
 end
 
--- Story-variant -> boss for every multi-boss delve, so "today's boss" is known
+-- Story variant to boss for every multi-boss delve, so "today's boss" is known
 -- from first login before any live ENCOUNTER_END capture. Some variants carry
 -- duplicate keys for alternate spellings. A delve gaining a second boss must
 -- map ALL its variants. A variant with no final boss is deliberately absent.

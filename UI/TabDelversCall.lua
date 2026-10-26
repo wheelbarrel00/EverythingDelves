@@ -332,7 +332,7 @@ E:RegisterModule(function()
         RenderSoon()
     end)
 
-    -- Keep the roster current even while the tab is closed; only repaint when visible.
+    -- Saved with the tab closed too, since the other characters' roll-up reads it
     E:RegisterCallback("QuestLogUpdate", function()
         if frame:IsVisible() then
             Render()
@@ -341,7 +341,7 @@ E:RegisterModule(function()
         end
     end)
 
-    -- Seed the roster after login; quest data may not be ready at module-init time.
+    -- Quest data may not be ready when the module loads, so the roster is seeded after login
     C_Timer.After(2, function()
         PersistRoster((ComputeStates()))
     end)

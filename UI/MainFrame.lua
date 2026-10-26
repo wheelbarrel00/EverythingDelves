@@ -29,7 +29,7 @@ local PAGE_ICONS = {
     ED_TEXTURES .. "icon-podium",
 }
 
--- LibDBIcon needs a file, not an atlas; resolve + inset to trim the frame.
+-- LibDBIcon takes a file, not an atlas, so the atlas is resolved to its file and inset to trim the frame
 local function GetDelveIcon()
     if C_Texture and C_Texture.GetAtlasInfo then
         local a = C_Texture.GetAtlasInfo(DELVE_ICON_ATLAS)
@@ -341,8 +341,8 @@ function E:HardenMinimapIcon()
         iconGuards[tex] = reassert
         hooksecurefunc(tex, "SetTexCoord", function(_, l, r, t, b)
             if fixing then return end
-            -- LibDBIcon's own 5% mouseover inset stays inside our crop; only a
-            -- collector reset wider than it (the full sheet) needs correcting.
+            -- LibDBIcon's own 5% mouseover inset stays inside this crop. Only a collector reset
+            -- wider than it (the full sheet) needs correcting.
             if not (l and r and t and b)
                     or l < left or r > right or t < top or b > bottom then
                 reassert()
@@ -371,7 +371,6 @@ function E:CreateMinimapButton()
 
     self.usingLibDBIcon = false
 
-    -- Watch for LibDBIcon loading later and upgrade the manual button.
     local addonWatcher = CreateFrame("Frame")
     addonWatcher:RegisterEvent("ADDON_LOADED")
     addonWatcher:SetScript("OnEvent", function(watcher, event, addonName)

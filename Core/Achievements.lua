@@ -1,5 +1,4 @@
 -- Achievement IDs verified against the live achievement DB (build 12.1.0).
--- Criteria names and completion are read live each hover so they self-correct.
 local E = EverythingDelves
 local L = E.L
 
@@ -29,8 +28,7 @@ E.DelveDepthsSeries = {
 
 -- The achievement DB and POI widgets disagree on some spellings (e.g.
 -- "Twilight Crypts" vs "Twilight Crypt", "Sporasaurus Surprise" vs
--- "Sporasaur Special"), so all name comparisons normalize + alias-map.
---  Why Blizzard, why??
+-- "Sporasaur Special"), so all name comparisons normalize and alias-map.
 local function Normalize(s)
     if type(s) ~= "string" then return "" end
     s = E.StripColorEscapes(s)
@@ -158,7 +156,6 @@ local function FormatEarnedDate(month, day, year)
     return ("%d/%d/%d"):format(month, day, year)
 end
 
--- quantity/reqQuantity matter for progressive criteria (one bar 0→N) vs per-item.
 local function ReadCriteria(id)
     local okN, num = pcall(GetAchievementNumCriteria, id)
     if not okN or not num then return nil end
@@ -252,8 +249,8 @@ function E:GetDelveAchievementStatus(delveName)
         status.stories = s
     end
 
-    -- Live clients implement discoveries as ONE progressive 0→3 criterion;
-    -- fall back to counting completed criteria if a build ever splits them.
+    -- Live clients implement discoveries as ONE progressive 0 to 3 criterion. Counting
+    -- completed criteria is the fallback if a build ever splits them.
     done, name = AchievementCompleted(ids.discoveries)
     if done ~= nil then
         local d = { id = ids.discoveries, name = name, done = done, found = 0, total = 0, criteria = {} }
@@ -414,7 +411,6 @@ function E:GetGloryStatus()
     return status
 end
 
--- /ed glory - the resolved pillar IDs, so a season flip can be checked live.
 function E:DebugPrintGlory()
     local header = E.CC.header .. "Everything Delves" .. E.CC.close
     local st = self:GetGloryStatus()
@@ -438,8 +434,7 @@ function E:DebugPrintGlory()
     end
 end
 
--- /ed storymatch - %q and byte counts for every side of the credit comparison,
--- because two strings that render identically in chat can still differ.
+-- %q and byte counts, because two strings that render identically in chat can still differ.
 function E:DebugPrintStoryMatch()
     print(E.CC.header .. "Everything Delves" .. E.CC.close
         .. ": story credit match test")
@@ -469,7 +464,6 @@ function E:DebugPrintStoryMatch()
     end
 end
 
--- /ed depths - per-series earned state, date, and any incomplete criteria.
 function E:DebugPrintDepths()
     print(E.CC.header .. "Everything Delves" .. E.CC.close
         .. ": Delver of the Depths series")
@@ -513,7 +507,6 @@ function E:DebugPrintDepths()
     end
 end
 
--- /ed ach - dump per-delve status to chat for live ID sanity checks.
 function E:DebugPrintAchievements()
     print(E.CC.header .. "Everything Delves" .. E.CC.close
         .. ": delve achievement status")

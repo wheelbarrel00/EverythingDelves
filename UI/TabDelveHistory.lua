@@ -64,8 +64,6 @@ local function FormatStamp(ts)
     return date("%Y-%m-%d %H:%M", ts)
 end
 
--- Prefer the live variant captured at log time; fall back to the delve's
--- signature story. nil when neither is known (e.g. Nemesis has no signature).
 local function ResolveRunStory(run, delveKey)
     if run and run.story and run.story ~= "" then
         return E.StripColorEscapes(run.story)
@@ -379,7 +377,6 @@ local function FillRun(ui, r, run, key)
     local story = ResolveRunStory(run, key)
     r.story:SetText(story or "--")
     r.story:SetTextColor(ui:Color(story and "label" or "muted"))
-    -- Map legacy live encounter names (e.g. "Spinshroom" -> "Gyrospore").
     local boss = run.boss and E:NormalizeLiveBoss(key, run.boss)
     r.boss:SetText(boss or "")
     FillDateAndNote(ui, r, run)
@@ -448,7 +445,10 @@ end
 
 local function LayoutSection(ui, v, t, keys, widths, cardW)
     for _, pool in ipairs({ t.rows, t.runs, t.notes }) do
-        for _, item in ipairs(pool) do item:Hide() end
+        for _, item in ipairs(pool) do
+            item:Hide()
+            item.run = nil
+        end
     end
     t.head:SetShown(#keys > 0)
     t.empty:SetShown(#keys == 0)

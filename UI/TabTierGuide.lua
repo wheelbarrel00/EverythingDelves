@@ -28,23 +28,6 @@ local MIDNIGHT_FACTIONS = {
     { id = 2699, name = "The Singularity" },
 }
 
--- Equipped iLvl is what matters inside a delve, not overall.
-local function GetPlayerIlvl()
-    local overall, equipped = GetAverageItemLevel()
-    local ilvl = math_floor(equipped or overall or 0)
-    return ilvl
-end
-
-local function GetRecommendedTier(ilvl)
-    local best = 1
-    for _, t in ipairs(E.TierData) do
-        if ilvl >= t.recGear then
-            best = t.tier
-        end
-    end
-    return best
-end
-
 -- Reset weekday differs by region, so render the remaining time instead of naming a day.
 local function WeeklyResetIn()
     if not (C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset) then return nil end
@@ -54,9 +37,7 @@ local function WeeklyResetIn()
         math_floor((secs % 3600) / 60))
 end
 
--- Delver's Journey is the season Delves faction's renown under the hood:
--- C_DelvesUI.GetDelvesFactionForSeason() -> faction ID, then
--- C_MajorFactions.GetMajorFactionRenownInfo / GetRenownRewardsForLevel.
+-- Delver's Journey is the renown of the faction C_DelvesUI.GetDelvesFactionForSeason names
 local function GetDelverJourney()
     if C_DelvesUI and C_DelvesUI.GetDelvesFactionForSeason
             and C_MajorFactions and C_MajorFactions.GetMajorFactionRenownInfo then
@@ -83,8 +64,11 @@ local function IsJourneyMaxed(factionID)
     return false
 end
 
+local maxLevels, nodeIcons = {}, {}
+
 -- Highest level the track defines, so we never request art past its end.
 local function GetJourneyMaxLevel(factionID)
+    if maxLevels[factionID] then return maxLevels[factionID] end
     if not (factionID and C_MajorFactions and C_MajorFactions.GetRenownLevels) then
         return nil
     end
@@ -96,12 +80,13 @@ local function GetJourneyMaxLevel(factionID)
             maxLevel = lv.level
         end
     end
-    return (maxLevel > 0) and maxLevel or nil
+    if maxLevel <= 0 then return nil end
+    maxLevels[factionID] = maxLevel
+    return maxLevel
 end
 
--- Milestone art is the level's renown reward .icon; fall back to the
--- reward's item / spell / mount icon. pcall-guarded so the row can hide.
-local function GetJourneyNodeIcon(factionID, level)
+-- Milestone art is the level reward's own icon, else its item, spell or mount icon
+local function ReadJourneyNodeIcon(factionID, level)
     if not (factionID and C_MajorFactions
             and C_MajorFactions.GetRenownRewardsForLevel) then
         return nil
@@ -124,6 +109,21 @@ local function GetJourneyNodeIcon(factionID, level)
         if ok2 and mIcon then icon = mIcon end
     end
     return icon, r.name
+end
+
+local function GetJourneyNodeIcon(factionID, level)
+    local byLevel = nodeIcons[factionID]
+    local hit = byLevel and byLevel[level]
+    if hit then return hit.icon, hit.name end
+    local icon, name = ReadJourneyNodeIcon(factionID, level)
+    if icon and name then
+        if not byLevel then
+            byLevel = {}
+            nodeIcons[factionID] = byLevel
+        end
+        byLevel[level] = { icon = icon, name = name }
+    end
+    return icon, name
 end
 
 local function TierTip(td)
@@ -254,8 +254,8 @@ local function GildedState()
         end
     end
 
-    -- Only estimate from history when the reset boundary is known -- a nil
-    -- boundary would count all-time runs and show a false done.
+    -- Estimated from history only when the reset is known. Without it, all-time runs would count
+    -- and show a false done.
     local estimate = 0
     local history = E.db and E.db.delveHistory
     -- Runs logged before the char stamp count for whoever is logged in.
@@ -849,12 +849,8 @@ local function BuildRenown(ui, content, v)
     return card
 end
 
-local renownCaps = {}
-
 local function RenownCap(factionID)
-    local cap = renownCaps[factionID] or GetJourneyMaxLevel(factionID)
-    if cap then renownCaps[factionID] = cap end
-    return cap or FACTION_RENOWN_MAX
+    return GetJourneyMaxLevel(factionID) or FACTION_RENOWN_MAX
 end
 
 local function RenderRenown(ui, v)
@@ -910,8 +906,8 @@ E:RegisterModule(function()
         content:SetWidth(width)
         local inner = width - PAD_LEFT - PAD_RIGHT
 
-        local ilvl = GetPlayerIlvl()
-        local recTier = GetRecommendedTier(ilvl)
+        local ilvl = E.PlayerItemLevel()
+        local recTier = E.RecommendedTier(ilvl)
         summary:ClearAllPoints()
         summary:SetPoint("LEFT", content, "TOPLEFT", PAD_LEFT, -(PAD_TOP + BAR_H / 2))
         summary:SetPoint("RIGHT", content, "TOPRIGHT", -PAD_RIGHT, -(PAD_TOP + BAR_H / 2))

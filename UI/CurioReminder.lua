@@ -58,7 +58,7 @@ local ROLE_NORM = { TANK = "Tank", HEALER = "Healer", DAMAGER = "Damage", NONE =
 -- CURIO_DATA rows stay keyed on the English role. ROLE_LABEL is only what gets drawn.
 local ROLE_LABEL = { Tank = L["Tank"], Healer = L["Healer"], Damage = L["Damage"] }
 
--- roleType -> ED role (0 = Damage, 1 = Healer, 2 = Tank), verified live.
+-- The companion's roleType to ED's role, verified live.
 local COMPANION_ROLE_BY_TYPE = { [0] = "Damage", [1] = "Healer", [2] = "Tank" }
 
 -- Read via trait data, not the secure companion frame, to avoid taint.
@@ -167,7 +167,6 @@ local function GetActiveCompanionName()
     return ResolveByFaction()
 end
 
--- Confirms each stored spellID still resolves to the poison it is filed under.
 function E:DumpPoisonState()
     local function line(s) print("|cFFFFD700[ED poison]|r " .. s) end
     print(self.CC.header .. "Everything Delves" .. self.CC.close .. ": poison slot")
@@ -201,8 +200,6 @@ function E:DumpPoisonState()
     line("a nil icon means the id is unknown here, and renders no icon.")
 end
 
--- /ed companion - an unrecognized tree ID after a season flip names itself
--- instead of failing silently.
 function E:DumpCompanionState()
     local function line(s) print("|cFFFFD700[ED companion]|r " .. s) end
     print(self.CC.header .. "Everything Delves" .. self.CC.close .. ": companion state")
@@ -232,8 +229,8 @@ end
 E:RegisterModule(function()
     local POPUP_W   = 330
     local ICON_SZ   = 14
-    local ROLE_Y    = -34   -- y of first role header relative to popup top
-    local ROLE_STEP = 50    -- pixels per role section
+    local ROLE_Y    = -34
+    local ROLE_STEP = 50
 
     local numRoles  = #CURIO_DATA.Brann
     local popupHShort = math.abs(ROLE_Y) + (numRoles - 1) * ROLE_STEP + 50
@@ -464,8 +461,8 @@ E:RegisterModule(function()
         popup:ClearAllPoints()
         local cf = DelvesCompanionConfigurationFrame
         if cf and cf:IsShown() then
-            -- Prefer the left of the frame; flip right when too close to the
-            -- screen edge, else the popup clamps on top of the companion UI.
+            -- Prefer the left of the frame, and flip right when too close to the
+            -- screen edge, or the popup clamps on top of the companion UI.
             local roomLeft = cf:GetLeft() or 0
             if roomLeft >= POPUP_W + 8 then
                 popup:SetPoint("TOPRIGHT", cf, "TOPLEFT", -8, 0)
@@ -514,7 +511,7 @@ E:RegisterModule(function()
         end
     end)
 
-    -- Catches the frame if it was pre-loaded; ADDON_LOADED handles on-demand load.
+    -- Catches a pre-loaded frame. ADDON_LOADED handles the on-demand load.
     HookCompanionFrame()
 
     function E:ToggleCurioPopup(arg)

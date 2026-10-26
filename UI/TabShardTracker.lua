@@ -14,7 +14,6 @@ local CREST_COLS, SOURCE_COLS = { 90, 100, 110 }, { 70, 100, 110 }
 local WQ_ZONE, WQ_SHARDS = 150, 70
 local ED_TEXTURES = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\"
 
-local WQ_ZONES = { 2395, 2413, 2405, 2437, 2393, 2424, 2512 }
 local WQ_CURRENCY = E.CurrencyIDs.cofferKeyShards
 local MAX_WQ_ROWS = 12
 
@@ -35,16 +34,6 @@ local WEEKLY_DELVE_QUESTS = {
     { questID = E.WEEKLY_DELVE_QUEST_ID, title = "Midnight: Delves" },
 }
 
-local function GetCurrency(currencyID)
-    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
-        local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
-        if info then
-            return info.quantity or 0
-        end
-    end
-    return 0
-end
-
 local function GetCurrencyFull(currencyID)
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
@@ -55,6 +44,10 @@ local function GetCurrencyFull(currencyID)
         end
     end
     return 0, 0, 0
+end
+
+local function GetCurrency(currencyID)
+    return (GetCurrencyFull(currencyID))
 end
 
 local function FormatNumber(n)
@@ -98,7 +91,6 @@ local cachedKeys   = 0
 local questLineCache = {}
 local cachedUcIcon = nil
 
--- Reusable scratch buffers for Special Assignment alert detection.
 local saActiveBuf  = nil
 local saLookupBuf  = nil
 
@@ -668,7 +660,7 @@ E:RegisterModule(function()
     local wqCache      = {}
     local wqEntryPool  = {}
     local wqCacheTime  = 0
-    local WQ_CACHE_TTL = 60    -- seconds before cache is considered stale
+    local WQ_CACHE_TTL = 60
     local wqRetryPending = false
     local wqRetriesUsed  = 0
     local WQ_MAX_RETRIES = 1
@@ -689,7 +681,6 @@ E:RegisterModule(function()
             return wqCache
         end
 
-        -- Recycle entries into the pool rather than GC them, then empty the cache.
         for i = #wqCache, 1, -1 do
             local e = wqCache[i]
             wqCache[i] = nil
@@ -702,7 +693,8 @@ E:RegisterModule(function()
             return wqCache
         end
 
-        for _, zoneID in ipairs(WQ_ZONES) do
+        for _, zone in ipairs(E.Zones) do
+            local zoneID = zone.mapID
             -- Prime map data once per session so the client loads the zone's WQs.
             if not mapsPrimed[zoneID] then
                 if C_Map and C_Map.GetMapInfo then
@@ -782,14 +774,13 @@ E:RegisterModule(function()
                 end
             end)
         elseif #wqCache > 0 then
-            wqRetriesUsed = 0  -- reset budget once WQs are seen
+            wqRetriesUsed = 0
         end
 
         return wqCache
     end
 
-    -- Snapshot currencies at first refresh to compute session deltas.
-    local sessionBaseline = nil  -- { shards, keys, time }
+    local sessionBaseline = nil
 
     local function EnsureBaseline()
         if not sessionBaseline then
@@ -841,9 +832,9 @@ E:RegisterModule(function()
         lastWidth = width
         content:SetWidth(width)
 
-        cachedShards = GetCurrency(E.CurrencyIDs.cofferKeyShards)
-        cachedKeys   = GetCurrency(E.CurrencyIDs.bountifulKeys)
-        local _, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
+        local weeklyCap, weeklyEarned
+        cachedShards, weeklyCap, weeklyEarned = GetCurrencyFull(E.CurrencyIDs.cofferKeyShards)
+        cachedKeys = GetCurrency(E.CurrencyIDs.bountifulKeys)
         local isAtCap = weeklyCap > 0 and weeklyEarned >= weeklyCap
 
         local threshold = E.db and E.db.lowShardThreshold or 100
@@ -881,7 +872,7 @@ E:RegisterModule(function()
 
     v.onWQRefresh = function()
         wqCacheTime   = 0
-        wqRetriesUsed = 0   -- give the retry budget back on user request
+        wqRetriesUsed = 0
         Render(true)
     end
 
@@ -891,7 +882,7 @@ E:RegisterModule(function()
 
     frame:SetScript("OnShow", function()
         EnsureBaseline()
-        wqRetriesUsed = 0   -- fresh retry budget each time the tab opens
+        wqRetriesUsed = 0
         if #wqCache == 0 then wqCacheTime = 0 end
         Render()
         area:ScrollTo(0, 0)
@@ -911,7 +902,6 @@ E:RegisterModule(function()
     -- Separate from Render so the alert fires with the page shut. It reads no page state.
     local function DetectSpecialAssignments()
         if not (E.db and E.db.alertSpecialAssignment) then return end
-        -- Reusable scratch tables to detect the "no SA" -> "SA active" transition.
         if not saActiveBuf  then saActiveBuf  = {} end
         if not saLookupBuf then saLookupBuf = {} end
         wipe(saActiveBuf)
@@ -939,8 +929,8 @@ E:RegisterModule(function()
         local storedSAs = saState.active or {}
         for _, id in ipairs(storedSAs) do saLookupBuf[id] = true end
 
-        -- An empty baseline is ambiguous (no SAs vs never scanned); the flag
-        -- lets a first scan seed silently while a later empty -> active alerts.
+        -- An empty baseline is ambiguous (no assignments, or never scanned). The flag lets a first scan
+        -- seed silently while a later change from empty to active alerts.
         local recorded = saState.recorded or #storedSAs > 0
 
         local hasNew = false
@@ -958,7 +948,6 @@ E:RegisterModule(function()
                 .. L["A Special Assignment is now available! Check the Shard Tracker tab."])
         end
         saState.recorded = true
-        -- Mutate in place rather than replacing the reference each refresh.
         if not saState.active then saState.active = {} end
         wipe(saState.active)
         for i = 1, #saActiveBuf do
@@ -967,7 +956,7 @@ E:RegisterModule(function()
     end
 
     local function RefreshFromEvent()
-        DetectSpecialAssignments()  -- before the visibility gate: alert fires tab-closed
+        DetectSpecialAssignments()
         if frame:IsVisible() then Render() end
     end
 

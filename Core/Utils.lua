@@ -25,7 +25,6 @@ function E:CreateButton(parent, width, height, label, extraTemplate)
         edgeSize = 1,
     })
 
-    -- Intentionally hardcoded; buttons do not follow the accent profile.
     local bg = E.Colors.buttonBg
     btn:SetBackdropColor(bg.r, bg.g, bg.b, bg.a)
     btn:SetBackdropBorderColor(0.10, 0.00, 0.00, 1.00)
@@ -56,7 +55,6 @@ function E:IsTomTomLoaded()
     return (TomTom and TomTom.AddWaypoint) and true or false
 end
 
--- Coords are percentages (0-100); converted to 0-1 for the API.
 function E:AddTomTomWaypoint(mapID, x, y, title)
     if not self:IsTomTomLoaded() then
         print(E.CC.header .. "Everything Delves|r: " .. L["TomTom is not installed."])
@@ -66,7 +64,6 @@ function E:AddTomTomWaypoint(mapID, x, y, title)
     return true
 end
 
--- Coords are percentages (0-100); SetUserWaypoint expects 0-1, so we divide.
 function E:SetWaypoint(mapID, x, y)
     if C_Map and C_Map.SetUserWaypoint then
         local ok, err = pcall(function()
@@ -150,7 +147,7 @@ end
 E.TROVE_MAP_ITEM_IDS = { 274374, 252415 }
 
 -- Rotates each season exactly like the item id. 1293799 is Midnight Season 2,
--- confirmed live off the buff; 1254631 was Season 1.
+-- confirmed live off the buff, and 1254631 was Season 1.
 E.TROVE_AURA_IDS = { 1293799, 1254631 }
 
 function E:GetTrovehunterAura()
@@ -203,7 +200,7 @@ function E:StyleAccentDivider(tex)
     end)
 end
 
--- Grey column-header separators; intentionally never themed by accent color.
+-- Gray column-header separators, intentionally never themed by accent color.
 function E:StyleGreyLine(tex)
     if not tex or not tex.SetColorTexture then return end
     local g = self.Colors.greyLine
