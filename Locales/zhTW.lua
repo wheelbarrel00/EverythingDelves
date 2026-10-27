@@ -399,6 +399,7 @@ L["Gilded Stash: %d/%d"] = "鎏金寶藏：%d/%d"
 L["Trovehunter's Bounty: %s"] = "Trovehunter's Bounty：%s"
 L["looted this week"] = "本週已拾取"
 L["not looted"] = "尚未拾取"
+L["%s: obtained this week"] = "%s：本週已獲取"
 L["Weekly data resets at the next reset"] = "每週資料將在下次重置時歸零"
 L["Updated: %s"] = "更新：%s"
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = "登入一次角色即可記錄。點擊欄位標題排序，將滑鼠移到列上查看詳情。"
@@ -861,7 +862,6 @@ L["Pin the Labyrinth's entrance on your map."] = "在地圖上標記迷宮入口
 L["Add a TomTom arrow to the Labyrinth's entrance."] = "新增一個指向迷宮入口的 TomTom 箭頭。"
 L["Kills"] = "擊殺"
 L["This week's reward"] = "本週獎勵"
-L["Not readable until your first kill on Tier 8 or higher."] = "在8級或更高級別首次擊殺前無法讀取。"
 L["Reach him"] = "抵達方式"
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = "在8級或更高級別的一次挑戰中通關全部九個密室。之後他位於%s最北端的密室會保持開啟，此後的挑戰只需經過%s、%s或%s，以及%s。"
 L["Den'Zara first"] = "先打丹札菈"
@@ -881,6 +881,7 @@ L["For the first minute and a half, in this order:"] = "前一分半鐘，依以
 L["Intermission"] = "中場階段"
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = "1:30時他會退下，四位羅亞語者輪流登場。這不是輸出階段：只要撐過每一位即可。"
 L["%s, master of the Labyrinth."] = "%s，迷宮之主。"
+L["Not yet - a kill on Tier 8 or higher earns it"] = "尚未獲取 - 在8級或更高級別擊殺即可獲取"
 L["%s, or %s."] = "%s，或%s。"
 
 -- UI/TabLeaderboard.lua

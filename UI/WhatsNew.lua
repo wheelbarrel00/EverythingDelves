@@ -3,6 +3,16 @@ local L = E.L
 
 -- One per release. A release marked fixesOnly announces nothing and is listed with the next feature release.
 local RELEASES = {
+    { version = "2.5.0", entries = {
+        {
+            title = "Kindo'jan's weekly reward",
+            desc  = "The Nemesis page's Kindo'jan view shows whether you have earned this week's reward, with a check once you have defeated him on Tier 8 or higher since the reset.",
+        },
+        {
+            title = "On the Roster too",
+            desc  = "Hover a character to see whether it has earned Kindo'jan's reward this week.",
+        },
+    } },
     { version = "2.4.1", fixesOnly = true, entries = {
         {
             title = "Korean reviewed",

@@ -399,6 +399,7 @@ L["Gilded Stash: %d/%d"] = "도금된 은닉처: %d/%d"
 L["Trovehunter's Bounty: %s"] = "보물 추적자의 은혜: %s"
 L["looted this week"] = "이번 주에 획득함"
 L["not looted"] = "획득하지 않음"
+L["%s: obtained this week"] = "%s: 이번 주에 획득함"
 L["Weekly data resets at the next reset"] = "주간 정보는 다음 초기화 때 재설정됩니다"
 L["Updated: %s"] = "갱신: %s"
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = "캐릭터로 접속하면 기록됩니다. 열을 클릭하면 정렬되고, 행에 마우스를 올리면 상세 정보가 표시됩니다."
@@ -861,7 +862,6 @@ L["Pin the Labyrinth's entrance on your map."] = "지도에 미궁 입구를 표
 L["Add a TomTom arrow to the Labyrinth's entrance."] = "미궁 입구로 향하는 TomTom 화살표를 추가합니다."
 L["Kills"] = "처치"
 L["This week's reward"] = "이번 주 보상"
-L["Not readable until your first kill on Tier 8 or higher."] = "8단계 이상에서 처음 처치하기 전에는 확인할 수 없습니다."
 L["Reach him"] = "가는 방법"
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = "8단계 이상에서 한 번의 진행으로 아홉 개의 방을 모두 완료하세요. 그러면 %s 최북단에 있는 그의 방이 계속 열려 있어, 이후 진행에서는 %s, %s 또는 %s, 그리고 %s만 거치면 됩니다."
 L["Den'Zara first"] = "덴자라 먼저"
@@ -881,6 +881,7 @@ L["For the first minute and a half, in this order:"] = "처음 1분 30초 동안
 L["Intermission"] = "중간 단계"
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = "1분 30초에 그가 물러나고 로아의 전령 넷이 차례로 나섭니다. 공격 단계가 아니니 각각을 버텨내기만 하세요."
 L["%s, master of the Labyrinth."] = "%s, 미궁의 주인."
+L["Not yet - a kill on Tier 8 or higher earns it"] = "아직 획득하지 않음 - 8단계 이상에서 처치하면 획득합니다"
 L["%s, or %s."] = "%s 또는 %s."
 
 -- UI/TabLeaderboard.lua

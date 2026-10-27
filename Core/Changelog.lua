@@ -3,6 +3,21 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.5.0", date = "2026-10-27",
+        sections = {
+            { head = "Kindo'jan's weekly reward", items = {
+                "Kindo'jan's weekly reward, listed under Coming Next in 2.4.1, is here: on the Nemesis page and on the Roster.",
+            }},
+            { head = "New", items = {
+                "Kindo'jan's weekly reward - the Nemesis page's Kindo'jan view now shows whether you have already earned this week's reward: a check once you have defeated him on Tier 8 or higher since the weekly reset, and \"Not yet\" until then. Everything Delves works it out from your logged Labyrinth runs, including the one you are still in, and from the game's own count of your Tier 8 and higher Kindo'jan kills.",
+                "Kindo'jan's reward on the Roster - hover a character to see \"Kindo'jan's Reward: obtained this week\" once that character has earned it.",
+            }},
+            { head = "Notes", items = {
+                "The new text is translated into German, French, Russian, Korean and both Chinese.",
+            }},
+        },
+    },
+    {
         version = "2.4.1", date = "2026-10-25",
         sections = {
             { head = "Korean reviewed", items = {

@@ -161,7 +161,8 @@ E.Labyrinth = {
     wahduQuests       = { 98951, 98963, 98962, 98961, 98960, 98959 },
     wahduSpell        = 1319741,
     venomstoneItem    = 280562,
-    -- His kills count from Tier 8 only, in the statistic and the first-kill achievement alike
+    -- His kills count from Tier 8 only, in the statistic, the first-kill achievement and the weekly reward alike
+    kindojanMinTier   = 8,
     kindojanStatistic = 63731,
     kindojanAchievement = 63716,
     kindojanSoloAchievement = 63715,

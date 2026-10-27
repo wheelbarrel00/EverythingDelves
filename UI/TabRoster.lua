@@ -93,6 +93,10 @@ local function TipLines(e, now)
             tip[#tip + 1] = L["Gilded Stash: %d/%d"]:format(rec.gildedCollected or 0, rec.gildedTotal)
         end
         tip[#tip + 1] = L["Trovehunter's Bounty: %s"]:format(rec.bountyLooted and L["looted this week"] or L["not looted"])
+        if rec.kindoReward then
+            local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(E.Labyrinth.kindojanWeeklyItem)
+            tip[#tip + 1] = L["%s: obtained this week"]:format((type(name) == "string" and name ~= "") and name or "Kindo'jan's Reward")
+        end
     else
         tip[#tip + 1] = L["Weekly data resets at the next reset"]
     end
@@ -406,10 +410,24 @@ E:RegisterModule(function()
         end
     end)
 
+    local rewardItem, rewardRequested = E.Labyrinth.kindojanWeeklyItem, false
+    local rewardNameWatch = CreateFrame("Frame")
+    rewardNameWatch:SetScript("OnEvent", function(_, _, itemID, success)
+        if success ~= false and itemID == rewardItem and frame:IsVisible() then Render() end
+    end)
+
     frame:SetScript("OnShow", function()
+        rewardNameWatch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        if not rewardRequested and C_Item and C_Item.RequestLoadItemDataByID then
+            rewardRequested = true
+            C_Item.RequestLoadItemDataByID(rewardItem)
+        end
         Render()
         area:ScrollTo(0, 0)
         RenderSoon()
+    end)
+    frame:SetScript("OnHide", function()
+        rewardNameWatch:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
     end)
 
     local lastCapture, captureQueued = 0, false

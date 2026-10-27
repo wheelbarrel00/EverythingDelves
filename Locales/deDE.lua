@@ -399,6 +399,7 @@ L["Gilded Stash: %d/%d"] = "Vergoldetes Versteck: %d/%d"
 L["Trovehunter's Bounty: %s"] = "Trovehunter's Bounty: %s"
 L["looted this week"] = "diese Woche geplündert"
 L["not looted"] = "nicht geplündert"
+L["%s: obtained this week"] = "%s: diese Woche erhalten"
 L["Weekly data resets at the next reset"] = "Die Wochendaten werden beim nächsten Reset zurückgesetzt"
 L["Updated: %s"] = "Aktualisiert: %s"
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = "Melde dich mit einem Charakter an, um ihn zu erfassen. Klicke auf eine Spalte zum Sortieren, fahre über eine Zeile für Details."
@@ -861,7 +862,6 @@ L["Pin the Labyrinth's entrance on your map."] = "Den Eingang des Labyrinths auf
 L["Add a TomTom arrow to the Labyrinth's entrance."] = "Einen TomTom-Pfeil zum Eingang des Labyrinths hinzufügen."
 L["Kills"] = "Siege"
 L["This week's reward"] = "Belohnung dieser Woche"
-L["Not readable until your first kill on Tier 8 or higher."] = "Erst nach deinem ersten Sieg auf Stufe 8 oder höher lesbar."
 L["Reach him"] = "Zu ihm gelangen"
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = "Schließe auf Stufe 8 oder höher alle neun Kammern in einem Durchgang ab. Seine Kammer ganz im Norden von %s bleibt danach offen, sodass spätere Durchgänge nur noch durch diese Bereiche führen: %s, %s oder %s, dazu %s."
 L["Den'Zara first"] = "Zuerst Den'Zara"
@@ -881,6 +881,7 @@ L["For the first minute and a half, in this order:"] = "In den ersten anderthalb
 L["Intermission"] = "Zwischenphase"
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = "Bei 1:30 tritt er zurück, und vier Sprecher der Loa sind nacheinander an der Reihe. Keine Schadensphase: überlebe einfach jeden von ihnen."
 L["%s, master of the Labyrinth."] = "%s, Herr des Labyrinths."
+L["Not yet - a kill on Tier 8 or higher earns it"] = "Noch nicht - ein Sieg auf Stufe 8 oder höher bringt sie"
 L["%s, or %s."] = "%s oder %s."
 
 -- UI/TabLeaderboard.lua

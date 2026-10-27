@@ -1,8 +1,9 @@
 local E = EverythingDelves
 local LAB = E.Labyrinth
 
-local ipairs, type = ipairs, type
+local ipairs, type, time = ipairs, type, time
 local math_floor = math.floor
+local WEEK = 7 * 24 * 3600
 
 local function Round(n) return math_floor(n + 0.5) end
 
@@ -31,11 +32,11 @@ function E.LabRun.OnEncounterStart(lab, encounterID, now)
     if encounterID == LAB.kindojanEncounter then lab.kindoFrom = now end
 end
 
-function E.LabRun.OnEncounterEnd(lab, encounterID, name, success, now)
+function E.LabRun.OnEncounterEnd(lab, encounterID, name, success, now, when)
     if success ~= 1 and success ~= true then return end
     if encounterID == LAB.kindojanEncounter then
         lab.kindo = lab.kindoFrom and Round(now - lab.kindoFrom) or nil
-        lab.kindoAt, lab.last = now, now
+        lab.kindoAt, lab.kindoWhen, lab.last = now, when, now
     else
         lab.enc, lab.boss = encounterID, name
     end
@@ -76,7 +77,8 @@ function E.LabRun.Record(lab, left)
     local at, rooms = {}, {}
     for i, v in ipairs(lab.at) do at[i] = v end
     for i, r in ipairs(lab.rooms) do rooms[i] = { s = r.s, t = r.t, e = r.e, b = r.b, d = r.d } end
-    return { ch = lab.ch, at = at, rooms = rooms, kindo = lab.kindo, keys = lab.keys, left = left or nil, prior = lab.prior }
+    return { ch = lab.ch, at = at, rooms = rooms, kindo = lab.kindo, kindoWhen = lab.kindoWhen, keys = lab.keys,
+             left = left or nil, prior = lab.prior }
 end
 
 -- mark is a chamber count, or "kindo" for the fight alone
@@ -91,6 +93,49 @@ function E:GetLabyrinthBest(tier, mark)
         end
     end
     return best
+end
+
+function E.KindojanKills()
+    -- Read alone: GetStatistic returns more than its value, a string that reads "--" until the first kill
+    local stat = GetStatistic and GetStatistic(LAB.kindojanStatistic)
+    return tonumber((tostring(stat or ""):gsub("%D", ""))) or 0
+end
+
+-- The game's weekly counter (widget 8350) returns nil before a kill, so this week's Tier 8+ kill is worked out here
+function E:KindojanRewardThisWeek()
+    local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset and C_DateAndTime.GetSecondsUntilWeeklyReset()
+    if not secs or secs <= 0 then return nil end
+    local now = time()
+    local weekEnd = now + secs
+    local weekStart = weekEnd - WEEK
+    local me = self.CharKey()
+
+    local rs = self.delveRunState
+    local lab = rs and rs.lab
+    if lab and lab.kindoAt and (rs.tier or 0) >= LAB.kindojanMinTier and (lab.kindoWhen or now) >= weekStart then
+        return true
+    end
+
+    local everKilled = false
+    local hist = self.db and self.db.delveHistory and self.db.delveHistory[LAB.name]
+    for _, r in ipairs(hist and hist.recentRuns or {}) do
+        if (r.kindo or r.kindoWhen) and (r.tier or 0) >= LAB.kindojanMinTier and (r.char == nil or r.char == me) then
+            if (r.kindoWhen or r.timestamp or 0) >= weekStart then return true end
+            everKilled = true
+        end
+    end
+
+    local store = self.db and self.db.kindojanWeekByChar
+    if not store then return false end
+    local kills = E.KindojanKills()
+    local entry = store[me]
+    if not entry or now >= (entry.weekEnd or 0) then
+        -- The statistic never falls, so a zero beside a logged kill or a read below last week's is one not loaded yet
+        if (kills == 0 and everKilled) or (entry and kills < (entry.kills or 0)) then return false end
+        store[me] = { weekEnd = weekEnd, kills = kills }
+        return false
+    end
+    return kills > (entry.kills or 0)
 end
 
 function E.LabyrinthBoardKey(mark)

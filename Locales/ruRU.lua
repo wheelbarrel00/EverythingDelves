@@ -399,6 +399,7 @@ L["Gilded Stash: %d/%d"] = "Золоченый тайник: %d/%d"
 L["Trovehunter's Bounty: %s"] = "Trovehunter's Bounty: %s"
 L["looted this week"] = "получена на этой неделе"
 L["not looted"] = "не получена"
+L["%s: obtained this week"] = "%s: получена на этой неделе"
 L["Weekly data resets at the next reset"] = "Недельные данные обнулятся при следующем сбросе"
 L["Updated: %s"] = "Обновлено: %s"
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = "Зайдите персонажем, чтобы он записался. Нажмите на столбец для сортировки, наведите курсор на строку для подробностей."
@@ -861,7 +862,6 @@ L["Pin the Labyrinth's entrance on your map."] = "Отметить вход в �
 L["Add a TomTom arrow to the Labyrinth's entrance."] = "Добавить стрелку TomTom ко входу в Лабиринт."
 L["Kills"] = "Убийства"
 L["This week's reward"] = "Награда этой недели"
-L["Not readable until your first kill on Tier 8 or higher."] = "Недоступно до первого убийства на уровне 8 или выше."
 L["Reach him"] = "Как добраться"
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = "Пройдите все девять залов за одно прохождение на уровне 8 или выше. Его зал на крайнем севере локации «%s» после этого остается открытым, так что в следующих прохождениях нужны только «%s», «%s» или «%s», а также «%s»."
 L["Den'Zara first"] = "Сначала Ден'зара"
@@ -881,6 +881,7 @@ L["For the first minute and a half, in this order:"] = "Первые полто�
 L["Intermission"] = "Передышка"
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = "На 1:30 он отступает, и по очереди выходят четыре гласа лоа. Это не фаза урона: просто переживите каждого."
 L["%s, master of the Labyrinth."] = "%s, повелитель Лабиринта."
+L["Not yet - a kill on Tier 8 or higher earns it"] = "Ещё нет - её даёт убийство на уровне 8 или выше"
 L["%s, or %s."] = "%s или %s."
 
 -- UI/TabLeaderboard.lua

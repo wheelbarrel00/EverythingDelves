@@ -1,7 +1,7 @@
 local E = EverythingDelves
 local L = E.L
 
-local ipairs, tonumber, tostring = ipairs, tonumber, tostring
+local ipairs, tostring = ipairs, tostring
 
 -- Spell, item, achievement and place names are read by ID, with English fallbacks
 local ERUPTION, HEADHUNTERS, AXES, CRUSHING = 1301288, 1298647, 1300768, 1299117
@@ -150,7 +150,8 @@ local function BuildStatus(ui, content, kit, k)
     k.first.check:SetPoint("RIGHT")
     k.first.value:SetTextColor(ui:Color("muted"))
     k.weekly = StatusRow(ui, content, kit, L["This week's reward"], "hint")
-    k.weekly.value:SetText(L["Not readable until your first kill on Tier 8 or higher."])
+    k.weekly.check = kit.Check(ui, k.weekly)
+    k.weekly.check:SetPoint("RIGHT")
     for _, row in ipairs({ k.kills, k.first, k.weekly }) do card:Add(row, { height = kit.ROW, fill = true }) end
     return card
 end
@@ -335,13 +336,13 @@ function E.BuildKindojanView(ui, content, kit)
         k.hero.sub:SetText(L["%s, master of the Labyrinth."]:format(firstName or "The First Hash'ey"))
         k.hero.tt:SetAlpha(E:IsTomTomLoaded() and 1 or kit.DIM)
 
-        -- Read alone: GetStatistic returns more than its value, a string that reads "--" until the first kill
-        local stat = GetStatistic and GetStatistic(LAB.kindojanStatistic)
-        local kills = tonumber((tostring(stat or ""):gsub("%D", ""))) or 0
-        k.kills.value:SetText(tostring(kills))
+        k.kills.value:SetText(tostring(E.KindojanKills()))
         k.first.label:SetText(firstName or "The First Hash'ey")
         k.first.check:SetShown(firstDone == true)
         k.first.value:SetText(firstDone and "" or "--")
+        local reward = E:KindojanRewardThisWeek()
+        k.weekly.check:SetShown(reward == true)
+        k.weekly.value:SetText((reward == true and "") or (reward == false and L["Not yet - a kill on Tier 8 or higher earns it"]) or "--")
 
         k.combat:SetText(kit.Lead(L["Combat"]) .. "  "
             .. L["%s, or %s."]:format(ItemName(BILESPEAR, "Corrosive Bilespear"), ItemName(OUROBORIC, "Ouroboric Curse")))

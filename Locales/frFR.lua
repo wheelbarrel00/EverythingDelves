@@ -399,6 +399,7 @@ L["Gilded Stash: %d/%d"] = "Cache dorée: %d/%d"
 L["Trovehunter's Bounty: %s"] = "Trovehunter's Bounty: %s"
 L["looted this week"] = "récupéré cette semaine"
 L["not looted"] = "non récupéré"
+L["%s: obtained this week"] = "%s: obtenue cette semaine"
 L["Weekly data resets at the next reset"] = "Les données hebdomadaires seront remises à zéro à la prochaine réinitialisation"
 L["Updated: %s"] = "Mis à jour: %s"
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = "Connectez-vous à un personnage pour l'enregistrer. Cliquez sur une colonne pour trier, survolez une ligne pour le détail."
@@ -861,7 +862,6 @@ L["Pin the Labyrinth's entrance on your map."] = "Épingler l'entrée du labyrin
 L["Add a TomTom arrow to the Labyrinth's entrance."] = "Ajouter une flèche TomTom vers l'entrée du labyrinthe."
 L["Kills"] = "Victoires"
 L["This week's reward"] = "Récompense de la semaine"
-L["Not readable until your first kill on Tier 8 or higher."] = "Indisponible avant votre première victoire au palier 8 ou plus."
 L["Reach him"] = "L'atteindre"
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = "Terminez les neuf salles en un seul parcours au palier 8 ou plus. Sa salle, à l'extrémité nord de la zone %s, reste ensuite ouverte, et les parcours suivants ne passent plus que par l'une de ces zones: %s, %s ou %s, puis par la zone %s."
 L["Den'Zara first"] = "D'abord Den’Zara"
@@ -881,6 +881,7 @@ L["For the first minute and a half, in this order:"] = "Pendant la première min
 L["Intermission"] = "Intermède"
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = "À 1:30, il recule et quatre parle-loa se relaient. Pas de phase de dégâts: survivez simplement à chacun."
 L["%s, master of the Labyrinth."] = "%s, maître du labyrinthe."
+L["Not yet - a kill on Tier 8 or higher earns it"] = "Pas encore - une victoire au palier 8 ou plus l'accorde"
 L["%s, or %s."] = "%s, ou %s."
 
 -- UI/TabLeaderboard.lua

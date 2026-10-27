@@ -87,6 +87,7 @@ local DATA_DEFAULTS = {
     delveBossMap           = {},
     gildedStashByChar      = {},
     abundantByChar         = {},  -- [charKey] = { weekEnd = epoch }
+    kindojanWeekByChar     = {},  -- [charKey] = { weekEnd = epoch, kills = statistic at the week's first read }
     roster                 = {},
     tierCache              = {},  -- { season, build, recGear = { [tier] = ilvl } }
     storyGrades            = {},  -- [story widget ID] = grade letter, or "x" for won't run
@@ -1198,6 +1199,8 @@ function E:CaptureRosterSnapshot()
     rec.bountyLooted = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
         and C_QuestLog.IsQuestFlaggedCompleted(E.TROVE_LOOTED_QUEST_ID)) or false
 
+    rec.kindoReward = (self.KindojanRewardThisWeek and self:KindojanRewardThisWeek()) or nil
+
     local prog, total, slots = 0, 0, 0
     local ok, acts = false, nil
     if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
@@ -1419,7 +1422,7 @@ function E:LogDelveRun(name, tier, duration, deaths, keyUsed, wasBountiful, stor
         spec         = CurrentSpecID(),
     }
     if lab then
-        run.ch, run.at, run.rooms, run.kindo = lab.ch, lab.at, lab.rooms, lab.kindo
+        run.ch, run.at, run.rooms, run.kindo, run.kindoWhen = lab.ch, lab.at, lab.rooms, lab.kindo, lab.kindoWhen
         run.keys, run.left, run.prior = lab.keys, lab.left, lab.prior
     end
     table.insert(recent, 1, run)
@@ -2159,7 +2162,7 @@ delveFrame:SetScript("OnEvent", function(_, event, ...)
             end
             if runState.lab then
                 E.LabRun.OnEncounterEnd(runState.lab, encounterID, encounterName, success,
-                    GetTime() - runState.startTime)
+                    GetTime() - runState.startTime, time())
             end
         end
 

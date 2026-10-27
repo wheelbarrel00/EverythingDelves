@@ -422,6 +422,7 @@ L["Gilded Stash: %d/%d"] = true
 L["Trovehunter's Bounty: %s"] = true
 L["looted this week"] = true
 L["not looted"] = true
+L["%s: obtained this week"] = true
 L["Weekly data resets at the next reset"] = true
 L["Updated: %s"] = true
 L["Log into a character to record it. Click a column to sort; hover a row for detail."] = true
@@ -909,7 +910,6 @@ L["Pin the Labyrinth's entrance on your map."] = true
 L["Add a TomTom arrow to the Labyrinth's entrance."] = true
 L["Kills"] = true
 L["This week's reward"] = true
-L["Not readable until your first kill on Tier 8 or higher."] = true
 L["Reach him"] = true
 L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."] = true
 L["Den'Zara first"] = true
@@ -929,6 +929,7 @@ L["For the first minute and a half, in this order:"] = true
 L["Intermission"] = true
 L["At 1:30 he steps back and four loa speakers take turns. No damage phase: just survive each one."] = true
 L["%s, master of the Labyrinth."] = true
+L["Not yet - a kill on Tier 8 or higher earns it"] = true
 L["%s, or %s."] = true
 
 -- UI/TabLeaderboard.lua

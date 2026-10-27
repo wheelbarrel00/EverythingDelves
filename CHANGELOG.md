@@ -5,6 +5,19 @@ All notable changes to Everything Delves will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-10-27
+
+Kindo'jan's weekly reward, listed under Coming Next in 2.4.1, is here: on the Nemesis page and on the Roster.
+
+### New Features
+
+- **Kindo'jan's weekly reward** - the Nemesis page's Kindo'jan view now shows whether you have already earned this week's reward: a check once you have defeated him on Tier 8 or higher since the weekly reset, and "Not yet" until then. Everything Delves works it out from your logged Labyrinth runs, including the one you are still in, and from the game's own count of your Tier 8 and higher Kindo'jan kills.
+- **Kindo'jan's reward on the Roster** - hover a character to see "Kindo'jan's Reward: obtained this week" once that character has earned it.
+
+### Notes
+
+- The new text is translated into German, French, Russian, Korean and both Chinese.
+
 ## [2.4.1] - 2026-10-25
 
 A Korean translation review, and less work in the background.
