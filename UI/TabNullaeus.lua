@@ -16,7 +16,8 @@ local NEMESIS_MAP, NEMESIS_X, NEMESIS_Y = 2512, 51.22, 30.27
 local NEMESIS_QUEST = 97482
 local NEMESIS_ICON  = "Interface\\Icons\\Ability_Creature_Poison_06"
 local PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-local BEACON_ITEM_ID, UNDERCOIN_ID, BEACON_PRICE = 253342, E.CurrencyIDs.undercoins, 5000
+-- Season 1's Beacon of Hope (253342) no longer summons him.
+local FLUTE_ITEM_ID, UNDERCOIN_ID, FLUTE_PRICE = 275910, E.CurrencyIDs.undercoins, 5000
 
 local MECHANICS = {
     { name = "Soul Extinction", tag = L["Interrupt - Top Priority"], color = "FF3333",
@@ -50,7 +51,7 @@ local PHASES = {
         adds  = {
             { n = "Echo of Azta'rec", d = L["It does not have much health, but it uses every ability from his main phase - including Soul Extinction, which will one-shot you if it lands. Crowd control it and kill it fast; leaving it up makes the whole intermission far harder."] },
             { n = L["Cover the Echo's casts"], d = L["If Valeera is set to Healer, you must interrupt the Echo yourself. If she is set to DPS she covers the interrupt, but then you have to dispel Void Toxin."] },
-            { n = L["Extra venom sets"], d = L["Two additional venom coverings are added, so the pattern you must memorise reaches five safe zones."] },
+            { n = L["Extra venom sets"], d = L["Two additional venom coverings are added to each sequence, so by the last intermission you must memorise seven safe zones."] },
         },
     },
 }
@@ -58,11 +59,11 @@ local PHASES = {
 local REWARDS = {
     { name = "Apophic Patagia", kind = L["Cloak Transmog"], itemID = 276163,
       cond = L["Defeat Azta'rec on either difficulty during Season 2 (My Venomous Nemesis, a Feat of Strength)."],
-      extra = L["Your first kill also grants 30 Hero Mistcrests, which do not count toward the season maximum."] },
+      extra = L["Your first kill also grants 30 Hero Mistcrests."] },
     { name = "Corrosive Victory", kind = L["Toy"], itemID = 275988, quest = true,
       cond = L["Reward from the Fangs for the Memories quest."] },
     { name = "Apophic Soul Crusher", kind = L["Mount"], itemID = 275657,
-      cond = L["Solo Azta'rec (Let Me Solo Him: Azta'rec)."] },
+      cond = L["Solo Azta'rec on Tier \"??\" (Let Me Solo Him: Azta'rec)."] },
     { name = "the Poisonous", kind = L["Title"],
       cond = L["Defeat Azta'rec on Tier \"??\" (Purging the Poison)."] },
     { name = "Fabled Vanquisher of Azta'rec", kind = L["Title"],
@@ -222,18 +223,25 @@ local function BuildOverview(ui, content)
     b:AddLine(Lead(L["Venomfall Deeps is open, but his lair has to be unlocked first."]) .. " "
         .. L["Clear a Tier 7 delve with at least one life left to unlock the lower difficulty, or a Tier 10 clear for the harder one. The clear does not have to be in Venomfall Deeps. Azta'rec can also be met the other way listed below."])
     b:AddLine(L["Azta'rec is the Midnight Season 2 Nemesis, and you can meet him two separate ways:"], "label", { gap = PARA_GAP })
-    Bullet(b, L["Inside any delve"], L["he can appear at random in any Tier 8 or higher delve, and can also be summoned on the spot with a Scalebound Herald's Flute."])
+    Bullet(b, L["Inside any delve"], L["he can appear at random in any Tier 8 or higher delve, and can also be summoned with a Scalebound Herald's Flute at a delve's respawn stone."])
     Bullet(b, "Venomfall Deeps", L["the dedicated Nemesis delve on The Coiled Isle. This is the full fight \226\128\148 the mechanics and intermissions below cover it, and it is what awards the achievements, mount, and titles."])
     Bullet(b, L["Tier \"?\""], L["the easier of the two. Recommended item level 290."])
-    Bullet(b, L["Tier \"??\""], L["everything hits far harder, and he summons an Echo of himself during every intermission. This is the one the title and the Fabled title require."])
-    b:AddLine(L["The entrance is on the north side of The Coiled Isle, inside one of the snake buildings (use Pin or TomTom above). Your first kill awards a bonus 30 Hero Mistcrests, which do not count toward the season maximum."], "hint", { gap = PARA_GAP })
+    Bullet(b, L["Tier \"??\""], L["everything hits far harder, and he summons an Echo of himself during every intermission. This is the one the title, the mount and the Fabled title require."])
+    b:AddLine(L["The entrance is on the north side of The Coiled Isle, inside one of the snake buildings (use Pin or TomTom above). Your first kill awards a bonus 30 Hero Mistcrests."], "hint", { gap = PARA_GAP })
     b:AddLine(L["The encounter is deliberately punishing and expects deaths while you learn it, especially at lower item levels."], "hint", { gap = PARA_GAP })
     card:Add(b, { fitHeight = true })
     return card
 end
 
-local function BuildBeacon(ui, content, v)
-    local card = ui:CreateGroup(content, L["Beacon of Hope"])
+local function FluteName()
+    local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(FLUTE_ITEM_ID)
+    if name and name ~= "" then return name end
+    if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(FLUTE_ITEM_ID) end
+    return "Scalebound Herald's Flute"
+end
+
+local function BuildFlute(ui, content, v)
+    local card = ui:CreateGroup(content, L["Summon Azta'rec"])
     local row = Row(content, ROW)
     row.check = Check(ui, row)
     row.check:SetPoint("LEFT")
@@ -247,9 +255,9 @@ local function BuildBeacon(ui, content, v)
     card:Add(row, { height = ROW, fill = true })
 
     local hint = ui:CreateTextBlock(content)
-    hint:AddLine(L["Use a Beacon of Hope inside a delve to call the Nemesis rather than waiting on his random spawn. Season 2 also introduces the Scalebound Herald's Flute, which summons Azta'rec inside the delve \226\128\148 its cost and vendor are not tracked here yet. The Undercoin bar tracks the Beacon, not the Flute."], "hint")
+    hint:AddLine(L["Play the flute at the respawn stone partway through any delve to summon Azta'rec there, rather than waiting on his random spawn. Bring him to half health and he drops a pile of gold that holds a Trovehunter's Bounty if you have not looted one this week. The flute costs 5,000 Undercoin in Silvermoon City, which the bar above tracks, and it also drops from Mislaid Curiosities."], "hint")
     card:Add(hint, { fitHeight = true })
-    v.beacon = row
+    v.flute = row
     return card
 end
 
@@ -298,8 +306,8 @@ local function BuildCompanion(ui, content)
     Bullet(b, L["Healer"], L["run Valeera as DPS \226\128\148 she interrupts Soul Extinction, and you dispel Void Toxin yourself."])
     LeadLine(b, L["Curios"], L["Valeera has a third slot this season: Combat, Utility and a new Poisons slot. The picks do not change with your own role."])
     Bullet(b, L["Poison"], L["Frostheart Venom \226\128\148 cuts enemy attack and cast speed by 20 percent, which buys time on both Soul Extinction and the Void Toxin dispel."])
-    Bullet(b, L["Combat"], L["Corrosive Bilespear for straight damage. Ouroboric Curse is the alternative, but much of this delve one-shots, so its effect is hard to keep procced."])
-    Bullet(b, L["Utility"], L["Soul-Cracking Dreamcatcher \226\128\148 because you interrupt so often it is close to permanent uptime, and the debuff sits on the boss, so Valeera's own interrupts keep it up even while you play healer. 30 percent damage at Rank 3 or higher."])
+    Bullet(b, L["Combat"], L["Corrosive Bilespear or Viperwind Idol for straight damage. Ouroboric Curse is weaker here: much of this delve one-shots, so its effect is hard to keep procced."])
+    Bullet(b, L["Utility"], L["Soul-Cracking Dreamcatcher: because you interrupt so often it is close to permanent uptime, and the debuff sits on the boss, so Valeera's own interrupts keep it up even while you play healer. The boss takes 20 percent more damage at Rank 3 and 4, and 25 percent at Rank 5."])
     LeadLine(b, L["Consumables"], L["carry health and DPS potions, and hold Bloodlust or Heroism for after the final intermission on Tier \"?\", or for killing the Echo during the final intermission on Tier \"??\"."])
     card:Add(b, { fitHeight = true })
     return card
@@ -359,25 +367,25 @@ local function BuildRewards(ui, content, v)
     return card
 end
 
-local function RenderBeacon(ui, v, inner)
-    local row = v.beacon
-    local held = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(BEACON_ITEM_ID, true) or 0
+local function RenderFlute(ui, v, inner)
+    local row = v.flute
+    local held = C_Item and C_Item.GetItemCount and C_Item.GetItemCount(FLUTE_ITEM_ID, true) or 0
     local coins = 0
     if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
         local info = C_CurrencyInfo.GetCurrencyInfo(UNDERCOIN_ID)
         if info then coins = info.quantity or 0 end
     end
-    local enough = held == 0 and coins >= BEACON_PRICE
+    local enough = held == 0 and coins >= FLUTE_PRICE
 
     if held > 0 then
-        row.status:SetText(L["[Ready] Beacon of Hope in inventory (%d)"]:format(held) .. "  "
+        row.status:SetText(L["%s: %d in your bags or bank"]:format(FluteName(), held) .. "  "
             .. E.DelveList.cc("muted") .. "- " .. L["go get that Nemesis!"] .. "|r")
         row.status:SetTextColor(ui:Color("text"))
     elseif enough then
-        row.status:SetText(L["You have enough Undercoins to purchase a Beacon!"])
+        row.status:SetText(L["You have enough Undercoin to buy one."])
         row.status:SetTextColor(ui:Color("label"))
     else
-        row.status:SetText(L["No Beacon of Hope in bags or bank."])
+        row.status:SetText(L["%s: none in your bags or bank."]:format(FluteName()))
         row.status:SetTextColor(ui:Color("label"))
     end
     row.check:SetShown(enough)
@@ -387,11 +395,11 @@ local function RenderBeacon(ui, v, inner)
     row.status:SetPoint("LEFT", row, "LEFT", x, 0)
     row.status:SetWidth(0)
     local natural = math_ceil(row.status:GetStringWidth() or 0)
-    row.value:SetText(("%d / %d"):format(coins, BEACON_PRICE))
+    row.value:SetText(("%d / %d"):format(coins, FLUTE_PRICE))
     -- The status gives way first, so a long translation never squeezes the bar out of sight
     local room = inner - x - math_ceil(row.value:GetStringWidth() or 0) - ITEM_GAP * 2 - BAR_MIN
     row.status:SetWidth(math_max(1, math_min(natural, room)))
-    row.bar:SetProgress(coins / BEACON_PRICE)
+    row.bar:SetProgress(coins / FLUTE_PRICE)
 end
 
 local function RenderQuest(ui, v)
@@ -433,7 +441,7 @@ E:RegisterModule(function()
 
     local v = {}
     v.cards = {
-        BuildHero(ui, aztaHolder, v), BuildOverview(ui, aztaHolder), BuildBeacon(ui, aztaHolder, v),
+        BuildHero(ui, aztaHolder, v), BuildOverview(ui, aztaHolder), BuildFlute(ui, aztaHolder, v),
         BuildMechanics(ui, aztaHolder), BuildIntermissions(ui, aztaHolder), BuildCompanion(ui, aztaHolder),
         BuildRewards(ui, aztaHolder, v),
     }
@@ -451,7 +459,7 @@ E:RegisterModule(function()
             kindo.Refresh()
             return
         end
-        RenderBeacon(ui, v, lastWidth - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2)
+        RenderFlute(ui, v, lastWidth - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2)
         RenderQuest(ui, v)
         v.hero.tt:SetAlpha(E:IsTomTomLoaded() and 1 or DIM)
         -- A tag sizes itself only when its text is set, which for these was while the page was built
@@ -524,7 +532,11 @@ E:RegisterModule(function()
     local LATE_DATA = { "GET_ITEM_INFO_RECEIVED", "SPELL_DATA_LOAD_RESULT" }
     local dataWatch = CreateFrame("Frame")
     dataWatch:SetScript("OnEvent", function(_, event, id, success)
-        if success == false or CurrentView() ~= "kindo" then return end
+        if success == false then return end
+        if CurrentView() ~= "kindo" then
+            if event == "GET_ITEM_INFO_RECEIVED" and id == FLUTE_ITEM_ID then RenderSoon() end
+            return
+        end
         local watched = (event == "SPELL_DATA_LOAD_RESULT") and kindo.spells or kindo.items
         if watched[id] then RenderSoon() end
     end)

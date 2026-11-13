@@ -8,10 +8,14 @@ local CURIO_DATA = {
         { role = "Damage", combat = { name = "Quizzical Device",      id = 239578 }, utility = { name = "Tailwind Conduit",        id = 239567 } },
     },
     -- Season 1 and Season 2 curio IDs interleave, so never infer one from a neighbor.
+    -- Each alt is the pick from before 12.1.5, for a player who does not have the new pick yet.
     Valeera = {
-        { role = "Tank",   combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
-        { role = "Healer", combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
-        { role = "Damage", combat = { name = "Corrosive Bilespear", id = 249223 }, utility = { name = "Soul-Cracking Dreamcatcher", id = 249228 } },
+        { role = "Tank",   combat = { name = "Viperwind Idol", id = 271133, alt = { name = "Corrosive Bilespear", id = 249223 } },
+                           utility = { name = "Dundun's Favor", id = 249227, alt = { name = "Soul-Cracking Dreamcatcher", id = 249228 } } },
+        { role = "Healer", combat = { name = "Viperwind Idol", id = 271133, alt = { name = "Corrosive Bilespear", id = 249223 } },
+                           utility = { name = "Dundun's Favor", id = 249227, alt = { name = "Soul-Cracking Dreamcatcher", id = 249228 } } },
+        { role = "Damage", combat = { name = "Viperwind Idol", id = 271133, alt = { name = "Corrosive Bilespear", id = 249223 } },
+                           utility = { name = "Dundun's Favor", id = 249227, alt = { name = "Soul-Cracking Dreamcatcher", id = 249228 } } },
     },
 }
 
@@ -281,6 +285,10 @@ E:RegisterModule(function()
                         E.CC.gold .. ">" .. E.CC.close),
             L["Slot these curios on your companion to boost her in delves."],
         }
+        local first = CURIO_DATA[shownCompanion] and CURIO_DATA[shownCompanion][1]
+        if first and first.combat.alt then
+            lines[#lines + 1] = L["Hover a curio to see the one to use if you don't have it yet."]
+        end
         if E:GetRecommendedPoison(shownCompanion) then
             lines[#lines + 1] = L["Her Season 2 Poison slot is listed below the roles."]
         end
@@ -295,6 +303,12 @@ E:RegisterModule(function()
                 :format(E.CC.green .. L["Green"] .. E.CC.close),
             L["%s = you have none yet \226\128\148 pick one up before your next delve."]
                 :format(E.CC.red .. L["Red"] .. E.CC.close))
+    end
+
+    local function ShowAltTip(self)
+        local c = self.curio
+        if not (c and c.alt) then return end
+        E:ShowTooltip(self, c.name, L["Or %s, if you don't have it yet."]:format(c.alt.name))
     end
 
     local roleRows = {}
@@ -338,6 +352,17 @@ E:RegisterModule(function()
             hit:EnableMouse(true)
             hit:SetScript("OnEnter", ShowCountTip)
             hit:SetScript("OnLeave", function() E:HideTooltip() end)
+        end
+
+        for _, slot in ipairs({ "combat", "util" }) do
+            local hit = CreateFrame("Frame", nil, popup)
+            hit:SetPoint("LEFT", rf[slot .. "Icon"], "LEFT")
+            hit:SetPoint("RIGHT", rf[slot .. "FS"], "RIGHT")
+            hit:SetHeight(16)
+            hit:EnableMouse(true)
+            hit:SetScript("OnEnter", ShowAltTip)
+            hit:SetScript("OnLeave", function() E:HideTooltip() end)
+            rf[slot .. "Hit"] = hit
         end
 
         if i < 3 then
@@ -436,6 +461,7 @@ E:RegisterModule(function()
                 .. E.CC.body .. row.utility.name .. E.CC.close
             )
             rf.utilCountFS:SetText(uCountCC .. uCount .. E.CC.close)
+            rf.combatHit.curio, rf.utilHit.curio = row.combat, row.utility
 
             if C_Item and C_Item.GetItemIconByID then
                 rf.combatIcon:SetTexture(C_Item.GetItemIconByID(row.combat.id))

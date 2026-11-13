@@ -3,6 +3,32 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.5.1", date = "2026-11-13",
+        sections = {
+            { head = "Kindo'jan's tactics up to date", items = {
+                "Kindo'jan's and Azta'rec's pages brought up to date with live play, the curio picks updated for 12.1.5, and ready for patch 12.1.7.",
+            }},
+            { head = "Improved", items = {
+                "Kindo'jan's tactics up to date with live play - the Nemesis page's Kindo'jan view now says what the fight really does: Akil'zon's gusts knock you off the platform rather than killing outright, Valeera is stunned through Halazzi's Gambit so you block the true Shadow for her, the axes fly back to him after their arc, a Disgraceful Display stack lasts five minutes, and whenever he casts Cleansing Flame himself a juggernaut charges at once. It also has a line on Den'Zara's fight, and Bloodlust on the pull for players who can kill him before the intermission at 1:30.",
+                "Curio picks for 12.1.5 - the curio reminder and the delve HUD now recommend Viperwind Idol for Combat and Dundun's Favor for Utility, for every role. Hover a curio in the reminder to see the one to use until you have it: Corrosive Bilespear or Soul-Cracking Dreamcatcher, the picks from before 12.1.5.",
+                "Summon Azta'rec with the Scalebound Herald's Flute - Azta'rec's page tracked Season 1's Beacon of Hope, which no longer works in Season 2. The card now tracks the Scalebound Herald's Flute: how many you have, your Undercoin toward the 5,000 it costs, where to play it, and how it gets you a Trovehunter's Bounty.",
+                "Purging the Vaults on the Shard Tracker - the Vaults of Atal'Utek's weekly quest, worth 125 Coffer Key Shards, is now listed with the other shard sources.",
+                "Ready for patch 12.1.7 - the addon is marked as up to date for 12.1.7.",
+            }},
+            { head = "Fixed", items = {
+                "The way to Kindo'jan named too few chambers - once his chamber is open, later runs still go through the Chamber of Rites, then the Reliquary and Halazzi's Lair or the Catacombs and the Cave Towers, then the Central Chamber and Akil'zon's Roost.",
+                "Fabled Let Me Solo Him: Kindo'jan looked earnable - it could only be earned until the weekly maintenance of October 27, and the Rewards card now says it is no longer available.",
+                "Azta'rec's mount needs Tier \"??\" - the mount's line now says it takes a solo kill on Tier \"??\", and the Tier \"??\" line lists the mount.",
+                "Soul-Cracking Dreamcatcher's numbers - the boss takes 20 percent more damage at Rank 3 and 4 and 25 percent at Rank 5, not 30 percent.",
+                "Seven safe zones, not five - on Tier \"??\" the last intermission has seven safe zones to remember.",
+                "No more crest season maximum - Azta'rec's first-kill bonus no longer mentions a season maximum, since crests have been uncapped since October 20.",
+            }},
+            { head = "Notes", items = {
+                "The changed text is translated into German, French, Russian, Korean and both Chinese.",
+            }},
+        },
+    },
+    {
         version = "2.5.0", date = "2026-10-27",
         sections = {
             { head = "Kindo'jan's weekly reward", items = {

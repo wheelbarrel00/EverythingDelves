@@ -63,7 +63,7 @@ Version 2.4.0 catches you up: after an update with new features, What's New list
 - **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
 - **The Labyrinth of Kindo'jan** - patch 12.1.5's nine-chamber Labyrinth: chambers and checkpoint times on the HUD, one History row per visit, Leaderboard rankings to 3, 6 and 9 chambers and for Kindo'jan, its achievements, Labyrinth Journey and Ascendant Venomstones, and the coffer keys its checkpoints need
 - **Nemesis** - a switch between Kindo'jan, the Labyrinth's final boss, and Azta'rec, the Season 2 Nemesis in Venomfall Deeps: how to reach each, boss mechanics phase by phase, companion and curio setup, and the full reward track
-- **Shard Tracker** — every shard source with quest tracking, currency bars, a Mistcrests panel with your season cap, a session shards/hour rate, and a World Quest scanner
+- **Shard Tracker** — every shard source with quest tracking, currency bars, a Crests panel with each crest's season cap (or Uncapped), a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
 - **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
 - **Leaderboard** - your characters ranked on every delve by their fastest clear at the tier you pick: who holds each record, in which spec and on which story, where the character you are playing stands, and class and spec filters
@@ -108,13 +108,13 @@ Patch 12.1.5's Labyrinth in Eversong Woods runs as nine chambers with a checkpoi
 ### Nemesis (Kindo'jan and Azta'rec)
 A switch at the top of the page moves between **Kindo'jan**, the First Hash'ey at the heart of the Labyrinth, and Azta'rec. Kindo'jan's side covers how to reach his chamber, Den'Zara first, each phase of the fight with the four loa of the intermission, Valeera's role, poison and curios, and his rewards with a check for each you have earned. Ability, item, achievement and place names come from the game in your language.
 
-A dedicated view for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Beacon of Hope** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles.
+A dedicated view for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Scalebound Herald's Flute** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles.
 
 ### Shard Tracker
-Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 7 known shard sources with live quest completion tracking. Also includes:
-- **Mistcrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier
+Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 8 known shard sources with live quest completion tracking. Also includes:
+- **Mistcrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier, or Uncapped once Blizzard lifts it
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
-- **Special Assignments** — all 8 tracked with unlock, active, and completed status
+- **Special Assignments** — the eight in Midnight's first zones, tracked with unlock, active, and completed status
 - **Weekly Delve Quest** — "Midnight: Delves" completion status
 - **World Quest Scanner** — all 7 Midnight zones scanned for shard-rewarding WQs
 - **Low Shard Warning** — configurable threshold alert
@@ -154,7 +154,7 @@ Your delve history is tracked **per character** through profiles, so each alt ke
 A one-stop info tab in the settings window: the addon version, a full slash-command reference, copyable links (Discord, CurseForge, GitHub, and a bug-report link), and the complete in-addon changelog so you can catch up on anything you missed. Open it directly with `/ed about`.
 
 ### Quality of Life
-- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot for your companion's assigned role, with hover help on its title and each bag-count number
+- **Curio reminder** — an optional popup when you open the companion configuration, reminding you which curios to slot for your companion's assigned role, with hover help on its title, each curio and each bag-count number
 - **Trovehunter's Bounty reminder** — inside a bountiful delve, a reminder to use your bounty before you finish, with a one-click Use button, and none once you've used a bounty this week
 - **Live broker text** — the minimap/broker button shows your Keys, weekly shards, and time to reset as live status text, so Titan Panel and ElvUI users can read it without opening the window
 - **Bounty Map tooltip** — hovering a Trovehunter's Bounty in your bags tells you whether it's still unused this week, active right now, or one to keep for next week because you already used a bounty this week
@@ -269,7 +269,7 @@ where to send it.
 |---|---|
 | Memory footprint | ~600 KB |
 | Lua files | 44 (36 authored, 8 generated: the 7 locale files and the story names) |
-| Interface version | 120100, 120105, 120007 (Midnight 12.1, 12.1.5 and 12.0.7) |
+| Interface version | 120100, 120105, 120107, 120007 (Midnight 12.1, 12.1.5, 12.1.7 and 12.0.7) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |
 

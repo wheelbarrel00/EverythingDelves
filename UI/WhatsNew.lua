@@ -3,6 +3,20 @@ local L = E.L
 
 -- One per release. A release marked fixesOnly announces nothing and is listed with the next feature release.
 local RELEASES = {
+    { version = "2.5.1", fixesOnly = true, entries = {
+        {
+            title = "Kindo'jan's tactics up to date",
+            desc  = "Now matches the live fight: Akil'zon's knockback, Halazzi's Gambit, the juggernaut's charge in Phase 2, Den'Zara, and the way to his chamber.",
+        },
+        {
+            title = "Curio picks for 12.1.5",
+            desc  = "Viperwind Idol and Dundun's Favor for every role. Hover a curio in the reminder for the one to use until you have it.",
+        },
+        {
+            title = "Scalebound Herald's Flute",
+            desc  = "Azta'rec's page tracks Season 2's flute instead of Season 1's Beacon of Hope.",
+        },
+    } },
     { version = "2.5.0", entries = {
         {
             title = "Kindo'jan's weekly reward",

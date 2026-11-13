@@ -265,6 +265,13 @@ E.ShardSources = {
         questIDs    = { 93889 },
     },
     {
+        name        = "Purging the Vaults",
+        shardsEach  = 125,
+        weeklyMax   = 1,
+        trackable   = true,
+        questIDs    = { 95520 },
+    },
+    {
         -- Repeatable with no per-source cap, bounded only by 600/wk.
         name         = L["Prey Quests"],
         shardsEach   = 75,

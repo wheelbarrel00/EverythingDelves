@@ -11,6 +11,7 @@ local TOAD_TOXIN = 1305904
 local BLOODLUST, HEROISM = 2825, 32182
 -- Sub-zones of the Labyrinth (AreaTable)
 local ROOST, RITES, LAIR, TOWERS = 17031, 17025, 17029, 17033
+local RELIQUARY, CENTRAL, CATACOMBS = 17026, 17027, 17028
 local BILESPEAR, OUROBORIC, DREAMCATCHER = 249223, 249219, 249228
 -- The First Hash'ey's own icon, for a client that has not sent the achievement yet
 local PORTRAIT_ICON = 3601564
@@ -26,9 +27,9 @@ local PHASE_ONE = {
 
 local INTERMISSION = {
     { id = STORM, en = "De Rising Storm", loa = L["Akil'zon"], tag = L["Find the gap"], color = "orange",
-      text = L["Wind pulses out from the middle in wide slices that kill outright. Stand in one of the small gaps between them."] },
+      text = L["Gusts sweep out from the middle in wide slices and knock back anyone they catch, three times in nine seconds. The small gaps between them are safe. The knockback is what kills, by throwing you off the platform."] },
     { id = GAMBIT, en = "Gambit in de Shadows", loa = L["Halazzi"], tag = L["Protect Valeera"], color = "yellow",
-      text = L["Four Shadows of Halazzi circle Valeera. Stand in the line between her and the true one, the Shadow carrying her target marker, or she is stunned."] },
+      text = L["Valeera is stunned while four Shadows of Halazzi circle her. The true one paws at the ground, then leaps at her after about six seconds. Stand in the line between her and the true one so its white circle moves from her to you, but not on top of her: the pounce splashes."] },
     { id = RAMPAGE, en = "Ursine Rampage", loa = L["Nalorakk"], tag = L["Find the gap"], color = "orange",
       text = L["Lines of bears charge in from the edges. Go through the gaps, or you are knocked off the platform."] },
     { id = CLEANSING, en = "Cleansing Flame", loa = L["Jan'alai"], tag = L["Soak"], color = "yellow",
@@ -65,15 +66,15 @@ end
 
 local function PhaseOneText(id)
     if id == ERUPTION then
-        return L["Circles erupt around you. Step out of them. The big one roots you for 5 seconds, and each eruption leaves a %s puddle, so drop them near the edge."]
+        return L["Circles erupt around you. Step out of them. The big one roots you for 5 seconds, and each eruption leaves a puddle of %s that lasts the whole fight, so drop them near the edge."]
             :format(SpellName(ERRATIC_MOJO, "Erratic Mojo"))
     elseif id == HEADHUNTERS then
         return L["Four headhunters throw %s circles at you. These do not add %s stacks. Kill them if your health is running low."]
             :format(SpellName(AXE_BARRAGE, "Axe Barrage"), SpellName(DISGRACE, "Disgraceful Display"))
     elseif id == AXES then
-        return L["Four rings of spinning axes sweep in arcs around the platform. Watch where each one starts and step aside."]
+        return L["Four rings of spinning axes sweep out in arcs, then fly back to him. A hit takes two thirds of your health, so dodge both passes."]
     end
-    return L["A heavy slam in front of him, then a juggernaut that cannot be crowd controlled. It charges you toward the edge with %s and shields its allies with %s. Stand near the middle, kill it first, and interrupt the shield when you can."]
+    return L["A heavy slam hits everyone near him, then a juggernaut that cannot be crowd controlled appears in the middle. Its %s knocks you away from it, and %s shields its allies, cutting their damage taken by 33 percent. Kill it first, and interrupt the shield when you can."]
         :format(SpellName(PHALANX, "Phalanx Charge"), SpellName(AEGIS, "Amani Aegis"))
 end
 
@@ -160,14 +161,16 @@ local function BuildOverview(ui, content, kit)
     local card = ui:CreateGroup(content, L["Overview"])
     local b = ui:CreateTextBlock(content)
     b:AddLine(kit.Lead(L["Reach him"]) .. "  "
-        .. L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, so later runs need only %s, %s or %s, and %s."]
-            :format(AreaName(ROOST, "Akil'zon's Roost"), AreaName(RITES, "Chamber of Rites"), AreaName(LAIR, "Halazzi's Lair"),
-                AreaName(TOWERS, "The Cave Towers"), AreaName(ROOST, "Akil'zon's Roost")),
+        .. L["Clear all nine chambers in one run on Tier 8 or higher. His chamber in the far north of %s then stays open, and later runs need only the chambers on the way: %s, then %s and %s or %s and %s, then %s and %s."]
+            :format(AreaName(ROOST, "Akil'zon's Roost"), AreaName(RITES, "Chamber of Rites"),
+                AreaName(RELIQUARY, "The Reliquary"), AreaName(LAIR, "Halazzi's Lair"),
+                AreaName(CATACOMBS, "The Catacombs"), AreaName(TOWERS, "The Cave Towers"),
+                AreaName(CENTRAL, "Central Chamber"), AreaName(ROOST, "Akil'zon's Roost")),
         "label", { bullet = kit.BULLET })
-    kit.Bullet(b, L["Den'Zara first"], L["The Vilebranch necromancer guards his chamber. Defeat her and Kindo'jan steps in."])
+    kit.Bullet(b, L["Den'Zara first"], L["The Vilebranch warlord guards his chamber. Stay out of the cone in front of her and walk out of her storm's pull. Defeat her and Kindo'jan steps in."])
     b:AddLine(L["Ten-minute enrage."], "label", { gap = kit.PARA_GAP, bullet = kit.BULLET })
     kit.Bullet(b, SpellName(DISGRACE, "Disgraceful Display"),
-        L["Every avoidable mechanic that hits you adds a stack. At three stacks the loa end your fight, whatever your health."])
+        L["Every avoidable mechanic that hits you adds a stack that lasts five minutes. At three stacks the loa slay you, whatever your health."])
     b:AddLine(L["Below Tier 8 he never appears."], "label", { gap = kit.PARA_GAP, bullet = kit.BULLET })
     card:Add(b, { fitHeight = true })
     return card
@@ -199,9 +202,9 @@ end
 local function BuildPhaseTwo(ui, content, kit)
     local card = ui:CreateGroup(content, L["Phase 2"])
     local b = ui:CreateTextBlock(content)
-    b:AddLine(L["He returns and uses everything above in random order, the four loa included. Watch for overlaps: %s with %s means taking the knockback and running straight to the sigil."]
-        :format(kit.Lead(SpellName(CRUSHING, "Crushing Blow")), kit.Lead(SpellName(CLEANSING, "Cleansing Flame"))), "label")
-    b:AddLine(L["Use %s or %s here, so this phase is as short as possible."]
+    b:AddLine(L["He returns, moves between the corners of the platform and uses everything above in random order, the four loa included. Whenever he casts %s himself, a juggernaut appears and charges at once with %s, so stand where the knockback throws you toward your sigil, not away from it."]
+        :format(kit.Lead(SpellName(CLEANSING, "Cleansing Flame")), kit.Lead(SpellName(PHALANX, "Phalanx Charge"))), "label")
+    b:AddLine(L["Use %s or %s on the pull if you can kill him before the intermission at 1:30, as many players do. Otherwise save it for this phase, so it is as short as possible."]
         :format(SpellName(BLOODLUST, "Bloodlust"), SpellName(HEROISM, "Heroism")), "label", { gap = kit.PARA_GAP })
     card:Add(b, { fitHeight = true })
     return card
@@ -263,7 +266,8 @@ local function BuildRewards(ui, content, kit, k)
         { achievement = LAB.kindojanAchievement, kind = L["Title"], en = "The First Hash'ey" },
         { achievement = LAB.kindojanSoloAchievement, itemID = LAB.kindojanMount, kind = L["Mount"], en = "Let Me Solo Him: Kindo'jan" },
         { achievement = LAB.kindojanArmyAchievement, kind = L["Title"], en = "The Labyrinth of Kindo'jan: One-Champion Army" },
-        { achievement = LAB.kindojanFabledAchievement, kind = L["Title"], en = "Fabled Let Me Solo Him: Kindo'jan" },
+        -- Earnable only until the maintenance of the week of 2026-10-27 (hotfix of 2026-10-20)
+        { achievement = LAB.kindojanFabledAchievement, kind = L["Title"], en = "Fabled Let Me Solo Him: Kindo'jan", closed = true },
     }
     k.rewardRows = {}
     for i, r in ipairs(k.rewards) do
@@ -280,6 +284,9 @@ local function RenderRewards(k)
         if r.achievement then
             local n, d, _, reward = Achievement(r.achievement)
             name, done, cond = n, d, reward
+            if r.closed and not done then
+                cond = (cond and cond ~= "") and (cond .. " - " .. L["No longer available."]) or L["No longer available."]
+            end
             -- A title has no item to show, as on Azta'rec's page
             icon = r.itemID and ItemIcon(r.itemID)
         else
