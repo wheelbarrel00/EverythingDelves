@@ -3,6 +3,24 @@ local L = E.L
 
 -- One per release. A release marked fixesOnly announces nothing and is listed with the next feature release.
 local RELEASES = {
+    { version = "2.6.0", entries = {
+        {
+            title = "Wah'du's Myth armor",
+            desc  = "A Tier Guide card for his six weekly steps, your Mythical Soul Fragments and the Myth pieces you have claimed, plus a HUD line in the Labyrinth and more in the Roster's Wah'du column.",
+        },
+        {
+            title = "Sturdy Chest checklist",
+            desc  = "Kindo'jan's Labyrinth Discoveries on the Achievements page now opens into all 44 chests by chamber. Click a chest you can reach but have not found to pin it on your map.",
+        },
+        {
+            title = "More on Kindo'jan's page",
+            desc  = "What to do before the pull, what the Ancestral Bounty holds, and how to get a forgotten toy or mount back from Kinduru.",
+        },
+        {
+            title = "The 23 English phrases translated",
+            desc  = "The Achievements page, the coffer key warning and the HUD's Dundun reminder are now in German, French, Russian, Korean and both Chinese too.",
+        },
+    } },
     { version = "2.5.1", fixesOnly = true, entries = {
         {
             title = "Kindo'jan's tactics up to date",

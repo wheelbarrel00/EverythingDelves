@@ -157,9 +157,14 @@ E.Labyrinth = {
     -- The Achievements card's order. A pair is a chain shown at its first step not yet earned.
     achievementList   = { 63724, 63721, 63722, 63723, 63717, { 63718, 63719 }, 63720, { 63727, 63728 }, 63716 },
     featAchievements  = { 63715, 64039, 64118 },
-    wahduQuestLine    = 6385,
+    -- Wah'du's steps in the game's order and the chamber each sends you to. The sixth is Kindo'jan himself.
     wahduQuests       = { 98951, 98963, 98962, 98961, 98960, 98959 },
-    wahduSpell        = 1319741,
+    wahduAreas        = { 17031, 17029, 17033, 17030, 17032 },
+    -- A hidden currency whose maximum is the number of steps unlocked so far, one more each weekly reset
+    wahduUnlockCurrency = 3592,
+    wahduFragment     = 285065,
+    wahduPieceCost    = 3,
+    wahduMinTier      = 8,
     venomstoneItem    = 280562,
     -- His kills count from Tier 8 only, in the statistic, the first-kill achievement and the weekly reward alike
     kindojanMinTier   = 8,
@@ -172,6 +177,31 @@ E.Labyrinth = {
     kindojanMount     = 283363,
     kindojanWeeklyItem = 285875,
     kindojanWeeklySpell = 1314916,
+    -- The Ancestral Bounty's crests and items. 285801 is the bag item, 285807 only a preview of it.
+    bountyHeroCrest   = 3445,
+    bountyMythCrest   = 3446,
+    bountyFragment    = 285801,
+    bountySoul        = 273000,
+    -- The Sturdy Chests by chamber (area ID), in the order the Achievements page lists them. Each is
+    -- { tracking quest, x, y, seal } on uiMapID, the seal being the Journey rank whose loa reward opens it (0 for
+    -- none). The game has no area for the five behind the Central Chamber's waterfall, so they are listed with it
+    -- as `fall`, with no seal.
+    sturdyChests = {
+        { area = 17025, chests = { { 97131, 46.88, 64.38, 0 }, { 98602, 36.96, 69.86, 0 }, { 98605, 38.76, 83.42, 3 }, { 98606, 38.03, 83.46, 3 } } },
+        { area = 17026, chests = { { 98607, 21.77, 68.59, 0 }, { 98608, 29.98, 74.75, 0 }, { 98609, 27.30, 81.00, 7 }, { 98610, 26.80, 81.20, 7 } } },
+        { area = 17029, chests = { { 98611, 13.85, 35.11, 0 }, { 98612, 26.44, 40.32, 0 }, { 98613, 27.48, 33.01, 5 }, { 98615, 27.94, 34.55, 5 },
+          { 98616, 11.70, 54.80, 9 }, { 98617, 9.30, 54.70, 9 }, { 98618, 10.50, 55.70, 9 } } },
+        { area = 17028, chests = { { 98637, 72.39, 65.93, 0 }, { 98638, 69.25, 71.09, 0 }, { 98639, 66.30, 51.80, 9 }, { 98641, 67.35, 51.75, 9 } } },
+        { area = 17033, chests = { { 98633, 81.31, 55.01, 0 }, { 98634, 86.90, 63.30, 0 }, { 98635, 89.00, 78.00, 3 }, { 98636, 88.50, 77.25, 3 } } },
+        { area = 17027, chests = { { 98648, 40.75, 45.41, 0 }, { 98649, 47.67, 40.01, 0 }, { 98650, 45.95, 48.37, 0 } },
+          fall = { { 98604, 61.65, 44.12 }, { 98614, 61.17, 43.48 }, { 98619, 61.51, 44.72 }, { 98631, 61.16, 44.80 }, { 98640, 61.53, 43.57 } } },
+        { area = 17030, chests = { { 98603, 21.40, 36.70, 0 }, { 98620, 28.69, 23.12, 0 }, { 98621, 22.14, 29.59, 0 }, { 98622, 22.44, 12.04, 5 }, { 98623, 22.99, 11.63, 5 } } },
+        { area = 17032, chests = { { 98628, 68.24, 34.10, 0 }, { 98629, 67.89, 27.68, 0 }, { 98630, 65.40, 42.60, 7 }, { 98632, 64.70, 43.10, 7 } } },
+        { area = 17031, chests = { { 98624, 46.09, 11.11, 0 }, { 98625, 40.58, 20.27, 0 }, { 98626, 30.56, 15.65, 3 }, { 98627, 30.48, 15.02, 3 } } },
+    },
+    -- The Hexmask familiars' auras (Fiery, Frozen, Thundering), from SpellName. Masks appear from Journey rank 2.
+    hexmaskAuras      = { 1308804, 1309122, 1308968 },
+    hexmaskMinRank    = 2,
 }
 
 -- Every season's nemesis, so old history keeps its own boss label instead of

@@ -48,7 +48,7 @@ E.NUM_PAGES = 10
 -- index == tier number (1-11). recGear is seeded from a live read of
 -- C_DelvesUI.GetDelveEntranceTiers().suggestedILvl and is re-read whenever the
 -- player opens a delve entrance, so a season flip corrects it on the first
--- visit. The two reward columns have no live API and are hand-authored.
+-- visit. The two reward columns have no live API and are hand-entered.
 E.TierData = {
     { tier =  1, recGear = 170, bountifulLoot = 266, greatVault = 279 },
     { tier =  2, recGear = 187, bountifulLoot = 269, greatVault = 282 },

@@ -18,7 +18,7 @@ function E:ShowDiscord()
     self:ShowDialog({
         text = L["Join the Everything Delves community for help, feedback, and updates.\n\nCopy the invite below (it's pre-selected — just press Ctrl+C):"],
         button1 = L["Close"],
-        hasEditBox = true, editBoxText = E.DISCORD_URL, highlightEditBox = true,
+        hasEditBox = true, editBoxText = E.DISCORD_URL, readOnly = true,
     })
 end
 
@@ -27,7 +27,7 @@ function E:ShowURL(url)
     self:ShowDialog({
         text = L["Copy the link below (it's pre-selected - just press Ctrl+C):"],
         button1 = L["Close"],
-        hasEditBox = true, editBoxText = url, highlightEditBox = true,
+        hasEditBox = true, editBoxText = url, readOnly = true,
     })
 end
 
@@ -1223,7 +1223,12 @@ function E:CaptureRosterSnapshot()
 
     rec.gildedCollected, rec.gildedTotal = self:GetLiveGildedStash()
 
-    if E.WahduSteps then rec.wahdu, rec.wahduTotal = E.WahduSteps() end
+    local wd = E.WahduStatus and E.WahduStatus()
+    if wd then
+        rec.wahdu, rec.wahduTotal, rec.wahduFragments = wd.done, wd.total, wd.fragments
+        rec.wahduUnlocked = wd.unlocked or rec.wahduUnlocked
+        rec.wahduInLog = wd.inLog or nil
+    end
 
     local secs = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
         and C_DateAndTime.GetSecondsUntilWeeklyReset()

@@ -1,8 +1,9 @@
 local E = EverythingDelves
+local L = E.L
 local LAB = E.Labyrinth
 
 local ipairs, type, time = ipairs, type, time
-local math_floor = math.floor
+local math_floor, math_max, math_min = math.floor, math.max, math.min
 local WEEK = 7 * 24 * 3600
 
 local function Round(n) return math_floor(n + 0.5) end
@@ -225,7 +226,7 @@ function E.LabyrinthJourneyName()
     return (type(data) == "table" and data.name) or "Labyrinth Journey"
 end
 
--- One criterion with a quantity (My Labyrinth's chambers), or many counted ones (the chests)
+-- One criterion with a quantity (My Labyrinth's chambers, the chests), or several counted ones
 function E.LabyrinthAchievement(id)
     if not (GetAchievementInfo and GetAchievementNumCriteria and GetAchievementCriteriaInfo) then return nil end
     local ok, _, name, _, completed, _, _, _, description, _, _, reward = pcall(GetAchievementInfo, id)
@@ -289,6 +290,53 @@ function E.LabyrinthAchievementStatus()
     return st
 end
 
+local SEAL_NAMES = { [3] = "Akil'zon's Favor", [5] = "Jan'alai's Favor", [7] = "Nalorakk's Favor", [9] = "Halazzi's Favor" }
+
+-- A seal is opened by the Journey's own rank reward, so the reward names it
+function E.LabyrinthSealName(rank)
+    local MF = C_MajorFactions
+    if MF and MF.GetRenownRewardsForLevel then
+        local ok, rewards = pcall(MF.GetRenownRewardsForLevel, E.LabyrinthJourneyFaction(), rank)
+        local r = ok and type(rewards) == "table" and rewards[1]
+        if type(r) == "table" and type(r.name) == "string" and r.name ~= "" then return r.name end
+    end
+    return SEAL_NAMES[rank] or tostring(rank)
+end
+
+local function ChestFound(QL, q)
+    if QL.IsQuestFlaggedCompletedOnAccount and QL.IsQuestFlaggedCompletedOnAccount(q) then return true end
+    return (QL.IsQuestFlaggedCompleted and QL.IsQuestFlaggedCompleted(q)) and true or false
+end
+
+-- Account-wide, as the achievement is: each chest has a warbound tracking quest. With the Journey unread, every
+-- seal counts as closed.
+function E.LabyrinthChests()
+    local QL = C_QuestLog
+    if not (QL and (QL.IsQuestFlaggedCompletedOnAccount or QL.IsQuestFlaggedCompleted)) then return nil end
+    local j = E.GetLabyrinthJourney()
+    local rank = j and j.level or 0
+    local st = { rank = rank, found = 0, reach = 0, sealed = 0, total = 0, chambers = {} }
+    local function add(ch, c, fall)
+        local chest = { quest = c[1], x = c[2], y = c[3], seal = c[4] or 0, fall = fall }
+        if ChestFound(QL, chest.quest) then
+            chest.state, ch.found, st.found = "found", ch.found + 1, st.found + 1
+        elseif chest.seal > rank then
+            chest.state, st.sealed = "sealed", st.sealed + 1
+        else
+            chest.state, st.reach = "missing", st.reach + 1
+        end
+        ch.total, st.total = ch.total + 1, st.total + 1
+        ch.chests[#ch.chests + 1] = chest
+    end
+    for _, c in ipairs(LAB.sturdyChests) do
+        local ch = { area = c.area, found = 0, total = 0, chests = {} }
+        for _, chest in ipairs(c.chests) do add(ch, chest, false) end
+        for _, chest in ipairs(c.fall or {}) do add(ch, chest, true) end
+        st.chambers[#st.chambers + 1] = ch
+    end
+    return st
+end
+
 -- nil while any of them cannot be read, so a cold client never reads as "8 to go"
 function E.LabyrinthTiersLeft()
     local left = 0
@@ -300,22 +348,67 @@ function E.LabyrinthTiersLeft()
     return left
 end
 
--- Wah'du's steps turned in, out of the questline the game reports (the known six as a fallback)
-function E.WahduSteps()
+-- A step is named by its quest's title, and the chamber stands in until the client has the quest
+function E.WahduStepName(i)
     local QL = C_QuestLog
-    if not (QL and QL.IsQuestFlaggedCompleted) then return nil end
-    local quests = C_QuestLine and C_QuestLine.GetQuestLineQuests and C_QuestLine.GetQuestLineQuests(LAB.wahduQuestLine)
-    if type(quests) ~= "table" or #quests == 0 then quests = LAB.wahduQuests end
-    local done = 0
-    for _, q in ipairs(quests) do
-        if QL.IsQuestFlaggedCompleted(q) then done = done + 1 end
-    end
-    return done, #quests
+    local q = LAB.wahduQuests[i]
+    local title = q and QL and QL.GetTitleForQuestID and QL.GetTitleForQuestID(q)
+    if type(title) == "string" and title ~= "" then return title end
+    local area = LAB.wahduAreas[i]
+    local name = area and C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(area)
+    if type(name) == "string" and name ~= "" then return name end
+    return L["Kindo'jan"]
 end
 
-function E.WahduName()
-    local name = C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(LAB.wahduSpell)
-    return (type(name) == "string" and name ~= "") and name or "Wah'du"
+local wahduTitlesAsked = false
+function E.RequestWahduTitles()
+    local QL = C_QuestLog
+    if wahduTitlesAsked or not (QL and QL.RequestLoadQuestByID) then return end
+    wahduTitlesAsked = true
+    for _, q in ipairs(LAB.wahduQuests) do QL.RequestLoadQuestByID(q) end
+end
+
+-- Steps unlock for every character at the weekly reset, so this reads no level
+function E.WahduUnlocked()
+    local CI = C_CurrencyInfo
+    local info = CI and CI.GetCurrencyInfo and CI.GetCurrencyInfo(LAB.wahduUnlockCurrency)
+    local max = type(info) == "table" and info.maxQuantity
+    if type(max) == "number" and max > 0 then return math_min(#LAB.wahduQuests, max) end
+    return nil
+end
+
+function E.BelowLevelCap(level)
+    local cap = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
+    return type(cap) == "number" and type(level) == "number" and level < cap
+end
+
+-- Steps are per character. The fragment's only source is a step, so the pieces bought are the steps turned in
+-- that are no longer in the bags or bank.
+function E.WahduStatus()
+    local QL = C_QuestLog
+    if not (QL and QL.IsQuestFlaggedCompleted) then return nil end
+    if E.BelowLevelCap(UnitLevel and UnitLevel("player")) then return nil end
+    local st = { done = 0, total = #LAB.wahduQuests }
+    for i, q in ipairs(LAB.wahduQuests) do
+        if QL.IsQuestFlaggedCompleted(q) then
+            st.done = st.done + 1
+        elseif not st.inLog and QL.GetLogIndexForQuestID and QL.GetLogIndexForQuestID(q) then
+            st.step, st.inLog = i, true
+            st.complete = (QL.IsComplete and QL.IsComplete(q)) and true or false
+        elseif not st.step then
+            st.step = i
+        end
+    end
+    local max = E.WahduUnlocked()
+    if max then
+        st.unlocked = math_max(max, st.done + (st.inLog and 1 or 0))
+        st.ready = st.unlocked - st.done
+    end
+    local cost = LAB.wahduPieceCost
+    st.fragments = (C_Item and C_Item.GetItemCount and C_Item.GetItemCount(LAB.wahduFragment, true)) or 0
+    st.pieces = math_max(0, math_floor((st.done - st.fragments) / cost))
+    st.maxPieces = math_floor(st.total / cost)
+    return st
 end
 
 function E.LabyrinthEntrance()

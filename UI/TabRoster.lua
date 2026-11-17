@@ -2,7 +2,7 @@ local E = EverythingDelves
 local L = E.L
 
 local ipairs, pairs, time, tostring = ipairs, pairs, time, tostring
-local math_abs, math_ceil, math_floor, math_max = math.abs, math.ceil, math.floor, math.max
+local math_abs, math_ceil, math_floor, math_max, math_min = math.abs, math.ceil, math.floor, math.max, math.min
 local table_sort, table_concat = table.sort, table.concat
 
 local PAD_TOP, PAD_LEFT, PAD_RIGHT, PAD_BOTTOM, INTRO_GAP, HINT_GAP = 20, 24, 14, 28, 16, 8
@@ -20,8 +20,8 @@ local COLUMNS = {
     { key = "gilded",   label = L["Gilded"] },
     { key = "weekly",   label = L["Weekly"], check = true },
     { key = "trove",    label = L["Trove"],  check = true },
-    -- A count until every step is done, then the check
-    { key = "wahdu",    label = E.WahduName(), check = true, text = true },
+    -- A count until every step unlocked so far is done, then the check
+    { key = "wahdu",    label = L["Wah'du"], check = true, text = true },
 }
 
 local function FormatAgo(secs)
@@ -37,6 +37,11 @@ local function StripCodes(s)
     return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
 
+-- 2.5.1 saved steps for every character, so a record below the level cap shows none
+local function Wahdu(rec)
+    return not E.BelowLevelCap(rec.level) and rec.wahdu or nil
+end
+
 local function SortVal(e, key)
     local rec = e.rec
     if key == "name"     then return (rec.name or e.key):lower() end
@@ -49,18 +54,49 @@ local function SortVal(e, key)
     if key == "gilded"   then return e.valid and (rec.gildedCollected or 0) or -1 end
     if key == "weekly"   then return e.valid and (rec.weeklyQuestDone and 1 or 0) or -1 end
     if key == "trove"    then return e.valid and (rec.bountyLooted and 1 or 0) or -1 end
-    if key == "wahdu"    then return rec.wahdu or -1 end
+    if key == "wahdu"    then return Wahdu(rec) or -1 end
     return rec.updated or 0
 end
 
-local function WahduValue(rec)
-    if not rec.wahdu then return nil end
+-- Steps unlock for everyone at the weekly reset, so the live count outranks the one saved with the record, and a
+-- count saved before this week's reset is stale
+local function WahduGoal(e, unlocked)
+    local rec = e.rec
     local total = rec.wahduTotal or 0
-    if total > 0 and rec.wahdu >= total then return true end
-    return rec.wahdu .. "/" .. total
+    return math_min(unlocked or (e.valid and rec.wahduUnlocked) or total, total)
 end
 
-local function Values(e)
+local function WahduValue(e, unlocked)
+    local rec = e.rec
+    if not Wahdu(rec) then return nil end
+    local goal = WahduGoal(e, unlocked)
+    if goal > 0 and rec.wahdu >= goal then return true end
+    return rec.wahdu .. "/" .. goal
+end
+
+local function FragmentName()
+    local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(E.Labyrinth.wahduFragment)
+    return (type(name) == "string" and name ~= "") and name or "Mythical Soul Fragment"
+end
+
+local function WahduTip(tip, e, unlocked)
+    local rec = e.rec
+    local total, cost = rec.wahduTotal or 0, E.Labyrinth.wahduPieceCost
+    local ready = WahduGoal(e, unlocked) - rec.wahdu - (rec.wahduInLog and 1 or 0)
+    tip[#tip + 1] = L["%s: %d of %d steps, %d ready now"]
+        :format(L["Wah'du"], rec.wahdu, total, math_max(0, ready))
+    local frag = rec.wahduFragments
+    if not frag then return end
+    if frag >= cost then
+        tip[#tip + 1] = L["%s: %d (enough for a Myth piece)"]:format(FragmentName(), frag)
+    elseif rec.wahdu < total then
+        tip[#tip + 1] = L["%s: %d (%d more for a Myth piece)"]:format(FragmentName(), frag, cost - frag)
+    end
+    tip[#tip + 1] = L["Myth pieces claimed: %d / %d"]
+        :format(math_max(0, math_floor((rec.wahdu - frag) / cost)), math_floor(total / cost))
+end
+
+local function Values(e, unlocked)
     local rec, valid = e.rec, e.valid
     return {
         ilvl     = rec.ilvl and tostring(rec.ilvl) or nil,
@@ -72,11 +108,11 @@ local function Values(e)
         gilded   = (valid and rec.gildedTotal) and ((rec.gildedCollected or 0) .. "/" .. rec.gildedTotal) or nil,
         weekly   = (valid and rec.weeklyQuestDone) and true or nil,
         trove    = (valid and rec.bountyLooted) and true or nil,
-        wahdu    = WahduValue(rec),
+        wahdu    = WahduValue(e, unlocked),
     }
 end
 
-local function TipLines(e, now)
+local function TipLines(e, now, unlocked)
     local rec = e.rec
     local tip = {
         L["Item level: %s"]:format(rec.ilvl or "?"),
@@ -100,6 +136,7 @@ local function TipLines(e, now)
     else
         tip[#tip + 1] = L["Weekly data resets at the next reset"]
     end
+    if Wahdu(rec) then WahduTip(tip, e, unlocked) end
     tip[#tip + 1] = L["Updated: %s"]:format(FormatAgo(now - (rec.updated or now)))
     return table_concat(tip, "\n")
 end
@@ -186,16 +223,16 @@ local function NewRow(ui, t, v)
     return r
 end
 
-local function FillRow(ui, r, e, isCur, now)
+local function FillRow(ui, r, e, isCur, now, unlocked)
     local rec = e.rec
     r.entry = e
     r.you:SetShown(isCur)
     r.remove:SetShown(not isCur)
     r.title = (rec.name or e.key) .. " - " .. (rec.realm or "?")
-    r.tip = TipLines(e, now)
+    r.tip = TipLines(e, now, unlocked)
     r.shownName = E.ShowNamePair(ui, r.name, rec.name or e.key, E.ClassRGB(ui, rec.class))
     r.suffix:SetText((rec.level and tostring(rec.level) or "") .. (isCur and ("  " .. L["(you)"]) or ""))
-    local values = Values(e)
+    local values = Values(e, unlocked)
     for _, col in ipairs(COLUMNS) do
         local val = values[col.key]
         local fs = r.cells[col.key]
@@ -325,14 +362,12 @@ E:RegisterModule(function()
         v.summaryLine:SetText(StripCodes(L["%s%d|r %scharacters|r   %s\194\183|r   %s%d|r %skeys|r   %s\194\183|r   %s%d|r %sbounty maps|r   %s\194\183|r   %s%d|r %sweekly delve quest done|r"]
             :format("", #list, "", "", "", keys, "", "", "", bounty, "", "", "", weekly, "")))
 
+        local unlocked = E.WahduUnlocked and E.WahduUnlocked()
         for i, e in ipairs(list) do
             if not t.rows[i] then t.rows[i] = NewRow(ui, t, v) end
-            FillRow(ui, t.rows[i], e, e.key == curKey, now)
+            FillRow(ui, t.rows[i], e, e.key == curKey, now, unlocked)
         end
         for i = #list + 1, #t.rows do t.rows[i]:Hide() end
-        for i, col in ipairs(COLUMNS) do
-            if col.key == "wahdu" then t.heads[i + 1].text:SetText(E.WahduName()) end
-        end
 
         local widths = ColumnWidths(t, t.rows, #list, v)
         local view = ViewWidth()
@@ -410,17 +445,19 @@ E:RegisterModule(function()
         end
     end)
 
-    local rewardItem, rewardRequested = E.Labyrinth.kindojanWeeklyItem, false
+    local tipItems = { E.Labyrinth.kindojanWeeklyItem, E.Labyrinth.wahduFragment }
+    local itemsRequested = false
     local rewardNameWatch = CreateFrame("Frame")
     rewardNameWatch:SetScript("OnEvent", function(_, _, itemID, success)
-        if success ~= false and itemID == rewardItem and frame:IsVisible() then Render() end
+        if success == false or not frame:IsVisible() then return end
+        if itemID == tipItems[1] or itemID == tipItems[2] then Render() end
     end)
 
     frame:SetScript("OnShow", function()
         rewardNameWatch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
-        if not rewardRequested and C_Item and C_Item.RequestLoadItemDataByID then
-            rewardRequested = true
-            C_Item.RequestLoadItemDataByID(rewardItem)
+        if not itemsRequested and C_Item and C_Item.RequestLoadItemDataByID then
+            itemsRequested = true
+            for _, id in ipairs(tipItems) do C_Item.RequestLoadItemDataByID(id) end
         end
         Render()
         area:ScrollTo(0, 0)

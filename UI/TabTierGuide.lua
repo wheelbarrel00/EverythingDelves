@@ -12,6 +12,7 @@ local VAULT_LABEL, VAULT_SUMMARY, SLOT_H, SLOT_GAP, CHECK = 160, 120, 40, 8, 14
 local MILE, MILE_GAP, MILE_POOL, MILE_ROW, MILE_TOP, LOCKED_ALPHA = 32, 14, 12, 93, 33, 0.3
 local PORTRAIT, TROVE_ROW, TROVE_ICON_SIZE, VENOM_ICON = 32, 52, 32, 28
 local RENOWN_NAME, RENOWN_STATUS = 150, 110
+local STEP_ROW, STEP_BOX, STEP_GAP, STEP_CHECK, STEP_VALUE, FRAG_ICON, LOCKED_STEP_ALPHA = 52, 28, 4, 10, 48, 20, 0.55
 local FACTION_RENOWN_MAX = 20
 local GILDED_MAX = 4   -- 4x T11 Bountiful Delves per week
 
@@ -741,6 +742,190 @@ local function RenderLabJourney(ui, v)
     v.labCard:Layout()
 end
 
+local function BuildWahdu(ui, content, v)
+    local w = {}
+    local card = ui:CreateGroup(content, L["Wah'du"])
+    w.side = ui:CreateText(card, L["Three fragments buy a Myth 2/6 piece of your choice."], "hint")
+    w.side:SetPoint("BOTTOMLEFT", card.label, "BOTTOMRIGHT", ITEM_GAP, 0)
+    w.side:SetPoint("RIGHT", card, "RIGHT")
+    w.side:SetWordWrap(false)
+
+    local steps = Row(content, STEP_ROW)
+    steps.label = ui:CreateText(steps, L["Weekly steps"], "label")
+    steps.label:SetPoint("LEFT")
+    steps.label:SetWordWrap(false)
+    steps.value = ui:CreateText(steps, "", "value")
+    steps.value:SetPoint("RIGHT")
+    steps.value:SetWidth(STEP_VALUE)
+    steps.value:SetJustifyH("RIGHT")
+    steps.boxes = {}
+    for i = 1, #E.Labyrinth.wahduQuests do
+        local box = CreateFrame("Frame", nil, steps)
+        box:SetHeight(STEP_BOX)
+        box.fill, box.edge = ui:Paint(box, "input", "inputBorder")
+        box.check = box:CreateTexture(nil, "ARTWORK")
+        box.check:SetSize(STEP_CHECK, STEP_CHECK)
+        box.check:SetTexture(ui:Texture("check"))
+        box.check:SetVertexColor(ui:Color("label"))
+        box.text = ui:CreateText(box, tostring(i), "label")
+        box:EnableMouse(true)
+        box:SetScript("OnEnter", function(self)
+            if self.tipTitle then ui:ShowTooltip(self, self.tipTitle, self.tipBody) end
+        end)
+        box:SetScript("OnLeave", function() ui:HideTooltip() end)
+        steps.boxes[i] = box
+    end
+    card:Add(steps, { height = STEP_ROW, fill = true })
+
+    w.hints = ui:CreateTextBlock(content)
+    w.hintLine = w.hints:AddLine("", "hint")
+    card:Add(w.hints, { fitHeight = true })
+
+    local frag = Row(content, ROW)
+    frag.icon = frag:CreateTexture(nil, "ARTWORK")
+    frag.icon:SetSize(FRAG_ICON, FRAG_ICON)
+    frag.icon:SetPoint("LEFT")
+    frag.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    frag.name = ui:CreateText(frag, "", "label")
+    frag.name:SetPoint("LEFT", frag.icon, "RIGHT", ITEM_GAP, 0)
+    frag.name:SetWordWrap(false)
+    frag.value = ui:CreateText(frag, "", "value")
+    frag.value:SetPoint("RIGHT")
+    frag.bar = Bar(ui, frag, frag.name, frag.value)
+    frag:EnableMouse(true)
+    frag:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(E.Labyrinth.wahduFragment)
+        GameTooltip:Show()
+    end)
+    frag:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    card:Add(frag, { height = ROW, fill = true })
+
+    w.fragHint = ui:CreateTextBlock(content)
+    w.fragHintLine = w.fragHint:AddLine("", "hint")
+    card:Add(w.fragHint, { fitHeight = true })
+
+    local pieces = Row(content, ROW)
+    pieces.label = ui:CreateText(pieces, L["Myth pieces claimed"], "label")
+    pieces.label:SetPoint("LEFT")
+    pieces.value = ui:CreateText(pieces, "", "value")
+    pieces.value:SetPoint("RIGHT")
+    card:Add(pieces, { height = ROW, fill = true })
+
+    w.card, w.steps, w.frag, w.pieces = card, steps, frag, pieces
+    v.wahdu = w
+    return card
+end
+
+local function StepState(st, i)
+    if i <= st.done then return "done" end
+    if i == st.step and (st.inLog or st.ready ~= 0) then return "cur" end
+    if st.unlocked and i <= st.unlocked then return "ready" end
+    return "lock"
+end
+
+local STEP_LOOK = {
+    done  = { fill = "input",      edge = "inputBorder", text = "text" },
+    cur   = { fill = "accentSoft", edge = "accentHi",    text = "text" },
+    ready = { fill = "input",      edge = "accentHi",    text = "text" },
+    lock  = { fill = "input",      edge = "inputBorder", text = "muted" },
+}
+
+local function StepTip(st, state)
+    if state == "done" then return L["Turned in"] end
+    if state == "cur" and st.inLog then return L["In your quest log"] end
+    if state == "lock" then return L["Unlocks with a later weekly reset"] end
+    return L["Ready to take"]
+end
+
+local function WahduHints(st)
+    if st.done >= st.total then return L["All six steps are done on this character."] end
+    local out = {}
+    if st.inLog and st.complete then
+        out[#out + 1] = L["Next: %s is done. Turn it in to %s at the Labyrinth's entrance."]
+            :format(E.WahduStepName(st.step), L["Wah'du"])
+    elseif st.inLog then
+        out[#out + 1] = L["Next: %s, in your quest log. Clear it on Tier 8 or higher and turn it in."]
+            :format(E.WahduStepName(st.step))
+    elseif st.ready ~= 0 then
+        out[#out + 1] = L["Next: %s. Talk to %s at the Labyrinth's entrance to take it."]
+            :format(E.WahduStepName(st.step), L["Wah'du"])
+    end
+    -- The step in the log is among the ready ones, but only the rest wait at the entrance
+    local waiting = (st.ready or 0) - (st.inLog and 1 or 0)
+    if waiting > 0 then
+        out[#out + 1] = L["Ready now: %d. %s gives you the next step each time you turn one in."]
+            :format(waiting, L["Wah'du"])
+    end
+    local left = st.unlocked and st.unlocked < st.total and WeeklyResetIn()
+    if left then
+        out[#out + 1] = L["Step %d unlocks with the weekly reset in %s."]:format(st.unlocked + 1, left)
+    end
+    return table_concat(out, "\n")
+end
+
+local function RenderSteps(ui, steps, st, width)
+    steps.value:SetText(st.done .. " / " .. (st.unlocked or st.total))
+    local n = #steps.boxes
+    local room = width - ui:Spacing("rowPadding") * 2 - math_ceil(steps.label:GetStringWidth() or 0)
+        - STEP_VALUE - ITEM_GAP * 2
+    local boxW = math_max(STEP_BOX, (room - STEP_GAP * (n - 1)) / n)
+    for i, box in ipairs(steps.boxes) do
+        local state = StepState(st, i)
+        local look = STEP_LOOK[state]
+        box:ClearAllPoints()
+        box:SetPoint("LEFT", steps.label, "RIGHT", ITEM_GAP + (i - 1) * (boxW + STEP_GAP), 0)
+        box:SetWidth(boxW)
+        box:SetAlpha(state == "lock" and LOCKED_STEP_ALPHA or 1)
+        box.fill:SetColorTexture(ui:Color(look.fill))
+        for _, line in ipairs(box.edge) do line:SetColorTexture(ui:Color(look.edge)) end
+        box.text:SetTextColor(ui:Color(look.text))
+        box.text:ClearAllPoints()
+        box.check:SetShown(state == "done")
+        if state == "done" then
+            box.text:SetPoint("CENTER", box, "CENTER", (STEP_CHECK + STEP_GAP) / 2, 0)
+            box.check:ClearAllPoints()
+            box.check:SetPoint("RIGHT", box.text, "LEFT", -STEP_GAP, 0)
+        else
+            box.text:SetPoint("CENTER")
+        end
+        box.tipTitle = i .. ". " .. E.WahduStepName(i)
+        box.tipBody = StepTip(st, state)
+    end
+end
+
+local function RenderWahdu(ui, v, width)
+    local w = v.wahdu
+    local st = E.IsLabyrinthUnlocked() and E.WahduStatus()
+    local shown = st and true or false
+    for _, f in ipairs({ w.card, w.steps, w.hints, w.frag, w.pieces }) do f:SetShown(shown) end
+    if not st then
+        w.fragHint:Hide()
+        return
+    end
+    RenderSteps(ui, w.steps, st, width)
+    w.hintLine:SetText(WahduHints(st))
+
+    local LAB, cost = E.Labyrinth, E.Labyrinth.wahduPieceCost
+    local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(LAB.wahduFragment)
+    if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(LAB.wahduFragment) end
+    w.frag.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(LAB.wahduFragment))
+    w.frag.name:SetText(name or "Mythical Soul Fragment")
+    local held = math_min(st.fragments, cost)
+    w.frag.value:SetText(held .. " / " .. cost)
+    w.frag.bar:SetProgress(held / cost)
+    local hint
+    if st.fragments >= cost then
+        hint = L["You have enough for a Myth piece. Trade them to %s at the Labyrinth's entrance."]:format(L["Wah'du"])
+    elseif st.done < st.total then
+        hint = L["%d more for a Myth piece. Counted in your bags and bank."]:format(cost - st.fragments)
+    end
+    w.fragHint:SetShown(hint ~= nil)
+    w.fragHintLine:SetText(hint or "")
+    w.pieces.value:SetText(st.pieces .. " / " .. st.maxPieces)
+    w.card:Layout()
+end
+
 local function BuildTrove(ui, content, v)
     local card = ui:CreateGroup(content, L["Trovehunter's Bounty"])
     local row = Row(content, TROVE_ROW)
@@ -889,8 +1074,8 @@ E:RegisterModule(function()
     hint:SetWordWrap(false)
     v.cards = {
         BuildGrid(ui, content, v), BuildVault(ui, content, v), BuildJourney(ui, content, v),
-        BuildLabJourney(ui, content, v), BuildTrove(ui, content, v), BuildGilded(ui, content, v),
-        BuildRenown(ui, content, v),
+        BuildLabJourney(ui, content, v), BuildWahdu(ui, content, v), BuildTrove(ui, content, v),
+        BuildGilded(ui, content, v), BuildRenown(ui, content, v),
     }
 
     local lastWidth = 0
@@ -924,6 +1109,7 @@ E:RegisterModule(function()
         RenderVault(ui, v, inner)
         RenderJourney(ui, v)
         RenderLabJourney(ui, v)
+        RenderWahdu(ui, v, inner)
         RenderTrove(ui, v)
         RenderGilded(ui, v, inner)
         RenderRenown(ui, v)
@@ -945,14 +1131,36 @@ E:RegisterModule(function()
         if frame:IsVisible() then Render() end
     end
 
+    -- Wrapped text measured before its first draw can come up short, so the page is measured again a frame later
+    local pending = false
+    local function RenderSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0, function()
+            pending = false
+            RenderIfShown()
+        end)
+    end
+
     area.scroll:HookScript("OnSizeChanged", function(_, w)
-        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then Render() end
+        if frame:IsVisible() and math_abs((w or 0) - lastWidth) >= 1 then
+            Render()
+            RenderSoon()
+        end
     end)
 
-    -- The Venomstone's name can reach the client after the page is drawn
+    -- Item names and quest titles can reach the client after the page is drawn
+    local LAB = E.Labyrinth
+    local wahduQuest = {}
+    for _, q in ipairs(LAB.wahduQuests) do wahduQuest[q] = true end
     local itemWatch = CreateFrame("Frame")
-    itemWatch:SetScript("OnEvent", function(_, _, itemID, success)
-        if success ~= false and E.Labyrinth and itemID == E.Labyrinth.venomstoneItem then RenderIfShown() end
+    itemWatch:SetScript("OnEvent", function(_, event, id, success)
+        if success == false then return end
+        if event == "QUEST_DATA_LOAD_RESULT" then
+            if wahduQuest[id] then RenderIfShown() end
+        elseif id == LAB.venomstoneItem or id == LAB.wahduFragment then
+            RenderIfShown()
+        end
     end)
 
     -- UNIT_AURA fires constantly in combat, so only a change in the buff redraws
@@ -968,13 +1176,17 @@ E:RegisterModule(function()
 
     frame:SetScript("OnShow", function()
         itemWatch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        itemWatch:RegisterEvent("QUEST_DATA_LOAD_RESULT")
+        E.RequestWahduTitles()
         troveUp = E:GetTrovehunterAura() ~= nil
         auraWatch:RegisterUnitEvent("UNIT_AURA", "player")
         Render()
         area:ScrollTo(0, 0)
+        RenderSoon()
     end)
     frame:SetScript("OnHide", function()
         itemWatch:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
+        itemWatch:UnregisterEvent("QUEST_DATA_LOAD_RESULT")
         auraWatch:UnregisterEvent("UNIT_AURA")
     end)
 

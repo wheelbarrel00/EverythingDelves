@@ -15,6 +15,7 @@ local WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT = 1000, 660, 900, 540
 local GLANCE_TOP, GLANCE_SIDE, GLANCE_BOTTOM, GLANCE_ROW, GLANCE_GAP = 10, 12, 12, 22, 8
 local GLANCE_TICK = 60
 local HINT_GAP = 4
+local RELAYOUT_DELAYS = { 0.1, 1, 3 }
 
 local PAGE_ICONS = {
     E.ui:Texture("icon-map"),
@@ -176,10 +177,39 @@ function E:InitMainFrame()
     self:SelectTab(self.db.defaultTab or 1)
 end
 
+-- After a client restart a string laid out too early can draw nothing until its text changes, and the same text set
+-- again is no change (probed live 2026-11-16). Blanking it and setting it back draws it.
+local function Relayout(f)
+    for _, r in ipairs({ f:GetRegions() }) do
+        if r:GetObjectType() == "FontString" then
+            local t = r:GetText()
+            if t and not (issecretvalue and issecretvalue(t)) and t ~= "" then
+                r:SetText("")
+                r:SetText(t)
+            end
+        end
+    end
+    for _, c in ipairs({ f:GetChildren() }) do
+        if c:GetObjectType() ~= "EditBox" then Relayout(c) end
+    end
+end
+
+-- After the page's own render a frame later, then twice more, since one pass a tenth of a second in was sometimes too soon.
+-- Hidden frames are walked too, and the Nemesis switch and the chest list also ask for a pass when shown.
+local function RelayoutSoon(page)
+    for _, delay in ipairs(RELAYOUT_DELAYS) do
+        C_Timer.After(delay, function()
+            if page:IsVisible() then Relayout(page) end
+        end)
+    end
+end
+E.RelayoutSoon = RelayoutSoon
+
 function E:RegisterTab(index, frame)
     self.tabFrames[index] = frame
     frame:SetParent(self.contentFrame)
     frame:SetAllPoints(self.contentFrame)
+    frame:HookScript("OnShow", RelayoutSoon)
     frame:Hide()
 end
 

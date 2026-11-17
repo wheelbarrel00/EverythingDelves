@@ -472,6 +472,7 @@ E:RegisterModule(function()
         Render()
         area:ScrollTo(0, 0)
         RenderSoon()
+        if E.RelayoutSoon then E.RelayoutSoon(id == "kindo" and kindoHolder or aztaHolder) end
     end)
 
     local function PlaceSwitch(view)

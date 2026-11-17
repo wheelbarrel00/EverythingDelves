@@ -38,7 +38,7 @@
 
 ## Overview
 
-Everything Delves is a display-only companion addon for WoW: Midnight (12.1 and 12.1.5). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
+Everything Delves is a display-only companion addon for WoW: Midnight (12.1 and 12.1.5, ready for 12.1.7). It reads currencies, quest logs, map data, and item levels to give you a complete picture of your weekly delve progress — without automating any gameplay.
 
 Open with **`/ed`** or the minimap button. Right-click the minimap button to open the settings.
 
@@ -50,6 +50,8 @@ Version 2.3.0 lets you grade the delve stories yourself: give any story your own
 
 Version 2.4.0 catches you up: after an update with new features, What's New lists every release you missed, or posts a quiet chat link instead if you prefer.
 
+Version 2.6.0 follows Wah'du's Myth armor on the Tier Guide, the Roster and the HUD, adds a checklist of the Labyrinth's 44 Sturdy Chests to the Achievements page, puts more on Kindo'jan's page, and translates the 23 phrases that were still in English.
+
 ---
 
 ## Everything in One Window
@@ -60,12 +62,12 @@ Version 2.4.0 catches you up: after an update with new features, What's New list
 - **Current Bountiful Delves** — live bountiful detection (no manual entry), a "Best Pick", an auto-filling checklist, live currency totals, a daily reset countdown, and Great Vault + LFG quick-launch buttons
 - **In-delve HUD & run timer** — an optional on-screen panel inside a delve: story variant and grade, your recommended Combat and Utility curios and Valeera's poison, each with its own icon, a live run timer, your remaining lives and deaths, and a standing reminder when Dundun is hiding in a Bountiful Delve
 - **Difficulty picker info** — open a delve entrance and a panel appears beside the difficulty picker with that delve's achievement status, a tier-by-tier reward table with your own gear tier highlighted, and a coffer key warning before a Bountiful Delve so Dundun's second chest doesn't catch you a key short
-- **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
-- **The Labyrinth of Kindo'jan** - patch 12.1.5's nine-chamber Labyrinth: chambers and checkpoint times on the HUD, one History row per visit, Leaderboard rankings to 3, 6 and 9 chambers and for Kindo'jan, its achievements, Labyrinth Journey and Ascendant Venomstones, and the coffer keys its checkpoints need
+- **Tier Guide** — T1–T11 reward iLvls colored by gear track with your gear auto-matched, per-slot Great Vault progress, your Delver's Journey, Wah'du's Myth armor steps, Gilded Stash, Trovehunter's Bounty, and Midnight faction renown
+- **The Labyrinth of Kindo'jan** - patch 12.1.5's nine-chamber Labyrinth: chambers, checkpoint times, Wah'du's step and your Hexmasks on the HUD, one History row per visit, Leaderboard rankings to 3, 6 and 9 chambers and for Kindo'jan, its achievements with a checklist of all 44 Sturdy Chests, Labyrinth Journey and Ascendant Venomstones, and the coffer keys its checkpoints need
 - **Nemesis** - a switch between Kindo'jan, the Labyrinth's final boss, and Azta'rec, the Season 2 Nemesis in Venomfall Deeps: how to reach each, boss mechanics phase by phase, companion and curio setup, and the full reward track
 - **Shard Tracker** — every shard source with quest tracking, currency bars, a Crests panel with each crest's season cap (or Uncapped), a session shards/hour rate, and a World Quest scanner
 - **Delve History** — per-character run log with lifetime stats, the boss you faced, story variants, latest-run time, keys used, and your own free-form notes
-- **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest), all sortable
+- **Roster** — an account-wide dashboard of all your characters (item level, keys, shards, bounty maps, Great Vault slots, Gilded Stash, weekly delve quest, Wah'du's steps), all sortable
 - **Leaderboard** - your characters ranked on every delve by their fastest clear at the tier you pick: who holds each record, in which spec and on which story, where the character you are playing stands, and class and spec filters
 - **Achievements** — every delve's story variants, Sturdy Chest discoveries and Delver of the Depths tier goals in one list, headed by the Glory of the Midnight Delver rollup, plus which of today's story variants you still need and your own best tier per delve
 - **Delver's Call** — weekly World Tour quest tracker (Available → In Progress → Banked → Turned In) with an account-wide rollup
@@ -97,22 +99,23 @@ On a **Bountiful Delve** it also warns you about coffer keys. Dundun, the Loa of
 Full T1–T11 reward reference: recommended gear iLvl, bountiful loot iLvl, and Great Vault iLvl — with the loot iLvls **colored by their gear track** (Adventurer, Veteran, Champion, Hero, Myth; hover a tier to see the track). Your equipped iLvl is read automatically and the recommended tier is highlighted. The recommended iLvls are **read from the game itself** whenever you open a Delve entrance and remembered for the season, so they stay right across a season change instead of waiting on an addon update. This tab also includes:
 - **Great Vault Progress** — each of the three reward slots for Mythic+ Dungeons and Delves/World Content shown individually, with its reward item level and the progress needed to unlock it
 - **Delver's Journey** — your current Journey level, a progress bar to the next level, and a row of milestone reward icons for each renown level
+- **Wah'du** — his six weekly steps toward Myth armor (turned in, in your quest log, ready at the Labyrinth's entrance, or not unlocked yet), what to do next and when the next step unlocks, your Mythical Soul Fragments toward the next Myth 2/6 piece, and the pieces you have claimed
 - **Valeera Companion** — her level and an XP bar showing progress to the next companion unlock, plus a one-click launcher for the companion configuration UI
 - **Trovehunter's Bounty** — looted/used/active status with bag and aura checks
 - **Gilded Stash** — 4× T11 Bountiful weekly reward progress
 - **Midnight Faction Renown** — Silvermoon Court, Amani Tribe, Hara'ti, The Singularity
 
 ### The Labyrinth of Kindo'jan
-Patch 12.1.5's Labyrinth in Eversong Woods runs as nine chambers with a checkpoint every third, and Everything Delves follows it everywhere it follows delves. The **HUD** shows the chambers you have done, the chambers to your next checkpoint, your time to the last checkpoint against your best at that tier, and your coffer keys against the coffers your checkpoints open. **Delve History** keeps one row per visit (chambers, tier, time, deaths, keys used, each checkpoint's time and Kindo'jan's fight time, or "left early"), with every chamber in the row's tooltip. The **Leaderboard** ranks your characters by their time to 3, 6 and 9 chambers and by Kindo'jan's fight. The **Achievements** page and the Labyrinth's map pin show its tier goals and achievements. Delve Locations, Current Bountiful Delves, the difficulty picker panel, the Tier Guide (Labyrinth Journey, Ascendant Venomstones, Gilded Stash checkpoints) and the Roster (Wah'du's weekly quests) all include it.
+Patch 12.1.5's Labyrinth in Eversong Woods runs as nine chambers with a checkpoint every third, and Everything Delves follows it everywhere it follows delves. The **HUD** shows the chambers you have done, the chambers to your next checkpoint, your time to the last checkpoint against your best at that tier, and your coffer keys against the coffers your checkpoints open. **Delve History** keeps one row per visit (chambers, tier, time, deaths, keys used, each checkpoint's time and Kindo'jan's fight time, or "left early"), with every chamber in the row's tooltip. The **Leaderboard** ranks your characters by their time to 3, 6 and 9 chambers and by Kindo'jan's fight. The **Achievements** page and the Labyrinth's map pin show its tier goals and achievements, and on the Achievements page Kindo'jan's Labyrinth Discoveries opens into all 44 **Sturdy Chests** by chamber: found, reachable now, or behind a loa seal your Labyrinth Journey has not opened yet. Hover a chest for what opens it, and click a chest you can reach but have not found to pin it on your map. Inside the Labyrinth the HUD also names **Wah'du's** step in your quest log and shows your **Hexmasks**. Delve Locations, Current Bountiful Delves, the difficulty picker panel, the Tier Guide (Labyrinth Journey, Ascendant Venomstones, Gilded Stash checkpoints) and the Roster (Wah'du's weekly quests) all include it.
 
 ### Nemesis (Kindo'jan and Azta'rec)
-A switch at the top of the page moves between **Kindo'jan**, the First Hash'ey at the heart of the Labyrinth, and Azta'rec. Kindo'jan's side covers how to reach his chamber, Den'Zara first, each phase of the fight with the four loa of the intermission, Valeera's role, poison and curios, and his rewards with a check for each you have earned. Ability, item, achievement and place names come from the game in your language.
+A switch at the top of the page moves between **Kindo'jan**, the First Hash'ey at the heart of the Labyrinth, and Azta'rec. Kindo'jan's side covers how to reach his chamber, Den'Zara first, what to do before the pull, each phase of the fight with the four loa of the intermission, Valeera's role, poison and curios, and his rewards with a check for each you have earned, including what the Ancestral Bounty holds and how to get a forgotten toy or mount back from Kinduru. Ability, item, achievement and place names come from the game in your language.
 
-A dedicated view for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Scalebound Herald's Flute** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" / "Fabled Vanquisher of Azta'rec" titles.
+A dedicated view for **Azta'rec**, the Season 2 Nemesis, in **Venomfall Deeps** on The Coiled Isle: a one-click map pin / TomTom waypoint, a **Scalebound Herald's Flute** inventory and Undercoin tracker, his full main-phase kit (Soul Extinction, Void Toxin, Noxious Bile, Venom Storm), the **Sermon of Ula'tek** intermission and the safe-zone pattern you have to memorise, what changes on Tier "??" including the Echo of Azta'rec, the Valeera role and curio setup for the fight, and the reward track — the Apophic Patagia cloak, Corrosive Victory toy, Apophic Soul Crusher mount, and "the Poisonous" title. The "Fabled Vanquisher of Azta'rec" title could only be earned in Season 2's first week.
 
 ### Shard Tracker
 Your shard economy dashboard. Currency overview with progress bars for next key and weekly cap. All 8 known shard sources with live quest completion tracking. Also includes:
-- **Mistcrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier, or Uncapped once Blizzard lifts it
+- **Mistcrests** — all five crest tiers (Adventurer through Myth) with the amount on hand, your season total, and your season maximum for each tier, which reads Uncapped while that crest has no cap (all five since October 20, 2026)
 - **Session Tracker** — shards earned, keys earned, elapsed time, shards/hour rate
 - **Special Assignments** — the eight in Midnight's first zones, tracked with unlock, active, and completed status
 - **Weekly Delve Quest** — "Midnight: Delves" completion status
@@ -133,7 +136,7 @@ Lifetime stats and recent run history for every Midnight delve, including the Se
 Tracks the weekly World Tour quests across four states — **Available, In Progress, Banked, and Turned In** — auto-detected from your quest log. The strategy: bank the quests and hold them until you're near max level, then turn them all in for a leveling burst. Includes a rollup showing progress across every character on your account. Flip on the checkbox at the bottom of the tab to mark every delve whose Delver's Call you've already turned in with a **green checkmark on the Delve Locations tab**.
 
 ### Roster
-An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, weekly shard progress, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, whether the weekly delve quest is done, and whether this week's Trovehunter's Bounty is looted** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play. Remix/Timerunning characters are left off, since they have no Midnight delve data.
+An account-wide dashboard of every character that has logged in with the addon. At a glance compare each character's **item level, Coffer Keys, shards, weekly shard progress, bounty maps in bags, Great Vault delve slots, Gilded Stash progress, whether the weekly delve quest is done, whether this week's Trovehunter's Bounty is looted, and Wah'du's steps against those unlocked so far** — so you can see which alt to play next without logging into each one. Click any column to sort, hover a row for full detail, and remove a character you no longer want listed. Each character records itself on login and as you play. Remix/Timerunning characters are left off, since they have no Midnight delve data.
 
 ### Leaderboard
 Every delve on one board, with the fastest clear your characters have at the tier you pick, who set it, in which spec and on which story, and where the character you are playing stands. Click a delve for the full ranking of your characters, and narrow the board by class and spec. Blizzard does not share other players' delve times with addons, so the board ranks the characters on your account. It reads your Delve History, so it covers the runs History keeps. Runs record your specialization from 2.1.0 on.
@@ -231,8 +234,8 @@ LibStub, LibDataBroker-1.1, and CallbackHandler-1.0 stubs are included for broke
 ## Translations
 
 Every file in `Locales/` is generated, including the `enUS.lua` phrase list. The translations live in
-[EverythingLocales](https://github.com/wheelbarrel00/EverythingLocales), shared across all of
-this author's addons so that a phrase more than one of them uses is only ever translated once,
+[EverythingLocales](https://github.com/wheelbarrel00/EverythingLocales), shared by several
+addons so that a phrase more than one of them uses is only ever translated once,
 and so that a phrase moving between addons keeps its translation.
 
 **To add or correct a translation, edit `store/<language>.lua` there and open a pull request
@@ -255,10 +258,8 @@ Each of the six languages was started by a translator who volunteered their time
 the French, **Malevi4** for the Russian, **labrie75** for the Korean, **失眠啤酒** for the
 Simplified Chinese, **BNS333** for the Traditional Chinese, and **Stonetwist** for the German.
 
-Coverage stood at every phrase in every language until v1.34.0. Since then 23 new strings
-(the Achievements tab, and v1.35.0's coffer key warning) are awaiting translation and
-render in English for now. Corrections from native speakers are just as welcome as that
-new coverage. If something reads wrong in your language, please say so - see above for
+The 23 strings that showed in English from v1.34.0 and v1.35.0 (the Achievements tab, the
+coffer key warning and the HUD's Dundun reminder) were translated in v2.6.0. Corrections from native speakers are always welcome. If something reads wrong in your language, please say so - see above for
 where to send it.
 
 ---
@@ -268,7 +269,7 @@ where to send it.
 | Metric | Value |
 |---|---|
 | Memory footprint | ~600 KB |
-| Lua files | 44 (36 authored, 8 generated: the 7 locale files and the story names) |
+| Lua files | 44 (36 hand-written, 8 generated: the 7 locale files and the story names) |
 | Interface version | 120100, 120105, 120107, 120007 (Midnight 12.1, 12.1.5, 12.1.7 and 12.0.7) |
 | SavedVariables | `EverythingDelvesDB` |
 | API compliance | Display-only — no taint, no automation |

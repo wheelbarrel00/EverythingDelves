@@ -10,6 +10,9 @@ local CHEVRON, CHECK, CELL_CHECK, STAR, CHECK_GAP = 12, 14, 12, 14, 6
 local NAME_MIN, REWARD_LINE, PILLAR_LINE, STORY_HEAD, STORY_LINE = 150, 20, 24, 18, 22
 local CRIT_HEAD, CRIT_LINE, CRIT_GAP, CRIT_INDENT = 20, 22, 6, CHEVRON + ITEM_GAP
 local TIER_BOX, TIER_GAP, TIER_CHECK, TIER_LABEL, TIER_VALUE, ACH_ROW, FEAT_HEAD = 28, 4, 10, 110, 56, 42, 30
+local PIP, PIP_GAP, PIP_GROUP, PIP_CHECK, PIP_LOCK, SEAL_GAP = 16, 4, 10, 11, 10, 2
+local CHEST_NAME, CHEST_COUNT, CHEST_ROW, CHEST_TOP, CHEST_BOTTOM, CHEST_LINE, CHEST_SUM_GAP, LEGEND_GAP = 210, 48, 30, 8, 10, 20, 22, 16
+local LOCK_ICON = "Interface\\AddOns\\EverythingDelves\\Media\\Textures\\icon-lock"
 local STAR_ICON = "Interface\\Common\\FavoritesIcon"
 local FEATS_CATEGORY = 81
 
@@ -101,6 +104,7 @@ local function Collect()
     data.totals = StripCodes(L["Still to earn: %s%d|r story variants, %s%d|r Sturdy Chests, %s%d|r tier goals"]
         :format("", stories, "", chests, "", depths))
     data.lab = E.LabyrinthAchievementStatus and E.LabyrinthAchievementStatus()
+    data.chests = E.LabyrinthChests and E.LabyrinthChests()
     return data
 end
 
@@ -520,6 +524,239 @@ local function AchRow(ui, content)
     return row
 end
 
+local PIP_LOOK = {
+    found   = { fill = "label",      edge = "label" },
+    missing = { fill = "accentSoft", edge = "accentHi" },
+    sealed  = { fill = "input",      edge = "inputBorder" },
+}
+
+local function PaintPip(ui, pip, state, pinnable)
+    local look = PIP_LOOK[state]
+    pip.fill:SetColorTexture(ui:Color(look.fill))
+    for _, line in ipairs(pip.edge) do line:SetColorTexture(ui:Color(look.edge)) end
+    pip.check:SetShown(state == "found")
+    pip.lock:SetShown(state == "sealed")
+    if pip.hl then pip.hl:SetShown(state == "missing" and pinnable == true) end
+end
+
+local function NewPip(ui, parent, clickable)
+    local pip = CreateFrame(clickable and "Button" or "Frame", nil, parent)
+    pip:SetSize(PIP, PIP)
+    pip.fill, pip.edge = ui:Paint(pip, "input", "inputBorder")
+    pip.check = Check(ui, pip, PIP_CHECK)
+    pip.check:SetPoint("CENTER")
+    pip.check:SetVertexColor(ui:Color("input"))
+    pip.lock = pip:CreateTexture(nil, "ARTWORK")
+    pip.lock:SetSize(PIP_LOCK, PIP_LOCK)
+    pip.lock:SetPoint("CENTER")
+    pip.lock:SetTexture(LOCK_ICON)
+    pip.lock:SetVertexColor(ui:Color("muted"))
+    if clickable then
+        pip.hl = pip:CreateTexture(nil, "HIGHLIGHT")
+        pip.hl:SetAllPoints()
+        pip.hl:SetColorTexture(ui:Color("hover"))
+    end
+    return pip
+end
+
+local function CanPin()
+    local LAB = E.Labyrinth
+    return (C_Map and C_Map.CanSetUserWaypointOnMap and C_Map.CanSetUserWaypointOnMap(LAB.uiMapID)) or E:IsTomTomLoaded()
+end
+
+-- The game may refuse a map pin inside the Labyrinth, and then a TomTom arrow stands in
+local function PinChest(chest, title)
+    local LAB = E.Labyrinth
+    if C_Map and C_Map.CanSetUserWaypointOnMap and C_Map.CanSetUserWaypointOnMap(LAB.uiMapID) then
+        return E:SetWaypoint(LAB.uiMapID, chest.x, chest.y)
+    end
+    if E:IsTomTomLoaded() then return E:AddTomTomWaypoint(LAB.uiMapID, chest.x, chest.y, title) end
+    return false
+end
+
+local function PipTip(ui, pip)
+    local c = pip.chest
+    if not c then return end
+    local lines = { (c.state == "found" and L["Found"]) or (c.state == "sealed" and L["Behind a seal"]) or L["Not found yet"] }
+    if c.fall then
+        lines[2] = L["Swim in through the waterfalls on the east side of the chamber, then melt the ice wall with any fire damage."]
+    elseif c.seal > 0 then
+        lines[2] = L["Opened by the Journey reward %s (rank %d)."]:format(E.LabyrinthSealName(c.seal), c.seal)
+    else
+        lines[2] = L["Open from your first run."]
+    end
+    if c.state == "missing" and CanPin() then lines[3] = L["Click to pin it on your map."] end
+    ui:ShowTooltip(pip, pip.title, table.concat(lines, "\n"))
+end
+
+-- One chamber's open chests, then each seal's, then the waterfall's, each hung off the drawn edge of the one before
+local function ChamberRow(ui, f, c)
+    local row = Row(f, CHEST_ROW)
+    row.divider = row:CreateTexture(nil, "BORDER")
+    row.divider:SetHeight(1)
+    row.divider:SetPoint("TOPLEFT")
+    row.divider:SetPoint("TOPRIGHT")
+    row.divider:SetColorTexture(ui:Color("divider"))
+    row.name = ui:CreateText(row, "", "label")
+    row.name:SetWordWrap(false)
+    row.name:SetPoint("LEFT")
+    row.name:SetWidth(CHEST_NAME)
+    row.count = Muted(ui, ui:CreateText(row, "", "hint"))
+    row.count:SetJustifyH("RIGHT")
+    row.count:SetWidth(CHEST_COUNT)
+    row.count:SetPoint("RIGHT")
+    row.pips = {}
+    local prev, gap = nil, 0
+    local function place(region, extra)
+        if prev then
+            region:SetPoint("LEFT", prev, "RIGHT", gap + (extra or 0), 0)
+        else
+            region:SetPoint("LEFT", row, "LEFT", CHEST_NAME + COL_GAP, 0)
+        end
+        prev, gap = region, PIP_GAP
+    end
+    local function pips(list)
+        for _, chest in ipairs(list) do
+            local pip = NewPip(ui, row, true)
+            pip.quest = chest[1]
+            place(pip)
+            pip:SetScript("OnEnter", function(self) PipTip(ui, self) end)
+            pip:SetScript("OnLeave", function() ui:HideTooltip() end)
+            pip:SetScript("OnClick", function(self)
+                if self.chest and self.chest.state == "missing" then PinChest(self.chest, self.title) end
+            end)
+            row.pips[#row.pips + 1] = pip
+        end
+    end
+    local open, seals = {}, {}
+    for _, chest in ipairs(c.chests) do
+        local rank = chest[4] or 0
+        if rank == 0 then
+            open[#open + 1] = chest
+        else
+            if not seals[#seals] or seals[#seals].rank ~= rank then seals[#seals + 1] = { rank = rank } end
+            table.insert(seals[#seals], chest)
+        end
+    end
+    pips(open)
+    row.seals = {}
+    for _, s in ipairs(seals) do
+        local mark = CreateFrame("Frame", nil, row)
+        mark:SetHeight(PIP)
+        mark.lock = mark:CreateTexture(nil, "ARTWORK")
+        mark.lock:SetSize(PIP_LOCK, PIP_LOCK)
+        mark.lock:SetTexture(LOCK_ICON)
+        mark.lock:SetVertexColor(ui:Color("muted"))
+        mark.text = Muted(ui, ui:CreateText(mark, tostring(s.rank), "groupLabel"))
+        mark.text:SetPoint("LEFT", mark.lock, "RIGHT", SEAL_GAP, 0)
+        place(mark.lock, PIP_GROUP - PIP_GAP)
+        mark:SetPoint("LEFT", mark.lock, "LEFT")
+        mark:SetPoint("RIGHT", mark.text, "RIGHT")
+        mark.rank = s.rank
+        mark:EnableMouse(true)
+        mark:SetScript("OnEnter", function(self)
+            ui:ShowTooltip(self, E.LabyrinthSealName(self.rank),
+                L["Opened by the Journey reward %s (rank %d)."]:format(E.LabyrinthSealName(self.rank), self.rank))
+        end)
+        mark:SetScript("OnLeave", function() ui:HideTooltip() end)
+        prev, gap = mark.text, SEAL_GAP + 2
+        pips(s)
+        row.seals[#row.seals + 1] = mark
+    end
+    if c.fall then
+        row.fall = Muted(ui, ui:CreateText(row, L["behind the waterfall"], "hint"))
+        row.fall:SetWordWrap(false)
+        place(row.fall, PIP_GROUP - PIP_GAP)
+        gap = SEAL_GAP + 4
+        pips(c.fall)
+    end
+    return row
+end
+
+local function BuildChests(ui, content, v)
+    local f = Row(content)
+    local inset = ui:Spacing("rowPadding") - 1
+    f.band = f:CreateTexture(nil, "BACKGROUND")
+    f.band:SetPoint("TOPLEFT", -inset, 0)
+    f.band:SetPoint("BOTTOMRIGHT", inset, 0)
+    f.band:SetColorTexture(ui:Color("input"))
+    f.top = f:CreateTexture(nil, "BORDER")
+    f.top:SetHeight(1)
+    f.top:SetPoint("TOPLEFT", -inset, 0)
+    f.top:SetPoint("TOPRIGHT", inset, 0)
+    f.top:SetColorTexture(ui:Color("divider"))
+
+    f.sum = {}
+    for i = 1, 3 do
+        f.sum[i] = ui:CreateText(f, "", "label")
+        f.sum[i]:SetWordWrap(false)
+    end
+    f.sum[1]:SetPoint("LEFT", f, "TOPLEFT", 0, -(CHEST_TOP + CHEST_LINE / 2))
+    f.sum[2]:SetPoint("LEFT", f.sum[1], "RIGHT", CHEST_SUM_GAP, 0)
+    f.sum[3]:SetPoint("LEFT", f.sum[2], "RIGHT", CHEST_SUM_GAP, 0)
+
+    local y = CHEST_TOP + CHEST_LINE + PIP_GAP
+    local prev
+    for _, item in ipairs({ { "found", L["Found"] }, { "missing", L["Not found yet"] }, { "sealed", L["Behind a seal"] } }) do
+        local pip = NewPip(ui, f, false)
+        PaintPip(ui, pip, item[1])
+        if prev then
+            pip:SetPoint("LEFT", prev, "RIGHT", LEGEND_GAP, 0)
+        else
+            pip:SetPoint("LEFT", f, "TOPLEFT", 0, -(y + CHEST_LINE / 2))
+        end
+        local fs = Muted(ui, ui:CreateText(f, item[2], "hint"))
+        fs:SetWordWrap(false)
+        fs:SetPoint("LEFT", pip, "RIGHT", ITEM_GAP - 2, 0)
+        prev = fs
+    end
+
+    y = y + CHEST_LINE + ITEM_GAP - 2
+    f.rows = {}
+    for i, c in ipairs(E.Labyrinth.sturdyChests) do
+        local row = ChamberRow(ui, f, c)
+        row:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -y)
+        row:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -y)
+        row.divider:SetShown(i > 1)
+        f.rows[i] = row
+        y = y + CHEST_ROW
+    end
+    f.height = y + CHEST_BOTTOM
+    f:SetHeight(f.height)
+    v.chests = f
+    return f
+end
+
+local function ChestsOpen(v, a)
+    if v.chestsOpen ~= nil then return v.chestsOpen end
+    return not (a and a.done)
+end
+
+-- The Discoveries row folds the checklist under it, as a delve row folds its detail
+local function MakeFoldable(ui, row, v)
+    row.chevron = row:CreateTexture(nil, "ARTWORK")
+    row.chevron:SetSize(CHEVRON, CHEVRON)
+    row.chevron:SetPoint("RIGHT")
+    row.chevron:SetVertexColor(ui:Color("muted"))
+    row.prog:ClearAllPoints()
+    row.prog:SetPoint("RIGHT", row.chevron, "LEFT", -ITEM_GAP, 0)
+    local inset = ui:Spacing("rowPadding") - 1
+    row.hover = row:CreateTexture(nil, "BACKGROUND")
+    row.hover:SetPoint("TOPLEFT", -inset, 0)
+    row.hover:SetPoint("BOTTOMRIGHT", inset, 0)
+    row.hover:SetColorTexture(ui:Color("hover"))
+    row.hover:Hide()
+    row:HookScript("OnEnter", function(self) self.hover:Show() end)
+    row:HookScript("OnLeave", function(self) self.hover:Hide() end)
+    row:SetScript("OnMouseUp", function(self, button)
+        if button ~= "LeftButton" or not self:IsMouseOver() then return end
+        v.chestsOpen = not ChestsOpen(v, self.ach)
+        v.relayout()
+        if v.chestsOpen and E.RelayoutSoon then E.RelayoutSoon(v.chests) end
+        if self.hover:IsShown() then self:GetScript("OnEnter")(self) end
+    end)
+end
+
 local function BuildLabyrinth(ui, content, v)
     local LAB = E.Labyrinth
     local card = ui:CreateGroup(content, " ")
@@ -543,9 +780,15 @@ local function BuildLabyrinth(ui, content, v)
     card:Add(strip, { height = ROW, fill = true })
 
     v.labRows = {}
-    for i = 1, #LAB.achievementList do
+    for i, entry in ipairs(LAB.achievementList) do
         v.labRows[i] = AchRow(ui, content)
         card:Add(v.labRows[i], { height = ACH_ROW, fill = true })
+        if entry == LAB.chestAchievement then
+            MakeFoldable(ui, v.labRows[i], v)
+            v.chestRow = v.labRows[i]
+            local chests = BuildChests(ui, content, v)
+            card:Add(chests, { height = chests.height, fill = true })
+        end
     end
     local head = Row(content, FEAT_HEAD)
     head.text = Muted(ui, ui:CreateText(head, "", "groupLabel"))
@@ -600,6 +843,7 @@ local function FillAch(ui, row, a)
     row.reward:SetShown(a.reward ~= nil)
     row.reward:SetText(a.reward or "")
     local x, right = CHECK + ITEM_GAP, math_ceil(row.prog:GetStringWidth() or 0) + ITEM_GAP
+    if row.chevron then right = right + CHEVRON + ITEM_GAP end
     row.name:ClearAllPoints()
     row.reward:ClearAllPoints()
     if a.reward then
@@ -613,13 +857,43 @@ local function FillAch(ui, row, a)
     end
 end
 
-local function RenderLabyrinth(ui, v, st, inner)
+local function RenderChests(ui, v, cs, a)
+    local f, row = v.chests, v.chestRow
+    local open = ChestsOpen(v, a)
+    f:SetShown(cs ~= nil and row:IsShown() and open)
+    row.ach = a
+    row.chevron:SetShown(cs ~= nil)
+    row.chevron:SetTexture(ui:Texture(open and "chevron-down" or "chevron-right"))
+    if not cs then return end
+    row.tipBody = ((a and a.description) and (a.description .. "\n") or "")
+        .. (open and L["Click to hide what's left here."] or L["Click to see what's left here."])
+    local cc, pinnable = E.DelveList.cc("text"), CanPin() and true or false
+    f.sum[1]:SetText(L["Found:"] .. " " .. cc .. cs.found .. " / " .. cs.total .. "|r")
+    f.sum[2]:SetText(L["Reachable now:"] .. " " .. cc .. cs.reach .. "|r")
+    f.sum[3]:SetText(L["Behind closed seals:"] .. " " .. cc .. cs.sealed .. "|r")
+    for i, ch in ipairs(cs.chambers) do
+        local r = f.rows[i]
+        local name = C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(ch.area) or ""
+        r.name:SetText(name)
+        r.count:SetText(ch.found .. " / " .. ch.total)
+        local byQuest = {}
+        for _, chest in ipairs(ch.chests) do byQuest[chest.quest] = chest end
+        for _, pip in ipairs(r.pips) do
+            local chest = byQuest[pip.quest]
+            pip.chest, pip.title = chest, name
+            PaintPip(ui, pip, chest and chest.state or "sealed", pinnable)
+        end
+    end
+end
+
+local function RenderLabyrinth(ui, v, st, inner, cs)
     v.labCard.label:SetText(E.LabyrinthDisplayName())
     v.labNone:SetShown(st == nil)
     local tiers = st and st.tiers
     v.labStrip:SetShown(tiers ~= nil)
     if tiers then RenderStrip(ui, v.labStrip, tiers, st.tiersDone, inner - ui:Spacing("rowPadding") * 2) end
     for i, row in ipairs(v.labRows) do FillAch(ui, row, st and st.list[i]) end
+    RenderChests(ui, v, cs, st and st.chests)
     local feats = st and st.feats or {}
     local title = GetCategoryInfo and GetCategoryInfo(FEATS_CATEGORY)
     v.featHead.text:SetText(type(title) == "string" and title or "Feats of Strength")
@@ -668,7 +942,7 @@ E:RegisterModule(function()
         local minWidth = nameX + NAME_MIN + used + ui:Spacing("rowPadding") * 2 + PAD_LEFT + PAD_RIGHT
         local width = math_max(view, minWidth)
         content:SetWidth(width)
-        RenderLabyrinth(ui, v, data.lab, width - PAD_LEFT - PAD_RIGHT)
+        RenderLabyrinth(ui, v, data.lab, width - PAD_LEFT - PAD_RIGHT, data.chests)
         local nameW = width - PAD_LEFT - PAD_RIGHT - ui:Spacing("rowPadding") * 2 - nameX - used
         PlaceCells(v.head, widths, used, nameX)
 

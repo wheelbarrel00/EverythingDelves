@@ -114,9 +114,14 @@ function E:GetPlayerCurioRole()
     local r = ROLE_NORM[(UnitGroupRolesAssigned
         and UnitGroupRolesAssigned("player")) or "NONE"]
     if r and r ~= "" then return r end
-    local spec = GetSpecialization and GetSpecialization()
-    local specRole = spec and GetSpecializationRole and GetSpecializationRole(spec)
-    return ROLE_NORM[specRole or "NONE"] or "Damage"
+    -- The spec functions moved to C_SpecializationInfo in 11.2, and the old globals are deprecated aliases
+    local api = C_SpecializationInfo
+    local getIndex = (api and api.GetSpecialization) or GetSpecialization
+    local getInfo = (api and api.GetSpecializationInfo) or GetSpecializationInfo
+    local spec = getIndex and getIndex()
+    local specRole = spec and getInfo and select(5, getInfo(spec))
+    local role = ROLE_NORM[specRole or "NONE"]
+    return (role and role ~= "") and role or "Damage"
 end
 
 local function GetCompanionTreeID()

@@ -12,9 +12,10 @@ local BLOODLUST, HEROISM = 2825, 32182
 -- Sub-zones of the Labyrinth (AreaTable)
 local ROOST, RITES, LAIR, TOWERS = 17031, 17025, 17029, 17033
 local RELIQUARY, CENTRAL, CATACOMBS = 17026, 17027, 17028
-local BILESPEAR, OUROBORIC, DREAMCATCHER = 249223, 249219, 249228
 -- The First Hash'ey's own icon, for a client that has not sent the achievement yet
 local PORTRAIT_ICON = 3601564
+-- A game object has no icon, so the Ancestral Bounty takes the map's treasure chest
+local BOUNTY_ATLAS = "VignetteLoot"
 
 local TAG_COLORS = { red = "FF3333", yellow = "FFD100", orange = "FF8800", grey = "999999" }
 
@@ -55,6 +56,23 @@ end
 
 local function ItemIcon(id)
     return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id) or nil
+end
+
+local function CurrencyName(id, fallback)
+    local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(id)
+    local name = type(info) == "table" and info.name
+    return (type(name) == "string" and name ~= "") and name or fallback
+end
+
+-- The older pick shows on hover, so its name is asked for with the pick's
+local function CurioName(k, c)
+    if not c then return "" end
+    k.items[c.id] = true
+    if c.alt then
+        k.items[c.alt.id] = true
+        ItemName(c.alt.id, c.alt.name)
+    end
+    return ItemName(c.id, c.name)
 end
 
 local function Achievement(id)
@@ -176,6 +194,21 @@ local function BuildOverview(ui, content, kit)
     return card
 end
 
+local function BuildBefore(ui, content, kit)
+    local card = ui:CreateGroup(content, L["Before the pull"])
+    local b = ui:CreateTextBlock(content)
+    b:AddLine(kit.Lead(L["Clear every chamber"]) .. "  "
+        .. L["Boons from Mislaid Treasures and Mislaid Curiosities last the whole run, and the loa's gifts from the sealed chests grow with every chamber you clear."],
+        "label", { bullet = kit.BULLET })
+    kit.Bullet(b, L["Collect the Hexmasks"],
+        L["Each mask you find joins you for the rest of the run and fights beside you in his chamber. A run hides three of them."])
+    kit.Bullet(b, L["Where runs end"],
+        L["The juggernaut his own %s brings, the second row of bears, a sigil left empty when Valeera falls, and Akil'zon's winds at the platform's edge."]
+            :format(SpellName(CLEANSING, "Cleansing Flame")))
+    card:Add(b, { fitHeight = true })
+    return card
+end
+
 local function MechanicRow(ui, content, kit, m, text)
     local name = SpellName(m.id, m.en)
     if m.loa then name = name .. "  " .. E.DelveList.cc("muted") .. m.loa .. "|r" end
@@ -210,6 +243,21 @@ local function BuildPhaseTwo(ui, content, kit)
     return card
 end
 
+-- A line cannot carry a tooltip for one word, so the whole line names the older pick
+local function AltHover(ui, block, line)
+    local hit = CreateFrame("Frame", nil, block)
+    hit:SetAllPoints(line)
+    hit:EnableMouse(true)
+    hit:SetScript("OnEnter", function(self)
+        local c = self.curio
+        if not (c and c.alt) then return end
+        ui:ShowTooltip(self, ItemName(c.id, c.name),
+            L["Or %s, if you don't have it yet."]:format(ItemName(c.alt.id, c.alt.name)))
+    end)
+    hit:SetScript("OnLeave", function() ui:HideTooltip() end)
+    return hit
+end
+
 local function BuildCompanion(ui, content, kit, k)
     local card = ui:CreateGroup(content, L["Companion & Loadout"])
     local b = ui:CreateTextBlock(content)
@@ -220,6 +268,7 @@ local function BuildCompanion(ui, content, kit, k)
     -- Item names can reach the client after the page is built, so these two are filled in when it is drawn
     k.combat = b:AddLine("", "label", { gap = kit.PARA_GAP, bullet = kit.BULLET })
     k.utility = b:AddLine("", "label", { gap = kit.PARA_GAP, bullet = kit.BULLET })
+    k.combatHit, k.utilityHit = AltHover(ui, b, k.combat), AltHover(ui, b, k.utility)
     card:Add(b, { fitHeight = true })
     return card
 end
@@ -242,6 +291,13 @@ local function RewardRow(ui, content, kit, r)
     row.icon:SetSize(kit.REWARD_ICON, kit.REWARD_ICON)
     row.icon:SetPoint("TOPLEFT")
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    if r.atlas then
+        if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(r.atlas) then
+            row.icon:SetAtlas(r.atlas)
+        else
+            row.icon:Hide()
+        end
+    end
     row.tag = ui:CreateTag(row, r.kind, "outline")
     row.tag:SetPoint("LEFT", row.name, "RIGHT", kit.TAG_GAP, 0)
     row.done = kit.Check(ui, row)
@@ -261,6 +317,7 @@ local function BuildRewards(ui, content, kit, k)
     local LAB = E.Labyrinth
     local card = ui:CreateGroup(content, L["Rewards"])
     k.rewards = {
+        { bounty = true, atlas = BOUNTY_ATLAS, kind = L["Chest"], en = "Ancestral Bounty" },
         { itemID = LAB.kindojanToy, toy = true, kind = L["Toy"], en = "Loa-Blessed Victory" },
         { itemID = LAB.kindojanWeeklyItem, spell = LAB.kindojanWeeklySpell, kind = L["Weekly"], en = "Kindo'jan's Reward" },
         { achievement = LAB.kindojanAchievement, kind = L["Title"], en = "The First Hash'ey" },
@@ -274,14 +331,26 @@ local function BuildRewards(ui, content, kit, k)
         k.rewardRows[i] = RewardRow(ui, content, kit, r)
         card:Add(k.rewardRows[i], { fitHeight = true, fill = true })
     end
+    local note = ui:CreateTextBlock(content)
+    note:AddLine(L["Left the toy or the mount in the chest? Speak with Kinduru after the run and it is granted."], "hint")
+    card:Add(note, { fitHeight = true })
     return card
+end
+
+local function BountyText()
+    local LAB = E.Labyrinth
+    return L["On his platform after the kill. It holds 10 %s, 10 %s, 1 %s, 2 %s, a rank 5 curio you do not have yet, and Journey progress. Loot it before you leave."]
+        :format(CurrencyName(LAB.bountyHeroCrest, "Hero Mistcrest"), CurrencyName(LAB.bountyMythCrest, "Myth Mistcrest"),
+            ItemName(LAB.bountyFragment, "Heroic Soul Fragment"), ItemName(LAB.bountySoul, "Corrosive Soul"))
 end
 
 local function RenderRewards(k)
     for i, r in ipairs(k.rewards) do
         local row = k.rewardRows[i]
         local name, done, icon, cond
-        if r.achievement then
+        if r.bounty then
+            name, cond = L["Ancestral Bounty"], BountyText()
+        elseif r.achievement then
             local n, d, _, reward = Achievement(r.achievement)
             name, done, cond = n, d, reward
             if r.closed and not done then
@@ -304,8 +373,10 @@ local function RenderRewards(k)
             end
         end
         row.name:SetText(name or r.en)
-        row.icon:SetTexture(icon)
-        row.icon:SetShown(icon ~= nil)
+        if not r.atlas then
+            row.icon:SetTexture(icon)
+            row.icon:SetShown(icon ~= nil)
+        end
         r.condText = cond
         row.cond:SetText(cond or "")
         row.done:SetShown(done == true)
@@ -319,6 +390,7 @@ function E.BuildKindojanView(ui, content, kit)
         BuildHero(ui, content, kit, k),
         BuildStatus(ui, content, kit, k),
         BuildOverview(ui, content, kit),
+        BuildBefore(ui, content, kit),
         BuildTactics(ui, content, kit, L["Phase 1"], L["For the first minute and a half, in this order:"], PHASE_ONE,
             function(m) return PhaseOneText(m.id) end),
         BuildTactics(ui, content, kit, L["Intermission"],
@@ -332,8 +404,8 @@ function E.BuildKindojanView(ui, content, kit)
     local LAB = E.Labyrinth
     k.spells = { [LAB.kindojanWeeklySpell] = true }
     k.items = {
-        [BILESPEAR] = true, [OUROBORIC] = true, [DREAMCATCHER] = true,
         [LAB.kindojanToy] = true, [LAB.kindojanWeeklyItem] = true, [LAB.kindojanMount] = true,
+        [LAB.bountyFragment] = true, [LAB.bountySoul] = true,
     }
 
     function k.Refresh()
@@ -351,9 +423,12 @@ function E.BuildKindojanView(ui, content, kit)
         k.weekly.check:SetShown(reward == true)
         k.weekly.value:SetText((reward == true and "") or (reward == false and L["Not yet - a kill on Tier 8 or higher earns it"]) or "--")
 
-        k.combat:SetText(kit.Lead(L["Combat"]) .. "  "
-            .. L["%s, or %s."]:format(ItemName(BILESPEAR, "Corrosive Bilespear"), ItemName(OUROBORIC, "Ouroboric Curse")))
-        k.utility:SetText(kit.Lead(L["Utility"]) .. "  " .. ItemName(DREAMCATCHER, "Soul-Cracking Dreamcatcher"))
+        -- The curio popup's picks for Valeera's own role, read as the HUD reads them
+        local role = E:GetCompanionAssignedRole() or E:GetPlayerCurioRole()
+        local combat, utility = E:GetRecommendedCurios("Valeera", role)
+        k.combatHit.curio, k.utilityHit.curio = combat, utility
+        k.combat:SetText(kit.Lead(L["Combat"]) .. "  " .. CurioName(k, combat))
+        k.utility:SetText(kit.Lead(L["Utility"]) .. "  " .. CurioName(k, utility))
         RenderRewards(k)
     end
     return k

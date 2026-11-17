@@ -321,6 +321,50 @@ E:RegisterModule(function()
         AddLine(text)
     end
 
+    local function WahduLine(tier)
+        local wd = E.WahduStatus and E.WahduStatus()
+        if not wd then return end
+        local text
+        if wd.complete then
+            text = ICON_DONE .. E.CC.green .. E.WahduStepName(wd.step) .. E.CC.close .. " "
+                .. E.CC.muted .. L["(turn it in)"] .. E.CC.close
+        elseif wd.inLog then
+            text = E.CC.body .. E.WahduStepName(wd.step) .. E.CC.close
+        elseif (wd.ready or 0) > 0 then
+            text = E.CC.body .. L["%d ready at the entrance"]:format(wd.ready) .. E.CC.close
+        else
+            return
+        end
+        if not wd.complete and tier > 0 and tier < E.Labyrinth.wahduMinTier then
+            text = text .. " " .. E.CC.muted .. L["(Tier 8 or higher)"] .. E.CC.close
+        end
+        AddLine(E.CC.muted .. L["Wah'du:"] .. E.CC.close .. " " .. text)
+    end
+
+    -- A mask's familiar follows you for the rest of the run, so its aura is the mask found. A texture escape cannot
+    -- be desaturated, so one not found yet is darkened.
+    local function HexmaskLine()
+        local LAB = E.Labyrinth
+        local j = E.GetLabyrinthJourney and E.GetLabyrinthJourney()
+        if not (j and j.level >= LAB.hexmaskMinRank) then return end
+        local icons, found = {}, 0
+        for _, id in ipairs(LAB.hexmaskAuras) do
+            local ok, aura = false, nil
+            if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+                ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, id)
+            end
+            local has = ok and aura ~= nil
+            if has then found = found + 1 end
+            local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(id)
+            if tex then
+                icons[#icons + 1] = ("|T%s:13:13:0:0:64:64:5:59:5:59%s|t"):format(tostring(tex), has and "" or ":90:90:90")
+            end
+        end
+        local all = #LAB.hexmaskAuras
+        AddLine(E.CC.muted .. L["Hexmasks:"] .. E.CC.close .. " " .. table.concat(icons, " ") .. (#icons > 0 and " " or "")
+            .. (found == all and E.CC.green or E.CC.body) .. found .. " / " .. all .. E.CC.close)
+    end
+
     local function LabyrinthLines(lab, tier)
         local LAB, R = E.Labyrinth, E.LabRun
         local total = R.Total(lab)
@@ -348,6 +392,8 @@ E:RegisterModule(function()
             text = text .. " " .. E.CC.red .. L["(%d short)"]:format(short) .. E.CC.close
         end
         AddLine(text)
+        WahduLine(tier)
+        HexmaskLine()
     end
 
     local function EmitObjective(desc, done, failed, progress)

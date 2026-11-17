@@ -37,7 +37,7 @@ function E:ShowDialog(opts)
         hasEditBox       = opts.hasEditBox and true or nil,
         maxLetters       = opts.maxLetters,
         editBoxText      = opts.editBoxText,
-        highlightEditBox = opts.highlightEditBox and true or nil,
+        readOnly         = opts.readOnly and true or nil,
         danger           = opts.danger and true or nil,
     })
 end

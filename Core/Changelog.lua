@@ -3,6 +3,35 @@ local E = EverythingDelves
 
 E.Changelog = {
     {
+        version = "2.6.0", date = "2026-11-17",
+        sections = {
+            { head = "Wah'du's Myth armor", items = {
+                "Wah'du's Myth armor on the Tier Guide, the Roster and the HUD, a checklist of the Labyrinth's Sturdy Chests, more on Kindo'jan's page, and the 23 English phrases translated.",
+            }},
+            { head = "New", items = {
+                "Wah'du's Myth armor - a Wah'du card on the Tier Guide, under Kindo'jan's Labyrinth Journey: his six weekly steps (turned in, in your quest log, ready at the Labyrinth's entrance, or not unlocked yet), what to do next and when the next step unlocks, your Mythical Soul Fragments toward the next Myth 2/6 piece, and the pieces you have claimed. Hover a step for its name.",
+                "Wah'du on the HUD - inside the Labyrinth the HUD names the step in your quest log, turns it green once it is done so you remember to turn it in, or says how many steps are waiting at the entrance, with a note when the run is below Tier 8.",
+                "Sturdy Chest checklist - on the Achievements page, Kindo'jan's Labyrinth Discoveries opens into all 44 Sturdy Chests by chamber: found, reachable now, or behind a loa seal your Labyrinth Journey has not opened yet, with the five behind the Central Chamber's waterfall. Hover a chest for what opens it, and click a chest you can reach but have not found to pin it on your map, or to set a TomTom arrow where the game refuses a pin. The list stays open until you earn the achievement, and a click on the achievement folds or opens it.",
+                "Hexmasks on the HUD - from Labyrinth Journey rank 2, a HUD line inside the Labyrinth shows the three Hexmasks' icons, lit once each mask has joined you, and how many you have.",
+                "More on Kindo'jan's page - a Before the pull card (clear every chamber for the boons and the loa's gifts, collect the Hexmasks, and where runs end), the Ancestral Bounty and what it holds at the top of the rewards, and how to get a forgotten toy or mount back from Kinduru.",
+            }},
+            { head = "Improved", items = {
+                "Wah'du on the Roster - the Wah'du column now counts each character's steps against the steps unlocked so far, with a check once that character is caught up. A row's tooltip shows its steps, and its fragments and pieces claimed once that character has logged in on this version. A character below the level cap shows no count.",
+                "Kindo'jan's curio picks match the curio reminder - the Companion & Loadout card now reads the same picks as the curio reminder and the HUD, Viperwind Idol and Dundun's Favor, with the older pick on hover.",
+                "The 23 English phrases translated - the 23 phrases that showed in English since 1.34.0 and 1.35.0, on the Achievements page, in the coffer key warning and in the HUD's Dundun reminder, are now translated.",
+            }},
+            { head = "Fixed", items = {
+                "Text missing after a client restart - after a restart some text on the pages drew nothing: the Shard Tracker's column headers, the Tier Guide's recommended tier and milestone hints, the Great Vault's \"Next slot\" counts, and more. Every page of the main window now draws its text again a moment after it opens.",
+                "Scroll bars jumped to the far end - pressing a scroll bar's thumb made the page jump to the far end, so dragging seemed to run backwards. The thumb now stays where you pressed it and follows the cursor, and a press on the bar away from the thumb moves the thumb there.",
+                "The Roster's Wah'du column had the wrong name - its header read \"Labyrinth Soul Fragments\" since 2.2.0. It now says Wah'du.",
+                "The Discord and link copy fields could be typed over - they now only let you select and copy.",
+            }},
+            { head = "Notes", items = {
+                "The new text is translated into German, French, Russian, Korean and both Chinese. The Ancestral Bounty, Mislaid Treasures and Mislaid Curiosities keep their English names until their names in each language can be confirmed.",
+            }},
+        },
+    },
+    {
         version = "2.5.1", date = "2026-11-13",
         sections = {
             { head = "Kindo'jan's tactics up to date", items = {
@@ -368,7 +397,7 @@ E.Changelog = {
         sections = {
             { head = "New", items = {
                 "Everything Delves now speaks six more languages - German, French, Russian, Korean, Simplified Chinese and Traditional Chinese. Around 750 phrases across every tab, the HUD, the reminders and the slash commands are now translatable. Anything not yet translated simply shows in English, so a partial translation is never a broken one. Most of the addon is still English today, because the translations are only just starting, but will be coming very soon! Delve, boss, zone and story names deliberately stay exactly as your own client shows them, because the addon matches them against the game's own text.",
-                "Translations are shared with the author's other addons - they live in one place, so a phrase used by more than one addon only ever gets translated once. Contributions are very welcome. The README explains how to send one.",
+                "Translations are shared with other addons - they live in one place, so a phrase used by more than one addon only ever gets translated once. Contributions are very welcome. The README explains how to send one.",
                 "Translator credits on the About tab - Zox, Malevi4, labrie75, Keriaovo, BNS333 and Stonetwist, whose work every non-English string in this addon comes from.",
             }},
             { head = "Fixed", items = {
